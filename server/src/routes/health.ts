@@ -2,7 +2,7 @@ import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 import { sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { errorResponses } from '@/lib/schemas';
-import { HttpStatus } from '@/types/errors';
+import { HttpStatus } from '@/types/codes';
 
 const healthResponseSchema = z.object({
   timestamp: z.string().openapi({ example: '2024-01-01T00:00:00Z' }),
