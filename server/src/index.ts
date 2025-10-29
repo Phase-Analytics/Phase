@@ -1,11 +1,14 @@
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { cors } from 'hono/cors';
 import { auth } from '@/lib/auth';
+import { authMiddleware } from '@/lib/middleware';
 import { configureOpenAPI } from '@/lib/openapi';
 import { closeRedisConnection } from '@/queue/config';
 import { flushAndClose } from '@/queue/index';
 import { createApiEventsWorker } from '@/queue/worker';
+import eventsRouter from '@/routes/events';
 import health from '@/routes/health';
+import webRouter from '@/routes/web';
 
 const app = new OpenAPIHono<{
   Variables: {
@@ -30,7 +33,11 @@ app.use(
   })
 );
 
+app.use('/web/*', authMiddleware);
+
 app.route('/health', health);
+app.route('/events', eventsRouter);
+app.route('/web', webRouter);
 
 app.on(['POST', 'GET'], '/api/auth/**', (c) => auth.handler(c.req.raw));
 

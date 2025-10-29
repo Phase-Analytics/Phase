@@ -15,6 +15,8 @@ const processBatchJob = async (job: Job<BatchJobData>): Promise<void> => {
     errorFlag: event.errorFlag,
     timestamp: new Date(event.timestamp),
     version: event.version || '',
+    userId: event.userId,
+    apikeyId: event.apikeyId,
   }));
 
   await db.insert(apiEvents).values(eventsWithIds);

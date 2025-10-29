@@ -145,12 +145,20 @@ export const apiEvents = sqliteTable(
     errorFlag: integer('error_flag', { mode: 'boolean' }).notNull(),
     timestamp: integer('timestamp', { mode: 'timestamp_ms' }).notNull(),
     version: text('version').default(''),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    apikeyId: text('apikey_id')
+      .notNull()
+      .references(() => apikey.id, { onDelete: 'cascade' }),
   },
   (table) => ({
     routeIdx: index('api_events_route_idx').on(table.route),
     statusIdx: index('api_events_status_idx').on(table.status),
     errorFlagIdx: index('api_events_error_flag_idx').on(table.errorFlag),
     timestampIdx: index('api_events_timestamp_idx').on(table.timestamp),
+    userIdIdx: index('api_events_user_id_idx').on(table.userId),
+    apikeyIdIdx: index('api_events_apikey_id_idx').on(table.apikeyId),
   })
 );
 
