@@ -6,9 +6,31 @@ export const errorResponseSchema = z.object({
   meta: z.any().optional(),
 });
 
+export const paginationSchema = z.object({
+  total: z.number().int().min(0),
+  page: z.number().int().min(1),
+  pageSize: z.number().int().min(1),
+  totalPages: z.number().int().min(0),
+});
+
+export const paginatedResponseSchema = <T extends z.ZodTypeAny>(
+  dataSchema: T,
+  dataKey: string
+) =>
+  z.object({
+    [dataKey]: z.array(dataSchema),
+    pagination: paginationSchema,
+  });
+
+export const successResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
+  z.object({
+    success: z.boolean().default(true),
+    data: dataSchema,
+  });
+
 export const errorResponses = {
   400: {
-    description: 'Error',
+    description: 'Bad Request',
     content: {
       'application/json': {
         schema: errorResponseSchema,
@@ -16,7 +38,15 @@ export const errorResponses = {
     },
   },
   401: {
-    description: 'Error',
+    description: 'Unauthorized',
+    content: {
+      'application/json': {
+        schema: errorResponseSchema,
+      },
+    },
+  },
+  429: {
+    description: 'Too Many Requests',
     content: {
       'application/json': {
         schema: errorResponseSchema,
@@ -24,7 +54,7 @@ export const errorResponses = {
     },
   },
   500: {
-    description: 'Error',
+    description: 'Internal Server Error',
     content: {
       'application/json': {
         schema: errorResponseSchema,

@@ -1,5 +1,5 @@
 import type { Context } from 'hono';
-import { ErrorCode, HttpStatus } from '@/types/errors';
+import { ErrorCode, HttpStatus } from '@/types/codes';
 
 export function badRequest(c: Context, code: ErrorCode, detail: string) {
   return c.json({ code, detail }, HttpStatus.BAD_REQUEST);
