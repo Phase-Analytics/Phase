@@ -8,50 +8,45 @@ import {
   QUEUE_CONFIG,
 } from './config';
 
-export type ApiEventData = {
-  route: string;
-  status: number;
-  processingTimeMs: number;
-  errorFlag: boolean;
+export type AnalyticsEventData = {
+  eventId: string;
+  sessionId: string;
+  name: string;
+  params?: Record<string, string | number | boolean | null>;
   timestamp: number;
-  version?: string;
-  userId?: string;
-  apikeyId?: string;
 };
 
 export type BatchJobData = {
-  events: ApiEventData[];
+  events: AnalyticsEventData[];
   batchId: string;
 };
 
-const REDIS_EVENTS_KEY = 'api_events_buffer';
-const REDIS_TIMER_KEY = 'api_events_timer';
+const REDIS_EVENTS_KEY = 'analytics_events_buffer';
+const REDIS_TIMER_KEY = 'analytics_events_timer';
 
-const safeJsonParse = (jsonString: string): ApiEventData | null => {
+const safeJsonParse = (jsonString: string): AnalyticsEventData | null => {
   try {
     const parsed = JSON.parse(jsonString);
 
     if (
-      typeof parsed.route !== 'string' ||
-      typeof parsed.status !== 'number' ||
-      typeof parsed.processingTimeMs !== 'number' ||
-      typeof parsed.errorFlag !== 'boolean' ||
+      typeof parsed.eventId !== 'string' ||
+      typeof parsed.sessionId !== 'string' ||
+      typeof parsed.name !== 'string' ||
       typeof parsed.timestamp !== 'number'
     ) {
       console.error('[Queue] Invalid event data structure:', parsed);
       return null;
     }
 
-    // Validate userId and apikeyId if present (backward compatibility)
     if (
-      (parsed.userId !== undefined && typeof parsed.userId !== 'string') ||
-      (parsed.apikeyId !== undefined && typeof parsed.apikeyId !== 'string')
+      parsed.params !== undefined &&
+      (typeof parsed.params !== 'object' || Array.isArray(parsed.params))
     ) {
-      console.error('[Queue] Invalid userId or apikeyId type:', parsed);
+      console.error('[Queue] Invalid params type:', parsed);
       return null;
     }
 
-    return parsed as ApiEventData;
+    return parsed as AnalyticsEventData;
   } catch (error) {
     console.error('[Queue] JSON parse error:', error);
     return null;
@@ -75,11 +70,11 @@ const popEventsFromBuffer = async (
   return events;
 };
 
-class RedisApiEventsBuffer {
+class RedisAnalyticsEventsBuffer {
   private readonly redis = createRedisClient();
   private batchTimer: NodeJS.Timeout | null = null;
 
-  async addEvent(event: ApiEventData): Promise<void> {
+  async addEvent(event: AnalyticsEventData): Promise<void> {
     const timerExists = await this.redis.exists(REDIS_TIMER_KEY);
     if (timerExists) {
       await this.redis.lpush(REDIS_EVENTS_KEY, JSON.stringify(event));
@@ -114,7 +109,7 @@ class RedisApiEventsBuffer {
         return;
       }
 
-      const events: ApiEventData[] = [];
+      const events: AnalyticsEventData[] = [];
       for (const eventString of eventStrings) {
         const event = safeJsonParse(eventString);
         if (event) {
@@ -166,9 +161,9 @@ class RedisApiEventsBuffer {
   }
 }
 
-export const apiEventsBuffer = new RedisApiEventsBuffer();
+export const analyticsEventsBuffer = new RedisAnalyticsEventsBuffer();
 
-export const apiEventsBatchQueue = new Queue<BatchJobData>(
+export const analyticsEventsBatchQueue = new Queue<BatchJobData>(
   QUEUE_CONFIG.QUEUE_NAME,
   {
     connection: getRedisConnection(),
@@ -178,7 +173,7 @@ export const apiEventsBatchQueue = new Queue<BatchJobData>(
 
 export const isQueueHealthy = async (): Promise<boolean> => {
   try {
-    const client = await apiEventsBatchQueue.client;
+    const client = await analyticsEventsBatchQueue.client;
     await client.ping();
     return true;
   } catch {
@@ -186,14 +181,18 @@ export const isQueueHealthy = async (): Promise<boolean> => {
   }
 };
 
-export const addApiEvent = async (event: ApiEventData): Promise<void> => {
-  await apiEventsBuffer.addEvent(event);
+export const addAnalyticsEvent = async (
+  event: AnalyticsEventData
+): Promise<void> => {
+  await analyticsEventsBuffer.addEvent(event);
 };
 
-const enqueueBatchJob = async (events: ApiEventData[]): Promise<string> => {
+const enqueueBatchJob = async (
+  events: AnalyticsEventData[]
+): Promise<string> => {
   const batchId = `batch_${randomUUID()}`;
 
-  const job = await apiEventsBatchQueue.add('process-batch', {
+  const job = await analyticsEventsBatchQueue.add('process-batch', {
     events,
     batchId,
   });
@@ -204,12 +203,12 @@ const enqueueBatchJob = async (events: ApiEventData[]): Promise<string> => {
 export const getQueueMetrics = async () => {
   const [waiting, active, completed, failed, delayed, bufferSize] =
     await Promise.all([
-      apiEventsBatchQueue.getWaitingCount(),
-      apiEventsBatchQueue.getActiveCount(),
-      apiEventsBatchQueue.getCompletedCount(),
-      apiEventsBatchQueue.getFailedCount(),
-      apiEventsBatchQueue.getDelayedCount(),
-      apiEventsBuffer.getBufferSize(),
+      analyticsEventsBatchQueue.getWaitingCount(),
+      analyticsEventsBatchQueue.getActiveCount(),
+      analyticsEventsBatchQueue.getCompletedCount(),
+      analyticsEventsBatchQueue.getFailedCount(),
+      analyticsEventsBatchQueue.getDelayedCount(),
+      analyticsEventsBuffer.getBufferSize(),
     ]);
 
   return {
@@ -224,7 +223,7 @@ export const getQueueMetrics = async () => {
 };
 
 export const flushAndClose = async (): Promise<void> => {
-  apiEventsBuffer.stop();
-  apiEventsBuffer.flush();
-  await apiEventsBatchQueue.close();
+  analyticsEventsBuffer.stop();
+  analyticsEventsBuffer.flush();
+  await analyticsEventsBatchQueue.close();
 };

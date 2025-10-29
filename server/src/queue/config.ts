@@ -53,7 +53,7 @@ export const BATCH_CONFIG = {
 } as const;
 
 export const QUEUE_CONFIG = {
-  QUEUE_NAME: 'api-events-batch',
+  QUEUE_NAME: 'analytics-events-batch',
   CONCURRENCY: 1,
   JOB_OPTIONS: {
     attempts: 3,

@@ -1,46 +1,28 @@
-import { randomUUID } from 'node:crypto';
 import { type Job, Worker } from 'bullmq';
-import { apiEvents, db } from '@/db';
+import { db, events } from '@/db';
 import { getRedisConnection, QUEUE_CONFIG } from './config';
 import type { BatchJobData } from './index';
 
 const processBatchJob = async (job: Job<BatchJobData>): Promise<void> => {
-  const { events } = job.data;
+  const { events: eventsList } = job.data;
 
-  // Filter out events without required fields (backward compatibility)
-  const validEvents = events.filter((event) => {
-    if (!(event.userId && event.apikeyId)) {
-      console.warn(
-        '[Worker] Skipping event without userId/apikeyId (legacy event):',
-        { route: event.route, timestamp: event.timestamp }
-      );
-      return false;
-    }
-    return true;
-  });
-
-  if (validEvents.length === 0) {
-    console.warn('[Worker] No valid events to process in batch');
+  if (eventsList.length === 0) {
+    console.warn('[Worker] No events to process in batch');
     return;
   }
 
-  const eventsWithIds = validEvents.map((event) => ({
-    id: `evt_${randomUUID()}`,
-    route: event.route,
-    status: event.status,
-    processingTimeMs: event.processingTimeMs,
-    errorFlag: event.errorFlag,
+  const eventsToInsert = eventsList.map((event) => ({
+    eventId: event.eventId,
+    sessionId: event.sessionId,
+    name: event.name,
+    params: event.params ? JSON.stringify(event.params) : null,
     timestamp: new Date(event.timestamp),
-    version: event.version || '',
-    // Safe to assert non-null because we filtered above
-    userId: event.userId as string,
-    apikeyId: event.apikeyId as string,
   }));
 
-  await db.insert(apiEvents).values(eventsWithIds);
+  await db.insert(events).values(eventsToInsert);
 };
 
-export const createApiEventsWorker = (): Worker<BatchJobData> => {
+export const createAnalyticsEventsWorker = (): Worker<BatchJobData> => {
   const worker = new Worker<BatchJobData>(
     QUEUE_CONFIG.QUEUE_NAME,
     processBatchJob,
