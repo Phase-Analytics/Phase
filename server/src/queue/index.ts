@@ -15,6 +15,8 @@ export type ApiEventData = {
   errorFlag: boolean;
   timestamp: number;
   version?: string;
+  userId?: string;
+  apikeyId?: string;
 };
 
 export type BatchJobData = {
@@ -37,6 +39,15 @@ const safeJsonParse = (jsonString: string): ApiEventData | null => {
       typeof parsed.timestamp !== 'number'
     ) {
       console.error('[Queue] Invalid event data structure:', parsed);
+      return null;
+    }
+
+    // Validate userId and apikeyId if present (backward compatibility)
+    if (
+      (parsed.userId !== undefined && typeof parsed.userId !== 'string') ||
+      (parsed.apikeyId !== undefined && typeof parsed.apikeyId !== 'string')
+    ) {
+      console.error('[Queue] Invalid userId or apikeyId type:', parsed);
       return null;
     }
 
