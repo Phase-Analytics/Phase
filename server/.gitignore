@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# TypeScript
+*.tsbuildinfo
+server
+# Build outputs
+dist/
+build/
+server
+server.exe
+*.bun-build
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+drizzle/
+
+# IDE / Editor
+.idea/
+.cursor/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+bun-debug.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+scripts/
