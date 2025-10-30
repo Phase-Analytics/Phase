@@ -1,8 +1,7 @@
-import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
+import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import { count, desc, eq, type SQL } from 'drizzle-orm';
 import { db, events } from '@/db';
-import { internalServerError } from '@/lib/response';
-import { errorResponses, paginationSchema } from '@/lib/schemas';
+import { addAnalyticsEvent } from '@/lib/queue';
 import {
   buildFilters,
   formatPaginationResponse,
@@ -10,39 +9,15 @@ import {
   validateSession,
   validateTimestamp,
 } from '@/lib/validators';
-import { addAnalyticsEvent } from '@/queue';
-import { HttpStatus } from '@/types/codes';
-
-const eventSchema = z.object({
-  eventId: z.string(),
-  sessionId: z.string(),
-  name: z.string(),
-  params: z
-    .record(
-      z.string(),
-      z.union([z.string(), z.number(), z.boolean(), z.null()])
-    )
-    .nullable(),
-  timestamp: z.string(),
-});
-
-const createEventRequestSchema = z.object({
-  eventId: z.string(),
-  sessionId: z.string(),
-  name: z.string(),
-  params: z
-    .record(
-      z.string(),
-      z.union([z.string(), z.number(), z.boolean(), z.null()])
-    )
-    .optional(),
-  timestamp: z.string(),
-});
-
-const eventsListResponseSchema = z.object({
-  events: z.array(eventSchema),
-  pagination: paginationSchema,
-});
+import {
+  createEventRequestSchema,
+  ErrorCode,
+  errorResponses,
+  eventSchema,
+  eventsListResponseSchema,
+  HttpStatus,
+  listEventsQuerySchema,
+} from '@/schemas';
 
 const createEventRoute = createRoute({
   method: 'post',
@@ -77,14 +52,7 @@ const getEventsRoute = createRoute({
   tags: ['event'],
   description: 'List events for a specific session',
   request: {
-    query: z.object({
-      sessionId: z.string(),
-      page: z.string().optional().default('1'),
-      pageSize: z.string().optional().default('50'),
-      eventName: z.string().optional(),
-      startDate: z.string().optional(),
-      endDate: z.string().optional(),
-    }),
+    query: listEventsQuerySchema,
   },
   responses: {
     200: {
@@ -137,7 +105,13 @@ eventRouter.openapi(createEventRoute, async (c) => {
     );
   } catch (error) {
     console.error('[Event.Create] Error:', error);
-    return internalServerError(c, 'Failed to create event');
+    return c.json(
+      {
+        code: ErrorCode.INTERNAL_SERVER_ERROR,
+        detail: 'Failed to create event',
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
   }
 });
 
@@ -204,7 +178,13 @@ eventRouter.openapi(getEventsRoute, async (c) => {
     );
   } catch (error) {
     console.error('[Event.List] Error:', error);
-    return internalServerError(c, 'Failed to fetch events');
+    return c.json(
+      {
+        code: ErrorCode.INTERNAL_SERVER_ERROR,
+        detail: 'Failed to fetch events',
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
   }
 });
 

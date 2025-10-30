@@ -1,8 +1,7 @@
-// biome-ignore-all lint/suspicious/noExplicitAny: Hono middleware context typing is complex
-
 import { auth } from '@/lib/auth';
 import { unauthorized } from '@/lib/response';
 
+// biome-ignore lint/suspicious/noExplicitAny: Hono middleware context typing requires any
 export const authMiddleware = async (c: any, next: any) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
 
@@ -18,6 +17,7 @@ export const authMiddleware = async (c: any, next: any) => {
   await next();
 };
 
+// biome-ignore lint/suspicious/noExplicitAny: Hono middleware context typing requires any
 export const requireAuth = async (c: any, next: any) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
 
@@ -31,6 +31,7 @@ export const requireAuth = async (c: any, next: any) => {
   await next();
 };
 
+// biome-ignore lint/suspicious/noExplicitAny: Hono middleware context typing requires any
 export const requireApiKey = async (c: any, next: any) => {
   const authHeader = c.req.header('authorization');
 

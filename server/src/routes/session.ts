@@ -1,8 +1,6 @@
-import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
+import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import { count, desc, eq, type SQL } from 'drizzle-orm';
 import { db, sessions } from '@/db';
-import { badRequest, internalServerError } from '@/lib/response';
-import { errorResponses, paginationSchema } from '@/lib/schemas';
 import {
   buildFilters,
   formatPaginationResponse,
@@ -11,30 +9,16 @@ import {
   validateSession,
   validateTimestamp,
 } from '@/lib/validators';
-import { ErrorCode, HttpStatus } from '@/types/codes';
-
-const sessionSchema = z.object({
-  sessionId: z.string(),
-  deviceId: z.string(),
-  startedAt: z.string(),
-  endedAt: z.string().nullable(),
-});
-
-const createSessionRequestSchema = z.object({
-  sessionId: z.string(),
-  deviceId: z.string(),
-  startedAt: z.string(),
-});
-
-const endSessionRequestSchema = z.object({
-  sessionId: z.string(),
-  endedAt: z.string().optional(),
-});
-
-const sessionsListResponseSchema = z.object({
-  sessions: z.array(sessionSchema),
-  pagination: paginationSchema,
-});
+import {
+  createSessionRequestSchema,
+  ErrorCode,
+  endSessionRequestSchema,
+  errorResponses,
+  HttpStatus,
+  listSessionsQuerySchema,
+  sessionSchema,
+  sessionsListResponseSchema,
+} from '@/schemas';
 
 const createSessionRoute = createRoute({
   method: 'post',
@@ -96,13 +80,7 @@ const getSessionsRoute = createRoute({
   tags: ['session'],
   description: 'List sessions for a specific device',
   request: {
-    query: z.object({
-      deviceId: z.string(),
-      page: z.string().optional().default('1'),
-      pageSize: z.string().optional().default('50'),
-      startDate: z.string().optional(),
-      endDate: z.string().optional(),
-    }),
+    query: listSessionsQuerySchema,
   },
   responses: {
     200: {
@@ -133,10 +111,12 @@ sessionRouter.openapi(createSessionRoute, async (c) => {
     });
 
     if (existingSession) {
-      return badRequest(
-        c,
-        ErrorCode.VALIDATION_ERROR,
-        'Session with this ID already exists'
+      return c.json(
+        {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: 'Session with this ID already exists',
+        },
+        HttpStatus.BAD_REQUEST
       );
     }
 
@@ -172,7 +152,13 @@ sessionRouter.openapi(createSessionRoute, async (c) => {
     );
   } catch (error) {
     console.error('[Session.Create] Error:', error);
-    return internalServerError(c, 'Failed to create session');
+    return c.json(
+      {
+        code: ErrorCode.INTERNAL_SERVER_ERROR,
+        detail: 'Failed to create session',
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
   }
 });
 
@@ -188,7 +174,13 @@ sessionRouter.openapi(endSessionRoute, async (c) => {
     const existingSession = sessionValidation.data;
 
     if (existingSession.endedAt) {
-      return badRequest(c, ErrorCode.VALIDATION_ERROR, 'Session already ended');
+      return c.json(
+        {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: 'Session already ended',
+        },
+        HttpStatus.BAD_REQUEST
+      );
     }
 
     let clientEndedAt = new Date();
@@ -222,7 +214,13 @@ sessionRouter.openapi(endSessionRoute, async (c) => {
     );
   } catch (error) {
     console.error('[Session.End] Error:', error);
-    return internalServerError(c, 'Failed to end session');
+    return c.json(
+      {
+        code: ErrorCode.INTERNAL_SERVER_ERROR,
+        detail: 'Failed to end session',
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
   }
 });
 
@@ -230,6 +228,16 @@ sessionRouter.openapi(getSessionsRoute, async (c) => {
   try {
     const query = c.req.valid('query');
     const { deviceId } = query;
+
+    if (!deviceId) {
+      return c.json(
+        {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: 'deviceId is required',
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
 
     const deviceValidation = await validateDevice(c, deviceId);
     if (!deviceValidation.success) {
@@ -284,7 +292,13 @@ sessionRouter.openapi(getSessionsRoute, async (c) => {
     );
   } catch (error) {
     console.error('[Session.List] Error:', error);
-    return internalServerError(c, 'Failed to fetch sessions');
+    return c.json(
+      {
+        code: ErrorCode.INTERNAL_SERVER_ERROR,
+        detail: 'Failed to fetch sessions',
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
   }
 });
 

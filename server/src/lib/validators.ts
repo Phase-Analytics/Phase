@@ -3,14 +3,14 @@ import { type AnyColumn, and, gte, lte } from 'drizzle-orm';
 import type { Context } from 'hono';
 import { db } from '@/db';
 import type { apikey, devices, sessions } from '@/db/schema';
-import { badRequest } from '@/lib/response';
-import { ErrorCode } from '@/types/codes';
+import { ErrorCode, HttpStatus } from '@/schemas';
 
 const MAX_PAGE_SIZE = 100;
 
 export type ValidationResult<T = void> =
   | { success: true; data: T }
-  | { success: false; response: Response };
+  // biome-ignore lint/suspicious/noExplicitAny: OpenAPI TypedResponse compatibility requires any
+  | { success: false; response: Response | any };
 
 export type PaginationParams = {
   page: number;
@@ -29,10 +29,12 @@ export function validatePagination(
   if (Number.isNaN(page) || page < 1) {
     return {
       success: false,
-      response: badRequest(
-        c,
-        ErrorCode.VALIDATION_ERROR,
-        'Invalid page parameter: must be a positive integer'
+      response: c.json(
+        {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: 'Invalid page parameter: must be a positive integer',
+        },
+        HttpStatus.BAD_REQUEST
       ),
     };
   }
@@ -40,10 +42,12 @@ export function validatePagination(
   if (Number.isNaN(pageSize) || pageSize < 1) {
     return {
       success: false,
-      response: badRequest(
-        c,
-        ErrorCode.VALIDATION_ERROR,
-        'Invalid pageSize parameter: must be a positive integer'
+      response: c.json(
+        {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: 'Invalid pageSize parameter: must be a positive integer',
+        },
+        HttpStatus.BAD_REQUEST
       ),
     };
   }
@@ -51,10 +55,12 @@ export function validatePagination(
   if (pageSize > MAX_PAGE_SIZE) {
     return {
       success: false,
-      response: badRequest(
-        c,
-        ErrorCode.VALIDATION_ERROR,
-        `Invalid pageSize parameter: must be between 1 and ${MAX_PAGE_SIZE}`
+      response: c.json(
+        {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: `Invalid pageSize parameter: must be between 1 and ${MAX_PAGE_SIZE}`,
+        },
+        HttpStatus.BAD_REQUEST
       ),
     };
   }
@@ -78,10 +84,12 @@ export function validateTimestamp(
   if (Number.isNaN(clientTimestamp.getTime())) {
     return {
       success: false,
-      response: badRequest(
-        c,
-        ErrorCode.VALIDATION_ERROR,
-        `Invalid ${fieldName} format`
+      response: c.json(
+        {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: `Invalid ${fieldName} format`,
+        },
+        HttpStatus.BAD_REQUEST
       ),
     };
   }
@@ -95,10 +103,12 @@ export function validateTimestamp(
     const maxDiffHours = maxDiffMs / (60 * 60 * 1000);
     return {
       success: false,
-      response: badRequest(
-        c,
-        ErrorCode.VALIDATION_ERROR,
-        `${fieldName} is too far from server time (max ${maxDiffHours} hour difference)`
+      response: c.json(
+        {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: `${fieldName} is too far from server time (max ${maxDiffHours} hour difference)`,
+        },
+        HttpStatus.BAD_REQUEST
       ),
     };
   }
@@ -120,7 +130,13 @@ export async function validateApiKey(
   if (!key) {
     return {
       success: false,
-      response: badRequest(c, ErrorCode.VALIDATION_ERROR, 'API key not found'),
+      response: c.json(
+        {
+          code: ErrorCode.NOT_FOUND,
+          detail: 'API key not found',
+        },
+        HttpStatus.NOT_FOUND
+      ),
     };
   }
 
@@ -141,7 +157,13 @@ export async function validateDevice(
   if (!device) {
     return {
       success: false,
-      response: badRequest(c, ErrorCode.VALIDATION_ERROR, 'Device not found'),
+      response: c.json(
+        {
+          code: ErrorCode.NOT_FOUND,
+          detail: 'Device not found',
+        },
+        HttpStatus.NOT_FOUND
+      ),
     };
   }
 
@@ -162,7 +184,13 @@ export async function validateSession(
   if (!session) {
     return {
       success: false,
-      response: badRequest(c, ErrorCode.VALIDATION_ERROR, 'Session not found'),
+      response: c.json(
+        {
+          code: ErrorCode.NOT_FOUND,
+          detail: 'Session not found',
+        },
+        HttpStatus.NOT_FOUND
+      ),
     };
   }
 
