@@ -1,9 +1,8 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { count, desc, eq, type SQL } from 'drizzle-orm';
+import { and, count, desc, eq, isNull, type SQL } from 'drizzle-orm';
 import { db, events, sessions } from '@/db';
 import {
   buildFilters,
-  checkAndCloseExpiredSession,
   formatPaginationResponse,
   validateDateRange,
   validatePagination,
@@ -107,28 +106,40 @@ eventRouter.openapi(createEventRoute, async (c) => {
       );
     }
 
-    const wasClosed = await checkAndCloseExpiredSession(
-      body.sessionId,
-      clientTimestamp
-    );
-
-    if (wasClosed) {
-      return c.json(
-        {
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: 'Session expired. Please create a new session.',
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
-
     await db.transaction(async (tx) => {
+      const currentSession = await tx.query.sessions.findFirst({
+        where: (table, { eq: eqFn }) => eqFn(table.sessionId, body.sessionId),
+      });
+
+      if (!currentSession) {
+        throw new Error('Session not found');
+      }
+
+      if (currentSession.endedAt) {
+        throw new Error('Session expired. Please create a new session.');
+      }
+
+      const timeSinceLastActivity =
+        clientTimestamp.getTime() - currentSession.lastActivityAt.getTime();
+
+      if (timeSinceLastActivity > 10 * 60 * 1000) {
+        await tx
+          .update(sessions)
+          .set({
+            endedAt: currentSession.lastActivityAt,
+          })
+          .where(eq(sessions.sessionId, body.sessionId));
+        throw new Error('Session expired. Please create a new session.');
+      }
+
       await tx
         .update(sessions)
         .set({
           lastActivityAt: clientTimestamp,
         })
-        .where(eq(sessions.sessionId, body.sessionId));
+        .where(
+          and(eq(sessions.sessionId, body.sessionId), isNull(sessions.endedAt))
+        );
 
       await tx.insert(events).values({
         eventId: body.eventId,
@@ -150,6 +161,22 @@ eventRouter.openapi(createEventRoute, async (c) => {
       HttpStatus.OK
     );
   } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to create event';
+
+    if (
+      errorMessage.includes('Session expired') ||
+      errorMessage.includes('not found')
+    ) {
+      return c.json(
+        {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: errorMessage,
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
     console.error('[Event.Create] Error:', error);
     return c.json(
       {
