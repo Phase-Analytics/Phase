@@ -5,6 +5,7 @@ import { addAnalyticsEvent } from '@/lib/queue';
 import {
   buildFilters,
   formatPaginationResponse,
+  validateDateRange,
   validatePagination,
   validateSession,
   validateTimestamp,
@@ -84,6 +85,26 @@ eventRouter.openapi(createEventRoute, async (c) => {
     }
 
     const clientTimestamp = timestampValidation.data;
+    const session = sessionValidation.data;
+    if (clientTimestamp < session.startedAt) {
+      return c.json(
+        {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: 'Event timestamp cannot be before session startedAt',
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    if (session.endedAt && clientTimestamp > session.endedAt) {
+      return c.json(
+        {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: 'Event timestamp cannot be after session endedAt',
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
 
     await addAnalyticsEvent({
       eventId: body.eventId,
@@ -135,6 +156,15 @@ eventRouter.openapi(getEventsRoute, async (c) => {
     }
 
     const { page, pageSize, offset } = paginationValidation.data;
+
+    const dateRangeValidation = validateDateRange(
+      c,
+      query.startDate,
+      query.endDate
+    );
+    if (!dateRangeValidation.success) {
+      return dateRangeValidation.response;
+    }
 
     const filters: SQL[] = [eq(events.sessionId, sessionId)];
 

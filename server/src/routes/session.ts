@@ -4,6 +4,7 @@ import { db, sessions } from '@/db';
 import {
   buildFilters,
   formatPaginationResponse,
+  validateDateRange,
   validateDevice,
   validatePagination,
   validateSession,
@@ -193,6 +194,16 @@ sessionRouter.openapi(endSessionRoute, async (c) => {
       clientEndedAt = timestampValidation.data;
     }
 
+    if (clientEndedAt < existingSession.startedAt) {
+      return c.json(
+        {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: 'endedAt cannot be before startedAt',
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
     const [updatedSession] = await db
       .update(sessions)
       .set({
@@ -254,6 +265,15 @@ sessionRouter.openapi(getSessionsRoute, async (c) => {
     }
 
     const { page, pageSize, offset } = paginationValidation.data;
+
+    const dateRangeValidation = validateDateRange(
+      c,
+      query.startDate,
+      query.endDate
+    );
+    if (!dateRangeValidation.success) {
+      return dateRangeValidation.response;
+    }
 
     const filters: SQL[] = [eq(sessions.deviceId, deviceId)];
 

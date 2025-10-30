@@ -5,6 +5,7 @@ import {
   buildFilters,
   formatPaginationResponse,
   validateApiKey,
+  validateDateRange,
   validatePagination,
 } from '@/lib/validators';
 import {
@@ -151,6 +152,15 @@ deviceRouter.openapi(getDevicesRoute, async (c) => {
     }
 
     const { page, pageSize, offset } = paginationValidation.data;
+
+    const dateRangeValidation = validateDateRange(
+      c,
+      query.startDate,
+      query.endDate
+    );
+    if (!dateRangeValidation.success) {
+      return dateRangeValidation.response;
+    }
 
     const filters: SQL[] = [eq(devices.apikeyId, apikeyId)];
 

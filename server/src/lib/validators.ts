@@ -200,6 +200,64 @@ export async function validateSession(
   };
 }
 
+export function validateDateRange(
+  c: Context,
+  startDate?: string,
+  endDate?: string
+): ValidationResult<{ startDate: Date; endDate: Date }> {
+  if (startDate && endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (Number.isNaN(start.getTime())) {
+      return {
+        success: false,
+        response: c.json(
+          {
+            code: ErrorCode.VALIDATION_ERROR,
+            detail: 'Invalid startDate format',
+          },
+          HttpStatus.BAD_REQUEST
+        ),
+      };
+    }
+
+    if (Number.isNaN(end.getTime())) {
+      return {
+        success: false,
+        response: c.json(
+          {
+            code: ErrorCode.VALIDATION_ERROR,
+            detail: 'Invalid endDate format',
+          },
+          HttpStatus.BAD_REQUEST
+        ),
+      };
+    }
+
+    if (start > end) {
+      return {
+        success: false,
+        response: c.json(
+          {
+            code: ErrorCode.VALIDATION_ERROR,
+            detail: 'startDate must be before or equal to endDate',
+          },
+          HttpStatus.BAD_REQUEST
+        ),
+      };
+    }
+  }
+
+  return {
+    success: true,
+    data: {
+      startDate: startDate ? new Date(startDate) : new Date(0),
+      endDate: endDate ? new Date(endDate) : new Date(),
+    },
+  };
+}
+
 export function buildFilters<T extends AnyColumn>(options: {
   filters: SQL[];
   startDateColumn?: T;
