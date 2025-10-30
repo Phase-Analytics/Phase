@@ -1,9 +1,15 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
-import { and, count, desc, eq, gte, lte } from 'drizzle-orm';
+import { count, desc, eq, sql } from 'drizzle-orm';
 import { db, devices } from '@/db';
-import { badRequest, internalServerError } from '@/lib/response';
+import { internalServerError } from '@/lib/response';
 import { errorResponses, paginationSchema } from '@/lib/schemas';
-import { ErrorCode, HttpStatus } from '@/types/codes';
+import {
+  buildFilters,
+  formatPaginationResponse,
+  validateApiKey,
+  validatePagination,
+} from '@/lib/validators';
+import { HttpStatus } from '@/types/codes';
 
 const deviceSchema = z.object({
   deviceId: z.string(),
@@ -90,20 +96,19 @@ deviceRouter.openapi(createDeviceRoute, async (c) => {
   try {
     const body = c.req.valid('json');
 
-    const apikey = await db.query.apikey.findFirst({
-      where: (table, { eq: eqFn }) => eqFn(table.id, body.apikeyId),
-    });
-
-    if (!apikey) {
-      return badRequest(c, ErrorCode.VALIDATION_ERROR, 'API key not found');
+    const apikeyValidation = await validateApiKey(c, body.apikeyId);
+    if (!apikeyValidation.success) {
+      return apikeyValidation.response;
     }
 
     const existingDevice = await db.query.devices.findFirst({
       where: (table, { eq: eqFn }) => eqFn(table.deviceId, body.deviceId),
     });
 
+    let device: typeof devices.$inferSelect;
+
     if (existingDevice) {
-      const [updatedDevice] = await db
+      [device] = await db
         .update(devices)
         .set({
           identifier: body.identifier ?? existingDevice.identifier,
@@ -113,47 +118,34 @@ deviceRouter.openapi(createDeviceRoute, async (c) => {
         })
         .where(eq(devices.deviceId, body.deviceId))
         .returning();
-
-      return c.json(
-        {
-          deviceId: updatedDevice.deviceId,
-          apikeyId: updatedDevice.apikeyId,
-          identifier: updatedDevice.identifier,
-          brand: updatedDevice.brand,
-          osVersion: updatedDevice.osVersion,
-          platform: updatedDevice.platform,
-          firstSeen: updatedDevice.firstSeen.toISOString(),
-        },
-        HttpStatus.OK
-      );
+    } else {
+      [device] = await db
+        .insert(devices)
+        .values({
+          deviceId: body.deviceId,
+          apikeyId: body.apikeyId,
+          identifier: body.identifier ?? null,
+          brand: body.brand ?? null,
+          osVersion: body.osVersion ?? null,
+          platform: body.platform ?? null,
+        })
+        .returning();
     }
-
-    const [newDevice] = await db
-      .insert(devices)
-      .values({
-        deviceId: body.deviceId,
-        apikeyId: body.apikeyId,
-        identifier: body.identifier ?? null,
-        brand: body.brand ?? null,
-        osVersion: body.osVersion ?? null,
-        platform: body.platform ?? null,
-      })
-      .returning();
 
     return c.json(
       {
-        deviceId: newDevice.deviceId,
-        apikeyId: newDevice.apikeyId,
-        identifier: newDevice.identifier,
-        brand: newDevice.brand,
-        osVersion: newDevice.osVersion,
-        platform: newDevice.platform,
-        firstSeen: newDevice.firstSeen.toISOString(),
+        deviceId: device.deviceId,
+        apikeyId: device.apikeyId,
+        identifier: device.identifier,
+        brand: device.brand,
+        osVersion: device.osVersion,
+        platform: device.platform,
+        firstSeen: device.firstSeen.toISOString(),
       },
       HttpStatus.OK
     );
   } catch (error) {
-    console.error('[Device] Upsert error:', error);
+    console.error('[Device.Upsert] Error:', error);
     return internalServerError(c, 'Failed to create or update device');
   }
 });
@@ -163,52 +155,31 @@ deviceRouter.openapi(getDevicesRoute, async (c) => {
     const query = c.req.valid('query');
     const { apikeyId } = query;
 
-    const apikey = await db.query.apikey.findFirst({
-      where: (table, { eq: eqFn }) => eqFn(table.id, apikeyId),
-    });
-
-    if (!apikey) {
-      return badRequest(c, ErrorCode.VALIDATION_ERROR, 'API key not found');
+    const apikeyValidation = await validateApiKey(c, apikeyId);
+    if (!apikeyValidation.success) {
+      return apikeyValidation.response;
     }
 
-    const page = Number.parseInt(query.page, 10);
-    const pageSize = Number.parseInt(query.pageSize, 10);
-
-    if (Number.isNaN(page) || page < 1) {
-      return badRequest(
-        c,
-        ErrorCode.VALIDATION_ERROR,
-        'Invalid page parameter: must be a positive integer'
-      );
+    const paginationValidation = validatePagination(c, query.page, query.pageSize);
+    if (!paginationValidation.success) {
+      return paginationValidation.response;
     }
 
-    if (Number.isNaN(pageSize) || pageSize < 1) {
-      return badRequest(
-        c,
-        ErrorCode.VALIDATION_ERROR,
-        'Invalid pageSize parameter: must be a positive integer'
-      );
-    }
+    const { page, pageSize, offset } = paginationValidation.data;
 
-    const offset = (page - 1) * pageSize;
-
-    const filters: ReturnType<typeof eq | typeof gte | typeof lte>[] = [];
-
-    filters.push(eq(devices.apikeyId, apikeyId));
+    const filters: sql.SQL[] = [eq(devices.apikeyId, apikeyId)];
 
     if (query.platform) {
       filters.push(eq(devices.platform, query.platform));
     }
 
-    if (query.startDate) {
-      filters.push(gte(devices.firstSeen, new Date(query.startDate)));
-    }
-
-    if (query.endDate) {
-      filters.push(lte(devices.firstSeen, new Date(query.endDate)));
-    }
-
-    const whereClause = filters.length > 0 ? and(...filters) : undefined;
+    const whereClause = buildFilters({
+      filters,
+      startDateColumn: devices.firstSeen,
+      startDateValue: query.startDate,
+      endDateColumn: devices.firstSeen,
+      endDateValue: query.endDate,
+    });
 
     const [devicesList, [{ count: totalCount }]] = await Promise.all([
       db
@@ -220,8 +191,6 @@ deviceRouter.openapi(getDevicesRoute, async (c) => {
         .offset(offset),
       db.select({ count: count() }).from(devices).where(whereClause),
     ]);
-
-    const totalPages = Math.ceil(totalCount / pageSize);
 
     const formattedDevices = devicesList.map((device) => ({
       deviceId: device.deviceId,
@@ -236,17 +205,12 @@ deviceRouter.openapi(getDevicesRoute, async (c) => {
     return c.json(
       {
         devices: formattedDevices,
-        pagination: {
-          total: totalCount,
-          page,
-          pageSize,
-          totalPages,
-        },
+        pagination: formatPaginationResponse(totalCount, page, pageSize),
       },
       HttpStatus.OK
     );
   } catch (error) {
-    console.error('[Device] List error:', error);
+    console.error('[Device.List] Error:', error);
     return internalServerError(c, 'Failed to fetch devices');
   }
 });

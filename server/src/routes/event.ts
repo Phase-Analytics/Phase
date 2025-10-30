@@ -1,10 +1,17 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
-import { and, count, desc, eq, gte, lte } from 'drizzle-orm';
+import { count, desc, eq, sql } from 'drizzle-orm';
 import { db, events } from '@/db';
-import { badRequest, internalServerError } from '@/lib/response';
+import { internalServerError } from '@/lib/response';
 import { errorResponses, paginationSchema } from '@/lib/schemas';
+import {
+  buildFilters,
+  formatPaginationResponse,
+  validatePagination,
+  validateSession,
+  validateTimestamp,
+} from '@/lib/validators';
 import { addAnalyticsEvent } from '@/queue';
-import { ErrorCode, HttpStatus } from '@/types/codes';
+import { HttpStatus } from '@/types/codes';
 
 const eventSchema = z.object({
   eventId: z.string(),
@@ -98,37 +105,17 @@ eventRouter.openapi(createEventRoute, async (c) => {
   try {
     const body = c.req.valid('json');
 
-    const session = await db.query.sessions.findFirst({
-      where: (table, { eq: eqFn }) => eqFn(table.sessionId, body.sessionId),
-    });
-
-    if (!session) {
-      return badRequest(c, ErrorCode.VALIDATION_ERROR, 'Session not found');
+    const sessionValidation = await validateSession(c, body.sessionId);
+    if (!sessionValidation.success) {
+      return sessionValidation.response;
     }
 
-    const clientTimestamp = new Date(body.timestamp);
-    const serverTimestamp = new Date();
-
-    if (Number.isNaN(clientTimestamp.getTime())) {
-      return badRequest(
-        c,
-        ErrorCode.VALIDATION_ERROR,
-        'Invalid timestamp format'
-      );
+    const timestampValidation = validateTimestamp(c, body.timestamp);
+    if (!timestampValidation.success) {
+      return timestampValidation.response;
     }
 
-    const timeDiffMs = Math.abs(
-      serverTimestamp.getTime() - clientTimestamp.getTime()
-    );
-    const oneHourMs = 60 * 60 * 1000;
-
-    if (timeDiffMs > oneHourMs) {
-      return badRequest(
-        c,
-        ErrorCode.VALIDATION_ERROR,
-        'Timestamp is too far from server time (max 1 hour difference)'
-      );
-    }
+    const clientTimestamp = timestampValidation.data;
 
     await addAnalyticsEvent({
       eventId: body.eventId,
@@ -149,7 +136,7 @@ eventRouter.openapi(createEventRoute, async (c) => {
       HttpStatus.OK
     );
   } catch (error) {
-    console.error('[Event] Create error:', error);
+    console.error('[Event.Create] Error:', error);
     return internalServerError(c, 'Failed to create event');
   }
 });
@@ -159,52 +146,31 @@ eventRouter.openapi(getEventsRoute, async (c) => {
     const query = c.req.valid('query');
     const { sessionId } = query;
 
-    const session = await db.query.sessions.findFirst({
-      where: (table, { eq: eqFn }) => eqFn(table.sessionId, sessionId),
-    });
-
-    if (!session) {
-      return badRequest(c, ErrorCode.VALIDATION_ERROR, 'Session not found');
+    const sessionValidation = await validateSession(c, sessionId);
+    if (!sessionValidation.success) {
+      return sessionValidation.response;
     }
 
-    const page = Number.parseInt(query.page, 10);
-    const pageSize = Number.parseInt(query.pageSize, 10);
-
-    if (Number.isNaN(page) || page < 1) {
-      return badRequest(
-        c,
-        ErrorCode.VALIDATION_ERROR,
-        'Invalid page parameter: must be a positive integer'
-      );
+    const paginationValidation = validatePagination(c, query.page, query.pageSize);
+    if (!paginationValidation.success) {
+      return paginationValidation.response;
     }
 
-    if (Number.isNaN(pageSize) || pageSize < 1) {
-      return badRequest(
-        c,
-        ErrorCode.VALIDATION_ERROR,
-        'Invalid pageSize parameter: must be a positive integer'
-      );
-    }
+    const { page, pageSize, offset } = paginationValidation.data;
 
-    const offset = (page - 1) * pageSize;
-
-    const filters: ReturnType<typeof eq | typeof gte | typeof lte>[] = [];
-
-    filters.push(eq(events.sessionId, sessionId));
+    const filters: sql.SQL[] = [eq(events.sessionId, sessionId)];
 
     if (query.eventName) {
       filters.push(eq(events.name, query.eventName));
     }
 
-    if (query.startDate) {
-      filters.push(gte(events.timestamp, new Date(query.startDate)));
-    }
-
-    if (query.endDate) {
-      filters.push(lte(events.timestamp, new Date(query.endDate)));
-    }
-
-    const whereClause = filters.length > 0 ? and(...filters) : undefined;
+    const whereClause = buildFilters({
+      filters,
+      startDateColumn: events.timestamp,
+      startDateValue: query.startDate,
+      endDateColumn: events.timestamp,
+      endDateValue: query.endDate,
+    });
 
     const [eventsList, [{ count: totalCount }]] = await Promise.all([
       db
@@ -217,8 +183,6 @@ eventRouter.openapi(getEventsRoute, async (c) => {
       db.select({ count: count() }).from(events).where(whereClause),
     ]);
 
-    const totalPages = Math.ceil(totalCount / pageSize);
-
     const formattedEvents = eventsList.map((event) => ({
       eventId: event.eventId,
       sessionId: event.sessionId,
@@ -230,17 +194,12 @@ eventRouter.openapi(getEventsRoute, async (c) => {
     return c.json(
       {
         events: formattedEvents,
-        pagination: {
-          total: totalCount,
-          page,
-          pageSize,
-          totalPages,
-        },
+        pagination: formatPaginationResponse(totalCount, page, pageSize),
       },
       HttpStatus.OK
     );
   } catch (error) {
-    console.error('[Event] List error:', error);
+    console.error('[Event.List] Error:', error);
     return internalServerError(c, 'Failed to fetch events');
   }
 });

@@ -1,8 +1,16 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
-import { and, count, desc, eq, gte, lte } from 'drizzle-orm';
+import { count, desc, eq, sql } from 'drizzle-orm';
 import { db, sessions } from '@/db';
 import { badRequest, internalServerError } from '@/lib/response';
 import { errorResponses, paginationSchema } from '@/lib/schemas';
+import {
+  buildFilters,
+  formatPaginationResponse,
+  validateDevice,
+  validatePagination,
+  validateSession,
+  validateTimestamp,
+} from '@/lib/validators';
 import { ErrorCode, HttpStatus } from '@/types/codes';
 
 const sessionSchema = z.object({
@@ -115,12 +123,9 @@ sessionRouter.openapi(createSessionRoute, async (c) => {
   try {
     const body = c.req.valid('json');
 
-    const device = await db.query.devices.findFirst({
-      where: (table, { eq: eqFn }) => eqFn(table.deviceId, body.deviceId),
-    });
-
-    if (!device) {
-      return badRequest(c, ErrorCode.VALIDATION_ERROR, 'Device not found');
+    const deviceValidation = await validateDevice(c, body.deviceId);
+    if (!deviceValidation.success) {
+      return deviceValidation.response;
     }
 
     const existingSession = await db.query.sessions.findFirst({
@@ -135,29 +140,12 @@ sessionRouter.openapi(createSessionRoute, async (c) => {
       );
     }
 
-    const clientStartedAt = new Date(body.startedAt);
-    const serverTimestamp = new Date();
-
-    if (Number.isNaN(clientStartedAt.getTime())) {
-      return badRequest(
-        c,
-        ErrorCode.VALIDATION_ERROR,
-        'Invalid startedAt format'
-      );
+    const timestampValidation = validateTimestamp(c, body.startedAt, 'startedAt');
+    if (!timestampValidation.success) {
+      return timestampValidation.response;
     }
 
-    const timeDiffMs = Math.abs(
-      serverTimestamp.getTime() - clientStartedAt.getTime()
-    );
-    const oneHourMs = 60 * 60 * 1000;
-
-    if (timeDiffMs > oneHourMs) {
-      return badRequest(
-        c,
-        ErrorCode.VALIDATION_ERROR,
-        'startedAt is too far from server time (max 1 hour difference)'
-      );
-    }
+    const clientStartedAt = timestampValidation.data;
 
     const [newSession] = await db
       .insert(sessions)
@@ -179,7 +167,7 @@ sessionRouter.openapi(createSessionRoute, async (c) => {
       HttpStatus.OK
     );
   } catch (error) {
-    console.error('[Session] Create error:', error);
+    console.error('[Session.Create] Error:', error);
     return internalServerError(c, 'Failed to create session');
   }
 });
@@ -188,44 +176,25 @@ sessionRouter.openapi(endSessionRoute, async (c) => {
   try {
     const body = c.req.valid('json');
 
-    const existingSession = await db.query.sessions.findFirst({
-      where: (table, { eq: eqFn }) => eqFn(table.sessionId, body.sessionId),
-    });
-
-    if (!existingSession) {
-      return badRequest(c, ErrorCode.VALIDATION_ERROR, 'Session not found');
+    const sessionValidation = await validateSession(c, body.sessionId);
+    if (!sessionValidation.success) {
+      return sessionValidation.response;
     }
+
+    const existingSession = sessionValidation.data;
 
     if (existingSession.endedAt) {
       return badRequest(c, ErrorCode.VALIDATION_ERROR, 'Session already ended');
     }
 
-    const serverTimestamp = new Date();
-    let clientEndedAt = serverTimestamp;
+    let clientEndedAt = new Date();
 
     if (body.endedAt) {
-      clientEndedAt = new Date(body.endedAt);
-
-      if (Number.isNaN(clientEndedAt.getTime())) {
-        return badRequest(
-          c,
-          ErrorCode.VALIDATION_ERROR,
-          'Invalid endedAt format'
-        );
+      const timestampValidation = validateTimestamp(c, body.endedAt, 'endedAt');
+      if (!timestampValidation.success) {
+        return timestampValidation.response;
       }
-
-      const timeDiffMs = Math.abs(
-        serverTimestamp.getTime() - clientEndedAt.getTime()
-      );
-      const oneHourMs = 60 * 60 * 1000;
-
-      if (timeDiffMs > oneHourMs) {
-        return badRequest(
-          c,
-          ErrorCode.VALIDATION_ERROR,
-          'endedAt is too far from server time (max 1 hour difference)'
-        );
-      }
+      clientEndedAt = timestampValidation.data;
     }
 
     const [updatedSession] = await db
@@ -248,7 +217,7 @@ sessionRouter.openapi(endSessionRoute, async (c) => {
       HttpStatus.OK
     );
   } catch (error) {
-    console.error('[Session] End error:', error);
+    console.error('[Session.End] Error:', error);
     return internalServerError(c, 'Failed to end session');
   }
 });
@@ -258,48 +227,27 @@ sessionRouter.openapi(getSessionsRoute, async (c) => {
     const query = c.req.valid('query');
     const { deviceId } = query;
 
-    const device = await db.query.devices.findFirst({
-      where: (table, { eq: eqFn }) => eqFn(table.deviceId, deviceId),
+    const deviceValidation = await validateDevice(c, deviceId);
+    if (!deviceValidation.success) {
+      return deviceValidation.response;
+    }
+
+    const paginationValidation = validatePagination(c, query.page, query.pageSize);
+    if (!paginationValidation.success) {
+      return paginationValidation.response;
+    }
+
+    const { page, pageSize, offset } = paginationValidation.data;
+
+    const filters: sql.SQL[] = [eq(sessions.deviceId, deviceId)];
+
+    const whereClause = buildFilters({
+      filters,
+      startDateColumn: sessions.startedAt,
+      startDateValue: query.startDate,
+      endDateColumn: sessions.startedAt,
+      endDateValue: query.endDate,
     });
-
-    if (!device) {
-      return badRequest(c, ErrorCode.VALIDATION_ERROR, 'Device not found');
-    }
-
-    const page = Number.parseInt(query.page, 10);
-    const pageSize = Number.parseInt(query.pageSize, 10);
-
-    if (Number.isNaN(page) || page < 1) {
-      return badRequest(
-        c,
-        ErrorCode.VALIDATION_ERROR,
-        'Invalid page parameter: must be a positive integer'
-      );
-    }
-
-    if (Number.isNaN(pageSize) || pageSize < 1) {
-      return badRequest(
-        c,
-        ErrorCode.VALIDATION_ERROR,
-        'Invalid pageSize parameter: must be a positive integer'
-      );
-    }
-
-    const offset = (page - 1) * pageSize;
-
-    const filters: ReturnType<typeof eq | typeof gte | typeof lte>[] = [];
-
-    filters.push(eq(sessions.deviceId, deviceId));
-
-    if (query.startDate) {
-      filters.push(gte(sessions.startedAt, new Date(query.startDate)));
-    }
-
-    if (query.endDate) {
-      filters.push(lte(sessions.startedAt, new Date(query.endDate)));
-    }
-
-    const whereClause = filters.length > 0 ? and(...filters) : undefined;
 
     const [sessionsList, [{ count: totalCount }]] = await Promise.all([
       db
@@ -312,8 +260,6 @@ sessionRouter.openapi(getSessionsRoute, async (c) => {
       db.select({ count: count() }).from(sessions).where(whereClause),
     ]);
 
-    const totalPages = Math.ceil(totalCount / pageSize);
-
     const formattedSessions = sessionsList.map((session) => ({
       sessionId: session.sessionId,
       deviceId: session.deviceId,
@@ -324,17 +270,12 @@ sessionRouter.openapi(getSessionsRoute, async (c) => {
     return c.json(
       {
         sessions: formattedSessions,
-        pagination: {
-          total: totalCount,
-          page,
-          pageSize,
-          totalPages,
-        },
+        pagination: formatPaginationResponse(totalCount, page, pageSize),
       },
       HttpStatus.OK
     );
   } catch (error) {
-    console.error('[Session] List error:', error);
+    console.error('[Session.List] Error:', error);
     return internalServerError(c, 'Failed to fetch sessions');
   }
 });
