@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
-import { count, desc, eq, sql } from 'drizzle-orm';
+import { count, desc, eq, type SQL } from 'drizzle-orm';
 import { db, events } from '@/db';
 import { internalServerError } from '@/lib/response';
 import { errorResponses, paginationSchema } from '@/lib/schemas';
@@ -151,14 +151,18 @@ eventRouter.openapi(getEventsRoute, async (c) => {
       return sessionValidation.response;
     }
 
-    const paginationValidation = validatePagination(c, query.page, query.pageSize);
+    const paginationValidation = validatePagination(
+      c,
+      query.page,
+      query.pageSize
+    );
     if (!paginationValidation.success) {
       return paginationValidation.response;
     }
 
     const { page, pageSize, offset } = paginationValidation.data;
 
-    const filters: sql.SQL[] = [eq(events.sessionId, sessionId)];
+    const filters: SQL[] = [eq(events.sessionId, sessionId)];
 
     if (query.eventName) {
       filters.push(eq(events.name, query.eventName));
