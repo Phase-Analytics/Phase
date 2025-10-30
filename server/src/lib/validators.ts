@@ -8,7 +8,7 @@ import { ErrorCode, HttpStatus } from '@/schemas';
 const MAX_PAGE_SIZE = 100;
 
 export type ValidationResult<T = void> =
-  | { success: true; data: T }
+  | (T extends void ? { success: true } : { success: true; data: T })
   // biome-ignore lint/suspicious/noExplicitAny: OpenAPI TypedResponse compatibility requires any
   | { success: false; response: Response | any };
 
@@ -251,7 +251,6 @@ export function validateDateRange(
 
   return {
     success: true,
-    data: undefined,
   };
 }
 
