@@ -6,6 +6,8 @@ import type { apikey, devices, sessions } from '@/db/schema';
 import { badRequest } from '@/lib/response';
 import { ErrorCode } from '@/types/codes';
 
+const MAX_PAGE_SIZE = 100;
+
 export type ValidationResult<T = void> =
   | { success: true; data: T }
   | { success: false; response: Response };
@@ -42,6 +44,17 @@ export function validatePagination(
         c,
         ErrorCode.VALIDATION_ERROR,
         'Invalid pageSize parameter: must be a positive integer'
+      ),
+    };
+  }
+
+  if (pageSize > MAX_PAGE_SIZE) {
+    return {
+      success: false,
+      response: badRequest(
+        c,
+        ErrorCode.VALIDATION_ERROR,
+        `Invalid pageSize parameter: must be between 1 and ${MAX_PAGE_SIZE}`
       ),
     };
   }
@@ -174,15 +187,29 @@ export function buildFilters<T extends AnyColumn>(options: {
     endDateValue,
   } = options;
 
+  const combined = [...filters];
+
   if (startDateColumn && startDateValue) {
-    filters.push(gte(startDateColumn, new Date(startDateValue)));
+    const startDate = new Date(startDateValue);
+    if (Number.isNaN(startDate.getTime())) {
+      throw new TypeError(
+        `Invalid startDateValue: "${startDateValue}" is not a valid date`
+      );
+    }
+    combined.push(gte(startDateColumn, startDate));
   }
 
   if (endDateColumn && endDateValue) {
-    filters.push(lte(endDateColumn, new Date(endDateValue)));
+    const endDate = new Date(endDateValue);
+    if (Number.isNaN(endDate.getTime())) {
+      throw new TypeError(
+        `Invalid endDateValue: "${endDateValue}" is not a valid date`
+      );
+    }
+    combined.push(lte(endDateColumn, endDate));
   }
 
-  return filters.length > 0 ? and(...filters) : undefined;
+  return combined.length > 0 ? and(...combined) : undefined;
 }
 
 export function formatPaginationResponse(
@@ -190,10 +217,12 @@ export function formatPaginationResponse(
   page: number,
   pageSize: number
 ) {
+  const totalPages = pageSize > 0 ? Math.ceil(totalCount / pageSize) : 0;
+
   return {
     total: totalCount,
     page,
     pageSize,
-    totalPages: Math.ceil(totalCount / pageSize),
+    totalPages,
   };
 }
