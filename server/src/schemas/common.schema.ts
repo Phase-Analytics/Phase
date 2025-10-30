@@ -70,6 +70,5 @@ export const errorResponses = {
   },
 } as const;
 
-// Type exports
 export type PaginationSchema = z.infer<typeof paginationSchema>;
 export type ErrorResponseSchema = z.infer<typeof errorResponseSchema>;
