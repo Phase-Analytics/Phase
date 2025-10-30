@@ -37,7 +37,7 @@ app.use('/web/*', authMiddleware);
 app.route('/health', health);
 app.route('/device', deviceRouter);
 app.route('/session', sessionRouter);
-app.route('/session', pingRouter);
+app.route('/ping', pingRouter);
 app.route('/event', eventRouter);
 
 app.on(['POST', 'GET'], '/api/auth/**', (c) => auth.handler(c.req.raw));

@@ -1,7 +1,7 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { db, sessions } from '@/db';
-import { checkAndCloseExpiredSession, validateSession } from '@/lib/validators';
+import { validateSession } from '@/lib/validators';
 import {
   ErrorCode,
   errorResponses,
@@ -12,7 +12,7 @@ import {
 
 const pingSessionRoute = createRoute({
   method: 'post',
-  path: '/ping',
+  path: '/',
   tags: ['ping'],
   description: 'Ping/Heartbeat for active session',
   request: {
@@ -62,27 +62,41 @@ pingRouter.openapi(pingSessionRoute, async (c) => {
 
     const currentTimestamp = new Date();
 
-    const wasClosed = await checkAndCloseExpiredSession(
-      body.sessionId,
-      currentTimestamp
-    );
+    await db.transaction(async (tx) => {
+      const currentSession = await tx.query.sessions.findFirst({
+        where: (table, { eq: eqFn }) => eqFn(table.sessionId, body.sessionId),
+      });
 
-    if (wasClosed) {
-      return c.json(
-        {
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: 'Session expired. Please create a new session.',
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
+      if (!currentSession) {
+        throw new Error('Session not found');
+      }
 
-    await db
-      .update(sessions)
-      .set({
-        lastActivityAt: currentTimestamp,
-      })
-      .where(eq(sessions.sessionId, body.sessionId));
+      if (currentSession.endedAt) {
+        throw new Error('Cannot ping an ended session');
+      }
+
+      const timeSinceLastActivity =
+        currentTimestamp.getTime() - currentSession.lastActivityAt.getTime();
+
+      if (timeSinceLastActivity > 10 * 60 * 1000) {
+        await tx
+          .update(sessions)
+          .set({
+            endedAt: currentSession.lastActivityAt,
+          })
+          .where(eq(sessions.sessionId, body.sessionId));
+        throw new Error('Session expired. Please create a new session.');
+      }
+
+      await tx
+        .update(sessions)
+        .set({
+          lastActivityAt: currentTimestamp,
+        })
+        .where(
+          and(eq(sessions.sessionId, body.sessionId), isNull(sessions.endedAt))
+        );
+    });
 
     return c.json(
       {
@@ -92,6 +106,23 @@ pingRouter.openapi(pingSessionRoute, async (c) => {
       HttpStatus.OK
     );
   } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to ping session';
+
+    if (
+      errorMessage.includes('Session expired') ||
+      errorMessage.includes('not found') ||
+      errorMessage.includes('ended session')
+    ) {
+      return c.json(
+        {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: errorMessage,
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
     console.error('[Session.Ping] Error:', error);
     return c.json(
       {
