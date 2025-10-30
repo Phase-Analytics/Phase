@@ -1,6 +1,5 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
-import { sql } from 'drizzle-orm';
-import { db } from '@/db';
+import { pool } from '@/db';
 import { errorResponses, HttpStatus } from '@/schemas';
 
 const healthResponseSchema = z.object({
@@ -65,7 +64,7 @@ health.openapi(getHealthRoute, async (c) => {
 
   try {
     const dbStart = Date.now();
-    await db.run(sql`SELECT 1`);
+    await pool.query('SELECT 1');
     services.database = {
       status: 'healthy',
       latency: Date.now() - dbStart,
