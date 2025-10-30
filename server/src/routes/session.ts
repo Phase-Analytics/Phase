@@ -99,6 +99,17 @@ const getSessionsRoute = createRoute({
 
 const sessionRouter = new OpenAPIHono();
 
+sessionRouter.all('*', async (c, next) => {
+  const method = c.req.method;
+  const allowedMethods = ['GET', 'POST', 'PATCH'];
+
+  if (!allowedMethods.includes(method)) {
+    return methodNotAllowed(c, allowedMethods);
+  }
+
+  await next();
+});
+
 sessionRouter.openapi(createSessionRoute, async (c) => {
   try {
     const body = c.req.valid('json');
@@ -326,7 +337,5 @@ sessionRouter.openapi(getSessionsRoute, async (c) => {
     );
   }
 });
-
-sessionRouter.notFound((c) => methodNotAllowed(c, ['GET', 'POST', 'PATCH']));
 
 export default sessionRouter;

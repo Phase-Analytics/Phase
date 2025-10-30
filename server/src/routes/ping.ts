@@ -40,6 +40,17 @@ const pingSessionRoute = createRoute({
 
 const pingRouter = new OpenAPIHono();
 
+pingRouter.all('*', async (c, next) => {
+  const method = c.req.method;
+  const allowedMethods = ['POST'];
+
+  if (!allowedMethods.includes(method)) {
+    return methodNotAllowed(c, allowedMethods);
+  }
+
+  await next();
+});
+
 pingRouter.openapi(pingSessionRoute, async (c) => {
   try {
     const body = c.req.valid('json');
@@ -138,7 +149,5 @@ pingRouter.openapi(pingSessionRoute, async (c) => {
     );
   }
 });
-
-pingRouter.notFound((c) => methodNotAllowed(c, ['POST']));
 
 export default pingRouter;

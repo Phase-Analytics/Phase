@@ -38,6 +38,17 @@ const getHealthRoute = createRoute({
 
 const health = new OpenAPIHono();
 
+health.all('*', async (c, next) => {
+  const method = c.req.method;
+  const allowedMethods = ['GET'];
+
+  if (!allowedMethods.includes(method)) {
+    return methodNotAllowed(c, allowedMethods);
+  }
+
+  await next();
+});
+
 type ServiceStatus = {
   status: 'healthy' | 'unhealthy' | 'unknown';
   latency: number;
@@ -95,7 +106,5 @@ health.openapi(getHealthRoute, async (c) => {
 
   return c.json(data, HttpStatus.OK);
 });
-
-health.notFound((c) => methodNotAllowed(c, ['GET']));
 
 export default health;

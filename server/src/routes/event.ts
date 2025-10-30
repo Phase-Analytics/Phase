@@ -70,6 +70,17 @@ const getEventsRoute = createRoute({
 
 const eventRouter = new OpenAPIHono();
 
+eventRouter.all('*', async (c, next) => {
+  const method = c.req.method;
+  const allowedMethods = ['GET', 'POST'];
+
+  if (!allowedMethods.includes(method)) {
+    return methodNotAllowed(c, allowedMethods);
+  }
+
+  await next();
+});
+
 eventRouter.openapi(createEventRoute, async (c) => {
   try {
     const body = c.req.valid('json');
@@ -292,7 +303,5 @@ eventRouter.openapi(getEventsRoute, async (c) => {
     );
   }
 });
-
-eventRouter.notFound((c) => methodNotAllowed(c, ['GET', 'POST']));
 
 export default eventRouter;

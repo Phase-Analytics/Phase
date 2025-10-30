@@ -69,6 +69,17 @@ const getDevicesRoute = createRoute({
 
 const deviceRouter = new OpenAPIHono();
 
+deviceRouter.all('*', async (c, next) => {
+  const method = c.req.method;
+  const allowedMethods = ['GET', 'POST'];
+
+  if (!allowedMethods.includes(method)) {
+    return methodNotAllowed(c, allowedMethods);
+  }
+
+  await next();
+});
+
 deviceRouter.openapi(createDeviceRoute, async (c) => {
   try {
     const body = c.req.valid('json');
@@ -216,7 +227,5 @@ deviceRouter.openapi(getDevicesRoute, async (c) => {
     );
   }
 });
-
-deviceRouter.notFound((c) => methodNotAllowed(c, ['GET', 'POST']));
 
 export default deviceRouter;
