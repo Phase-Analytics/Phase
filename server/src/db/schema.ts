@@ -1,39 +1,33 @@
-import { relations, sql } from 'drizzle-orm';
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import {
+  boolean,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+} from 'drizzle-orm/pg-core';
 
-export const user = sqliteTable(
-  'user',
-  {
-    id: text('id').primaryKey(),
-    name: text('name').notNull(),
-    email: text('email').notNull().unique(),
-    emailVerified: integer('email_verified', { mode: 'boolean' })
-      .default(false)
-      .notNull(),
-    image: text('image'),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-      .notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
-  },
-  (table) => ({
-    emailIdx: index('user_email_idx').on(table.email),
-  })
-);
+export const user = pgTable('user', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  email: text('email').notNull().unique(),
+  emailVerified: boolean('email_verified').default(false).notNull(),
+  image: text('image'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
 
-export const session = sqliteTable(
+export const session = pgTable(
   'session',
   {
     id: text('id').primaryKey(),
-    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+    expiresAt: timestamp('expires_at').notNull(),
     token: text('token').notNull().unique(),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-      .notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
     ipAddress: text('ip_address'),
@@ -44,11 +38,10 @@ export const session = sqliteTable(
   },
   (table) => ({
     userIdIdx: index('session_user_id_idx').on(table.userId),
-    tokenIdx: index('session_token_idx').on(table.token),
   })
 );
 
-export const account = sqliteTable(
+export const account = pgTable(
   'account',
   {
     id: text('id').primaryKey(),
@@ -60,18 +53,12 @@ export const account = sqliteTable(
     accessToken: text('access_token'),
     refreshToken: text('refresh_token'),
     idToken: text('id_token'),
-    accessTokenExpiresAt: integer('access_token_expires_at', {
-      mode: 'timestamp_ms',
-    }),
-    refreshTokenExpiresAt: integer('refresh_token_expires_at', {
-      mode: 'timestamp_ms',
-    }),
+    accessTokenExpiresAt: timestamp('access_token_expires_at'),
+    refreshTokenExpiresAt: timestamp('refresh_token_expires_at'),
     scope: text('scope'),
     password: text('password'),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-      .notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
@@ -80,18 +67,16 @@ export const account = sqliteTable(
   })
 );
 
-export const verification = sqliteTable(
+export const verification = pgTable(
   'verification',
   {
     id: text('id').primaryKey(),
     identifier: text('identifier').notNull(),
     value: text('value').notNull(),
-    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-      .notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    expiresAt: timestamp('expires_at').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
@@ -100,7 +85,7 @@ export const verification = sqliteTable(
   })
 );
 
-export const apikey = sqliteTable(
+export const apikey = pgTable(
   'apikey',
   {
     id: text('id').primaryKey(),
@@ -113,19 +98,17 @@ export const apikey = sqliteTable(
       .references(() => user.id, { onDelete: 'cascade' }),
     refillInterval: integer('refill_interval'),
     refillAmount: integer('refill_amount'),
-    lastRefillAt: integer('last_refill_at', { mode: 'timestamp_ms' }),
-    enabled: integer('enabled', { mode: 'boolean' }).default(true),
-    rateLimitEnabled: integer('rate_limit_enabled', {
-      mode: 'boolean',
-    }).default(false),
+    lastRefillAt: timestamp('last_refill_at'),
+    enabled: boolean('enabled').default(true),
+    rateLimitEnabled: boolean('rate_limit_enabled').default(false),
     rateLimitTimeWindow: integer('rate_limit_time_window').default(86_400_000),
     rateLimitMax: integer('rate_limit_max').default(10),
     requestCount: integer('request_count').default(0),
     remaining: integer('remaining'),
-    lastRequest: integer('last_request', { mode: 'timestamp_ms' }),
-    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+    lastRequest: timestamp('last_request'),
+    expiresAt: timestamp('expires_at'),
+    createdAt: timestamp('created_at').notNull(),
+    updatedAt: timestamp('updated_at').notNull(),
     permissions: text('permissions'),
     metadata: text('metadata'),
   },
@@ -135,7 +118,7 @@ export const apikey = sqliteTable(
   })
 );
 
-export const devices = sqliteTable(
+export const devices = pgTable(
   'devices',
   {
     deviceId: text('device_id').primaryKey(),
@@ -146,9 +129,7 @@ export const devices = sqliteTable(
     brand: text('brand'),
     osVersion: text('os_version'),
     platform: text('platform'),
-    firstSeen: integer('first_seen', { mode: 'timestamp_ms' })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-      .notNull(),
+    firstSeen: timestamp('first_seen').defaultNow().notNull(),
   },
   (table) => ({
     apikeyIdIdx: index('devices_apikey_id_idx').on(table.apikeyId),
@@ -156,18 +137,16 @@ export const devices = sqliteTable(
   })
 );
 
-export const sessions = sqliteTable(
+export const sessions = pgTable(
   'sessions_analytics',
   {
     sessionId: text('session_id').primaryKey(),
     deviceId: text('device_id')
       .notNull()
       .references(() => devices.deviceId, { onDelete: 'cascade' }),
-    startedAt: integer('started_at', { mode: 'timestamp_ms' }).notNull(),
-    endedAt: integer('ended_at', { mode: 'timestamp_ms' }),
-    lastActivityAt: integer('last_activity_at', { mode: 'timestamp_ms' })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-      .notNull(),
+    startedAt: timestamp('started_at').notNull(),
+    endedAt: timestamp('ended_at'),
+    lastActivityAt: timestamp('last_activity_at').defaultNow().notNull(),
   },
   (table) => ({
     deviceIdIdx: index('sessions_analytics_device_id_idx').on(table.deviceId),
@@ -180,7 +159,7 @@ export const sessions = sqliteTable(
   })
 );
 
-export const events = sqliteTable(
+export const events = pgTable(
   'events',
   {
     eventId: text('event_id').primaryKey(),
@@ -189,7 +168,7 @@ export const events = sqliteTable(
       .references(() => sessions.sessionId, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     params: text('params'),
-    timestamp: integer('timestamp', { mode: 'timestamp_ms' }).notNull(),
+    timestamp: timestamp('timestamp').notNull(),
   },
   (table) => ({
     sessionIdIdx: index('events_session_id_idx').on(table.sessionId),
@@ -221,30 +200,3 @@ export type NewAnalyticsSession = typeof sessions.$inferInsert;
 
 export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;
-
-export const apikeyRelations = relations(apikey, ({ many }) => ({
-  devices: many(devices),
-}));
-
-export const devicesRelations = relations(devices, ({ one, many }) => ({
-  apikey: one(apikey, {
-    fields: [devices.apikeyId],
-    references: [apikey.id],
-  }),
-  sessions: many(sessions),
-}));
-
-export const sessionsRelations = relations(sessions, ({ one, many }) => ({
-  device: one(devices, {
-    fields: [sessions.deviceId],
-    references: [devices.deviceId],
-  }),
-  events: many(events),
-}));
-
-export const eventsRelations = relations(events, ({ one }) => ({
-  session: one(sessions, {
-    fields: [events.sessionId],
-    references: [sessions.sessionId],
-  }),
-}));

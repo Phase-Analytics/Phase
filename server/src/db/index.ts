@@ -1,5 +1,5 @@
-import { createClient } from '@libsql/client';
-import { drizzle } from 'drizzle-orm/libsql';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
 import {
   account,
   apikey,
@@ -11,17 +11,12 @@ import {
   verification,
 } from './schema';
 
-if (!process.env.TURSO_DATABASE_URL) {
-  throw new Error('TURSO_DATABASE_URL is not set');
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL is not set');
 }
 
-if (!process.env.TURSO_AUTH_TOKEN) {
-  throw new Error('TURSO_AUTH_TOKEN is not set');
-}
-
-const client = createClient({
-  url: process.env.TURSO_DATABASE_URL,
-  authToken: process.env.TURSO_AUTH_TOKEN,
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
 });
 
 const schema = {
@@ -35,7 +30,7 @@ const schema = {
   events,
 };
 
-export const db = drizzle(client, { schema });
+export const db = drizzle({ client: pool, schema });
 
 export {
   account,

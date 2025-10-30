@@ -5,7 +5,7 @@ import { db } from '@/db';
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
-    provider: 'sqlite',
+    provider: 'postgres',
   }),
   plugins: [apiKey(), lastLoginMethod(), openAPI()],
   emailAndPassword: {
