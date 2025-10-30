@@ -206,10 +206,8 @@ export function validateDateRange(
   startDate?: string,
   endDate?: string
 ): ValidationResult<void> {
-  if (startDate && endDate) {
+  if (startDate) {
     const start = new Date(startDate);
-    const end = new Date(endDate);
-
     if (Number.isNaN(start.getTime())) {
       return {
         success: false,
@@ -222,7 +220,10 @@ export function validateDateRange(
         ),
       };
     }
+  }
 
+  if (endDate) {
+    const end = new Date(endDate);
     if (Number.isNaN(end.getTime())) {
       return {
         success: false,
@@ -235,7 +236,11 @@ export function validateDateRange(
         ),
       };
     }
+  }
 
+  if (startDate && endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
     if (start > end) {
       return {
         success: false,
