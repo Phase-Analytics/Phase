@@ -5,10 +5,11 @@ import { authMiddleware } from '@/lib/middleware';
 import { configureOpenAPI } from '@/lib/openapi';
 import { closeRedisConnection } from '@/queue/config';
 import { flushAndClose } from '@/queue/index';
-import { createApiEventsWorker } from '@/queue/worker';
-import eventsRouter from '@/routes/events';
+import { createAnalyticsEventsWorker } from '@/queue/worker';
+import deviceRouter from '@/routes/device';
+import eventRouter from '@/routes/event';
 import health from '@/routes/health';
-import webRouter from '@/routes/web';
+import sessionRouter from '@/routes/session';
 
 const app = new OpenAPIHono<{
   Variables: {
@@ -36,14 +37,15 @@ app.use(
 app.use('/web/*', authMiddleware);
 
 app.route('/health', health);
-app.route('/events', eventsRouter);
-app.route('/web', webRouter);
+app.route('/device', deviceRouter);
+app.route('/session', sessionRouter);
+app.route('/event', eventRouter);
 
 app.on(['POST', 'GET'], '/api/auth/**', (c) => auth.handler(c.req.raw));
 
 configureOpenAPI(app);
 
-const worker = createApiEventsWorker();
+const worker = createAnalyticsEventsWorker();
 
 const shutdown = async (_signal: string) => {
   try {

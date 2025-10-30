@@ -6,12 +6,12 @@ export const configureOpenAPI = (app: any) => {
     openapi: '3.1.0',
     info: {
       version: '1.0.0',
-      title: 'RouteHub API',
-      description: 'RouteHub API documentation',
+      title: 'Telemetra API',
+      description: 'Telemetra API documentation',
     },
     servers: [
       {
-        url: 'https://api.routehub.dev',
+        url: 'https://api.Telemetra.dev',
         description: 'Production server',
       },
       {

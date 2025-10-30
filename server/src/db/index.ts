@@ -2,9 +2,11 @@ import { createClient } from '@libsql/client';
 import { drizzle } from 'drizzle-orm/libsql';
 import {
   account,
-  apiEvents,
   apikey,
+  devices,
+  events,
   session,
+  sessions,
   user,
   verification,
 } from './schema';
@@ -28,16 +30,20 @@ const schema = {
   account,
   verification,
   apikey,
-  apiEvents,
+  devices,
+  sessions,
+  events,
 };
 
 export const db = drizzle(client, { schema });
 
 export {
   account,
-  apiEvents,
   apikey,
+  devices,
+  events,
   session,
+  sessions,
   user,
   verification,
 } from './schema';
