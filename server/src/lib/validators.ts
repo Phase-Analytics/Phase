@@ -1,5 +1,5 @@
 import type { SQL } from 'drizzle-orm';
-import { type AnyColumn, and, count, gte, lte } from 'drizzle-orm';
+import { type AnyColumn, and, count, eq, gte, lte } from 'drizzle-orm';
 import type { Context } from 'hono';
 import { db, sessions } from '@/db';
 import type { apikey, devices } from '@/db/schema';
@@ -174,9 +174,16 @@ export async function validateSession(
   c: Context,
   sessionId: string
 ): Promise<ValidationResult<typeof sessions.$inferSelect>> {
-  const session = await db.query.sessions.findFirst({
-    where: (table, { eq: eqFn }) => eqFn(table.sessionId, sessionId),
-  });
+  const result = await db
+    .select()
+    .from(sessions)
+    .where(eq(sessions.sessionId, sessionId))
+    .limit(1)
+    .$withCache({
+      tag: `session:${sessionId}`,
+    });
+
+  const session = result[0];
 
   if (!session) {
     return {
@@ -324,4 +331,15 @@ export async function getActiveSessionsCount(minutes = 5): Promise<number> {
     .where(gte(sessions.lastActivityAt, cutoffTime));
 
   return activeCount;
+}
+
+export async function invalidateSessionCache(sessionId: string): Promise<void> {
+  try {
+    await db.$cache?.invalidate({ tags: `session:${sessionId}` });
+  } catch (error) {
+    console.error(
+      `[Cache] Failed to invalidate session ${sessionId}:`,
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+  }
 }

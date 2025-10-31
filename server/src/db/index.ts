@@ -1,3 +1,4 @@
+import { upstashCache } from 'drizzle-orm/cache/upstash';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import {
@@ -41,7 +42,23 @@ const schema = {
   events,
 };
 
-export const db = drizzle({ client: pool, schema });
+const cacheConfig =
+  process.env.REDIS_REST_URL && process.env.REDIS_REST_TOKEN
+    ? upstashCache({
+        url: process.env.REDIS_REST_URL,
+        token: process.env.REDIS_REST_TOKEN,
+        global: false,
+        config: {
+          ex: 300,
+        },
+      })
+    : undefined;
+
+export const db = drizzle({
+  client: pool,
+  schema,
+  ...(cacheConfig && { cache: cacheConfig }),
+});
 
 export { pool };
 
