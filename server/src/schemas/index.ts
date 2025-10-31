@@ -44,8 +44,6 @@ export {
 export {
   type CreateSessionRequest,
   createSessionRequestSchema,
-  type EndSessionRequest,
-  endSessionRequestSchema,
   type ListSessionsQuery,
   listSessionsQuerySchema,
   type SessionSchema,

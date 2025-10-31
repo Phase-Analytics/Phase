@@ -8,13 +8,11 @@ import {
   validateDateRange,
   validateDevice,
   validatePagination,
-  validateSession,
   validateTimestamp,
 } from '@/lib/validators';
 import {
   createSessionRequestSchema,
   ErrorCode,
-  endSessionRequestSchema,
   errorResponses,
   HttpStatus,
   listSessionsQuerySchema,
@@ -39,33 +37,6 @@ const createSessionRoute = createRoute({
   responses: {
     200: {
       description: 'Session created',
-      content: {
-        'application/json': {
-          schema: sessionSchema,
-        },
-      },
-    },
-    ...errorResponses,
-  },
-});
-
-const endSessionRoute = createRoute({
-  method: 'patch',
-  path: '/end',
-  tags: ['session'],
-  description: 'End an active session',
-  request: {
-    body: {
-      content: {
-        'application/json': {
-          schema: endSessionRequestSchema,
-        },
-      },
-    },
-  },
-  responses: {
-    200: {
-      description: 'Session ended',
       content: {
         'application/json': {
           schema: sessionSchema,
@@ -101,7 +72,7 @@ const sessionRouter = new OpenAPIHono();
 
 sessionRouter.all('*', async (c, next) => {
   const method = c.req.method;
-  const allowedMethods = ['GET', 'POST', 'PATCH'];
+  const allowedMethods = ['GET', 'POST'];
 
   if (!allowedMethods.includes(method)) {
     return methodNotAllowed(c, allowedMethods);
@@ -150,7 +121,6 @@ sessionRouter.openapi(createSessionRoute, async (c) => {
         sessionId: body.sessionId,
         deviceId: body.deviceId,
         startedAt: clientStartedAt,
-        endedAt: null,
         lastActivityAt: clientStartedAt,
       })
       .returning();
@@ -160,7 +130,6 @@ sessionRouter.openapi(createSessionRoute, async (c) => {
         sessionId: newSession.sessionId,
         deviceId: newSession.deviceId,
         startedAt: newSession.startedAt.toISOString(),
-        endedAt: newSession.endedAt ? newSession.endedAt.toISOString() : null,
         lastActivityAt: newSession.lastActivityAt.toISOString(),
       },
       HttpStatus.OK
@@ -171,79 +140,6 @@ sessionRouter.openapi(createSessionRoute, async (c) => {
       {
         code: ErrorCode.INTERNAL_SERVER_ERROR,
         detail: 'Failed to create session',
-      },
-      HttpStatus.INTERNAL_SERVER_ERROR
-    );
-  }
-});
-
-sessionRouter.openapi(endSessionRoute, async (c) => {
-  try {
-    const body = c.req.valid('json');
-
-    const sessionValidation = await validateSession(c, body.sessionId);
-    if (!sessionValidation.success) {
-      return sessionValidation.response;
-    }
-
-    const existingSession = sessionValidation.data;
-
-    if (existingSession.endedAt) {
-      return c.json(
-        {
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: 'Session already ended',
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
-
-    let clientEndedAt = new Date();
-
-    if (body.endedAt) {
-      const timestampValidation = validateTimestamp(c, body.endedAt, 'endedAt');
-      if (!timestampValidation.success) {
-        return timestampValidation.response;
-      }
-      clientEndedAt = timestampValidation.data;
-    }
-
-    if (clientEndedAt < existingSession.startedAt) {
-      return c.json(
-        {
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: 'endedAt cannot be before startedAt',
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
-
-    const [updatedSession] = await db
-      .update(sessions)
-      .set({
-        endedAt: clientEndedAt,
-      })
-      .where(eq(sessions.sessionId, body.sessionId))
-      .returning();
-
-    return c.json(
-      {
-        sessionId: updatedSession.sessionId,
-        deviceId: updatedSession.deviceId,
-        startedAt: updatedSession.startedAt.toISOString(),
-        endedAt: updatedSession.endedAt
-          ? updatedSession.endedAt.toISOString()
-          : null,
-        lastActivityAt: updatedSession.lastActivityAt.toISOString(),
-      },
-      HttpStatus.OK
-    );
-  } catch (error) {
-    console.error('[Session.End] Error:', error);
-    return c.json(
-      {
-        code: ErrorCode.INTERNAL_SERVER_ERROR,
-        detail: 'Failed to end session',
       },
       HttpStatus.INTERNAL_SERVER_ERROR
     );
@@ -315,7 +211,6 @@ sessionRouter.openapi(getSessionsRoute, async (c) => {
       sessionId: session.sessionId,
       deviceId: session.deviceId,
       startedAt: session.startedAt.toISOString(),
-      endedAt: session.endedAt ? session.endedAt.toISOString() : null,
       lastActivityAt: session.lastActivityAt.toISOString(),
     }));
 
