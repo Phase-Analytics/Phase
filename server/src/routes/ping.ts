@@ -1,8 +1,7 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { and, eq, isNull } from 'drizzle-orm';
-import { db, sessions } from '@/db';
+import { addToQueue } from '@/lib/queue';
 import { methodNotAllowed } from '@/lib/response';
-import { validateSession } from '@/lib/validators';
+import { validateSession, validateTimestamp } from '@/lib/validators';
 import {
   ErrorCode,
   errorResponses,
@@ -60,85 +59,27 @@ pingRouter.openapi(pingSessionRoute, async (c) => {
       return sessionValidation.response;
     }
 
-    const session = sessionValidation.data;
-
-    if (session.endedAt) {
-      return c.json(
-        {
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: 'Cannot ping an ended session',
-        },
-        HttpStatus.BAD_REQUEST
-      );
+    const timestampValidation = validateTimestamp(c, body.timestamp);
+    if (!timestampValidation.success) {
+      return timestampValidation.response;
     }
 
-    const currentTimestamp = new Date();
+    const clientTimestamp = timestampValidation.data;
 
-    await db.transaction(async (tx) => {
-      const currentSession = await tx.query.sessions.findFirst({
-        where: (table, { eq: eqFn }) => eqFn(table.sessionId, body.sessionId),
-      });
-
-      if (!currentSession) {
-        throw new Error('Session not found');
-      }
-
-      if (currentSession.endedAt) {
-        throw new Error('Cannot ping an ended session');
-      }
-
-      const timeSinceLastActivity =
-        currentTimestamp.getTime() - currentSession.lastActivityAt.getTime();
-
-      if (timeSinceLastActivity > 10 * 60 * 1000) {
-        await tx
-          .update(sessions)
-          .set({
-            endedAt: currentSession.lastActivityAt,
-          })
-          .where(eq(sessions.sessionId, body.sessionId));
-        throw new Error('Session expired. Please create a new session.');
-      }
-
-      const result = await tx
-        .update(sessions)
-        .set({
-          lastActivityAt: currentTimestamp,
-        })
-        .where(
-          and(eq(sessions.sessionId, body.sessionId), isNull(sessions.endedAt))
-        );
-
-      if (result.rowCount === 0) {
-        throw new Error('Cannot ping an ended session');
-      }
+    await addToQueue({
+      type: 'ping',
+      sessionId: body.sessionId,
+      timestamp: clientTimestamp.toISOString(),
     });
 
     return c.json(
       {
         sessionId: body.sessionId,
-        lastActivityAt: currentTimestamp.toISOString(),
+        lastActivityAt: clientTimestamp.toISOString(),
       },
       HttpStatus.OK
     );
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Failed to ping session';
-
-    if (
-      errorMessage.includes('Session expired') ||
-      errorMessage.includes('not found') ||
-      errorMessage.includes('ended session')
-    ) {
-      return c.json(
-        {
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: errorMessage,
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
-
     console.error('[Session.Ping] Error:', error);
     return c.json(
       {

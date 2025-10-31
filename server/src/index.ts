@@ -4,6 +4,8 @@ import { pool } from '@/db';
 import { auth } from '@/lib/auth';
 import { authMiddleware } from '@/lib/middleware';
 import { configureOpenAPI } from '@/lib/openapi';
+import { redis } from '@/lib/redis';
+import { startWorker } from '@/lib/worker';
 import deviceRouter from '@/routes/device';
 import eventRouter from '@/routes/event';
 import health from '@/routes/health';
@@ -45,9 +47,17 @@ app.on(['POST', 'GET'], '/api/auth/**', (c) => auth.handler(c.req.raw));
 
 configureOpenAPI(app);
 
+startWorker().catch((error) => {
+  console.error('[Server] Failed to start worker:', error);
+  process.exit(1);
+});
+
 const shutdown = async (signal: string) => {
   try {
     console.log(`[Server] Received ${signal}, shutting down gracefully...`);
+
+    await redis.quit();
+    console.log('[Server] Redis connection closed');
 
     await pool.end();
     console.log('[Server] Database pool closed');

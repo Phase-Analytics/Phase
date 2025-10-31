@@ -1,6 +1,7 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { and, count, desc, eq, isNull, type SQL } from 'drizzle-orm';
-import { db, events, sessions } from '@/db';
+import { count, desc, eq, type SQL } from 'drizzle-orm';
+import { db, events } from '@/db';
+import { addToQueue } from '@/lib/queue';
 import { methodNotAllowed } from '@/lib/response';
 import {
   buildFilters,
@@ -98,16 +99,6 @@ eventRouter.openapi(createEventRoute, async (c) => {
     const clientTimestamp = timestampValidation.data;
     const session = sessionValidation.data;
 
-    if (session.endedAt && clientTimestamp > session.endedAt) {
-      return c.json(
-        {
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: 'Event timestamp cannot be after session endedAt',
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
-
     if (clientTimestamp < session.startedAt) {
       return c.json(
         {
@@ -118,53 +109,13 @@ eventRouter.openapi(createEventRoute, async (c) => {
       );
     }
 
-    await db.transaction(async (tx) => {
-      const currentSession = await tx.query.sessions.findFirst({
-        where: (table, { eq: eqFn }) => eqFn(table.sessionId, body.sessionId),
-      });
-
-      if (!currentSession) {
-        throw new Error('Session not found');
-      }
-
-      if (currentSession.endedAt) {
-        throw new Error('Session expired. Please create a new session.');
-      }
-
-      const serverTimestamp = new Date();
-      const timeSinceLastActivity =
-        serverTimestamp.getTime() - currentSession.lastActivityAt.getTime();
-
-      if (timeSinceLastActivity > 10 * 60 * 1000) {
-        await tx
-          .update(sessions)
-          .set({
-            endedAt: currentSession.lastActivityAt,
-          })
-          .where(eq(sessions.sessionId, body.sessionId));
-        throw new Error('Session expired. Please create a new session.');
-      }
-
-      const updateResult = await tx
-        .update(sessions)
-        .set({
-          lastActivityAt: serverTimestamp,
-        })
-        .where(
-          and(eq(sessions.sessionId, body.sessionId), isNull(sessions.endedAt))
-        );
-
-      if (updateResult.rowCount === 0) {
-        throw new Error('Cannot update an ended session');
-      }
-
-      await tx.insert(events).values({
-        eventId: body.eventId,
-        sessionId: body.sessionId,
-        name: body.name,
-        params: body.params ? JSON.stringify(body.params) : null,
-        timestamp: clientTimestamp,
-      });
+    await addToQueue({
+      type: 'event',
+      eventId: body.eventId,
+      sessionId: body.sessionId,
+      name: body.name,
+      params: body.params,
+      timestamp: clientTimestamp.toISOString(),
     });
 
     return c.json(
@@ -178,22 +129,6 @@ eventRouter.openapi(createEventRoute, async (c) => {
       HttpStatus.OK
     );
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Failed to create event';
-
-    if (
-      errorMessage.includes('Session expired') ||
-      errorMessage.includes('not found')
-    ) {
-      return c.json(
-        {
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: errorMessage,
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
-
     console.error('[Event.Create] Error:', error);
     return c.json(
       {

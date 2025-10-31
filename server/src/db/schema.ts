@@ -148,7 +148,6 @@ export const sessions = pgTable(
       .notNull()
       .references(() => devices.deviceId, { onDelete: 'cascade' }),
     startedAt: timestamp('started_at').notNull(),
-    endedAt: timestamp('ended_at'),
     lastActivityAt: timestamp('last_activity_at').defaultNow().notNull(),
   },
   (table) => ({

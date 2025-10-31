@@ -1,12 +1,12 @@
 import type { SQL } from 'drizzle-orm';
-import { type AnyColumn, and, count, eq, gte, isNull, lte } from 'drizzle-orm';
+import { type AnyColumn, and, count, gte, lte } from 'drizzle-orm';
 import type { Context } from 'hono';
 import { db, sessions } from '@/db';
 import type { apikey, devices } from '@/db/schema';
 import { ErrorCode, HttpStatus } from '@/schemas';
 
 const MAX_PAGE_SIZE = 100;
-const SESSION_TIMEOUT_MS = 10 * 60 * 1000;
+const MAX_TIMESTAMP_AGE_MS = 30 * 60 * 1000;
 
 export type ValidationResult<T = void> =
   | (T extends void ? { success: true } : { success: true; data: T })
@@ -77,8 +77,7 @@ export function validatePagination(
 export function validateTimestamp(
   c: Context,
   timestampStr: string,
-  fieldName = 'timestamp',
-  maxDiffMs = 10 * 60 * 1000
+  fieldName = 'timestamp'
 ): ValidationResult<Date> {
   const clientTimestamp = new Date(timestampStr);
 
@@ -96,18 +95,15 @@ export function validateTimestamp(
   }
 
   const serverTimestamp = new Date();
-  const timeDiffMs = Math.abs(
-    serverTimestamp.getTime() - clientTimestamp.getTime()
-  );
+  const timeDiffMs = serverTimestamp.getTime() - clientTimestamp.getTime();
 
-  if (timeDiffMs > maxDiffMs) {
-    const maxDiffMinutes = maxDiffMs / (60 * 1000);
+  if (timeDiffMs > MAX_TIMESTAMP_AGE_MS) {
     return {
       success: false,
       response: c.json(
         {
           code: ErrorCode.VALIDATION_ERROR,
-          detail: `${fieldName} is too far from server time (max ${maxDiffMinutes} minutes difference)`,
+          detail: `${fieldName} is too old (max 30 minutes old)`,
         },
         HttpStatus.BAD_REQUEST
       ),
@@ -319,43 +315,13 @@ export function formatPaginationResponse(
   };
 }
 
-export async function checkAndCloseExpiredSession(
-  sessionId: string,
-  currentTimestamp: Date
-): Promise<boolean> {
-  const session = await db.query.sessions.findFirst({
-    where: (table, { eq: eqFn }) => eqFn(table.sessionId, sessionId),
-  });
-
-  if (!session || session.endedAt) {
-    return false;
-  }
-
-  const timeSinceLastActivity =
-    currentTimestamp.getTime() - session.lastActivityAt.getTime();
-
-  if (timeSinceLastActivity > SESSION_TIMEOUT_MS) {
-    await db
-      .update(sessions)
-      .set({
-        endedAt: session.lastActivityAt,
-      })
-      .where(eq(sessions.sessionId, sessionId));
-    return true;
-  }
-
-  return false;
-}
-
 export async function getActiveSessionsCount(minutes = 5): Promise<number> {
   const cutoffTime = new Date(Date.now() - minutes * 60 * 1000);
 
   const [{ count: activeCount }] = await db
     .select({ count: count() })
     .from(sessions)
-    .where(
-      and(isNull(sessions.endedAt), gte(sessions.lastActivityAt, cutoffTime))
-    );
+    .where(gte(sessions.lastActivityAt, cutoffTime));
 
   return activeCount;
 }
