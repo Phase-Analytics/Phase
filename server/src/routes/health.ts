@@ -21,6 +21,14 @@ const healthResponseSchema = z.object({
       error: z.string().optional(),
       message: z.string().optional(),
     }),
+    cache: z
+      .object({
+        enabled: z.boolean(),
+        strategy: z.string().optional(),
+        ttl: z.number().optional(),
+        cachedTables: z.array(z.string()).optional(),
+      })
+      .optional(),
   }),
   responseTime: z.number().openapi({ example: 10 }),
 });
