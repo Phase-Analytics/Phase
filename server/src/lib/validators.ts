@@ -2,7 +2,7 @@ import type { SQL } from 'drizzle-orm';
 import { type AnyColumn, and, count, eq, gte, lte } from 'drizzle-orm';
 import type { Context } from 'hono';
 import { db, sessions } from '@/db';
-import type { apikey, devices } from '@/db/schema';
+import type { devices } from '@/db/schema';
 import { ErrorCode, HttpStatus } from '@/schemas';
 
 const MAX_PAGE_SIZE = 100;
@@ -113,33 +113,6 @@ export function validateTimestamp(
   return {
     success: true,
     data: clientTimestamp,
-  };
-}
-
-export async function validateApiKey(
-  c: Context,
-  apikeyId: string
-): Promise<ValidationResult<typeof apikey.$inferSelect>> {
-  const key = await db.query.apikey.findFirst({
-    where: (table, { eq: eqFn }) => eqFn(table.id, apikeyId),
-  });
-
-  if (!key) {
-    return {
-      success: false,
-      response: c.json(
-        {
-          code: ErrorCode.NOT_FOUND,
-          detail: 'API key not found',
-        },
-        HttpStatus.NOT_FOUND
-      ),
-    };
-  }
-
-  return {
-    success: true,
-    data: key,
   };
 }
 

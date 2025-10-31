@@ -5,7 +5,6 @@ import { methodNotAllowed } from '@/lib/response';
 import {
   buildFilters,
   formatPaginationResponse,
-  validateApiKey,
   validateDateRange,
   validatePagination,
 } from '@/lib/validators';
@@ -80,14 +79,10 @@ deviceRouter.all('*', async (c, next) => {
   await next();
 });
 
-deviceRouter.openapi(createDeviceRoute, async (c) => {
+// biome-ignore lint/suspicious/noExplicitAny: OpenAPI handler type inference issue with union response types
+deviceRouter.openapi(createDeviceRoute, async (c: any) => {
   try {
     const body = c.req.valid('json');
-
-    const apikeyValidation = await validateApiKey(c, body.apikeyId);
-    if (!apikeyValidation.success) {
-      return apikeyValidation.response;
-    }
 
     const existingDevice = await db.query.devices.findFirst({
       where: (table, { eq: eqFn }) => eqFn(table.deviceId, body.deviceId),
@@ -111,7 +106,6 @@ deviceRouter.openapi(createDeviceRoute, async (c) => {
         .insert(devices)
         .values({
           deviceId: body.deviceId,
-          apikeyId: body.apikeyId,
           identifier: body.identifier ?? null,
           brand: body.brand ?? null,
           osVersion: body.osVersion ?? null,
@@ -123,7 +117,6 @@ deviceRouter.openapi(createDeviceRoute, async (c) => {
     return c.json(
       {
         deviceId: device.deviceId,
-        apikeyId: device.apikeyId,
         identifier: device.identifier,
         brand: device.brand,
         osVersion: device.osVersion,
@@ -147,12 +140,6 @@ deviceRouter.openapi(createDeviceRoute, async (c) => {
 deviceRouter.openapi(getDevicesRoute, async (c) => {
   try {
     const query = c.req.valid('query');
-    const { apikeyId } = query;
-
-    const apikeyValidation = await validateApiKey(c, apikeyId);
-    if (!apikeyValidation.success) {
-      return apikeyValidation.response;
-    }
 
     const paginationValidation = validatePagination(
       c,
@@ -174,7 +161,7 @@ deviceRouter.openapi(getDevicesRoute, async (c) => {
       return dateRangeValidation.response;
     }
 
-    const filters: SQL[] = [eq(devices.apikeyId, apikeyId)];
+    const filters: SQL[] = [];
 
     if (query.platform) {
       filters.push(eq(devices.platform, query.platform));
@@ -201,7 +188,6 @@ deviceRouter.openapi(getDevicesRoute, async (c) => {
 
     const formattedDevices = devicesList.map((device) => ({
       deviceId: device.deviceId,
-      apikeyId: device.apikeyId,
       identifier: device.identifier,
       brand: device.brand,
       osVersion: device.osVersion,

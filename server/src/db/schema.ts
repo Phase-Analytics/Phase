@@ -125,9 +125,6 @@ export const devices = pgTable(
   'devices',
   {
     deviceId: text('device_id').primaryKey(),
-    apikeyId: text('apikey_id')
-      .notNull()
-      .references(() => apikey.id, { onDelete: 'cascade' }),
     identifier: text('identifier'),
     brand: text('brand'),
     osVersion: text('os_version'),
@@ -135,7 +132,6 @@ export const devices = pgTable(
     firstSeen: timestamp('first_seen').defaultNow().notNull(),
   },
   (table) => ({
-    apikeyIdIdx: index('devices_apikey_id_idx').on(table.apikeyId),
     platformIdx: index('devices_platform_idx').on(table.platform),
   })
 );

@@ -9,7 +9,6 @@ import {
 export const deviceSchema = z
   .object({
     deviceId: z.string().openapi({ example: 'device_abc123' }),
-    apikeyId: z.string().openapi({ example: 'apikey_xyz789' }),
     identifier: z.string().nullable().openapi({ example: 'user@example.com' }),
     brand: z.string().nullable().openapi({ example: 'Apple' }),
     osVersion: z.string().nullable().openapi({ example: '17.0.1' }),
@@ -26,7 +25,6 @@ export const deviceSchema = z
 export const createDeviceRequestSchema = z
   .object({
     deviceId: z.string().openapi({ example: 'device_abc123' }),
-    apikeyId: z.string().openapi({ example: 'apikey_xyz789' }),
     identifier: z.string().nullish().openapi({ example: 'user@example.com' }),
     brand: z.string().nullish().openapi({ example: 'Apple' }),
     osVersion: z.string().nullish().openapi({ example: '17.0.1' }),
@@ -37,7 +35,6 @@ export const createDeviceRequestSchema = z
 export const listDevicesQuerySchema = paginationQuerySchema
   .merge(dateFilterQuerySchema)
   .extend({
-    apikeyId: z.string().openapi({ example: 'apikey_xyz789' }),
     platform: z.string().optional().openapi({ example: 'iOS' }),
   })
   .openapi('ListDevicesQuery');
