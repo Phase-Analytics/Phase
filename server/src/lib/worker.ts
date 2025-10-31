@@ -173,9 +173,9 @@ function processBatchItems(batch: BatchEntry[]): {
   return { eventsToInsert, sessionActivities };
 }
 
-async function processBatch(batch: BatchEntry[]): Promise<void> {
+async function processBatch(batch: BatchEntry[]): Promise<boolean> {
   if (batch.length === 0) {
-    return;
+    return true;
   }
 
   const { eventsToInsert, sessionActivities } = processBatchItems(batch);
@@ -185,21 +185,19 @@ async function processBatch(batch: BatchEntry[]): Promise<void> {
     updateSessionActivities(sessionActivities),
   ]);
 
-  const eventsSucceeded = eventsProcessed === eventsToInsert.length;
-  const activitiesSucceeded = activitiesProcessed === sessionActivities.size;
-
-  if (!eventsSucceeded) {
-    console.error(
-      `[Worker] Batch processing failed - events: ${eventsProcessed}/${eventsToInsert.length} - messages not acknowledged`
+  if (eventsProcessed < eventsToInsert.length) {
+    const duplicateCount = eventsToInsert.length - eventsProcessed;
+    console.log(
+      `[Worker] ${duplicateCount} duplicate events skipped (expected with onConflictDoNothing)`
     );
-    return;
   }
 
-  if (!activitiesSucceeded) {
-    console.error(
-      `[Worker] Batch processing failed - sessions: ${activitiesProcessed}/${sessionActivities.size} - messages not acknowledged`
+  if (activitiesProcessed < sessionActivities.size) {
+    const skippedCount = sessionActivities.size - activitiesProcessed;
+    console.warn(
+      `[Worker] ${skippedCount} sessions not found for update - messages not acknowledged`
     );
-    return;
+    return false;
   }
 
   for (const entry of batch) {
@@ -210,8 +208,11 @@ async function processBatch(batch: BatchEntry[]): Promise<void> {
         `[Worker] Failed to acknowledge message ${entry.id}:`,
         error
       );
+      return false;
     }
   }
+
+  return true;
 }
 
 async function collectBatch(
@@ -286,10 +287,12 @@ async function processStream(streamKey: string): Promise<void> {
       return;
     }
 
-    await processBatch(batch);
-    console.log(
-      `[Worker] Successfully processed batch of ${batch.length} items (stream: ${streamKey})`
-    );
+    const success = await processBatch(batch);
+    if (success) {
+      console.log(
+        `[Worker] Successfully processed batch of ${batch.length} items (stream: ${streamKey})`
+      );
+    }
   } catch (error) {
     console.error(`[Worker] Error processing stream ${streamKey}:`, error);
   }
