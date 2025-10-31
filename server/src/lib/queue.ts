@@ -35,6 +35,31 @@ export async function addToQueue(item: QueueItem): Promise<void> {
   );
 }
 
+export async function addBatchToQueue(items: QueueItem[]): Promise<void> {
+  if (items.length === 0) {
+    return;
+  }
+
+  const pipeline = redis.pipeline();
+  const timestamp = Date.now().toString();
+
+  for (const item of items) {
+    const streamKey =
+      item.type === 'event' ? STREAM_KEYS.EVENTS : STREAM_KEYS.PINGS;
+
+    pipeline.xadd(
+      streamKey,
+      '*',
+      'data',
+      JSON.stringify(item),
+      'timestamp',
+      timestamp
+    );
+  }
+
+  await pipeline.exec();
+}
+
 type ReadFromStreamOptions = {
   streamKey: string;
   groupName: string;
@@ -127,4 +152,20 @@ export async function acknowledgeMessage(
   messageId: string
 ): Promise<void> {
   await redis.xack(streamKey, groupName, messageId);
+}
+
+export async function acknowledgeBatchMessages(
+  messages: { streamKey: string; groupName: string; messageId: string }[]
+): Promise<void> {
+  if (messages.length === 0) {
+    return;
+  }
+
+  const pipeline = redis.pipeline();
+
+  for (const { streamKey, groupName, messageId } of messages) {
+    pipeline.xack(streamKey, groupName, messageId);
+  }
+
+  await pipeline.exec();
 }

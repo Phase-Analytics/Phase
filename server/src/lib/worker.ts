@@ -1,5 +1,6 @@
 import { db, events, pool } from '@/db';
 import {
+  acknowledgeBatchMessages,
   acknowledgeMessage,
   CONSUMER_GROUP,
   CONSUMER_NAME,
@@ -10,6 +11,7 @@ import {
   readFromStream,
   STREAM_KEYS,
 } from './queue';
+import { redis } from './redis';
 
 const BATCH_MAX_SIZE = 100;
 const BATCH_WAIT_TIME_MS = 8000;
@@ -42,9 +44,9 @@ async function insertEvents(
     params: string | null;
     timestamp: Date;
   }[]
-): Promise<number> {
+): Promise<{ success: boolean; insertedCount: number }> {
   if (eventsToInsert.length === 0) {
-    return 0;
+    return { success: true, insertedCount: 0 };
   }
 
   try {
@@ -52,18 +54,18 @@ async function insertEvents(
       .insert(events)
       .values(eventsToInsert)
       .onConflictDoNothing({ target: events.eventId });
-    return result.rowCount ?? 0;
+    return { success: true, insertedCount: result.rowCount ?? 0 };
   } catch (error) {
     console.error('[Worker] Failed to insert events:', error);
-    return 0;
+    return { success: false, insertedCount: 0 };
   }
 }
 
 async function updateSessionActivities(
   sessionActivities: Map<string, SessionActivity>
-): Promise<number> {
+): Promise<{ success: boolean; updatedCount: number }> {
   if (sessionActivities.size === 0) {
-    return 0;
+    return { success: true, updatedCount: 0 };
   }
 
   const sessionUpdates = Array.from(sessionActivities.values());
@@ -88,10 +90,10 @@ async function updateSessionActivities(
     `;
 
     const result = await pool.query(query, params);
-    return result.rowCount ?? 0;
+    return { success: true, updatedCount: result.rowCount ?? 0 };
   } catch (error) {
     console.error('[Worker] Failed to batch update sessions:', error);
-    return 0;
+    return { success: false, updatedCount: 0 };
   }
 }
 
@@ -173,6 +175,51 @@ function processBatchItems(batch: BatchEntry[]): {
   return { eventsToInsert, sessionActivities };
 }
 
+async function acknowledgeBatchEntries(batch: BatchEntry[]): Promise<number> {
+  if (batch.length === 0) {
+    return 0;
+  }
+
+  try {
+    const ackMessages = batch.map((entry) => ({
+      streamKey: entry.streamKey,
+      groupName: CONSUMER_GROUP,
+      messageId: entry.id,
+    }));
+
+    await acknowledgeBatchMessages(ackMessages);
+    return batch.length;
+  } catch (error) {
+    console.error('[Worker] Failed to acknowledge batch:', error);
+
+    let ackedCount = 0;
+    for (const entry of batch) {
+      try {
+        await acknowledgeMessage(entry.streamKey, CONSUMER_GROUP, entry.id);
+        ackedCount++;
+      } catch (err) {
+        console.error(
+          `[Worker] Failed to acknowledge message ${entry.id}:`,
+          err
+        );
+      }
+    }
+    return ackedCount;
+  }
+}
+
+async function trimStreams(batch: BatchEntry[]): Promise<void> {
+  const streamKeys = new Set(batch.map((entry) => entry.streamKey));
+
+  for (const streamKey of streamKeys) {
+    try {
+      await redis.xtrim(streamKey, 'MAXLEN', '~', 50_000);
+    } catch (error) {
+      console.error(`[Worker] Failed to trim stream ${streamKey}:`, error);
+    }
+  }
+}
+
 async function processBatch(batch: BatchEntry[]): Promise<boolean> {
   if (batch.length === 0) {
     return true;
@@ -180,39 +227,38 @@ async function processBatch(batch: BatchEntry[]): Promise<boolean> {
 
   const { eventsToInsert, sessionActivities } = processBatchItems(batch);
 
-  const [eventsProcessed, activitiesProcessed] = await Promise.all([
+  const [eventsResult, sessionsResult] = await Promise.all([
     insertEvents(eventsToInsert),
     updateSessionActivities(sessionActivities),
   ]);
 
-  if (eventsProcessed < eventsToInsert.length) {
-    const duplicateCount = eventsToInsert.length - eventsProcessed;
+  if (!(eventsResult.success && sessionsResult.success)) {
+    console.error(
+      '[Worker] Critical failure in batch processing, messages not acknowledged'
+    );
+    return false;
+  }
+
+  if (eventsResult.insertedCount < eventsToInsert.length) {
+    const duplicateCount = eventsToInsert.length - eventsResult.insertedCount;
     console.log(
       `[Worker] ${duplicateCount} duplicate events skipped (expected with onConflictDoNothing)`
     );
   }
 
-  if (activitiesProcessed < sessionActivities.size) {
-    const skippedCount = sessionActivities.size - activitiesProcessed;
+  if (sessionsResult.updatedCount < sessionActivities.size) {
+    const failedCount = sessionActivities.size - sessionsResult.updatedCount;
     console.warn(
-      `[Worker] ${skippedCount} sessions not found for update - messages not acknowledged`
+      `[Worker] ${failedCount} sessions failed to update (may not exist in DB)`
     );
-    return false;
   }
 
-  for (const entry of batch) {
-    try {
-      await acknowledgeMessage(entry.streamKey, CONSUMER_GROUP, entry.id);
-    } catch (error) {
-      console.error(
-        `[Worker] Failed to acknowledge message ${entry.id}:`,
-        error
-      );
-      return false;
-    }
-  }
+  const ackedCount = await acknowledgeBatchEntries(batch);
+  await trimStreams(batch);
 
-  return true;
+  console.log(`[Worker] Acknowledged ${ackedCount}/${batch.length} messages`);
+
+  return ackedCount === batch.length;
 }
 
 async function collectBatch(
@@ -227,7 +273,6 @@ async function collectBatch(
     receivedAt: Date.now(),
   }));
 
-  // If we already have a full batch, process immediately
   if (batch.length >= BATCH_MAX_SIZE) {
     return batch.sort(
       (a, b) => extractTimestamp(a.data) - extractTimestamp(b.data)
@@ -237,8 +282,6 @@ async function collectBatch(
   const elapsed = Date.now() - startTime;
   const remainingWait = Math.max(0, BATCH_WAIT_TIME_MS - elapsed);
 
-  // Only wait if we have some items but not enough
-  // This prevents unnecessary waiting when stream is empty
   if (remainingWait > 0 && batch.length > 0) {
     await new Promise((resolve) => {
       setTimeout(resolve, remainingWait);

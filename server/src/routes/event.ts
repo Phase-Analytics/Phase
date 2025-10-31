@@ -129,7 +129,10 @@ eventRouter.openapi(createEventRoute, async (c) => {
       HttpStatus.OK
     );
   } catch (error) {
-    console.error('[Event.Create] Error:', error);
+    console.error(
+      '[Event.Create] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
     return c.json(
       {
         code: ErrorCode.INTERNAL_SERVER_ERROR,
@@ -228,7 +231,10 @@ eventRouter.openapi(getEventsRoute, async (c) => {
       HttpStatus.OK
     );
   } catch (error) {
-    console.error('[Event.List] Error:', error);
+    console.error(
+      '[Event.List] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
     return c.json(
       {
         code: ErrorCode.INTERNAL_SERVER_ERROR,

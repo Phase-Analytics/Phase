@@ -80,7 +80,10 @@ pingRouter.openapi(pingSessionRoute, async (c) => {
       HttpStatus.OK
     );
   } catch (error) {
-    console.error('[Session.Ping] Error:', error);
+    console.error(
+      '[Session.Ping] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
     return c.json(
       {
         code: ErrorCode.INTERNAL_SERVER_ERROR,

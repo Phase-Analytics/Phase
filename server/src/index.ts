@@ -62,7 +62,6 @@ const shutdown = async (signal: string) => {
   try {
     console.log(`[Server] Received ${signal}, shutting down gracefully...`);
 
-    // Stop worker first to finish in-flight batches
     if (workerHandle) {
       console.log('[Server] Stopping worker...');
       await workerHandle.stop();

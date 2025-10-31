@@ -12,9 +12,9 @@ export const redis = new Redis(process.env.REDIS_URL, {
   retryStrategy: (times) => {
     if (times > 10) {
       console.error('[Redis] Max retries exceeded, giving up');
-      return null; // Stop retrying
+      return null;
     }
-    const delay = Math.min(times * 100, 3000); // Max 3s delay
+    const delay = Math.min(times * 100, 3000);
     console.log(`[Redis] Retrying connection in ${delay}ms (attempt ${times})`);
     return delay;
   },
