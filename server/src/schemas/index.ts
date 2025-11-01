@@ -15,10 +15,14 @@ export {
 export {
   type CreateDeviceRequest,
   createDeviceRequestSchema,
+  type DeviceDetailSchema,
   type DeviceSchema,
   type DevicesListResponse,
+  deviceDetailSchema,
   deviceSchema,
   devicesListResponseSchema,
+  type GetDeviceQuery,
+  getDeviceQuerySchema,
   type ListDevicesQuery,
   listDevicesQuerySchema,
 } from './device.schema';

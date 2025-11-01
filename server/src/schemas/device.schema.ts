@@ -40,6 +40,31 @@ export const listDevicesQuerySchema = paginationQuerySchema
   })
   .openapi('ListDevicesQuery');
 
+export const deviceDetailSchema = z
+  .object({
+    deviceId: z.string().openapi({ example: 'device_abc123' }),
+    identifier: z.string().nullable().openapi({ example: 'user@example.com' }),
+    brand: z.string().nullable().openapi({ example: 'Apple' }),
+    osVersion: z.string().nullable().openapi({ example: '17.0.1' }),
+    platform: z.string().nullable().openapi({ example: 'iOS' }),
+    firstSeen: z
+      .string()
+      .datetime()
+      .openapi({ example: '2024-01-01T00:00:00Z' }),
+    lastActivity: z
+      .string()
+      .datetime()
+      .nullable()
+      .openapi({ example: '2024-01-01T12:30:00Z' }),
+  })
+  .openapi('DeviceDetail');
+
+export const getDeviceQuerySchema = z
+  .object({
+    apiKeyId: z.string().openapi({ example: 'apikey_abc123' }),
+  })
+  .openapi('GetDeviceQuery');
+
 export const devicesListResponseSchema = z
   .object({
     devices: z.array(deviceSchema),
@@ -48,6 +73,8 @@ export const devicesListResponseSchema = z
   .openapi('DevicesListResponse');
 
 export type DeviceSchema = z.infer<typeof deviceSchema>;
+export type DeviceDetailSchema = z.infer<typeof deviceDetailSchema>;
+export type GetDeviceQuery = z.infer<typeof getDeviceQuerySchema>;
 export type CreateDeviceRequest = z.infer<typeof createDeviceRequestSchema>;
 export type ListDevicesQuery = z.infer<typeof listDevicesQuerySchema>;
 export type DevicesListResponse = z.infer<typeof devicesListResponseSchema>;

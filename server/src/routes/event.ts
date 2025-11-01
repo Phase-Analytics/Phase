@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { count, desc, eq, type SQL } from 'drizzle-orm';
+import { count, desc, eq, inArray, type SQL } from 'drizzle-orm';
 import { ulid } from 'ulid';
 import { db, events } from '@/db';
 import type { ApiKey, Session, User } from '@/db/schema';
@@ -14,6 +14,7 @@ import {
   buildFilters,
   formatPaginationResponse,
   validateDateRange,
+  validateDevice,
   validatePagination,
   validateSession,
   validateTimestamp,
@@ -175,11 +176,20 @@ eventSdkRouter.openapi(createEventRoute, async (c) => {
 eventWebRouter.openapi(getEventsRoute, async (c) => {
   try {
     const query = c.req.valid('query');
-    const { sessionId, apiKeyId } = query;
+    const { sessionId, deviceId, apiKeyId } = query;
 
-    const sessionValidation = await validateSession(c, sessionId, apiKeyId);
-    if (!sessionValidation.success) {
-      return sessionValidation.response;
+    if (sessionId) {
+      const sessionValidation = await validateSession(c, sessionId, apiKeyId);
+      if (!sessionValidation.success) {
+        return sessionValidation.response;
+      }
+    }
+
+    if (deviceId) {
+      const deviceValidation = await validateDevice(c, deviceId, apiKeyId);
+      if (!deviceValidation.success) {
+        return deviceValidation.response;
+      }
     }
 
     const paginationValidation = validatePagination(
@@ -202,7 +212,29 @@ eventWebRouter.openapi(getEventsRoute, async (c) => {
       return dateRangeValidation.response;
     }
 
-    const filters: SQL[] = [eq(events.sessionId, sessionId)];
+    const filters: SQL[] = [];
+
+    if (sessionId) {
+      filters.push(eq(events.sessionId, sessionId));
+    } else if (deviceId) {
+      const deviceSessions = await db.query.sessions.findMany({
+        where: (table, { eq: eqFn }) => eqFn(table.deviceId, deviceId),
+      });
+
+      const sessionIds = deviceSessions.map((s) => s.sessionId);
+
+      if (sessionIds.length === 0) {
+        return c.json(
+          {
+            events: [],
+            pagination: formatPaginationResponse(0, page, pageSize),
+          },
+          HttpStatus.OK
+        );
+      }
+
+      filters.push(inArray(events.sessionId, sessionIds));
+    }
 
     if (query.eventName) {
       filters.push(eq(events.name, query.eventName));

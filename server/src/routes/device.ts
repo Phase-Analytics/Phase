@@ -16,10 +16,12 @@ import {
 } from '@/lib/validators';
 import {
   createDeviceRequestSchema,
+  deviceDetailSchema,
   deviceSchema,
   devicesListResponseSchema,
   ErrorCode,
   errorResponses,
+  getDeviceQuerySchema,
   HttpStatus,
   listDevicesQuerySchema,
 } from '@/schemas';
@@ -67,6 +69,28 @@ const getDevicesRoute = createRoute({
       content: {
         'application/json': {
           schema: devicesListResponseSchema,
+        },
+      },
+    },
+    ...errorResponses,
+  },
+});
+
+const getDeviceRoute = createRoute({
+  method: 'get',
+  path: '/:deviceId',
+  tags: ['device'],
+  description: 'Get device details with last activity',
+  security: [{ CookieAuth: [] }],
+  request: {
+    query: getDeviceQuerySchema,
+  },
+  responses: {
+    200: {
+      description: 'Device details',
+      content: {
+        'application/json': {
+          schema: deviceDetailSchema,
         },
       },
     },
@@ -244,6 +268,61 @@ deviceWebRouter.openapi(getDevicesRoute, async (c) => {
       {
         code: ErrorCode.INTERNAL_SERVER_ERROR,
         detail: 'Failed to fetch devices',
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
+});
+
+// biome-ignore lint/suspicious/noExplicitAny: OpenAPI handler type inference issue with union response types
+deviceWebRouter.openapi(getDeviceRoute, async (c: any) => {
+  try {
+    const { deviceId } = c.req.param();
+    const query = c.req.valid('query');
+
+    const device = await db.query.devices.findFirst({
+      where: (table, { eq: eqFn, and: andFn }) =>
+        andFn(
+          eqFn(table.deviceId, deviceId),
+          eqFn(table.apiKeyId, query.apiKeyId)
+        ),
+    });
+
+    if (!device) {
+      return c.json(
+        {
+          code: ErrorCode.NOT_FOUND,
+          detail: 'Device not found',
+        },
+        HttpStatus.NOT_FOUND
+      );
+    }
+
+    const lastSession = await db.query.sessions.findFirst({
+      where: (table, { eq: eqFn }) => eqFn(table.deviceId, deviceId),
+      orderBy: (table, { desc: descFn }) => [descFn(table.lastActivityAt)],
+    });
+
+    return c.json(
+      {
+        deviceId: device.deviceId,
+        identifier: device.identifier,
+        brand: device.brand,
+        osVersion: device.osVersion,
+        platform: device.platform,
+        firstSeen: device.firstSeen.toISOString(),
+        lastActivity: lastSession
+          ? lastSession.lastActivityAt.toISOString()
+          : null,
+      },
+      HttpStatus.OK
+    );
+  } catch (error) {
+    console.error('[Device.Get] Error:', error);
+    return c.json(
+      {
+        code: ErrorCode.INTERNAL_SERVER_ERROR,
+        detail: 'Failed to fetch device',
       },
       HttpStatus.INTERNAL_SERVER_ERROR
     );
