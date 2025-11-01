@@ -1,6 +1,8 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import { count, desc, eq, type SQL } from 'drizzle-orm';
 import { db, sessions } from '@/db';
+import type { ApiKey } from '@/db/schema';
+import { requireApiKey } from '@/lib/middleware';
 import { methodNotAllowed } from '@/lib/response';
 import {
   buildFilters,
@@ -68,7 +70,13 @@ const getSessionsRoute = createRoute({
   },
 });
 
-const sessionRouter = new OpenAPIHono();
+const sessionRouter = new OpenAPIHono<{
+  Variables: {
+    apiKey: ApiKey;
+  };
+}>();
+
+sessionRouter.use('*', requireApiKey);
 
 sessionRouter.all('*', async (c, next) => {
   const method = c.req.method;
@@ -84,8 +92,9 @@ sessionRouter.all('*', async (c, next) => {
 sessionRouter.openapi(createSessionRoute, async (c) => {
   try {
     const body = c.req.valid('json');
+    const apiKey = c.get('apiKey');
 
-    const deviceValidation = await validateDevice(c, body.deviceId);
+    const deviceValidation = await validateDevice(c, body.deviceId, apiKey.id);
     if (!deviceValidation.success) {
       return deviceValidation.response;
     }
@@ -150,6 +159,7 @@ sessionRouter.openapi(getSessionsRoute, async (c) => {
   try {
     const query = c.req.valid('query');
     const { deviceId } = query;
+    const apiKey = c.get('apiKey');
 
     if (!deviceId) {
       return c.json(
@@ -161,7 +171,7 @@ sessionRouter.openapi(getSessionsRoute, async (c) => {
       );
     }
 
-    const deviceValidation = await validateDevice(c, deviceId);
+    const deviceValidation = await validateDevice(c, deviceId, apiKey.id);
     if (!deviceValidation.success) {
       return deviceValidation.response;
     }

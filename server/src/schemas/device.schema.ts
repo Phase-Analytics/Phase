@@ -19,7 +19,7 @@ export const deviceSchema = z
       .openapi({ example: '2024-01-01T00:00:00Z' }),
   })
   .openapi('Device') satisfies z.ZodType<
-  Omit<Device, 'firstSeen'> & { firstSeen: string }
+  Omit<Device, 'firstSeen' | 'apiKeyId'> & { firstSeen: string }
 >;
 
 export const createDeviceRequestSchema = z

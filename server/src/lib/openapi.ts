@@ -46,8 +46,8 @@ export const configureOpenAPI = (app: any) => {
         BearerAuth: {
           type: 'http',
           scheme: 'bearer',
-          bearerFormat: 'JWT',
-          description: 'Supabase JWT token from Apple OAuth',
+          description:
+            'API Key for authentication. Use format: Bearer <your-api-key>',
         },
       },
     },
