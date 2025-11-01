@@ -1,8 +1,12 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import { count, desc, eq, type SQL } from 'drizzle-orm';
 import { db, devices } from '@/db';
-import type { ApiKey } from '@/db/schema';
-import { requireApiKey } from '@/lib/middleware';
+import type { ApiKey, Session, User } from '@/db/schema';
+import {
+  requireApiKey,
+  requireAuth,
+  verifyApiKeyOwnership,
+} from '@/lib/middleware';
 import { methodNotAllowed } from '@/lib/response';
 import {
   buildFilters,
@@ -25,6 +29,7 @@ const createDeviceRoute = createRoute({
   path: '/',
   tags: ['device'],
   description: 'Create or update a device',
+  security: [{ BearerAuth: [] }],
   request: {
     body: {
       content: {
@@ -52,6 +57,7 @@ const getDevicesRoute = createRoute({
   path: '/',
   tags: ['device'],
   description: 'List devices for a specific API key',
+  security: [{ CookieAuth: [] }],
   request: {
     query: listDevicesQuerySchema,
   },
@@ -68,28 +74,27 @@ const getDevicesRoute = createRoute({
   },
 });
 
-const deviceRouter = new OpenAPIHono<{
+const deviceSdkRouter = new OpenAPIHono<{
   Variables: {
     apiKey: ApiKey;
     userId: string;
   };
 }>();
 
-deviceRouter.use('*', requireApiKey);
+deviceSdkRouter.use('*', requireApiKey);
 
-deviceRouter.all('*', async (c, next) => {
-  const method = c.req.method;
-  const allowedMethods = ['GET', 'POST'];
+const deviceWebRouter = new OpenAPIHono<{
+  Variables: {
+    user: User;
+    session: Session;
+    apiKey: ApiKey;
+  };
+}>();
 
-  if (!allowedMethods.includes(method)) {
-    return methodNotAllowed(c, allowedMethods);
-  }
-
-  await next();
-});
+deviceWebRouter.use('*', requireAuth, verifyApiKeyOwnership);
 
 // biome-ignore lint/suspicious/noExplicitAny: OpenAPI handler type inference issue with union response types
-deviceRouter.openapi(createDeviceRoute, async (c: any) => {
+deviceSdkRouter.openapi(createDeviceRoute, async (c: any) => {
   try {
     const body = c.req.valid('json');
     const apiKey = c.get('apiKey');
@@ -168,20 +173,9 @@ deviceRouter.openapi(createDeviceRoute, async (c: any) => {
   }
 });
 
-deviceRouter.openapi(getDevicesRoute, async (c) => {
+deviceWebRouter.openapi(getDevicesRoute, async (c) => {
   try {
     const query = c.req.valid('query');
-    const apiKey = c.get('apiKey');
-
-    if (!apiKey?.id) {
-      return c.json(
-        {
-          code: ErrorCode.UNAUTHORIZED,
-          detail: 'API key is required',
-        },
-        HttpStatus.UNAUTHORIZED
-      );
-    }
 
     const paginationValidation = validatePagination(
       c,
@@ -203,7 +197,7 @@ deviceRouter.openapi(getDevicesRoute, async (c) => {
       return dateRangeValidation.response;
     }
 
-    const filters: SQL[] = [eq(devices.apiKeyId, apiKey.id)];
+    const filters: SQL[] = [eq(devices.apiKeyId, query.apiKeyId)];
 
     if (query.platform) {
       filters.push(eq(devices.platform, query.platform));
@@ -255,5 +249,21 @@ deviceRouter.openapi(getDevicesRoute, async (c) => {
     );
   }
 });
+
+const deviceRouter = new OpenAPIHono();
+
+deviceRouter.all('*', async (c, next) => {
+  const method = c.req.method;
+  const allowedMethods = ['GET', 'POST'];
+
+  if (!allowedMethods.includes(method)) {
+    return methodNotAllowed(c, allowedMethods);
+  }
+
+  await next();
+});
+
+deviceRouter.route('/', deviceSdkRouter);
+deviceRouter.route('/', deviceWebRouter);
 
 export default deviceRouter;

@@ -49,6 +49,7 @@ export const listEventsQuerySchema = paginationQuerySchema
   .merge(dateFilterQuerySchema)
   .extend({
     sessionId: z.string().openapi({ example: 'session_xyz123' }),
+    apiKeyId: z.string().openapi({ example: 'apikey_abc123' }),
     eventName: z.string().optional().openapi({ example: 'button_clicked' }),
   })
   .openapi('ListEventsQuery');

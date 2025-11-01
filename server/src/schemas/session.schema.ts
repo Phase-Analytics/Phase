@@ -40,7 +40,8 @@ export const createSessionRequestSchema = z
 export const listSessionsQuerySchema = paginationQuerySchema
   .merge(dateFilterQuerySchema)
   .extend({
-    deviceId: z.string().optional().openapi({ example: 'device_abc123' }),
+    deviceId: z.string().openapi({ example: 'device_abc123' }),
+    apiKeyId: z.string().openapi({ example: 'apikey_abc123' }),
   })
   .openapi('ListSessionsQuery');
 

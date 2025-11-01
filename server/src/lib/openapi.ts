@@ -9,6 +9,13 @@ export const configureOpenAPI = (app: any) => {
       'API Key for authentication. Use format: Bearer <your-api-key>',
   });
 
+  app.openAPIRegistry.registerComponent('securitySchemes', 'CookieAuth', {
+    type: 'apiKey',
+    in: 'cookie',
+    name: 'better-auth.session_token',
+    description: 'Session cookie for authenticated users (web frontend)',
+  });
+
   app.doc('/openapi.json', {
     openapi: '3.1.0',
     info: {

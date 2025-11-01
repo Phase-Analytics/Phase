@@ -1,8 +1,12 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import { count, desc, eq, type SQL } from 'drizzle-orm';
 import { db, sessions } from '@/db';
-import type { ApiKey } from '@/db/schema';
-import { requireApiKey } from '@/lib/middleware';
+import type { ApiKey, Session, User } from '@/db/schema';
+import {
+  requireApiKey,
+  requireAuth,
+  verifyApiKeyOwnership,
+} from '@/lib/middleware';
 import { methodNotAllowed } from '@/lib/response';
 import {
   buildFilters,
@@ -27,6 +31,7 @@ const createSessionRoute = createRoute({
   path: '/',
   tags: ['session'],
   description: 'Create a new session',
+  security: [{ BearerAuth: [] }],
   request: {
     body: {
       content: {
@@ -54,6 +59,7 @@ const getSessionsRoute = createRoute({
   path: '/',
   tags: ['session'],
   description: 'List sessions for a specific device',
+  security: [{ CookieAuth: [] }],
   request: {
     query: listSessionsQuerySchema,
   },
@@ -70,26 +76,26 @@ const getSessionsRoute = createRoute({
   },
 });
 
-const sessionRouter = new OpenAPIHono<{
+const sessionSdkRouter = new OpenAPIHono<{
   Variables: {
+    apiKey: ApiKey;
+    userId: string;
+  };
+}>();
+
+sessionSdkRouter.use('*', requireApiKey);
+
+const sessionWebRouter = new OpenAPIHono<{
+  Variables: {
+    user: User;
+    session: Session;
     apiKey: ApiKey;
   };
 }>();
 
-sessionRouter.use('*', requireApiKey);
+sessionWebRouter.use('*', requireAuth, verifyApiKeyOwnership);
 
-sessionRouter.all('*', async (c, next) => {
-  const method = c.req.method;
-  const allowedMethods = ['GET', 'POST'];
-
-  if (!allowedMethods.includes(method)) {
-    return methodNotAllowed(c, allowedMethods);
-  }
-
-  await next();
-});
-
-sessionRouter.openapi(createSessionRoute, async (c) => {
+sessionSdkRouter.openapi(createSessionRoute, async (c) => {
   try {
     const body = c.req.valid('json');
     const apiKey = c.get('apiKey');
@@ -155,23 +161,12 @@ sessionRouter.openapi(createSessionRoute, async (c) => {
   }
 });
 
-sessionRouter.openapi(getSessionsRoute, async (c) => {
+sessionWebRouter.openapi(getSessionsRoute, async (c) => {
   try {
     const query = c.req.valid('query');
-    const { deviceId } = query;
-    const apiKey = c.get('apiKey');
+    const { deviceId, apiKeyId } = query;
 
-    if (!deviceId) {
-      return c.json(
-        {
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: 'deviceId is required',
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
-
-    const deviceValidation = await validateDevice(c, deviceId, apiKey.id);
+    const deviceValidation = await validateDevice(c, deviceId, apiKeyId);
     if (!deviceValidation.success) {
       return deviceValidation.response;
     }
@@ -242,5 +237,21 @@ sessionRouter.openapi(getSessionsRoute, async (c) => {
     );
   }
 });
+
+const sessionRouter = new OpenAPIHono();
+
+sessionRouter.all('*', async (c, next) => {
+  const method = c.req.method;
+  const allowedMethods = ['GET', 'POST'];
+
+  if (!allowedMethods.includes(method)) {
+    return methodNotAllowed(c, allowedMethods);
+  }
+
+  await next();
+});
+
+sessionRouter.route('/', sessionSdkRouter);
+sessionRouter.route('/', sessionWebRouter);
 
 export default sessionRouter;
