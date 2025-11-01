@@ -109,9 +109,11 @@ eventRouter.openapi(createEventRoute, async (c) => {
       );
     }
 
+    const eventId = crypto.randomUUID();
+
     await addToQueue({
       type: 'event',
-      eventId: body.eventId,
+      eventId,
       sessionId: body.sessionId,
       name: body.name,
       params: body.params,
@@ -120,7 +122,7 @@ eventRouter.openapi(createEventRoute, async (c) => {
 
     return c.json(
       {
-        eventId: body.eventId,
+        eventId,
         sessionId: body.sessionId,
         name: body.name,
         params: body.params ?? null,

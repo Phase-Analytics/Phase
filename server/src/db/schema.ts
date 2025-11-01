@@ -160,7 +160,9 @@ export const sessions = pgTable(
 export const events = pgTable(
   'events',
   {
-    eventId: text('event_id').primaryKey(),
+    eventId: text('event_id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     sessionId: text('session_id')
       .notNull()
       .references(() => sessions.sessionId, { onDelete: 'cascade' }),

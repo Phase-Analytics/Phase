@@ -33,7 +33,6 @@ export const eventSchema = z
 
 export const createEventRequestSchema = z
   .object({
-    eventId: z.string().openapi({ example: 'event_abc123' }),
     sessionId: z.string().openapi({ example: 'session_xyz123' }),
     name: z.string().openapi({ example: 'button_clicked' }),
     params: eventParamsSchema.optional().openapi({
