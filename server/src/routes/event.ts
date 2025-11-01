@@ -28,6 +28,7 @@ const createEventRoute = createRoute({
   path: '/',
   tags: ['event'],
   description: 'Create a new event',
+  security: [{ BearerAuth: [] }],
   request: {
     body: {
       content: {
@@ -55,6 +56,7 @@ const getEventsRoute = createRoute({
   path: '/',
   tags: ['event'],
   description: 'List events for a specific session',
+  security: [{ BearerAuth: [] }],
   request: {
     query: listEventsQuerySchema,
   },
