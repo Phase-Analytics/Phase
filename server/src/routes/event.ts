@@ -1,6 +1,8 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import { count, desc, eq, type SQL } from 'drizzle-orm';
 import { db, events } from '@/db';
+import type { ApiKey } from '@/db/schema';
+import { requireApiKey } from '@/lib/middleware';
 import { addToQueue } from '@/lib/queue';
 import { methodNotAllowed } from '@/lib/response';
 import {
@@ -69,7 +71,14 @@ const getEventsRoute = createRoute({
   },
 });
 
-const eventRouter = new OpenAPIHono();
+const eventRouter = new OpenAPIHono<{
+  Variables: {
+    apiKey: ApiKey;
+    userId: string;
+  };
+}>();
+
+eventRouter.use('*', requireApiKey);
 
 eventRouter.all('*', async (c, next) => {
   const method = c.req.method;
@@ -85,8 +94,23 @@ eventRouter.all('*', async (c, next) => {
 eventRouter.openapi(createEventRoute, async (c) => {
   try {
     const body = c.req.valid('json');
+    const apiKey = c.get('apiKey');
 
-    const sessionValidation = await validateSession(c, body.sessionId);
+    if (!apiKey?.id) {
+      return c.json(
+        {
+          code: ErrorCode.UNAUTHORIZED,
+          detail: 'API key is required',
+        },
+        HttpStatus.UNAUTHORIZED
+      );
+    }
+
+    const sessionValidation = await validateSession(
+      c,
+      body.sessionId,
+      apiKey.id
+    );
     if (!sessionValidation.success) {
       return sessionValidation.response;
     }
@@ -146,8 +170,19 @@ eventRouter.openapi(getEventsRoute, async (c) => {
   try {
     const query = c.req.valid('query');
     const { sessionId } = query;
+    const apiKey = c.get('apiKey');
 
-    const sessionValidation = await validateSession(c, sessionId);
+    if (!apiKey?.id) {
+      return c.json(
+        {
+          code: ErrorCode.UNAUTHORIZED,
+          detail: 'API key is required',
+        },
+        HttpStatus.UNAUTHORIZED
+      );
+    }
+
+    const sessionValidation = await validateSession(c, sessionId, apiKey.id);
     if (!sessionValidation.success) {
       return sessionValidation.response;
     }

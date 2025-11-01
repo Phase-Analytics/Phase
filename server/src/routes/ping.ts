@@ -1,4 +1,6 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
+import type { ApiKey } from '@/db/schema';
+import { requireApiKey } from '@/lib/middleware';
 import { addToQueue } from '@/lib/queue';
 import { methodNotAllowed } from '@/lib/response';
 import { validateSession, validateTimestamp } from '@/lib/validators';
@@ -37,7 +39,14 @@ const pingSessionRoute = createRoute({
   },
 });
 
-const pingRouter = new OpenAPIHono();
+const pingRouter = new OpenAPIHono<{
+  Variables: {
+    apiKey: ApiKey;
+    userId: string;
+  };
+}>();
+
+pingRouter.use('*', requireApiKey);
 
 pingRouter.all('*', async (c, next) => {
   const method = c.req.method;
@@ -53,8 +62,23 @@ pingRouter.all('*', async (c, next) => {
 pingRouter.openapi(pingSessionRoute, async (c) => {
   try {
     const body = c.req.valid('json');
+    const apiKey = c.get('apiKey');
 
-    const sessionValidation = await validateSession(c, body.sessionId);
+    if (!apiKey?.id) {
+      return c.json(
+        {
+          code: ErrorCode.UNAUTHORIZED,
+          detail: 'API key is required',
+        },
+        HttpStatus.UNAUTHORIZED
+      );
+    }
+
+    const sessionValidation = await validateSession(
+      c,
+      body.sessionId,
+      apiKey.id
+    );
     if (!sessionValidation.success) {
       return sessionValidation.response;
     }

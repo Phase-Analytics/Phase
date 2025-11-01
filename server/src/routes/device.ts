@@ -1,6 +1,8 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import { count, desc, eq, type SQL } from 'drizzle-orm';
 import { db, devices } from '@/db';
+import type { ApiKey } from '@/db/schema';
+import { requireApiKey } from '@/lib/middleware';
 import { methodNotAllowed } from '@/lib/response';
 import {
   buildFilters,
@@ -66,7 +68,14 @@ const getDevicesRoute = createRoute({
   },
 });
 
-const deviceRouter = new OpenAPIHono();
+const deviceRouter = new OpenAPIHono<{
+  Variables: {
+    apiKey: ApiKey;
+    userId: string;
+  };
+}>();
+
+deviceRouter.use('*', requireApiKey);
 
 deviceRouter.all('*', async (c, next) => {
   const method = c.req.method;
@@ -83,6 +92,17 @@ deviceRouter.all('*', async (c, next) => {
 deviceRouter.openapi(createDeviceRoute, async (c: any) => {
   try {
     const body = c.req.valid('json');
+    const apiKey = c.get('apiKey');
+
+    if (!apiKey?.id) {
+      return c.json(
+        {
+          code: ErrorCode.UNAUTHORIZED,
+          detail: 'API key is required',
+        },
+        HttpStatus.UNAUTHORIZED
+      );
+    }
 
     const existingDevice = await db.query.devices.findFirst({
       where: (table, { eq: eqFn }) => eqFn(table.deviceId, body.deviceId),
@@ -91,6 +111,16 @@ deviceRouter.openapi(createDeviceRoute, async (c: any) => {
     let device: typeof devices.$inferSelect;
 
     if (existingDevice) {
+      if (existingDevice.apiKeyId !== apiKey.id) {
+        return c.json(
+          {
+            code: ErrorCode.FORBIDDEN,
+            detail: 'You do not have permission to update this device',
+          },
+          HttpStatus.FORBIDDEN
+        );
+      }
+
       [device] = await db
         .update(devices)
         .set({
@@ -106,6 +136,7 @@ deviceRouter.openapi(createDeviceRoute, async (c: any) => {
         .insert(devices)
         .values({
           deviceId: body.deviceId,
+          apiKeyId: apiKey.id,
           identifier: body.identifier ?? null,
           brand: body.brand ?? null,
           osVersion: body.osVersion ?? null,
@@ -140,6 +171,17 @@ deviceRouter.openapi(createDeviceRoute, async (c: any) => {
 deviceRouter.openapi(getDevicesRoute, async (c) => {
   try {
     const query = c.req.valid('query');
+    const apiKey = c.get('apiKey');
+
+    if (!apiKey?.id) {
+      return c.json(
+        {
+          code: ErrorCode.UNAUTHORIZED,
+          detail: 'API key is required',
+        },
+        HttpStatus.UNAUTHORIZED
+      );
+    }
 
     const paginationValidation = validatePagination(
       c,
@@ -161,7 +203,7 @@ deviceRouter.openapi(getDevicesRoute, async (c) => {
       return dateRangeValidation.response;
     }
 
-    const filters: SQL[] = [];
+    const filters: SQL[] = [eq(devices.apiKeyId, apiKey.id)];
 
     if (query.platform) {
       filters.push(eq(devices.platform, query.platform));

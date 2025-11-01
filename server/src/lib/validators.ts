@@ -1,8 +1,7 @@
 import type { SQL } from 'drizzle-orm';
 import { type AnyColumn, and, count, eq, gte, lte } from 'drizzle-orm';
 import type { Context } from 'hono';
-import { db, sessions } from '@/db';
-import type { devices } from '@/db/schema';
+import { db, devices, sessions } from '@/db';
 import { ErrorCode, HttpStatus } from '@/schemas';
 
 const MAX_PAGE_SIZE = 100;
@@ -118,7 +117,8 @@ export function validateTimestamp(
 
 export async function validateDevice(
   c: Context,
-  deviceId: string
+  deviceId: string,
+  apiKeyId?: string
 ): Promise<ValidationResult<typeof devices.$inferSelect>> {
   const device = await db.query.devices.findFirst({
     where: (table, { eq: eqFn }) => eqFn(table.deviceId, deviceId),
@@ -137,6 +137,19 @@ export async function validateDevice(
     };
   }
 
+  if (apiKeyId && device.apiKeyId !== apiKeyId) {
+    return {
+      success: false,
+      response: c.json(
+        {
+          code: ErrorCode.FORBIDDEN,
+          detail: 'You do not have permission to access this device',
+        },
+        HttpStatus.FORBIDDEN
+      ),
+    };
+  }
+
   return {
     success: true,
     data: device,
@@ -145,20 +158,25 @@ export async function validateDevice(
 
 export async function validateSession(
   c: Context,
-  sessionId: string
+  sessionId: string,
+  apiKeyId?: string
 ): Promise<ValidationResult<typeof sessions.$inferSelect>> {
   const result = await db
-    .select()
+    .select({
+      session: sessions,
+      device: devices,
+    })
     .from(sessions)
+    .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
     .where(eq(sessions.sessionId, sessionId))
     .limit(1)
     .$withCache({
       tag: `session:${sessionId}`,
     });
 
-  const session = result[0];
+  const sessionData = result[0];
 
-  if (!session) {
+  if (!sessionData) {
     return {
       success: false,
       response: c.json(
@@ -171,9 +189,22 @@ export async function validateSession(
     };
   }
 
+  if (apiKeyId && sessionData.device.apiKeyId !== apiKeyId) {
+    return {
+      success: false,
+      response: c.json(
+        {
+          code: ErrorCode.FORBIDDEN,
+          detail: 'You do not have permission to access this session',
+        },
+        HttpStatus.FORBIDDEN
+      ),
+    };
+  }
+
   return {
     success: true,
-    data: session,
+    data: sessionData.session,
   };
 }
 
