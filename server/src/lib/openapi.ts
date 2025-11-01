@@ -2,7 +2,14 @@ import { Scalar } from '@scalar/hono-api-reference';
 
 // biome-ignore lint/suspicious/noExplicitAny: OpenAPI configuration needs flexible typing
 export const configureOpenAPI = (app: any) => {
-  app.doc('/openapi.json', () => ({
+  app.openAPIRegistry.registerComponent('securitySchemes', 'BearerAuth', {
+    type: 'http',
+    scheme: 'bearer',
+    description:
+      'API Key for authentication. Use format: Bearer <your-api-key>',
+  });
+
+  app.doc('/openapi.json', {
     openapi: '3.1.0',
     info: {
       version: '1.0.0',
@@ -41,18 +48,7 @@ export const configureOpenAPI = (app: any) => {
         description: 'Event tracking and analytics',
       },
     ],
-    components: {
-      securitySchemes: {
-        BearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          description:
-            'API Key for authentication. Use format: Bearer <your-api-key>',
-        },
-      },
-    },
-    security: [{ BearerAuth: [] }],
-  }));
+  });
 
   app.get(
     '/docs',

@@ -27,7 +27,6 @@ const createSessionRoute = createRoute({
   path: '/',
   tags: ['session'],
   description: 'Create a new session',
-  security: [{ BearerAuth: [] }],
   request: {
     body: {
       content: {
@@ -55,7 +54,6 @@ const getSessionsRoute = createRoute({
   path: '/',
   tags: ['session'],
   description: 'List sessions for a specific device',
-  security: [{ BearerAuth: [] }],
   request: {
     query: listSessionsQuerySchema,
   },

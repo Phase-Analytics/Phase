@@ -17,7 +17,6 @@ const pingSessionRoute = createRoute({
   path: '/',
   tags: ['ping'],
   description: 'Heartbeat for active session',
-  security: [{ BearerAuth: [] }],
   request: {
     body: {
       content: {

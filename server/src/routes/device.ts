@@ -25,7 +25,6 @@ const createDeviceRoute = createRoute({
   path: '/',
   tags: ['device'],
   description: 'Create or update a device',
-  security: [{ BearerAuth: [] }],
   request: {
     body: {
       content: {
@@ -53,7 +52,6 @@ const getDevicesRoute = createRoute({
   path: '/',
   tags: ['device'],
   description: 'List devices for a specific API key',
-  security: [{ BearerAuth: [] }],
   request: {
     query: listDevicesQuerySchema,
   },
