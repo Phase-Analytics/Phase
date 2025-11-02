@@ -54,6 +54,10 @@ export const configureOpenAPI = (app: any) => {
         name: 'event',
         description: 'Event tracking and analytics',
       },
+      {
+        name: 'error',
+        description: 'Error tracking and reporting',
+      },
     ],
   });
 

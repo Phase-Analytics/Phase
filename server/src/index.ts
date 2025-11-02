@@ -8,6 +8,7 @@ import { configureOpenAPI } from '@/lib/openapi';
 import { redis, redisHealth, redisQueue } from '@/lib/redis';
 import { startWorker } from '@/lib/worker';
 import { deviceSdkRouter, deviceWebRouter } from '@/routes/device';
+import { errorSdkRouter, errorWebRouter } from '@/routes/error';
 import { eventSdkRouter, eventWebRouter } from '@/routes/event';
 import health from '@/routes/health';
 import { pingSdkRouter } from '@/routes/ping';
@@ -79,11 +80,13 @@ app.route('/health', health);
 app.route('/sdk/devices', deviceSdkRouter);
 app.route('/sdk/sessions', sessionSdkRouter);
 app.route('/sdk/events', eventSdkRouter);
+app.route('/sdk/errors', errorSdkRouter);
 app.route('/sdk/ping', pingSdkRouter);
 
 app.route('/web/devices', deviceWebRouter);
 app.route('/web/sessions', sessionWebRouter);
 app.route('/web/events', eventWebRouter);
+app.route('/web/errors', errorWebRouter);
 
 app.on(['POST', 'GET'], '/api/auth/**', (c) => auth.handler(c.req.raw));
 

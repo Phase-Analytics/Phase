@@ -26,7 +26,16 @@ export {
   type ListDevicesQuery,
   listDevicesQuerySchema,
 } from './device.schema';
-
+export {
+  type CreateErrorRequest,
+  createErrorRequestSchema,
+  type ErrorSchema,
+  type ErrorsListResponse,
+  errorSchema,
+  errorsListResponseSchema,
+  type ListErrorsQuery,
+  listErrorsQuerySchema,
+} from './error.schema';
 export {
   type CreateEventRequest,
   createEventRequestSchema,
@@ -39,6 +48,7 @@ export {
   type ListEventsQuery,
   listEventsQuerySchema,
 } from './event.schema';
+
 export {
   type PingSessionRequest,
   type PingSessionResponse,

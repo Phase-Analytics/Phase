@@ -186,6 +186,27 @@ export const events = pgTable(
   })
 );
 
+export const errors = pgTable(
+  'errors',
+  {
+    errorId: text('error_id')
+      .primaryKey()
+      .$defaultFn(() => ulid()),
+    sessionId: text('session_id')
+      .notNull()
+      .references(() => sessions.sessionId, { onDelete: 'cascade' }),
+    message: text('message').notNull(),
+    type: text('type').notNull(),
+    stackTrace: text('stack_trace'),
+    timestamp: timestamp('timestamp').notNull(),
+  },
+  (table) => ({
+    sessionIdIdx: index('errors_session_id_idx').on(table.sessionId),
+    typeIdx: index('errors_type_idx').on(table.type),
+    timestampIdx: index('errors_timestamp_idx').on(table.timestamp),
+  })
+);
+
 export type User = typeof user.$inferSelect;
 export type NewUser = typeof user.$inferInsert;
 
@@ -209,3 +230,6 @@ export type NewAnalyticsSession = typeof sessions.$inferInsert;
 
 export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;
+
+export type ErrorLog = typeof errors.$inferSelect;
+export type NewErrorLog = typeof errors.$inferInsert;

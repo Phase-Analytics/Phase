@@ -1,10 +1,11 @@
-import { db, events, pool } from '@/db';
+import { db, errors, events, pool } from '@/db';
 import {
   acknowledgeBatchMessages,
   acknowledgeMessage,
   CONSUMER_GROUP,
   CONSUMER_NAME,
   createConsumerGroup,
+  type ErrorQueueItem,
   type EventQueueItem,
   type PingQueueItem,
   type QueueItem,
@@ -33,7 +34,10 @@ function extractTimestamp(item: QueueItem): number {
   if (item.type === 'event') {
     return new Date((item as EventQueueItem).timestamp).getTime();
   }
-  return new Date((item as PingQueueItem).timestamp).getTime();
+  if (item.type === 'ping') {
+    return new Date((item as PingQueueItem).timestamp).getTime();
+  }
+  return new Date((item as ErrorQueueItem).timestamp).getTime();
 }
 
 async function insertEvents(
@@ -57,6 +61,32 @@ async function insertEvents(
     return { success: true, insertedCount: result.rowCount ?? 0 };
   } catch (error) {
     console.error('[Worker] Failed to insert events:', error);
+    return { success: false, insertedCount: 0 };
+  }
+}
+
+async function insertErrors(
+  errorsToInsert: {
+    errorId: string;
+    sessionId: string;
+    message: string;
+    type: string;
+    stackTrace: string | null;
+    timestamp: Date;
+  }[]
+): Promise<{ success: boolean; insertedCount: number }> {
+  if (errorsToInsert.length === 0) {
+    return { success: true, insertedCount: 0 };
+  }
+
+  try {
+    const result = await db
+      .insert(errors)
+      .values(errorsToInsert)
+      .onConflictDoNothing({ target: errors.errorId });
+    return { success: true, insertedCount: result.rowCount ?? 0 };
+  } catch (error) {
+    console.error('[Worker] Failed to insert errors:', error);
     return { success: false, insertedCount: 0 };
   }
 }
@@ -144,12 +174,53 @@ function processPingItem(
   }
 }
 
+function processErrorItem(
+  entry: BatchEntry,
+  errorsToInsert: {
+    errorId: string;
+    sessionId: string;
+    message: string;
+    type: string;
+    stackTrace: string | null;
+    timestamp: Date;
+  }[],
+  sessionActivities: Map<string, SessionActivity>
+): void {
+  const errorData = entry.data as ErrorQueueItem;
+  const timestamp = new Date(errorData.timestamp);
+
+  errorsToInsert.push({
+    errorId: errorData.errorId,
+    sessionId: errorData.sessionId,
+    message: errorData.message,
+    type: errorData.errorType,
+    stackTrace: errorData.stackTrace ?? null,
+    timestamp,
+  });
+
+  const existing = sessionActivities.get(errorData.sessionId);
+  if (!existing || timestamp > existing.timestamp) {
+    sessionActivities.set(errorData.sessionId, {
+      sessionId: errorData.sessionId,
+      timestamp,
+    });
+  }
+}
+
 function processBatchItems(batch: BatchEntry[]): {
   eventsToInsert: {
     eventId: string;
     sessionId: string;
     name: string;
     params: Record<string, string | number | boolean | null> | null;
+    timestamp: Date;
+  }[];
+  errorsToInsert: {
+    errorId: string;
+    sessionId: string;
+    message: string;
+    type: string;
+    stackTrace: string | null;
     timestamp: Date;
   }[];
   sessionActivities: Map<string, SessionActivity>;
@@ -162,6 +233,15 @@ function processBatchItems(batch: BatchEntry[]): {
     timestamp: Date;
   }[] = [];
 
+  const errorsToInsert: {
+    errorId: string;
+    sessionId: string;
+    message: string;
+    type: string;
+    stackTrace: string | null;
+    timestamp: Date;
+  }[] = [];
+
   const sessionActivities = new Map<string, SessionActivity>();
 
   for (const entry of batch) {
@@ -169,10 +249,12 @@ function processBatchItems(batch: BatchEntry[]): {
       processEventItem(entry, eventsToInsert, sessionActivities);
     } else if (entry.data.type === 'ping') {
       processPingItem(entry, sessionActivities);
+    } else if (entry.data.type === 'error') {
+      processErrorItem(entry, errorsToInsert, sessionActivities);
     }
   }
 
-  return { eventsToInsert, sessionActivities };
+  return { eventsToInsert, errorsToInsert, sessionActivities };
 }
 
 async function acknowledgeBatchEntries(batch: BatchEntry[]): Promise<number> {
@@ -225,14 +307,18 @@ async function processBatch(batch: BatchEntry[]): Promise<boolean> {
     return true;
   }
 
-  const { eventsToInsert, sessionActivities } = processBatchItems(batch);
+  const { eventsToInsert, errorsToInsert, sessionActivities } =
+    processBatchItems(batch);
 
-  const [eventsResult, sessionsResult] = await Promise.all([
+  const [eventsResult, errorsResult, sessionsResult] = await Promise.all([
     insertEvents(eventsToInsert),
+    insertErrors(errorsToInsert),
     updateSessionActivities(sessionActivities),
   ]);
 
-  if (!(eventsResult.success && sessionsResult.success)) {
+  if (
+    !(eventsResult.success && errorsResult.success && sessionsResult.success)
+  ) {
     console.error(
       '[Worker] Critical failure in batch processing, messages not acknowledged'
     );
@@ -243,6 +329,13 @@ async function processBatch(batch: BatchEntry[]): Promise<boolean> {
     const duplicateCount = eventsToInsert.length - eventsResult.insertedCount;
     console.log(
       `[Worker] ${duplicateCount} duplicate events skipped (expected with onConflictDoNothing)`
+    );
+  }
+
+  if (errorsResult.insertedCount < errorsToInsert.length) {
+    const duplicateCount = errorsToInsert.length - errorsResult.insertedCount;
+    console.log(
+      `[Worker] ${duplicateCount} duplicate errors skipped (expected with onConflictDoNothing)`
     );
   }
 
@@ -350,6 +443,7 @@ export async function startWorker(): Promise<{
   await Promise.all([
     createConsumerGroup(STREAM_KEYS.EVENTS, CONSUMER_GROUP),
     createConsumerGroup(STREAM_KEYS.PINGS, CONSUMER_GROUP),
+    createConsumerGroup(STREAM_KEYS.ERRORS, CONSUMER_GROUP),
   ]);
 
   console.log('[Worker] Started batch processor');
@@ -376,6 +470,7 @@ export async function startWorker(): Promise<{
         await Promise.all([
           processStream(STREAM_KEYS.EVENTS),
           processStream(STREAM_KEYS.PINGS),
+          processStream(STREAM_KEYS.ERRORS),
         ]);
       } catch (error) {
         console.error('[Worker] Error in main loop:', error);

@@ -2,7 +2,7 @@ import { redis, redisQueue, STREAM_KEYS } from './redis';
 
 export { CONSUMER_GROUP, CONSUMER_NAME, STREAM_KEYS } from './redis';
 
-export type QueueItemType = 'event' | 'ping';
+export type QueueItemType = 'event' | 'ping' | 'error';
 
 export type EventQueueItem = {
   type: 'event';
@@ -19,11 +19,27 @@ export type PingQueueItem = {
   timestamp: string;
 };
 
-export type QueueItem = EventQueueItem | PingQueueItem;
+export type ErrorQueueItem = {
+  type: 'error';
+  errorId: string;
+  sessionId: string;
+  message: string;
+  errorType: string;
+  stackTrace?: string;
+  timestamp: string;
+};
+
+export type QueueItem = EventQueueItem | PingQueueItem | ErrorQueueItem;
 
 export async function addToQueue(item: QueueItem): Promise<void> {
-  const streamKey =
-    item.type === 'event' ? STREAM_KEYS.EVENTS : STREAM_KEYS.PINGS;
+  let streamKey: string;
+  if (item.type === 'event') {
+    streamKey = STREAM_KEYS.EVENTS;
+  } else if (item.type === 'ping') {
+    streamKey = STREAM_KEYS.PINGS;
+  } else {
+    streamKey = STREAM_KEYS.ERRORS;
+  }
 
   await redisQueue.xadd(
     streamKey,
@@ -43,8 +59,14 @@ export async function addBatchToQueue(items: QueueItem[]): Promise<void> {
   const pipeline = redisQueue.pipeline();
 
   for (const item of items) {
-    const streamKey =
-      item.type === 'event' ? STREAM_KEYS.EVENTS : STREAM_KEYS.PINGS;
+    let streamKey: string;
+    if (item.type === 'event') {
+      streamKey = STREAM_KEYS.EVENTS;
+    } else if (item.type === 'ping') {
+      streamKey = STREAM_KEYS.PINGS;
+    } else {
+      streamKey = STREAM_KEYS.ERRORS;
+    }
 
     pipeline.xadd(
       streamKey,

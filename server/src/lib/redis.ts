@@ -74,6 +74,7 @@ redisQueue.on('connect', () => {
 export const STREAM_KEYS = {
   EVENTS: 'stream:events',
   PINGS: 'stream:pings',
+  ERRORS: 'stream:errors',
 } as const;
 
 export const CONSUMER_GROUP = 'batch-processor';

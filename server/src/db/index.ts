@@ -5,6 +5,7 @@ import {
   account,
   apikey,
   devices,
+  errors,
   events,
   session,
   sessions,
@@ -40,6 +41,7 @@ const schema = {
   devices,
   sessions,
   events,
+  errors,
 };
 
 let cacheConfig: ReturnType<typeof upstashCache> | undefined;
@@ -80,6 +82,7 @@ export {
   account,
   apikey,
   devices,
+  errors,
   events,
   session,
   sessions,
