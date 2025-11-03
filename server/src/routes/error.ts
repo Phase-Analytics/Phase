@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { count, desc, eq, inArray, type SQL } from 'drizzle-orm';
+import { count, desc, eq, type SQL } from 'drizzle-orm';
 import { ulid } from 'ulid';
 import { db, devices, errors, sessions } from '@/db';
 import type { ApiKey, Session, User } from '@/db/schema';
@@ -228,42 +228,74 @@ errorWebRouter.openapi(getErrorsRoute, async (c) => {
       return dateRangeValidation.response;
     }
 
-    const filters: SQL[] = [];
+    let errorsList: (typeof errors.$inferSelect)[];
+    let totalCount: number;
 
     if (sessionId) {
-      filters.push(eq(errors.sessionId, sessionId));
+      const filters: SQL[] = [eq(errors.sessionId, sessionId)];
+
+      if (query.type) {
+        filters.push(eq(errors.type, query.type));
+      }
+
+      const whereClause = buildFilters({
+        filters,
+        startDateColumn: errors.timestamp,
+        startDateValue: query.startDate,
+        endDateColumn: errors.timestamp,
+        endDateValue: query.endDate,
+      });
+
+      [errorsList, [{ count: totalCount }]] = await Promise.all([
+        db
+          .select()
+          .from(errors)
+          .where(whereClause)
+          .orderBy(desc(errors.timestamp))
+          .limit(pageSize)
+          .offset(offset),
+        db.select({ count: count() }).from(errors).where(whereClause),
+      ]);
     } else {
-      const apiKeySessions = db
-        .select({ sessionId: sessions.sessionId })
-        .from(sessions)
-        .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
-        .where(eq(devices.apiKeyId, apiKeyId));
+      const filters: SQL[] = [eq(devices.apiKeyId, apiKeyId)];
 
-      filters.push(inArray(errors.sessionId, apiKeySessions));
+      if (query.type) {
+        filters.push(eq(errors.type, query.type));
+      }
+
+      const whereClause = buildFilters({
+        filters,
+        startDateColumn: errors.timestamp,
+        startDateValue: query.startDate,
+        endDateColumn: errors.timestamp,
+        endDateValue: query.endDate,
+      });
+
+      [errorsList, [{ count: totalCount }]] = await Promise.all([
+        db
+          .select({
+            errorId: errors.errorId,
+            sessionId: errors.sessionId,
+            message: errors.message,
+            type: errors.type,
+            stackTrace: errors.stackTrace,
+            timestamp: errors.timestamp,
+          })
+          .from(errors)
+          .innerJoin(sessions, eq(errors.sessionId, sessions.sessionId))
+          .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
+          .where(whereClause)
+          .orderBy(desc(errors.timestamp))
+          .limit(pageSize)
+          .offset(offset),
+        db
+          .select({ count: count() })
+          .from(errors)
+          .innerJoin(sessions, eq(errors.sessionId, sessions.sessionId))
+          .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
+          .where(whereClause),
+      ]);
     }
-
-    if (query.type) {
-      filters.push(eq(errors.type, query.type));
-    }
-
-    const whereClause = buildFilters({
-      filters,
-      startDateColumn: errors.timestamp,
-      startDateValue: query.startDate,
-      endDateColumn: errors.timestamp,
-      endDateValue: query.endDate,
-    });
-
-    const [errorsList, [{ count: totalCount }]] = await Promise.all([
-      db
-        .select()
-        .from(errors)
-        .where(whereClause)
-        .orderBy(desc(errors.timestamp))
-        .limit(pageSize)
-        .offset(offset),
-      db.select({ count: count() }).from(errors).where(whereClause),
-    ]);
 
     const formattedErrors = errorsList.map((error) => ({
       errorId: error.errorId,
