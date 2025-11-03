@@ -12,7 +12,8 @@ export const deviceSchema = z
     identifier: z.string().nullable().openapi({ example: 'user@example.com' }),
     brand: z.string().nullable().openapi({ example: 'Apple' }),
     osVersion: z.string().nullable().openapi({ example: '17.0.1' }),
-    platform: z.string().nullable().openapi({ example: 'iOS' }),
+    platform: z.string().nullable().openapi({ example: 'ios' }),
+    appVersion: z.string().nullable().openapi({ example: '1.2.3' }),
     firstSeen: z
       .string()
       .datetime()
@@ -28,14 +29,15 @@ export const createDeviceRequestSchema = z
     identifier: z.string().nullish().openapi({ example: 'user@example.com' }),
     brand: z.string().nullish().openapi({ example: 'Apple' }),
     osVersion: z.string().nullish().openapi({ example: '17.0.1' }),
-    platform: z.string().nullish().openapi({ example: 'iOS' }),
+    platform: z.string().nullish().openapi({ example: 'ios' }),
+    appVersion: z.string().nullish().openapi({ example: '1.2.3' }),
   })
   .openapi('CreateDeviceRequest');
 
 export const listDevicesQuerySchema = paginationQuerySchema
   .merge(dateFilterQuerySchema)
   .extend({
-    platform: z.string().optional().openapi({ example: 'iOS' }),
+    platform: z.string().optional().openapi({ example: 'ios' }),
     apiKeyId: z.string().openapi({ example: 'apikey_abc123' }),
   })
   .openapi('ListDevicesQuery');
@@ -46,7 +48,8 @@ export const deviceDetailSchema = z
     identifier: z.string().nullable().openapi({ example: 'user@example.com' }),
     brand: z.string().nullable().openapi({ example: 'Apple' }),
     osVersion: z.string().nullable().openapi({ example: '17.0.1' }),
-    platform: z.string().nullable().openapi({ example: 'iOS' }),
+    platform: z.string().nullable().openapi({ example: 'ios' }),
+    appVersion: z.string().nullable().openapi({ example: '1.2.3' }),
     firstSeen: z
       .string()
       .datetime()
@@ -69,6 +72,9 @@ export const devicesListResponseSchema = z
   .object({
     devices: z.array(deviceSchema),
     pagination: paginationSchema,
+    platformStats: z.record(z.string(), z.number()).openapi({
+      example: { ios: 25, android: 18, web: 3 },
+    }),
   })
   .openapi('DevicesListResponse');
 

@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import { count, desc, eq, type SQL } from 'drizzle-orm';
-import { db, sessions } from '@/db';
+import { db, devices, sessions } from '@/db';
 import type { ApiKey, Session, User } from '@/db/schema';
 import {
   requireApiKey,
@@ -125,6 +125,15 @@ sessionSdkRouter.openapi(createSessionRoute, async (c) => {
     const deviceValidation = await validateDevice(c, body.deviceId, apiKey.id);
     if (!deviceValidation.success) {
       return deviceValidation.response;
+    }
+
+    const device = deviceValidation.data;
+
+    if (body.appVersion && device.appVersion !== body.appVersion) {
+      await db
+        .update(devices)
+        .set({ appVersion: body.appVersion })
+        .where(eq(devices.deviceId, body.deviceId));
     }
 
     const existingSession = await db.query.sessions.findFirst({

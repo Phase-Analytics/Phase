@@ -12,6 +12,7 @@ import { deviceSdkRouter, deviceWebRouter } from '@/routes/device';
 import { errorSdkRouter, errorWebRouter } from '@/routes/error';
 import { eventSdkRouter, eventWebRouter } from '@/routes/event';
 import health from '@/routes/health';
+import { overviewWebRouter } from '@/routes/overview';
 import { pingSdkRouter } from '@/routes/ping';
 import { sessionSdkRouter, sessionWebRouter } from '@/routes/session';
 import { ErrorCode, HttpStatus } from '@/schemas';
@@ -86,9 +87,10 @@ app.route('/sdk/ping', pingSdkRouter);
 
 app.route('/web/activity', activityWebRouter);
 app.route('/web/devices', deviceWebRouter);
-app.route('/web/sessions', sessionWebRouter);
-app.route('/web/events', eventWebRouter);
 app.route('/web/errors', errorWebRouter);
+app.route('/web/events', eventWebRouter);
+app.route('/web/overview', overviewWebRouter);
+app.route('/web/sessions', sessionWebRouter);
 
 app.on(['POST', 'GET'], '/api/auth/**', (c) => auth.handler(c.req.raw));
 

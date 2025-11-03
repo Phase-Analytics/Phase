@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { and, count, desc, eq, type SQL } from 'drizzle-orm';
+import { and, count, desc, eq, type SQL, sql } from 'drizzle-orm';
 import { db, devices, sessions } from '@/db';
 import type { ApiKey, Session, User } from '@/db/schema';
 import {
@@ -140,6 +140,7 @@ deviceWebRouter.all('*', async (c, next) => {
 });
 
 // biome-ignore lint/suspicious/noExplicitAny: OpenAPI handler type inference issue with union response types
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Device upsert requires branching for insert vs update logic
 deviceSdkRouter.openapi(createDeviceRoute, async (c: any) => {
   try {
     const body = c.req.valid('json');
@@ -179,6 +180,7 @@ deviceSdkRouter.openapi(createDeviceRoute, async (c: any) => {
           brand: body.brand ?? existingDevice.brand,
           osVersion: body.osVersion ?? existingDevice.osVersion,
           platform: body.platform ?? existingDevice.platform,
+          appVersion: body.appVersion ?? existingDevice.appVersion,
         })
         .where(eq(devices.deviceId, body.deviceId))
         .returning();
@@ -192,6 +194,7 @@ deviceSdkRouter.openapi(createDeviceRoute, async (c: any) => {
           brand: body.brand ?? null,
           osVersion: body.osVersion ?? null,
           platform: body.platform ?? null,
+          appVersion: body.appVersion ?? null,
         })
         .returning();
     }
@@ -203,6 +206,7 @@ deviceSdkRouter.openapi(createDeviceRoute, async (c: any) => {
         brand: device.brand,
         osVersion: device.osVersion,
         platform: device.platform,
+        appVersion: device.appVersion,
         firstSeen: device.firstSeen.toISOString(),
       },
       HttpStatus.OK
@@ -257,16 +261,28 @@ deviceWebRouter.openapi(getDevicesRoute, async (c) => {
       endDateValue: query.endDate,
     });
 
-    const [devicesList, [{ count: totalCount }]] = await Promise.all([
-      db
-        .select()
-        .from(devices)
-        .where(whereClause)
-        .orderBy(desc(devices.firstSeen))
-        .limit(pageSize)
-        .offset(offset),
-      db.select({ count: count() }).from(devices).where(whereClause),
-    ]);
+    const [devicesList, [{ count: totalCount }], platformStatsResult] =
+      await Promise.all([
+        db
+          .select()
+          .from(devices)
+          .where(whereClause)
+          .orderBy(desc(devices.firstSeen))
+          .limit(pageSize)
+          .offset(offset),
+        db.select({ count: count() }).from(devices).where(whereClause),
+        db.execute<{ platform: string; count: number }>(sql`
+          SELECT 
+            COALESCE(platform, 'unknown') as platform,
+            COUNT(*)::int as count
+          FROM devices
+          WHERE api_key_id = ${query.apiKeyId}
+          ${query.platform ? sql`AND platform = ${query.platform}` : sql``}
+          ${query.startDate ? sql`AND first_seen >= ${query.startDate}` : sql``}
+          ${query.endDate ? sql`AND first_seen <= ${query.endDate}` : sql``}
+          GROUP BY platform
+        `),
+      ]);
 
     const formattedDevices = devicesList.map((device) => ({
       deviceId: device.deviceId,
@@ -274,13 +290,20 @@ deviceWebRouter.openapi(getDevicesRoute, async (c) => {
       brand: device.brand,
       osVersion: device.osVersion,
       platform: device.platform,
+      appVersion: device.appVersion,
       firstSeen: device.firstSeen.toISOString(),
     }));
+
+    const platformStats: Record<string, number> = {};
+    for (const row of platformStatsResult.rows) {
+      platformStats[row.platform] = Number(row.count);
+    }
 
     return c.json(
       {
         devices: formattedDevices,
         pagination: formatPaginationResponse(totalCount, page, pageSize),
+        platformStats,
       },
       HttpStatus.OK
     );
@@ -309,6 +332,7 @@ deviceWebRouter.openapi(getDeviceRoute, async (c: any) => {
         brand: devices.brand,
         osVersion: devices.osVersion,
         platform: devices.platform,
+        appVersion: devices.appVersion,
         firstSeen: devices.firstSeen,
         lastActivityAt: sessions.lastActivityAt,
       })
@@ -340,6 +364,7 @@ deviceWebRouter.openapi(getDeviceRoute, async (c: any) => {
         brand: deviceWithSession.brand,
         osVersion: deviceWithSession.osVersion,
         platform: deviceWithSession.platform,
+        appVersion: deviceWithSession.appVersion,
         firstSeen: deviceWithSession.firstSeen.toISOString(),
         lastActivity: deviceWithSession.lastActivityAt
           ? deviceWithSession.lastActivityAt.toISOString()

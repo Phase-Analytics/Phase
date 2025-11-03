@@ -134,6 +134,7 @@ export const devices = pgTable(
     brand: text('brand'),
     osVersion: text('os_version'),
     platform: text('platform'),
+    appVersion: text('app_version'),
     firstSeen: timestamp('first_seen').defaultNow().notNull(),
   },
   (table) => ({

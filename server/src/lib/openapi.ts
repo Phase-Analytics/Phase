@@ -47,20 +47,24 @@ export const configureOpenAPI = (app: any) => {
         description: 'Device management and operations',
       },
       {
-        name: 'session',
-        description: 'Session tracking and management',
-      },
-      {
-        name: 'ping',
-        description: 'Session ping/heartbeat for active session monitoring',
+        name: 'error',
+        description: 'Error tracking and reporting',
       },
       {
         name: 'event',
         description: 'Event tracking and analytics',
       },
       {
-        name: 'error',
-        description: 'Error tracking and reporting',
+        name: 'overview',
+        description: 'Dashboard overview metrics and statistics',
+      },
+      {
+        name: 'ping',
+        description: 'Session ping/heartbeat for active session monitoring',
+      },
+      {
+        name: 'session',
+        description: 'Session tracking and management',
       },
     ],
   });

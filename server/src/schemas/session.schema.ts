@@ -34,6 +34,7 @@ export const createSessionRequestSchema = z
       .string()
       .datetime()
       .openapi({ example: '2024-01-01T00:00:00Z' }),
+    appVersion: z.string().optional().openapi({ example: '1.2.3' }),
   })
   .openapi('CreateSessionRequest');
 
