@@ -10,6 +10,7 @@ export const overviewResponseSchema = z
   .object({
     totalDevices: z.number().openapi({ example: 42 }),
     activeDevices: z.number().openapi({ example: 5 }),
+    dailyActiveUsers: z.number().openapi({ example: 18 }),
     totalSessions: z.number().openapi({ example: 128 }),
     averageSessionDuration: z.number().nullable().openapi({ example: 245.5 }),
   })
