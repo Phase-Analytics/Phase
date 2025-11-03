@@ -69,6 +69,9 @@ export const devicesListResponseSchema = z
   .object({
     devices: z.array(deviceSchema),
     pagination: paginationSchema,
+    platformStats: z.record(z.string(), z.number()).openapi({
+      example: { ios: 25, android: 18, web: 3 },
+    }),
   })
   .openapi('DevicesListResponse');
 

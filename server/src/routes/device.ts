@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { and, count, desc, eq, type SQL } from 'drizzle-orm';
+import { and, count, desc, eq, type SQL, sql } from 'drizzle-orm';
 import { db, devices, sessions } from '@/db';
 import type { ApiKey, Session, User } from '@/db/schema';
 import {
@@ -257,16 +257,27 @@ deviceWebRouter.openapi(getDevicesRoute, async (c) => {
       endDateValue: query.endDate,
     });
 
-    const [devicesList, [{ count: totalCount }]] = await Promise.all([
-      db
-        .select()
-        .from(devices)
-        .where(whereClause)
-        .orderBy(desc(devices.firstSeen))
-        .limit(pageSize)
-        .offset(offset),
-      db.select({ count: count() }).from(devices).where(whereClause),
-    ]);
+    const [devicesList, [{ count: totalCount }], platformStatsResult] =
+      await Promise.all([
+        db
+          .select()
+          .from(devices)
+          .where(whereClause)
+          .orderBy(desc(devices.firstSeen))
+          .limit(pageSize)
+          .offset(offset),
+        db.select({ count: count() }).from(devices).where(whereClause),
+        db.execute<{ platform: string; count: number }>(sql`
+          SELECT 
+            COALESCE(platform, 'unknown') as platform,
+            COUNT(*)::int as count
+          FROM devices
+          WHERE api_key_id = ${query.apiKeyId}
+          ${query.startDate ? sql`AND first_seen >= ${query.startDate}` : sql``}
+          ${query.endDate ? sql`AND first_seen <= ${query.endDate}` : sql``}
+          GROUP BY platform
+        `),
+      ]);
 
     const formattedDevices = devicesList.map((device) => ({
       deviceId: device.deviceId,
@@ -277,10 +288,16 @@ deviceWebRouter.openapi(getDevicesRoute, async (c) => {
       firstSeen: device.firstSeen.toISOString(),
     }));
 
+    const platformStats: Record<string, number> = {};
+    for (const row of platformStatsResult.rows) {
+      platformStats[row.platform] = Number(row.count);
+    }
+
     return c.json(
       {
         devices: formattedDevices,
         pagination: formatPaginationResponse(totalCount, page, pageSize),
+        platformStats,
       },
       HttpStatus.OK
     );
