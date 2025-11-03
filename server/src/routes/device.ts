@@ -277,6 +277,7 @@ deviceWebRouter.openapi(getDevicesRoute, async (c) => {
             COUNT(*)::int as count
           FROM devices
           WHERE api_key_id = ${query.apiKeyId}
+          ${query.platform ? sql`AND platform = ${query.platform}` : sql``}
           ${query.startDate ? sql`AND first_seen >= ${query.startDate}` : sql``}
           ${query.endDate ? sql`AND first_seen <= ${query.endDate}` : sql``}
           GROUP BY platform
