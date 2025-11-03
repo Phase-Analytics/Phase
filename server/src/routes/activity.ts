@@ -14,7 +14,9 @@ import {
   type ActivityItem,
   activityListResponseSchema,
   ErrorCode,
+  errorDataSchema,
   errorResponses,
+  eventDataSchema,
   HttpStatus,
   listActivityQuerySchema,
 } from '@/schemas';
@@ -50,6 +52,17 @@ const activityWebRouter = new OpenAPIHono<{
 }>();
 
 activityWebRouter.use('*', requireAuth, verifyApiKeyOwnership);
+
+activityWebRouter.all('*', async (c, next) => {
+  const method = c.req.method;
+  const allowedMethods = ['GET'];
+
+  if (!allowedMethods.includes(method)) {
+    return methodNotAllowed(c, allowedMethods);
+  }
+
+  return await next();
+});
 
 activityWebRouter.openapi(getActivityRoute, async (c) => {
   try {
@@ -150,34 +163,47 @@ activityWebRouter.openapi(getActivityRoute, async (c) => {
         ) as total
     `);
 
-    const activities: ActivityItem[] = activitiesResult.rows.map((row) => {
-      const baseActivity = {
-        id: row.id,
-        sessionId: row.session_id,
-        timestamp: new Date(row.timestamp).toISOString(),
-      };
-
-      if (row.type === 'event') {
-        return {
-          type: 'event' as const,
-          ...baseActivity,
-          data: row.data as {
-            name: string;
-            params: Record<string, string | number | boolean | null> | null;
-          },
+    const activities: ActivityItem[] = activitiesResult.rows
+      .map((row) => {
+        const baseActivity = {
+          id: row.id,
+          sessionId: row.session_id,
+          timestamp: new Date(row.timestamp).toISOString(),
         };
-      }
 
-      return {
-        type: 'error' as const,
-        ...baseActivity,
-        data: row.data as {
-          message: string;
-          type: string;
-          stackTrace: string | null;
-        },
-      };
-    });
+        if (row.type === 'event') {
+          const validationResult = eventDataSchema.safeParse(row.data);
+          if (!validationResult.success) {
+            console.error('[Activity.List] Invalid event data:', {
+              rowId: row.id,
+              error: validationResult.error,
+            });
+            return null;
+          }
+
+          return {
+            type: 'event' as const,
+            ...baseActivity,
+            data: validationResult.data,
+          };
+        }
+
+        const validationResult = errorDataSchema.safeParse(row.data);
+        if (!validationResult.success) {
+          console.error('[Activity.List] Invalid error data:', {
+            rowId: row.id,
+            error: validationResult.error,
+          });
+          return null;
+        }
+
+        return {
+          type: 'error' as const,
+          ...baseActivity,
+          data: validationResult.data,
+        };
+      })
+      .filter((activity): activity is ActivityItem => activity !== null);
 
     const totalCount = Number(countResult.rows[0]?.total ?? 0);
 
@@ -198,17 +224,6 @@ activityWebRouter.openapi(getActivityRoute, async (c) => {
       HttpStatus.INTERNAL_SERVER_ERROR
     );
   }
-});
-
-activityWebRouter.all('*', async (c, next) => {
-  const method = c.req.method;
-  const allowedMethods = ['GET'];
-
-  if (!allowedMethods.includes(method)) {
-    return methodNotAllowed(c, allowedMethods);
-  }
-
-  await next();
 });
 
 export { activityWebRouter };

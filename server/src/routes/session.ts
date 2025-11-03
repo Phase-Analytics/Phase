@@ -85,6 +85,17 @@ const sessionSdkRouter = new OpenAPIHono<{
 
 sessionSdkRouter.use('*', requireApiKey);
 
+sessionSdkRouter.all('*', async (c, next) => {
+  const method = c.req.method;
+  const allowedMethods = ['POST'];
+
+  if (!allowedMethods.includes(method)) {
+    return methodNotAllowed(c, allowedMethods);
+  }
+
+  return await next();
+});
+
 const sessionWebRouter = new OpenAPIHono<{
   Variables: {
     user: User;
@@ -94,6 +105,17 @@ const sessionWebRouter = new OpenAPIHono<{
 }>();
 
 sessionWebRouter.use('*', requireAuth, verifyApiKeyOwnership);
+
+sessionWebRouter.all('*', async (c, next) => {
+  const method = c.req.method;
+  const allowedMethods = ['GET'];
+
+  if (!allowedMethods.includes(method)) {
+    return methodNotAllowed(c, allowedMethods);
+  }
+
+  return await next();
+});
 
 sessionSdkRouter.openapi(createSessionRoute, async (c) => {
   try {
@@ -236,28 +258,6 @@ sessionWebRouter.openapi(getSessionsRoute, async (c) => {
       HttpStatus.INTERNAL_SERVER_ERROR
     );
   }
-});
-
-sessionSdkRouter.all('*', async (c, next) => {
-  const method = c.req.method;
-  const allowedMethods = ['POST'];
-
-  if (!allowedMethods.includes(method)) {
-    return methodNotAllowed(c, allowedMethods);
-  }
-
-  await next();
-});
-
-sessionWebRouter.all('*', async (c, next) => {
-  const method = c.req.method;
-  const allowedMethods = ['GET'];
-
-  if (!allowedMethods.includes(method)) {
-    return methodNotAllowed(c, allowedMethods);
-  }
-
-  await next();
 });
 
 export { sessionSdkRouter, sessionWebRouter };

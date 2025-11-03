@@ -6,7 +6,9 @@ export {
   type ErrorActivity,
   type EventActivity,
   errorActivitySchema,
+  errorDataSchema,
   eventActivitySchema,
+  eventDataSchema,
   type ListActivityQuery,
   listActivityQuerySchema,
 } from './activity.schema';

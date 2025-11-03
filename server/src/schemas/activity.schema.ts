@@ -5,6 +5,22 @@ import {
   paginationSchema,
 } from './common.schema';
 
+export const eventDataSchema = z.object({
+  name: z.string(),
+  params: z
+    .record(
+      z.string(),
+      z.union([z.string(), z.number(), z.boolean(), z.null()])
+    )
+    .nullable(),
+});
+
+export const errorDataSchema = z.object({
+  message: z.string(),
+  type: z.string(),
+  stackTrace: z.string().nullable(),
+});
+
 export const eventActivitySchema = z
   .object({
     type: z.literal('event').openapi({ example: 'event' }),
@@ -14,15 +30,11 @@ export const eventActivitySchema = z
       .string()
       .datetime()
       .openapi({ example: '2024-01-01T00:00:00Z' }),
-    data: z.object({
-      name: z.string().openapi({ example: 'button_clicked' }),
-      params: z
-        .record(
-          z.string(),
-          z.union([z.string(), z.number(), z.boolean(), z.null()])
-        )
-        .nullable()
-        .openapi({ example: { button_name: 'login', screen: 'home' } }),
+    data: eventDataSchema.openapi({
+      example: {
+        name: 'button_clicked',
+        params: { button_name: 'login', screen: 'home' },
+      },
     }),
   })
   .openapi('EventActivity');
@@ -36,14 +48,12 @@ export const errorActivitySchema = z
       .string()
       .datetime()
       .openapi({ example: '2024-01-01T00:00:00Z' }),
-    data: z.object({
-      message: z
-        .string()
-        .openapi({ example: "Cannot read property 'name' of undefined" }),
-      type: z.string().openapi({ example: 'TypeError' }),
-      stackTrace: z.string().nullable().openapi({
-        example: 'LoginScreen.js:67\nButton.js:23\nApp.js:12',
-      }),
+    data: errorDataSchema.openapi({
+      example: {
+        message: "Cannot read property 'name' of undefined",
+        type: 'TypeError',
+        stackTrace: 'LoginScreen.js:67\nButton.js:23\nApp.js:12',
+      },
     }),
   })
   .openapi('ErrorActivity');
