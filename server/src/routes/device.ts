@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { count, desc, eq, type SQL } from 'drizzle-orm';
-import { db, devices } from '@/db';
+import { and, count, desc, eq, type SQL } from 'drizzle-orm';
+import { db, devices, sessions } from '@/db';
 import type { ApiKey, Session, User } from '@/db/schema';
 import {
   requireApiKey,
@@ -302,15 +302,28 @@ deviceWebRouter.openapi(getDeviceRoute, async (c: any) => {
     const { deviceId } = c.req.param();
     const query = c.req.valid('query');
 
-    const device = await db.query.devices.findFirst({
-      where: (table, { eq: eqFn, and: andFn }) =>
-        andFn(
-          eqFn(table.deviceId, deviceId),
-          eqFn(table.apiKeyId, query.apiKeyId)
-        ),
-    });
+    const [deviceWithSession] = await db
+      .select({
+        deviceId: devices.deviceId,
+        identifier: devices.identifier,
+        brand: devices.brand,
+        osVersion: devices.osVersion,
+        platform: devices.platform,
+        firstSeen: devices.firstSeen,
+        lastActivityAt: sessions.lastActivityAt,
+      })
+      .from(devices)
+      .leftJoin(sessions, eq(devices.deviceId, sessions.deviceId))
+      .where(
+        and(
+          eq(devices.deviceId, deviceId),
+          eq(devices.apiKeyId, query.apiKeyId)
+        )
+      )
+      .orderBy(desc(sessions.lastActivityAt))
+      .limit(1);
 
-    if (!device) {
+    if (!deviceWithSession) {
       return c.json(
         {
           code: ErrorCode.NOT_FOUND,
@@ -320,21 +333,16 @@ deviceWebRouter.openapi(getDeviceRoute, async (c: any) => {
       );
     }
 
-    const lastSession = await db.query.sessions.findFirst({
-      where: (table, { eq: eqFn }) => eqFn(table.deviceId, deviceId),
-      orderBy: (table, { desc: descFn }) => [descFn(table.lastActivityAt)],
-    });
-
     return c.json(
       {
-        deviceId: device.deviceId,
-        identifier: device.identifier,
-        brand: device.brand,
-        osVersion: device.osVersion,
-        platform: device.platform,
-        firstSeen: device.firstSeen.toISOString(),
-        lastActivity: lastSession
-          ? lastSession.lastActivityAt.toISOString()
+        deviceId: deviceWithSession.deviceId,
+        identifier: deviceWithSession.identifier,
+        brand: deviceWithSession.brand,
+        osVersion: deviceWithSession.osVersion,
+        platform: deviceWithSession.platform,
+        firstSeen: deviceWithSession.firstSeen.toISOString(),
+        lastActivity: deviceWithSession.lastActivityAt
+          ? deviceWithSession.lastActivityAt.toISOString()
           : null,
       },
       HttpStatus.OK
