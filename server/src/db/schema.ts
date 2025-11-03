@@ -153,9 +153,9 @@ export const sessions = pgTable(
     lastActivityAt: timestamp('last_activity_at').notNull(),
   },
   (table) => ({
-    deviceIdIdx: index('sessions_analytics_device_id_idx').on(table.deviceId),
-    startedAtIdx: index('sessions_analytics_started_at_idx').on(
-      table.startedAt
+    deviceStartedAtIdx: index('sessions_device_started_at_idx').on(
+      table.deviceId,
+      table.startedAt.desc()
     ),
     lastActivityAtIdx: index('sessions_analytics_last_activity_at_idx').on(
       table.lastActivityAt
@@ -180,9 +180,11 @@ export const events = pgTable(
     timestamp: timestamp('timestamp').notNull(),
   },
   (table) => ({
-    sessionIdIdx: index('events_session_id_idx').on(table.sessionId),
     nameIdx: index('events_name_idx').on(table.name),
-    timestampIdx: index('events_timestamp_idx').on(table.timestamp),
+    sessionTimestampIdx: index('events_session_timestamp_idx').on(
+      table.sessionId,
+      table.timestamp.desc()
+    ),
   })
 );
 
@@ -201,9 +203,11 @@ export const errors = pgTable(
     timestamp: timestamp('timestamp').notNull(),
   },
   (table) => ({
-    sessionIdIdx: index('errors_session_id_idx').on(table.sessionId),
     typeIdx: index('errors_type_idx').on(table.type),
-    timestampIdx: index('errors_timestamp_idx').on(table.timestamp),
+    sessionTimestampIdx: index('errors_session_timestamp_idx').on(
+      table.sessionId,
+      table.timestamp.desc()
+    ),
   })
 );
 

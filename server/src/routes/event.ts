@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { count, desc, eq, inArray, type SQL } from 'drizzle-orm';
+import { count, desc, eq, type SQL } from 'drizzle-orm';
 import { ulid } from 'ulid';
 import { db, events, sessions } from '@/db';
 import type { ApiKey, Session, User } from '@/db/schema';
@@ -195,6 +195,7 @@ eventSdkRouter.openapi(createEventRoute, async (c) => {
   }
 });
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Query optimization requires branching by query type (session vs device)
 eventWebRouter.openapi(getEventsRoute, async (c) => {
   try {
     const query = c.req.valid('query');
@@ -234,41 +235,79 @@ eventWebRouter.openapi(getEventsRoute, async (c) => {
       return dateRangeValidation.response;
     }
 
-    const filters: SQL[] = [];
+    let eventsList: (typeof events.$inferSelect)[];
+    let totalCount: number;
 
     if (sessionId) {
-      filters.push(eq(events.sessionId, sessionId));
+      const filters: SQL[] = [eq(events.sessionId, sessionId)];
+
+      if (query.eventName) {
+        filters.push(eq(events.name, query.eventName));
+      }
+
+      const whereClause = buildFilters({
+        filters,
+        startDateColumn: events.timestamp,
+        startDateValue: query.startDate,
+        endDateColumn: events.timestamp,
+        endDateValue: query.endDate,
+      });
+
+      [eventsList, [{ count: totalCount }]] = await Promise.all([
+        db
+          .select()
+          .from(events)
+          .where(whereClause)
+          .orderBy(desc(events.timestamp))
+          .limit(pageSize)
+          .offset(offset),
+        db.select({ count: count() }).from(events).where(whereClause),
+      ]);
     } else if (deviceId) {
-      const deviceSessionsSubquery = db
-        .select({ sessionId: sessions.sessionId })
-        .from(sessions)
-        .where(eq(sessions.deviceId, deviceId));
+      const filters: SQL[] = [eq(sessions.deviceId, deviceId)];
 
-      filters.push(inArray(events.sessionId, deviceSessionsSubquery));
+      if (query.eventName) {
+        filters.push(eq(events.name, query.eventName));
+      }
+
+      const whereClause = buildFilters({
+        filters,
+        startDateColumn: events.timestamp,
+        startDateValue: query.startDate,
+        endDateColumn: events.timestamp,
+        endDateValue: query.endDate,
+      });
+
+      [eventsList, [{ count: totalCount }]] = await Promise.all([
+        db
+          .select({
+            eventId: events.eventId,
+            sessionId: events.sessionId,
+            name: events.name,
+            params: events.params,
+            timestamp: events.timestamp,
+          })
+          .from(events)
+          .innerJoin(sessions, eq(events.sessionId, sessions.sessionId))
+          .where(whereClause)
+          .orderBy(desc(events.timestamp))
+          .limit(pageSize)
+          .offset(offset),
+        db
+          .select({ count: count() })
+          .from(events)
+          .innerJoin(sessions, eq(events.sessionId, sessions.sessionId))
+          .where(whereClause),
+      ]);
+    } else {
+      return c.json(
+        {
+          code: ErrorCode.BAD_REQUEST,
+          detail: 'Either sessionId or deviceId must be provided',
+        },
+        HttpStatus.BAD_REQUEST
+      );
     }
-
-    if (query.eventName) {
-      filters.push(eq(events.name, query.eventName));
-    }
-
-    const whereClause = buildFilters({
-      filters,
-      startDateColumn: events.timestamp,
-      startDateValue: query.startDate,
-      endDateColumn: events.timestamp,
-      endDateValue: query.endDate,
-    });
-
-    const [eventsList, [{ count: totalCount }]] = await Promise.all([
-      db
-        .select()
-        .from(events)
-        .where(whereClause)
-        .orderBy(desc(events.timestamp))
-        .limit(pageSize)
-        .offset(offset),
-      db.select({ count: count() }).from(events).where(whereClause),
-    ]);
 
     const formattedEvents = eventsList.map((event) => ({
       eventId: event.eventId,
