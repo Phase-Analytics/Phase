@@ -131,7 +131,7 @@ export const devices = pgTable(
       .notNull()
       .references(() => apikey.id, { onDelete: 'cascade' }),
     identifier: text('identifier'),
-    brand: text('brand'),
+    model: text('model'),
     osVersion: text('os_version'),
     platform: text('platform'),
     appVersion: text('app_version'),

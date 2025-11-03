@@ -177,7 +177,7 @@ deviceSdkRouter.openapi(createDeviceRoute, async (c: any) => {
         .update(devices)
         .set({
           identifier: body.identifier ?? existingDevice.identifier,
-          brand: body.brand ?? existingDevice.brand,
+          model: body.model ?? existingDevice.model,
           osVersion: body.osVersion ?? existingDevice.osVersion,
           platform: body.platform ?? existingDevice.platform,
           appVersion: body.appVersion ?? existingDevice.appVersion,
@@ -191,7 +191,7 @@ deviceSdkRouter.openapi(createDeviceRoute, async (c: any) => {
           deviceId: body.deviceId,
           apiKeyId: apiKey.id,
           identifier: body.identifier ?? null,
-          brand: body.brand ?? null,
+          model: body.model ?? null,
           osVersion: body.osVersion ?? null,
           platform: body.platform ?? null,
           appVersion: body.appVersion ?? null,
@@ -203,7 +203,7 @@ deviceSdkRouter.openapi(createDeviceRoute, async (c: any) => {
       {
         deviceId: device.deviceId,
         identifier: device.identifier,
-        brand: device.brand,
+        model: device.model,
         osVersion: device.osVersion,
         platform: device.platform,
         appVersion: device.appVersion,
@@ -287,7 +287,7 @@ deviceWebRouter.openapi(getDevicesRoute, async (c) => {
     const formattedDevices = devicesList.map((device) => ({
       deviceId: device.deviceId,
       identifier: device.identifier,
-      brand: device.brand,
+      model: device.model,
       osVersion: device.osVersion,
       platform: device.platform,
       appVersion: device.appVersion,
@@ -329,7 +329,7 @@ deviceWebRouter.openapi(getDeviceRoute, async (c: any) => {
       .select({
         deviceId: devices.deviceId,
         identifier: devices.identifier,
-        brand: devices.brand,
+        model: devices.model,
         osVersion: devices.osVersion,
         platform: devices.platform,
         appVersion: devices.appVersion,
@@ -361,7 +361,7 @@ deviceWebRouter.openapi(getDeviceRoute, async (c: any) => {
       {
         deviceId: deviceWithSession.deviceId,
         identifier: deviceWithSession.identifier,
-        brand: deviceWithSession.brand,
+        model: deviceWithSession.model,
         osVersion: deviceWithSession.osVersion,
         platform: deviceWithSession.platform,
         appVersion: deviceWithSession.appVersion,
