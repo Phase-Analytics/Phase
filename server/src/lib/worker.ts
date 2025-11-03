@@ -17,6 +17,7 @@ import { redis } from './redis';
 const BATCH_MAX_SIZE = 100;
 const BATCH_WAIT_TIME_MS = 8000;
 const XREAD_BLOCK_MS = 15_000;
+const SESSION_UPDATE_THROTTLE_MS = 30_000;
 
 type BatchEntry = {
   id: string;
@@ -150,7 +151,13 @@ function processEventItem(
   });
 
   const existing = sessionActivities.get(eventData.sessionId);
-  if (!existing || timestamp > existing.timestamp) {
+  const shouldUpdate =
+    !existing ||
+    timestamp.getTime() - existing.timestamp.getTime() >
+      SESSION_UPDATE_THROTTLE_MS ||
+    timestamp > existing.timestamp;
+
+  if (shouldUpdate) {
     sessionActivities.set(eventData.sessionId, {
       sessionId: eventData.sessionId,
       timestamp,
@@ -166,7 +173,13 @@ function processPingItem(
   const timestamp = new Date(pingData.timestamp);
 
   const existing = sessionActivities.get(pingData.sessionId);
-  if (!existing || timestamp > existing.timestamp) {
+  const shouldUpdate =
+    !existing ||
+    timestamp.getTime() - existing.timestamp.getTime() >
+      SESSION_UPDATE_THROTTLE_MS ||
+    timestamp > existing.timestamp;
+
+  if (shouldUpdate) {
     sessionActivities.set(pingData.sessionId, {
       sessionId: pingData.sessionId,
       timestamp,
@@ -199,7 +212,13 @@ function processErrorItem(
   });
 
   const existing = sessionActivities.get(errorData.sessionId);
-  if (!existing || timestamp > existing.timestamp) {
+  const shouldUpdate =
+    !existing ||
+    timestamp.getTime() - existing.timestamp.getTime() >
+      SESSION_UPDATE_THROTTLE_MS ||
+    timestamp > existing.timestamp;
+
+  if (shouldUpdate) {
     sessionActivities.set(errorData.sessionId, {
       sessionId: errorData.sessionId,
       timestamp,
