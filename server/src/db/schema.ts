@@ -180,7 +180,6 @@ export const events = pgTable(
     timestamp: timestamp('timestamp').notNull(),
   },
   (table) => ({
-    sessionIdIdx: index('events_session_id_idx').on(table.sessionId),
     nameIdx: index('events_name_idx').on(table.name),
     sessionTimestampIdx: index('events_session_timestamp_idx').on(
       table.sessionId,
@@ -204,7 +203,6 @@ export const errors = pgTable(
     timestamp: timestamp('timestamp').notNull(),
   },
   (table) => ({
-    sessionIdIdx: index('errors_session_id_idx').on(table.sessionId),
     typeIdx: index('errors_type_idx').on(table.type),
     sessionTimestampIdx: index('errors_session_timestamp_idx').on(
       table.sessionId,
