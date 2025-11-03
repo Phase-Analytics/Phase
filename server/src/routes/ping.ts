@@ -56,7 +56,7 @@ pingSdkRouter.all('*', async (c, next) => {
     return methodNotAllowed(c, allowedMethods);
   }
 
-  await next();
+  return await next();
 });
 
 pingSdkRouter.openapi(pingSessionRoute, async (c) => {

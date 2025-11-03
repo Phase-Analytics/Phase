@@ -107,6 +107,17 @@ const deviceSdkRouter = new OpenAPIHono<{
 
 deviceSdkRouter.use('*', requireApiKey);
 
+deviceSdkRouter.all('*', async (c, next) => {
+  const method = c.req.method;
+  const allowedMethods = ['POST'];
+
+  if (!allowedMethods.includes(method)) {
+    return methodNotAllowed(c, allowedMethods);
+  }
+
+  return await next();
+});
+
 const deviceWebRouter = new OpenAPIHono<{
   Variables: {
     user: User;
@@ -116,6 +127,17 @@ const deviceWebRouter = new OpenAPIHono<{
 }>();
 
 deviceWebRouter.use('*', requireAuth, verifyApiKeyOwnership);
+
+deviceWebRouter.all('*', async (c, next) => {
+  const method = c.req.method;
+  const allowedMethods = ['GET'];
+
+  if (!allowedMethods.includes(method)) {
+    return methodNotAllowed(c, allowedMethods);
+  }
+
+  return await next();
+});
 
 // biome-ignore lint/suspicious/noExplicitAny: OpenAPI handler type inference issue with union response types
 deviceSdkRouter.openapi(createDeviceRoute, async (c: any) => {
@@ -327,28 +349,6 @@ deviceWebRouter.openapi(getDeviceRoute, async (c: any) => {
       HttpStatus.INTERNAL_SERVER_ERROR
     );
   }
-});
-
-deviceSdkRouter.all('*', async (c, next) => {
-  const method = c.req.method;
-  const allowedMethods = ['POST'];
-
-  if (!allowedMethods.includes(method)) {
-    return methodNotAllowed(c, allowedMethods);
-  }
-
-  await next();
-});
-
-deviceWebRouter.all('*', async (c, next) => {
-  const method = c.req.method;
-  const allowedMethods = ['GET'];
-
-  if (!allowedMethods.includes(method)) {
-    return methodNotAllowed(c, allowedMethods);
-  }
-
-  await next();
 });
 
 export { deviceSdkRouter, deviceWebRouter };

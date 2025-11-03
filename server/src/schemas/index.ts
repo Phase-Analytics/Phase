@@ -1,4 +1,18 @@
 export {
+  type ActivityItem,
+  type ActivityListResponse,
+  activityItemSchema,
+  activityListResponseSchema,
+  type ErrorActivity,
+  type EventActivity,
+  errorActivitySchema,
+  errorDataSchema,
+  eventActivitySchema,
+  eventDataSchema,
+  type ListActivityQuery,
+  listActivityQuerySchema,
+} from './activity.schema';
+export {
   dateFilterQuerySchema,
   ErrorCode,
   type ErrorCode as ErrorCodeType,

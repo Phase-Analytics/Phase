@@ -87,6 +87,17 @@ const errorSdkRouter = new OpenAPIHono<{
 
 errorSdkRouter.use('*', requireApiKey);
 
+errorSdkRouter.all('*', async (c, next) => {
+  const method = c.req.method;
+  const allowedMethods = ['POST'];
+
+  if (!allowedMethods.includes(method)) {
+    return methodNotAllowed(c, allowedMethods);
+  }
+
+  return await next();
+});
+
 const errorWebRouter = new OpenAPIHono<{
   Variables: {
     user: User;
@@ -96,6 +107,17 @@ const errorWebRouter = new OpenAPIHono<{
 }>();
 
 errorWebRouter.use('*', requireAuth, verifyApiKeyOwnership);
+
+errorWebRouter.all('*', async (c, next) => {
+  const method = c.req.method;
+  const allowedMethods = ['GET'];
+
+  if (!allowedMethods.includes(method)) {
+    return methodNotAllowed(c, allowedMethods);
+  }
+
+  return await next();
+});
 
 errorSdkRouter.openapi(createErrorRoute, async (c) => {
   try {
@@ -269,28 +291,6 @@ errorWebRouter.openapi(getErrorsRoute, async (c) => {
       HttpStatus.INTERNAL_SERVER_ERROR
     );
   }
-});
-
-errorSdkRouter.all('*', async (c, next) => {
-  const method = c.req.method;
-  const allowedMethods = ['POST'];
-
-  if (!allowedMethods.includes(method)) {
-    return methodNotAllowed(c, allowedMethods);
-  }
-
-  await next();
-});
-
-errorWebRouter.all('*', async (c, next) => {
-  const method = c.req.method;
-  const allowedMethods = ['GET'];
-
-  if (!allowedMethods.includes(method)) {
-    return methodNotAllowed(c, allowedMethods);
-  }
-
-  await next();
 });
 
 export { errorSdkRouter, errorWebRouter };

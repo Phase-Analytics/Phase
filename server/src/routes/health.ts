@@ -61,7 +61,7 @@ health.all('*', async (c, next) => {
     return methodNotAllowed(c, allowedMethods);
   }
 
-  await next();
+  return await next();
 });
 
 type ServiceStatus = {
