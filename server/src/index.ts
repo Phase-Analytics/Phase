@@ -7,6 +7,7 @@ import { authMiddleware } from '@/lib/middleware';
 import { configureOpenAPI } from '@/lib/openapi';
 import { redis, redisHealth, redisQueue } from '@/lib/redis';
 import { startWorker } from '@/lib/worker';
+import { activityWebRouter } from '@/routes/activity';
 import { deviceSdkRouter, deviceWebRouter } from '@/routes/device';
 import { errorSdkRouter, errorWebRouter } from '@/routes/error';
 import { eventSdkRouter, eventWebRouter } from '@/routes/event';
@@ -83,6 +84,7 @@ app.route('/sdk/events', eventSdkRouter);
 app.route('/sdk/errors', errorSdkRouter);
 app.route('/sdk/ping', pingSdkRouter);
 
+app.route('/web/activity', activityWebRouter);
 app.route('/web/devices', deviceWebRouter);
 app.route('/web/sessions', sessionWebRouter);
 app.route('/web/events', eventWebRouter);
