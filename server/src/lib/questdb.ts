@@ -125,6 +125,19 @@ type QueryResponse<T> = {
   };
 };
 
+
+function escapeSqlString(value: string): string {
+  return value.replace(/'/g, "''");
+}
+
+
+function sanitizeNumeric(value: number | undefined, defaultValue: number, min: number, max: number): number {
+  if (value === undefined) return defaultValue;
+  const num = Number(value);
+  if (Number.isNaN(num)) return defaultValue;
+  return Math.max(min, Math.min(Math.floor(num), max));
+}
+
 async function executeQuery<T>(query: string): Promise<T[]> {
   const url = `${QUESTDB_HTTP_URL}/exec`;
   const auth = Buffer.from(`${QUESTDB_USER}:${QUESTDB_PASSWORD}`).toString('base64');
@@ -171,6 +184,18 @@ export type ActivityQueryResult = {
   data: string;
 };
 
+type ActivityRawResult = {
+  type: 'event' | 'error';
+  id: string;
+  session_id: string;
+  timestamp: string;
+  name?: string;
+  params?: string | null;
+  message?: string;
+  error_type?: string;
+  stack_trace?: string | null;
+};
+
 export type GetEventsOptions = {
   sessionId?: string;
   deviceId?: string;
@@ -186,32 +211,32 @@ export async function getEvents(options: GetEventsOptions): Promise<{ events: Ev
   const conditions: string[] = [];
   
   if (options.sessionId) {
-    conditions.push(`session_id = '${options.sessionId}'`);
+    conditions.push(`session_id = '${escapeSqlString(options.sessionId)}'`);
   }
   
   if (options.deviceId) {
-    conditions.push(`device_id = '${options.deviceId}'`);
+    conditions.push(`device_id = '${escapeSqlString(options.deviceId)}'`);
   }
   
   if (options.apiKeyId) {
-    conditions.push(`api_key_id = '${options.apiKeyId}'`);
+    conditions.push(`api_key_id = '${escapeSqlString(options.apiKeyId)}'`);
   }
   
   if (options.eventName) {
-    conditions.push(`name = '${options.eventName}'`);
+    conditions.push(`name = '${escapeSqlString(options.eventName)}'`);
   }
   
   if (options.startDate) {
-    conditions.push(`timestamp >= '${options.startDate}'`);
+    conditions.push(`timestamp >= '${escapeSqlString(options.startDate)}'`);
   }
   
   if (options.endDate) {
-    conditions.push(`timestamp <= '${options.endDate}'`);
+    conditions.push(`timestamp <= '${escapeSqlString(options.endDate)}'`);
   }
   
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-  const limit = options.limit || 20;
-  const offset = options.offset || 0;
+  const limit = sanitizeNumeric(options.limit, 20, 1, 1000);
+  const offset = sanitizeNumeric(options.offset, 0, 0, 1000000);
   
   const eventsQuery = `
     SELECT event_id, session_id, name, params, timestamp 
@@ -253,32 +278,32 @@ export async function getErrors(options: GetErrorsOptions): Promise<{ errors: Er
   const conditions: string[] = [];
   
   if (options.sessionId) {
-    conditions.push(`session_id = '${options.sessionId}'`);
+    conditions.push(`session_id = '${escapeSqlString(options.sessionId)}'`);
   }
   
   if (options.deviceId) {
-    conditions.push(`device_id = '${options.deviceId}'`);
+    conditions.push(`device_id = '${escapeSqlString(options.deviceId)}'`);
   }
   
   if (options.apiKeyId) {
-    conditions.push(`api_key_id = '${options.apiKeyId}'`);
+    conditions.push(`api_key_id = '${escapeSqlString(options.apiKeyId)}'`);
   }
   
   if (options.errorType) {
-    conditions.push(`type = '${options.errorType}'`);
+    conditions.push(`type = '${escapeSqlString(options.errorType)}'`);
   }
   
   if (options.startDate) {
-    conditions.push(`timestamp >= '${options.startDate}'`);
+    conditions.push(`timestamp >= '${escapeSqlString(options.startDate)}'`);
   }
   
   if (options.endDate) {
-    conditions.push(`timestamp <= '${options.endDate}'`);
+    conditions.push(`timestamp <= '${escapeSqlString(options.endDate)}'`);
   }
   
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-  const limit = options.limit || 20;
-  const offset = options.offset || 0;
+  const limit = sanitizeNumeric(options.limit, 20, 1, 1000);
+  const offset = sanitizeNumeric(options.offset, 0, 0, 1000000);
   
   const errorsQuery = `
     SELECT error_id, session_id, message, type, stack_trace, timestamp 
@@ -314,19 +339,19 @@ export type GetActivityOptions = {
 };
 
 export async function getActivity(options: GetActivityOptions): Promise<{ activities: ActivityQueryResult[]; total: number }> {
-  const conditions: string[] = [`session_id = '${options.sessionId}'`];
+  const conditions: string[] = [`session_id = '${escapeSqlString(options.sessionId)}'`];
   
   if (options.startDate) {
-    conditions.push(`timestamp >= '${options.startDate}'`);
+    conditions.push(`timestamp >= '${escapeSqlString(options.startDate)}'`);
   }
   
   if (options.endDate) {
-    conditions.push(`timestamp <= '${options.endDate}'`);
+    conditions.push(`timestamp <= '${escapeSqlString(options.endDate)}'`);
   }
   
   const whereClause = `WHERE ${conditions.join(' AND ')}`;
-  const limit = options.limit || 20;
-  const offset = options.offset || 0;
+  const limit = sanitizeNumeric(options.limit, 20, 1, 1000);
+  const offset = sanitizeNumeric(options.offset, 0, 0, 1000000);
   
   const activitiesQuery = `
     SELECT * FROM (
@@ -335,7 +360,11 @@ export async function getActivity(options: GetActivityOptions): Promise<{ activi
         event_id as id,
         session_id,
         timestamp,
-        '{"name":"' || name || '","params":' || COALESCE(params, 'null') || '}' as data
+        name,
+        params,
+        null as message,
+        null as error_type,
+        null as stack_trace
       FROM events
       ${whereClause}
       UNION ALL
@@ -344,7 +373,11 @@ export async function getActivity(options: GetActivityOptions): Promise<{ activi
         error_id as id,
         session_id,
         timestamp,
-        '{"message":"' || message || '","type":"' || type || '","stackTrace":' || COALESCE('"' || stack_trace || '"', 'null') || '}' as data
+        null as name,
+        null as params,
+        message,
+        type as error_type,
+        stack_trace
       FROM errors
       ${whereClause}
     )
@@ -358,10 +391,35 @@ export async function getActivity(options: GetActivityOptions): Promise<{ activi
       (SELECT COUNT(*) FROM errors ${whereClause}) as count
   `;
   
-  const [activities, countResult] = await Promise.all([
-    executeQuery<ActivityQueryResult>(activitiesQuery),
+  const [rawActivities, countResult] = await Promise.all([
+    executeQuery<ActivityRawResult>(activitiesQuery),
     executeQuery<{ count: number }>(countQuery),
   ]);
+  
+  const activities: ActivityQueryResult[] = rawActivities.map((row) => {
+    let data: string;
+    
+    if (row.type === 'event') {
+      data = JSON.stringify({
+        name: row.name || '',
+        params: row.params ? JSON.parse(row.params) : null,
+      });
+    } else {
+      data = JSON.stringify({
+        message: row.message || '',
+        type: row.error_type || '',
+        stackTrace: row.stack_trace || null,
+      });
+    }
+    
+    return {
+      type: row.type,
+      id: row.id,
+      session_id: row.session_id,
+      timestamp: row.timestamp,
+      data,
+    };
+  });
   
   return {
     activities,
