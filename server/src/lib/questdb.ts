@@ -17,6 +17,24 @@ const QUESTDB_PASSWORD = process.env.QUESTDB_PASSWORD;
 let tablesInitialized = false;
 let initPromise: Promise<void> | null = null;
 
+const escapeSymbol = (value: string): string =>
+  value.replace(/[,= \n\r]/g, (match) => {
+    if (match === '\n') {
+      return '\\n';
+    }
+    if (match === '\r') {
+      return '\\r';
+    }
+    return `\\${match}`;
+  });
+
+const escapeString = (value: string): string =>
+  value.replace(/["\\]/g, '\\$&').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+
+const IDENTIFIER_REGEX = /^[a-zA-Z0-9_-]+$/;
+// biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally checking for control characters
+const CONTROL_CHARS_REGEX = /[\x00-\x1F\x7F]/;
+
 export type EventRecord = {
   eventId: string;
   sessionId: string;
@@ -43,19 +61,6 @@ export async function writeEvent(event: EventRecord): Promise<void> {
     'base64'
   );
   const timestampNs = event.timestamp.getTime() * 1_000_000;
-
-  const escapeSymbol = (value: string) =>
-    value.replace(/[,= \n\r]/g, (match) => {
-      if (match === '\n') {
-        return '\\n';
-      }
-      if (match === '\r') {
-        return '\\r';
-      }
-      return `\\${match}`;
-    });
-  const escapeString = (value: string) =>
-    value.replace(/["\\]/g, '\\$&').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
 
   const symbols = [
     `event_id=${escapeSymbol(event.eventId)}`,
@@ -95,19 +100,6 @@ export async function writeError(error: ErrorRecord): Promise<void> {
     'base64'
   );
   const timestampNs = error.timestamp.getTime() * 1_000_000;
-
-  const escapeSymbol = (value: string) =>
-    value.replace(/[,= \n\r]/g, (match) => {
-      if (match === '\n') {
-        return '\\n';
-      }
-      if (match === '\r') {
-        return '\\r';
-      }
-      return `\\${match}`;
-    });
-  const escapeString = (value: string) =>
-    value.replace(/["\\]/g, '\\$&').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
 
   const symbols = [
     `error_id=${escapeSymbol(error.errorId)}`,
@@ -154,7 +146,40 @@ type QueryResponse<T> = {
 };
 
 function escapeSqlString(value: string): string {
-  return value.replace(/'/g, "''");
+  return value.replace(/\\/g, '\\\\').replace(/'/g, "''");
+}
+
+function validateIdentifier(value: string, fieldName: string): void {
+  if (!IDENTIFIER_REGEX.test(value)) {
+    throw new Error(
+      `Invalid ${fieldName}: contains unexpected characters. Only alphanumeric, hyphens, and underscores are allowed.`
+    );
+  }
+  if (value.length > 128) {
+    throw new Error(`Invalid ${fieldName}: exceeds maximum length of 128`);
+  }
+}
+
+function validateSymbol(value: string, fieldName: string): void {
+  if (value.length > 256) {
+    throw new Error(`Invalid ${fieldName}: exceeds maximum length of 256`);
+  }
+  if (CONTROL_CHARS_REGEX.test(value)) {
+    throw new Error(`Invalid ${fieldName}: contains control characters`);
+  }
+}
+
+function validateTimestamp(value: string, fieldName: string): void {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`Invalid ${fieldName}: not a valid ISO 8601 timestamp`);
+  }
+  const year = date.getFullYear();
+  if (year < 2020 || year > 2050) {
+    throw new Error(
+      `Invalid ${fieldName}: timestamp year must be between 2000 and 2100`
+    );
+  }
 }
 
 function sanitizeNumeric(
@@ -252,26 +277,32 @@ export async function getEvents(
   const conditions: string[] = [];
 
   if (options.sessionId) {
+    validateIdentifier(options.sessionId, 'sessionId');
     conditions.push(`session_id = '${escapeSqlString(options.sessionId)}'`);
   }
 
   if (options.deviceId) {
+    validateIdentifier(options.deviceId, 'deviceId');
     conditions.push(`device_id = '${escapeSqlString(options.deviceId)}'`);
   }
 
   if (options.apiKeyId) {
+    validateIdentifier(options.apiKeyId, 'apiKeyId');
     conditions.push(`api_key_id = '${escapeSqlString(options.apiKeyId)}'`);
   }
 
   if (options.eventName) {
+    validateSymbol(options.eventName, 'eventName');
     conditions.push(`name = '${escapeSqlString(options.eventName)}'`);
   }
 
   if (options.startDate) {
+    validateTimestamp(options.startDate, 'startDate');
     conditions.push(`timestamp >= '${escapeSqlString(options.startDate)}'`);
   }
 
   if (options.endDate) {
+    validateTimestamp(options.endDate, 'endDate');
     conditions.push(`timestamp <= '${escapeSqlString(options.endDate)}'`);
   }
 
@@ -322,26 +353,32 @@ export async function getErrors(
   const conditions: string[] = [];
 
   if (options.sessionId) {
+    validateIdentifier(options.sessionId, 'sessionId');
     conditions.push(`session_id = '${escapeSqlString(options.sessionId)}'`);
   }
 
   if (options.deviceId) {
+    validateIdentifier(options.deviceId, 'deviceId');
     conditions.push(`device_id = '${escapeSqlString(options.deviceId)}'`);
   }
 
   if (options.apiKeyId) {
+    validateIdentifier(options.apiKeyId, 'apiKeyId');
     conditions.push(`api_key_id = '${escapeSqlString(options.apiKeyId)}'`);
   }
 
   if (options.errorType) {
+    validateSymbol(options.errorType, 'errorType');
     conditions.push(`type = '${escapeSqlString(options.errorType)}'`);
   }
 
   if (options.startDate) {
+    validateTimestamp(options.startDate, 'startDate');
     conditions.push(`timestamp >= '${escapeSqlString(options.startDate)}'`);
   }
 
   if (options.endDate) {
+    validateTimestamp(options.endDate, 'endDate');
     conditions.push(`timestamp <= '${escapeSqlString(options.endDate)}'`);
   }
 
@@ -386,15 +423,19 @@ export type GetActivityOptions = {
 export async function getActivity(
   options: GetActivityOptions
 ): Promise<{ activities: ActivityQueryResult[]; total: number }> {
+  validateIdentifier(options.sessionId, 'sessionId');
+
   const conditions: string[] = [
     `session_id = '${escapeSqlString(options.sessionId)}'`,
   ];
 
   if (options.startDate) {
+    validateTimestamp(options.startDate, 'startDate');
     conditions.push(`timestamp >= '${escapeSqlString(options.startDate)}'`);
   }
 
   if (options.endDate) {
+    validateTimestamp(options.endDate, 'endDate');
     conditions.push(`timestamp <= '${escapeSqlString(options.endDate)}'`);
   }
 
