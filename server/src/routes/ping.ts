@@ -1,7 +1,8 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
+import { eq } from 'drizzle-orm';
+import { db, sessions } from '@/db';
 import type { ApiKey } from '@/db/schema';
 import { requireApiKey } from '@/lib/middleware';
-import { addToQueue } from '@/lib/queue';
 import { methodNotAllowed } from '@/lib/response';
 import { validateSession, validateTimestamp } from '@/lib/validators';
 import {
@@ -90,11 +91,10 @@ pingSdkRouter.openapi(pingSessionRoute, async (c) => {
 
     const clientTimestamp = timestampValidation.data;
 
-    await addToQueue({
-      type: 'ping',
-      sessionId: body.sessionId,
-      timestamp: clientTimestamp.toISOString(),
-    });
+    await db
+      .update(sessions)
+      .set({ lastActivityAt: clientTimestamp })
+      .where(eq(sessions.sessionId, body.sessionId));
 
     return c.json(
       {

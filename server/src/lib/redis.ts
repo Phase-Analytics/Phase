@@ -56,27 +56,3 @@ redisHealth.on('error', (error) => {
 redisHealth.on('connect', () => {
   console.log('[Redis Health] Connected');
 });
-
-export const redisQueue = new Redis(process.env.REDIS_URL, {
-  ...redisConfig,
-  enableReadyCheck: true,
-  lazyConnect: false,
-});
-
-redisQueue.on('error', (error) => {
-  console.error('[Redis Queue] Error:', error);
-});
-
-redisQueue.on('connect', () => {
-  console.log('[Redis Queue] Connected');
-});
-
-export const STREAM_KEYS = {
-  EVENTS: 'stream:events',
-  PINGS: 'stream:pings',
-  ERRORS: 'stream:errors',
-} as const;
-
-export const CONSUMER_GROUP = 'batch-processor';
-export const CONSUMER_NAME =
-  process.env.CONSUMER_NAME || `worker-${process.pid}`;
