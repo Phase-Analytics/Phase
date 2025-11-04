@@ -90,11 +90,12 @@ pingSdkRouter.openapi(pingSessionRoute, async (c) => {
     }
 
     const clientTimestamp = timestampValidation.data;
+    const { session } = sessionValidation.data;
 
     await db
       .update(sessions)
       .set({ lastActivityAt: clientTimestamp })
-      .where(eq(sessions.sessionId, body.sessionId));
+      .where(eq(sessions.sessionId, session.sessionId));
 
     return c.json(
       {

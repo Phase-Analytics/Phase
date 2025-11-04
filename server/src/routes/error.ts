@@ -1,7 +1,5 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { eq } from 'drizzle-orm';
 import { ulid } from 'ulid';
-import { db, devices } from '@/db';
 import type { ApiKey, Session, User } from '@/db/schema';
 import {
   requireApiKey,
@@ -149,7 +147,7 @@ errorSdkRouter.openapi(createErrorRoute, async (c) => {
     }
 
     const clientTimestamp = timestampValidation.data;
-    const session = sessionValidation.data;
+    const { session, device } = sessionValidation.data;
 
     if (clientTimestamp < session.startedAt) {
       return c.json(
@@ -158,20 +156,6 @@ errorSdkRouter.openapi(createErrorRoute, async (c) => {
           detail: 'Error timestamp cannot be before session startedAt',
         },
         HttpStatus.BAD_REQUEST
-      );
-    }
-
-    const device = await db.query.devices.findFirst({
-      where: eq(devices.deviceId, session.deviceId),
-    });
-
-    if (!device) {
-      return c.json(
-        {
-          code: ErrorCode.NOT_FOUND,
-          detail: 'Device not found',
-        },
-        HttpStatus.NOT_FOUND
       );
     }
 

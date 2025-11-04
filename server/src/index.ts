@@ -95,14 +95,13 @@ app.on(['POST', 'GET'], '/api/auth/**', (c) => auth.handler(c.req.raw));
 
 configureOpenAPI(app);
 
-initQuestDB()
-  .then(() => {
-    console.log('[Server] QuestDB initialized');
-  })
-  .catch((error) => {
-    console.error('[Server] Failed to start:', error);
-    process.exit(1);
-  });
+try {
+  await initQuestDB();
+  console.log('[Server] QuestDB initialized');
+} catch (error) {
+  console.error('[Server] Failed to start:', error);
+  process.exit(1);
+}
 
 const shutdown = async (signal: string) => {
   try {
