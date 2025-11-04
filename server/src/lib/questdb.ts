@@ -400,9 +400,16 @@ export async function getActivity(options: GetActivityOptions): Promise<{ activi
     let data: string;
     
     if (row.type === 'event') {
+      let parsedParams = null;
+      try {
+        parsedParams = row.params ? JSON.parse(row.params) : null;
+      } catch (e) {
+        console.error('[QuestDB] Invalid JSON in event params:', e);
+        parsedParams = null;
+      }
       data = JSON.stringify({
         name: row.name || '',
-        params: row.params ? JSON.parse(row.params) : null,
+        params: parsedParams,
       });
     } else {
       data = JSON.stringify({
@@ -434,7 +441,7 @@ export async function initQuestDB(): Promise<void> {
 
   if (tablesInitialized) {
     console.log('[QuestDB] Tables already initialized, skipping...');
-    return;
+    return Promise.resolve();
   }
 
   initPromise = (async () => {
