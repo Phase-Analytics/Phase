@@ -5,6 +5,7 @@ import { pool } from '@/db';
 import { auth } from '@/lib/auth';
 import { authMiddleware } from '@/lib/middleware';
 import { configureOpenAPI } from '@/lib/openapi';
+import { initQuestDB } from '@/lib/questdb';
 import { redis, redisHealth, redisQueue } from '@/lib/redis';
 import { startWorker } from '@/lib/worker';
 import { activityWebRouter } from '@/routes/activity';
@@ -98,12 +99,17 @@ configureOpenAPI(app);
 
 let workerHandle: { stop: () => Promise<void> } | null = null;
 
-startWorker()
+// Initialize QuestDB tables
+initQuestDB()
+  .then(() => {
+    console.log('[Server] QuestDB initialized');
+    return startWorker();
+  })
   .then((handle) => {
     workerHandle = handle;
   })
   .catch((error) => {
-    console.error('[Server] Failed to start worker:', error);
+    console.error('[Server] Failed to start:', error);
     process.exit(1);
   });
 
