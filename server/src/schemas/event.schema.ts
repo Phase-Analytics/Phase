@@ -1,5 +1,4 @@
 import { z } from '@hono/zod-openapi';
-import type { Event } from '@/db/schema';
 import {
   dateFilterQuerySchema,
   paginationQuerySchema,
@@ -24,12 +23,7 @@ export const eventSchema = z
       .datetime()
       .openapi({ example: '2024-01-01T00:00:00Z' }),
   })
-  .openapi('Event') satisfies z.ZodType<
-  Omit<Event, 'params' | 'timestamp'> & {
-    params: Record<string, string | number | boolean | null> | null;
-    timestamp: string;
-  }
->;
+  .openapi('Event');
 
 export const createEventRequestSchema = z
   .object({
@@ -53,6 +47,16 @@ export const listEventsQuerySchema = paginationQuerySchema
     apiKeyId: z.string().openapi({ example: 'apikey_abc123' }),
     eventName: z.string().optional().openapi({ example: 'button_clicked' }),
   })
+  .refine(
+    (data) => {
+      const hasSession = !!data.sessionId;
+      const hasDevice = !!data.deviceId;
+      return hasSession || hasDevice;
+    },
+    {
+      message: 'Either sessionId or deviceId is required',
+    }
+  )
   .refine(
     (data) => {
       const hasSession = !!data.sessionId;

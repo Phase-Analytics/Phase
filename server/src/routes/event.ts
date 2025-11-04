@@ -9,7 +9,6 @@ import {
 import { getEvents, writeEvent } from '@/lib/questdb';
 import { methodNotAllowed } from '@/lib/response';
 import {
-  buildFilters,
   formatPaginationResponse,
   validateDateRange,
   validateDevice,
@@ -194,7 +193,6 @@ eventSdkRouter.openapi(createEventRoute, async (c) => {
   }
 });
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Query optimization requires branching by query type (session vs device)
 eventWebRouter.openapi(getEventsRoute, async (c) => {
   try {
     const query = c.req.valid('query');
@@ -245,13 +243,31 @@ eventWebRouter.openapi(getEventsRoute, async (c) => {
       offset,
     });
 
-    const formattedEvents = eventsList.map((event) => ({
-      eventId: event.event_id,
-      sessionId: event.session_id,
-      name: event.name,
-      params: event.params ? JSON.parse(event.params) : null,
-      timestamp: new Date(event.timestamp).toISOString(),
-    }));
+    const formattedEvents = eventsList.map((event) => {
+      let parsedParams: Record<
+        string,
+        string | number | boolean | null
+      > | null = null;
+      if (event.params) {
+        try {
+          parsedParams = JSON.parse(event.params);
+        } catch (error) {
+          console.error(
+            `[Event.List] Failed to parse params for event ${event.event_id}:`,
+            error
+          );
+          parsedParams = null;
+        }
+      }
+
+      return {
+        eventId: event.event_id,
+        sessionId: event.session_id,
+        name: event.name,
+        params: parsedParams,
+        timestamp: new Date(event.timestamp).toISOString(),
+      };
+    });
 
     return c.json(
       {

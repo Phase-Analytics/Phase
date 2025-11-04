@@ -93,13 +93,14 @@ activityWebRouter.openapi(getActivityRoute, async (c) => {
       return dateRangeValidation.response;
     }
 
-    const { activities: activitiesResult, total: totalCount } = await getActivity({
-      sessionId,
-      startDate: query.startDate || undefined,
-      endDate: query.endDate || undefined,
-      limit: pageSize,
-      offset,
-    });
+    const { activities: activitiesResult, total: totalCount } =
+      await getActivity({
+        sessionId,
+        startDate: query.startDate || undefined,
+        endDate: query.endDate || undefined,
+        limit: pageSize,
+        offset,
+      });
 
     const activities: ActivityItem[] = activitiesResult
       .map((row) => {

@@ -4,7 +4,11 @@ import { db, sessions } from '@/db';
 import type { ApiKey } from '@/db/schema';
 import { requireApiKey } from '@/lib/middleware';
 import { methodNotAllowed } from '@/lib/response';
-import { validateSession, validateTimestamp } from '@/lib/validators';
+import {
+  invalidateSessionCache,
+  validateSession,
+  validateTimestamp,
+} from '@/lib/validators';
 import {
   ErrorCode,
   errorResponses,
@@ -96,6 +100,8 @@ pingSdkRouter.openapi(pingSessionRoute, async (c) => {
       .update(sessions)
       .set({ lastActivityAt: clientTimestamp })
       .where(eq(sessions.sessionId, session.sessionId));
+
+    await invalidateSessionCache(session.sessionId);
 
     return c.json(
       {

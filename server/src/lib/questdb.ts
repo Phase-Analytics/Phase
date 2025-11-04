@@ -1,5 +1,13 @@
-if (!process.env.QUESTDB_HTTP_URL || !process.env.QUESTDB_USER || !process.env.QUESTDB_PASSWORD) {
-  throw new Error('QUESTDB_HTTP_URL, QUESTDB_USER, and QUESTDB_PASSWORD must be set');
+if (
+  !(
+    process.env.QUESTDB_HTTP_URL &&
+    process.env.QUESTDB_USER &&
+    process.env.QUESTDB_PASSWORD
+  )
+) {
+  throw new Error(
+    'QUESTDB_HTTP_URL, QUESTDB_USER, and QUESTDB_PASSWORD must be set'
+  );
 }
 
 const QUESTDB_HTTP_URL = process.env.QUESTDB_HTTP_URL;
@@ -31,16 +39,24 @@ export type ErrorRecord = {
 };
 
 export async function writeEvent(event: EventRecord): Promise<void> {
-  const auth = Buffer.from(`${QUESTDB_USER}:${QUESTDB_PASSWORD}`).toString('base64');
-  const timestampNs = event.timestamp.getTime() * 1000000;
-  
-  const escapeSymbol = (value: string) => value.replace(/[,= \n\r]/g, (match) => {
-    if (match === '\n') return '\\n';
-    if (match === '\r') return '\\r';
-    return `\\${match}`;
-  });
-  const escapeString = (value: string) => value.replace(/["\\]/g, '\\$&').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
-  
+  const auth = Buffer.from(`${QUESTDB_USER}:${QUESTDB_PASSWORD}`).toString(
+    'base64'
+  );
+  const timestampNs = event.timestamp.getTime() * 1_000_000;
+
+  const escapeSymbol = (value: string) =>
+    value.replace(/[,= \n\r]/g, (match) => {
+      if (match === '\n') {
+        return '\\n';
+      }
+      if (match === '\r') {
+        return '\\r';
+      }
+      return `\\${match}`;
+    });
+  const escapeString = (value: string) =>
+    value.replace(/["\\]/g, '\\$&').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+
   const symbols = [
     `event_id=${escapeSymbol(event.eventId)}`,
     `session_id=${escapeSymbol(event.sessionId)}`,
@@ -48,7 +64,7 @@ export async function writeEvent(event: EventRecord): Promise<void> {
     `api_key_id=${escapeSymbol(event.apiKeyId)}`,
     `name=${escapeSymbol(event.name)}`,
   ].join(',');
-  
+
   let ilpLine: string;
   if (event.params !== null) {
     const paramsJson = JSON.stringify(event.params);
@@ -56,33 +72,43 @@ export async function writeEvent(event: EventRecord): Promise<void> {
   } else {
     ilpLine = `events,${symbols} ${timestampNs}`;
   }
-  
+
   const response = await fetch(`${QUESTDB_HTTP_URL}/write`, {
     method: 'POST',
     headers: {
-      'Authorization': `Basic ${auth}`,
+      Authorization: `Basic ${auth}`,
       'Content-Type': 'text/plain',
     },
     body: ilpLine,
   });
-  
+
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`QuestDB write failed: ${response.status} ${response.statusText} - ${errorText}`);
+    throw new Error(
+      `QuestDB write failed: ${response.status} ${response.statusText} - ${errorText}`
+    );
   }
 }
 
 export async function writeError(error: ErrorRecord): Promise<void> {
-  const auth = Buffer.from(`${QUESTDB_USER}:${QUESTDB_PASSWORD}`).toString('base64');
-  const timestampNs = error.timestamp.getTime() * 1000000;
-  
-  const escapeSymbol = (value: string) => value.replace(/[,= \n\r]/g, (match) => {
-    if (match === '\n') return '\\n';
-    if (match === '\r') return '\\r';
-    return `\\${match}`;
-  });
-  const escapeString = (value: string) => value.replace(/["\\]/g, '\\$&').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
-  
+  const auth = Buffer.from(`${QUESTDB_USER}:${QUESTDB_PASSWORD}`).toString(
+    'base64'
+  );
+  const timestampNs = error.timestamp.getTime() * 1_000_000;
+
+  const escapeSymbol = (value: string) =>
+    value.replace(/[,= \n\r]/g, (match) => {
+      if (match === '\n') {
+        return '\\n';
+      }
+      if (match === '\r') {
+        return '\\r';
+      }
+      return `\\${match}`;
+    });
+  const escapeString = (value: string) =>
+    value.replace(/["\\]/g, '\\$&').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+
   const symbols = [
     `error_id=${escapeSymbol(error.errorId)}`,
     `session_id=${escapeSymbol(error.sessionId)}`,
@@ -90,26 +116,28 @@ export async function writeError(error: ErrorRecord): Promise<void> {
     `api_key_id=${escapeSymbol(error.apiKeyId)}`,
     `type=${escapeSymbol(error.type)}`,
   ].join(',');
-  
+
   const fields: string[] = [`message="${escapeString(error.message)}"`];
   if (error.stackTrace !== null) {
     fields.push(`stack_trace="${escapeString(error.stackTrace)}"`);
   }
-  
+
   const ilpLine = `errors,${symbols} ${fields.join(',')} ${timestampNs}`;
-  
+
   const response = await fetch(`${QUESTDB_HTTP_URL}/write`, {
     method: 'POST',
     headers: {
-      'Authorization': `Basic ${auth}`,
+      Authorization: `Basic ${auth}`,
       'Content-Type': 'text/plain',
     },
     body: ilpLine,
   });
-  
+
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`QuestDB write failed: ${response.status} ${response.statusText} - ${errorText}`);
+    throw new Error(
+      `QuestDB write failed: ${response.status} ${response.statusText} - ${errorText}`
+    );
   }
 }
 
@@ -125,37 +153,48 @@ type QueryResponse<T> = {
   };
 };
 
-
 function escapeSqlString(value: string): string {
   return value.replace(/'/g, "''");
 }
 
-
-function sanitizeNumeric(value: number | undefined, defaultValue: number, min: number, max: number): number {
-  if (value === undefined) return defaultValue;
+function sanitizeNumeric(
+  value: number | undefined,
+  defaultValue: number,
+  min: number,
+  max: number
+): number {
+  if (value === undefined) {
+    return defaultValue;
+  }
   const num = Number(value);
-  if (Number.isNaN(num)) return defaultValue;
+  if (Number.isNaN(num)) {
+    return defaultValue;
+  }
   return Math.max(min, Math.min(Math.floor(num), max));
 }
 
 async function executeQuery<T>(query: string): Promise<T[]> {
   const url = `${QUESTDB_HTTP_URL}/exec`;
-  const auth = Buffer.from(`${QUESTDB_USER}:${QUESTDB_PASSWORD}`).toString('base64');
-  
+  const auth = Buffer.from(`${QUESTDB_USER}:${QUESTDB_PASSWORD}`).toString(
+    'base64'
+  );
+
   const response = await fetch(`${url}?query=${encodeURIComponent(query)}`, {
     method: 'GET',
     headers: {
-      'Authorization': `Basic ${auth}`,
+      Authorization: `Basic ${auth}`,
       'Content-Type': 'application/json',
     },
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`QuestDB query failed: ${response.status} ${response.statusText} - ${errorText}`);
+    throw new Error(
+      `QuestDB query failed: ${response.status} ${response.statusText} - ${errorText}`
+    );
   }
 
-  const result = await response.json() as QueryResponse<T>;
+  const result = (await response.json()) as QueryResponse<T>;
   return result.dataset;
 }
 
@@ -207,37 +246,40 @@ export type GetEventsOptions = {
   offset?: number;
 };
 
-export async function getEvents(options: GetEventsOptions): Promise<{ events: EventQueryResult[]; total: number }> {
+export async function getEvents(
+  options: GetEventsOptions
+): Promise<{ events: EventQueryResult[]; total: number }> {
   const conditions: string[] = [];
-  
+
   if (options.sessionId) {
     conditions.push(`session_id = '${escapeSqlString(options.sessionId)}'`);
   }
-  
+
   if (options.deviceId) {
     conditions.push(`device_id = '${escapeSqlString(options.deviceId)}'`);
   }
-  
+
   if (options.apiKeyId) {
     conditions.push(`api_key_id = '${escapeSqlString(options.apiKeyId)}'`);
   }
-  
+
   if (options.eventName) {
     conditions.push(`name = '${escapeSqlString(options.eventName)}'`);
   }
-  
+
   if (options.startDate) {
     conditions.push(`timestamp >= '${escapeSqlString(options.startDate)}'`);
   }
-  
+
   if (options.endDate) {
     conditions.push(`timestamp <= '${escapeSqlString(options.endDate)}'`);
   }
-  
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const limit = sanitizeNumeric(options.limit, 20, 1, 1000);
-  const offset = sanitizeNumeric(options.offset, 0, 0, 1000000);
-  
+  const offset = sanitizeNumeric(options.offset, 0, 0, 1_000_000);
+
   const eventsQuery = `
     SELECT event_id, session_id, name, params, timestamp 
     FROM events 
@@ -245,18 +287,18 @@ export async function getEvents(options: GetEventsOptions): Promise<{ events: Ev
     ORDER BY timestamp DESC 
     LIMIT ${limit} OFFSET ${offset}
   `;
-  
+
   const countQuery = `
     SELECT COUNT(*) as count 
     FROM events 
     ${whereClause}
   `;
-  
+
   const [events, countResult] = await Promise.all([
     executeQuery<EventQueryResult>(eventsQuery),
     executeQuery<{ count: number }>(countQuery),
   ]);
-  
+
   return {
     events,
     total: countResult[0]?.count || 0,
@@ -274,37 +316,40 @@ export type GetErrorsOptions = {
   offset?: number;
 };
 
-export async function getErrors(options: GetErrorsOptions): Promise<{ errors: ErrorQueryResult[]; total: number }> {
+export async function getErrors(
+  options: GetErrorsOptions
+): Promise<{ errors: ErrorQueryResult[]; total: number }> {
   const conditions: string[] = [];
-  
+
   if (options.sessionId) {
     conditions.push(`session_id = '${escapeSqlString(options.sessionId)}'`);
   }
-  
+
   if (options.deviceId) {
     conditions.push(`device_id = '${escapeSqlString(options.deviceId)}'`);
   }
-  
+
   if (options.apiKeyId) {
     conditions.push(`api_key_id = '${escapeSqlString(options.apiKeyId)}'`);
   }
-  
+
   if (options.errorType) {
     conditions.push(`type = '${escapeSqlString(options.errorType)}'`);
   }
-  
+
   if (options.startDate) {
     conditions.push(`timestamp >= '${escapeSqlString(options.startDate)}'`);
   }
-  
+
   if (options.endDate) {
     conditions.push(`timestamp <= '${escapeSqlString(options.endDate)}'`);
   }
-  
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const limit = sanitizeNumeric(options.limit, 20, 1, 1000);
-  const offset = sanitizeNumeric(options.offset, 0, 0, 1000000);
-  
+  const offset = sanitizeNumeric(options.offset, 0, 0, 1_000_000);
+
   const errorsQuery = `
     SELECT error_id, session_id, message, type, stack_trace, timestamp 
     FROM errors 
@@ -312,18 +357,18 @@ export async function getErrors(options: GetErrorsOptions): Promise<{ errors: Er
     ORDER BY timestamp DESC 
     LIMIT ${limit} OFFSET ${offset}
   `;
-  
+
   const countQuery = `
     SELECT COUNT(*) as count 
     FROM errors 
     ${whereClause}
   `;
-  
+
   const [errors, countResult] = await Promise.all([
     executeQuery<ErrorQueryResult>(errorsQuery),
     executeQuery<{ count: number }>(countQuery),
   ]);
-  
+
   return {
     errors,
     total: countResult[0]?.count || 0,
@@ -338,21 +383,25 @@ export type GetActivityOptions = {
   offset?: number;
 };
 
-export async function getActivity(options: GetActivityOptions): Promise<{ activities: ActivityQueryResult[]; total: number }> {
-  const conditions: string[] = [`session_id = '${escapeSqlString(options.sessionId)}'`];
-  
+export async function getActivity(
+  options: GetActivityOptions
+): Promise<{ activities: ActivityQueryResult[]; total: number }> {
+  const conditions: string[] = [
+    `session_id = '${escapeSqlString(options.sessionId)}'`,
+  ];
+
   if (options.startDate) {
     conditions.push(`timestamp >= '${escapeSqlString(options.startDate)}'`);
   }
-  
+
   if (options.endDate) {
     conditions.push(`timestamp <= '${escapeSqlString(options.endDate)}'`);
   }
-  
+
   const whereClause = `WHERE ${conditions.join(' AND ')}`;
   const limit = sanitizeNumeric(options.limit, 20, 1, 1000);
-  const offset = sanitizeNumeric(options.offset, 0, 0, 1000000);
-  
+  const offset = sanitizeNumeric(options.offset, 0, 0, 1_000_000);
+
   const activitiesQuery = `
     SELECT * FROM (
       SELECT 
@@ -384,23 +433,23 @@ export async function getActivity(options: GetActivityOptions): Promise<{ activi
     ORDER BY timestamp DESC
     LIMIT ${limit} OFFSET ${offset}
   `;
-  
+
   const countQuery = `
     SELECT 
       (SELECT COUNT(*) FROM events ${whereClause}) + 
       (SELECT COUNT(*) FROM errors ${whereClause}) as count
   `;
-  
+
   const [rawActivities, countResult] = await Promise.all([
     executeQuery<ActivityRawResult>(activitiesQuery),
     executeQuery<{ count: number }>(countQuery),
   ]);
-  
+
   const activities: ActivityQueryResult[] = rawActivities.map((row) => {
     let data: string;
-    
+
     if (row.type === 'event') {
-      let parsedParams = null;
+      let parsedParams: Record<string, unknown> | null = null;
       try {
         parsedParams = row.params ? JSON.parse(row.params) : null;
       } catch (e) {
@@ -418,7 +467,7 @@ export async function getActivity(options: GetActivityOptions): Promise<{ activi
         stackTrace: row.stack_trace || null,
       });
     }
-    
+
     return {
       type: row.type,
       id: row.id,
@@ -427,7 +476,7 @@ export async function getActivity(options: GetActivityOptions): Promise<{ activi
       data,
     };
   });
-  
+
   return {
     activities,
     total: countResult[0]?.count || 0,
@@ -436,7 +485,7 @@ export async function getActivity(options: GetActivityOptions): Promise<{ activi
 
 export async function initQuestDB(): Promise<void> {
   if (initPromise) {
-    return initPromise;
+    return await initPromise;
   }
 
   if (tablesInitialized) {
@@ -446,7 +495,9 @@ export async function initQuestDB(): Promise<void> {
 
   initPromise = (async () => {
     const url = `${QUESTDB_HTTP_URL}/exec`;
-    const auth = Buffer.from(`${QUESTDB_USER}:${QUESTDB_PASSWORD}`).toString('base64');
+    const auth = Buffer.from(`${QUESTDB_USER}:${QUESTDB_PASSWORD}`).toString(
+      'base64'
+    );
 
     try {
       const eventsTableQuery = `
@@ -461,17 +512,22 @@ export async function initQuestDB(): Promise<void> {
         ) TIMESTAMP(timestamp) PARTITION BY WEEK
       `;
 
-      const eventsResponse = await fetch(`${url}?query=${encodeURIComponent(eventsTableQuery)}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Basic ${auth}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const eventsResponse = await fetch(
+        `${url}?query=${encodeURIComponent(eventsTableQuery)}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Basic ${auth}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
       if (!eventsResponse.ok) {
         const errorText = await eventsResponse.text();
-        throw new Error(`Failed to create events table: ${eventsResponse.status} - ${errorText}`);
+        throw new Error(
+          `Failed to create events table: ${eventsResponse.status} - ${errorText}`
+        );
       }
 
       console.log('[QuestDB] Events table created/verified');
@@ -489,17 +545,22 @@ export async function initQuestDB(): Promise<void> {
         ) TIMESTAMP(timestamp) PARTITION BY WEEK
       `;
 
-      const errorsResponse = await fetch(`${url}?query=${encodeURIComponent(errorsTableQuery)}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Basic ${auth}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const errorsResponse = await fetch(
+        `${url}?query=${encodeURIComponent(errorsTableQuery)}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Basic ${auth}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
       if (!errorsResponse.ok) {
         const errorText = await errorsResponse.text();
-        throw new Error(`Failed to create errors table: ${errorsResponse.status} - ${errorText}`);
+        throw new Error(
+          `Failed to create errors table: ${errorsResponse.status} - ${errorText}`
+        );
       }
 
       console.log('[QuestDB] Errors table created/verified');
@@ -513,5 +574,5 @@ export async function initQuestDB(): Promise<void> {
     }
   })();
 
-  return initPromise;
+  return await initPromise;
 }

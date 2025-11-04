@@ -9,7 +9,6 @@ import {
 import { getErrors, writeError } from '@/lib/questdb';
 import { methodNotAllowed } from '@/lib/response';
 import {
-  buildFilters,
   formatPaginationResponse,
   validateDateRange,
   validatePagination,
