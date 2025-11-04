@@ -6,7 +6,6 @@ import { auth } from '@/lib/auth';
 import { authMiddleware } from '@/lib/middleware';
 import { configureOpenAPI } from '@/lib/openapi';
 import { initQuestDB } from '@/lib/questdb';
-import { redis, redisHealth } from '@/lib/redis';
 import { activityWebRouter } from '@/routes/activity';
 import { deviceSdkRouter, deviceWebRouter } from '@/routes/device';
 import { errorSdkRouter, errorWebRouter } from '@/routes/error';
@@ -108,9 +107,6 @@ initQuestDB()
 const shutdown = async (signal: string) => {
   try {
     console.log(`[Server] Received ${signal}, shutting down gracefully...`);
-
-    await Promise.all([redis.quit(), redisHealth.quit()]);
-    console.log('[Server] Redis connections closed');
 
     await pool.end();
     console.log('[Server] Database pool closed');
