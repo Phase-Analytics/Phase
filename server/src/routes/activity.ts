@@ -1,8 +1,7 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { sql } from 'drizzle-orm';
-import { db } from '@/db';
 import type { ApiKey, Session, User } from '@/db/schema';
 import { requireAuth, verifyApiKeyOwnership } from '@/lib/middleware';
+import { getActivity } from '@/lib/questdb';
 import { methodNotAllowed } from '@/lib/response';
 import {
   formatPaginationResponse,
@@ -94,76 +93,16 @@ activityWebRouter.openapi(getActivityRoute, async (c) => {
       return dateRangeValidation.response;
     }
 
-    const startDateCondition = query.startDate
-      ? sql`AND timestamp >= ${query.startDate}`
-      : sql``;
-    const endDateCondition = query.endDate
-      ? sql`AND timestamp <= ${query.endDate}`
-      : sql``;
+    // Query QuestDB for activities
+    const { activities: activitiesResult, total: totalCount } = await getActivity({
+      sessionId,
+      startDate: query.startDate || undefined,
+      endDate: query.endDate || undefined,
+      limit: pageSize,
+      offset,
+    });
 
-    const activitiesResult = await db.execute<{
-      type: 'event' | 'error';
-      id: string;
-      session_id: string;
-      timestamp: string;
-      data: Record<string, unknown>;
-    }>(sql`
-      (
-        SELECT 
-          'event' as type,
-          event_id as id,
-          session_id,
-          timestamp,
-          jsonb_build_object(
-            'name', name,
-            'params', params
-          ) as data
-        FROM events
-        WHERE session_id = ${sessionId}
-        ${startDateCondition}
-        ${endDateCondition}
-      )
-      UNION ALL
-      (
-        SELECT 
-          'error' as type,
-          error_id as id,
-          session_id,
-          timestamp,
-          jsonb_build_object(
-            'message', message,
-            'type', type,
-            'stackTrace', stack_trace
-          ) as data
-        FROM errors
-        WHERE session_id = ${sessionId}
-        ${startDateCondition}
-        ${endDateCondition}
-      )
-      ORDER BY timestamp DESC
-      LIMIT ${pageSize} OFFSET ${offset}
-    `);
-
-    const countResult = await db.execute<{ total: number }>(sql`
-      SELECT 
-        (
-          SELECT COUNT(*) 
-          FROM events 
-          WHERE session_id = ${sessionId}
-          ${startDateCondition}
-          ${endDateCondition}
-        ) 
-        + 
-        (
-          SELECT COUNT(*) 
-          FROM errors 
-          WHERE session_id = ${sessionId}
-          ${startDateCondition}
-          ${endDateCondition}
-        ) as total
-    `);
-
-    const activities: ActivityItem[] = activitiesResult.rows
+    const activities: ActivityItem[] = activitiesResult
       .map((row) => {
         const baseActivity = {
           id: row.id,
@@ -171,10 +110,29 @@ activityWebRouter.openapi(getActivityRoute, async (c) => {
           timestamp: new Date(row.timestamp).toISOString(),
         };
 
-        if (row.type === 'event') {
-          const validationResult = eventDataSchema.safeParse(row.data);
+        try {
+          const data = JSON.parse(row.data);
+
+          if (row.type === 'event') {
+            const validationResult = eventDataSchema.safeParse(data);
+            if (!validationResult.success) {
+              console.error('[Activity.List] Invalid event data:', {
+                rowId: row.id,
+                error: validationResult.error,
+              });
+              return null;
+            }
+
+            return {
+              type: 'event' as const,
+              ...baseActivity,
+              data: validationResult.data,
+            };
+          }
+
+          const validationResult = errorDataSchema.safeParse(data);
           if (!validationResult.success) {
-            console.error('[Activity.List] Invalid event data:', {
+            console.error('[Activity.List] Invalid error data:', {
               rowId: row.id,
               error: validationResult.error,
             });
@@ -182,30 +140,19 @@ activityWebRouter.openapi(getActivityRoute, async (c) => {
           }
 
           return {
-            type: 'event' as const,
+            type: 'error' as const,
             ...baseActivity,
             data: validationResult.data,
           };
-        }
-
-        const validationResult = errorDataSchema.safeParse(row.data);
-        if (!validationResult.success) {
-          console.error('[Activity.List] Invalid error data:', {
+        } catch (error) {
+          console.error('[Activity.List] Failed to parse data:', {
             rowId: row.id,
-            error: validationResult.error,
+            error,
           });
           return null;
         }
-
-        return {
-          type: 'error' as const,
-          ...baseActivity,
-          data: validationResult.data,
-        };
       })
       .filter((activity): activity is ActivityItem => activity !== null);
-
-    const totalCount = Number(countResult.rows[0]?.total ?? 0);
 
     return c.json(
       {

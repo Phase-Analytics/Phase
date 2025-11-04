@@ -1,12 +1,10 @@
-import { db, errors, events, pool } from '@/db';
+import { pool } from '@/db';
 import {
   acknowledgeBatchMessages,
   acknowledgeMessage,
   CONSUMER_GROUP,
   CONSUMER_NAME,
   createConsumerGroup,
-  type ErrorQueueItem,
-  type EventQueueItem,
   type PingQueueItem,
   type QueueItem,
   readFromStream,
@@ -32,64 +30,7 @@ type SessionActivity = {
 };
 
 function extractTimestamp(item: QueueItem): number {
-  if (item.type === 'event') {
-    return new Date((item as EventQueueItem).timestamp).getTime();
-  }
-  if (item.type === 'ping') {
-    return new Date((item as PingQueueItem).timestamp).getTime();
-  }
-  return new Date((item as ErrorQueueItem).timestamp).getTime();
-}
-
-async function insertEvents(
-  eventsToInsert: {
-    eventId: string;
-    sessionId: string;
-    name: string;
-    params: Record<string, string | number | boolean | null> | null;
-    timestamp: Date;
-  }[]
-): Promise<{ success: boolean; insertedCount: number }> {
-  if (eventsToInsert.length === 0) {
-    return { success: true, insertedCount: 0 };
-  }
-
-  try {
-    const result = await db
-      .insert(events)
-      .values(eventsToInsert)
-      .onConflictDoNothing({ target: events.eventId });
-    return { success: true, insertedCount: result.rowCount ?? 0 };
-  } catch (error) {
-    console.error('[Worker] Failed to insert events:', error);
-    return { success: false, insertedCount: 0 };
-  }
-}
-
-async function insertErrors(
-  errorsToInsert: {
-    errorId: string;
-    sessionId: string;
-    message: string;
-    type: string;
-    stackTrace: string | null;
-    timestamp: Date;
-  }[]
-): Promise<{ success: boolean; insertedCount: number }> {
-  if (errorsToInsert.length === 0) {
-    return { success: true, insertedCount: 0 };
-  }
-
-  try {
-    const result = await db
-      .insert(errors)
-      .values(errorsToInsert)
-      .onConflictDoNothing({ target: errors.errorId });
-    return { success: true, insertedCount: result.rowCount ?? 0 };
-  } catch (error) {
-    console.error('[Worker] Failed to insert errors:', error);
-    return { success: false, insertedCount: 0 };
-  }
+  return new Date((item as PingQueueItem).timestamp).getTime();
 }
 
 async function updateSessionActivities(
@@ -128,43 +69,6 @@ async function updateSessionActivities(
   }
 }
 
-function processEventItem(
-  entry: BatchEntry,
-  eventsToInsert: {
-    eventId: string;
-    sessionId: string;
-    name: string;
-    params: Record<string, string | number | boolean | null> | null;
-    timestamp: Date;
-  }[],
-  sessionActivities: Map<string, SessionActivity>
-): void {
-  const eventData = entry.data as EventQueueItem;
-  const timestamp = new Date(eventData.timestamp);
-
-  eventsToInsert.push({
-    eventId: eventData.eventId,
-    sessionId: eventData.sessionId,
-    name: eventData.name,
-    params: eventData.params ?? null,
-    timestamp,
-  });
-
-  const existing = sessionActivities.get(eventData.sessionId);
-  const shouldUpdate =
-    !existing ||
-    timestamp.getTime() - existing.timestamp.getTime() >
-      SESSION_UPDATE_THROTTLE_MS ||
-    timestamp > existing.timestamp;
-
-  if (shouldUpdate) {
-    sessionActivities.set(eventData.sessionId, {
-      sessionId: eventData.sessionId,
-      timestamp,
-    });
-  }
-}
-
 function processPingItem(
   entry: BatchEntry,
   sessionActivities: Map<string, SessionActivity>
@@ -187,93 +91,18 @@ function processPingItem(
   }
 }
 
-function processErrorItem(
-  entry: BatchEntry,
-  errorsToInsert: {
-    errorId: string;
-    sessionId: string;
-    message: string;
-    type: string;
-    stackTrace: string | null;
-    timestamp: Date;
-  }[],
-  sessionActivities: Map<string, SessionActivity>
-): void {
-  const errorData = entry.data as ErrorQueueItem;
-  const timestamp = new Date(errorData.timestamp);
-
-  errorsToInsert.push({
-    errorId: errorData.errorId,
-    sessionId: errorData.sessionId,
-    message: errorData.message,
-    type: errorData.errorType,
-    stackTrace: errorData.stackTrace,
-    timestamp,
-  });
-
-  const existing = sessionActivities.get(errorData.sessionId);
-  const shouldUpdate =
-    !existing ||
-    timestamp.getTime() - existing.timestamp.getTime() >
-      SESSION_UPDATE_THROTTLE_MS ||
-    timestamp > existing.timestamp;
-
-  if (shouldUpdate) {
-    sessionActivities.set(errorData.sessionId, {
-      sessionId: errorData.sessionId,
-      timestamp,
-    });
-  }
-}
-
 function processBatchItems(batch: BatchEntry[]): {
-  eventsToInsert: {
-    eventId: string;
-    sessionId: string;
-    name: string;
-    params: Record<string, string | number | boolean | null> | null;
-    timestamp: Date;
-  }[];
-  errorsToInsert: {
-    errorId: string;
-    sessionId: string;
-    message: string;
-    type: string;
-    stackTrace: string | null;
-    timestamp: Date;
-  }[];
   sessionActivities: Map<string, SessionActivity>;
 } {
-  const eventsToInsert: {
-    eventId: string;
-    sessionId: string;
-    name: string;
-    params: Record<string, string | number | boolean | null> | null;
-    timestamp: Date;
-  }[] = [];
-
-  const errorsToInsert: {
-    errorId: string;
-    sessionId: string;
-    message: string;
-    type: string;
-    stackTrace: string | null;
-    timestamp: Date;
-  }[] = [];
-
   const sessionActivities = new Map<string, SessionActivity>();
 
   for (const entry of batch) {
-    if (entry.data.type === 'event') {
-      processEventItem(entry, eventsToInsert, sessionActivities);
-    } else if (entry.data.type === 'ping') {
+    if (entry.data.type === 'ping') {
       processPingItem(entry, sessionActivities);
-    } else if (entry.data.type === 'error') {
-      processErrorItem(entry, errorsToInsert, sessionActivities);
     }
   }
 
-  return { eventsToInsert, errorsToInsert, sessionActivities };
+  return { sessionActivities };
 }
 
 async function acknowledgeBatchEntries(batch: BatchEntry[]): Promise<number> {
@@ -326,36 +155,15 @@ async function processBatch(batch: BatchEntry[]): Promise<boolean> {
     return true;
   }
 
-  const { eventsToInsert, errorsToInsert, sessionActivities } =
-    processBatchItems(batch);
+  const { sessionActivities } = processBatchItems(batch);
 
-  const [eventsResult, errorsResult, sessionsResult] = await Promise.all([
-    insertEvents(eventsToInsert),
-    insertErrors(errorsToInsert),
-    updateSessionActivities(sessionActivities),
-  ]);
+  const sessionsResult = await updateSessionActivities(sessionActivities);
 
-  if (
-    !(eventsResult.success && errorsResult.success && sessionsResult.success)
-  ) {
+  if (!sessionsResult.success) {
     console.error(
       '[Worker] Critical failure in batch processing, messages not acknowledged'
     );
     return false;
-  }
-
-  if (eventsResult.insertedCount < eventsToInsert.length) {
-    const duplicateCount = eventsToInsert.length - eventsResult.insertedCount;
-    console.log(
-      `[Worker] ${duplicateCount} duplicate events skipped (expected with onConflictDoNothing)`
-    );
-  }
-
-  if (errorsResult.insertedCount < errorsToInsert.length) {
-    const duplicateCount = errorsToInsert.length - errorsResult.insertedCount;
-    console.log(
-      `[Worker] ${duplicateCount} duplicate errors skipped (expected with onConflictDoNothing)`
-    );
   }
 
   if (sessionsResult.updatedCount < sessionActivities.size) {
@@ -459,11 +267,7 @@ async function processStream(streamKey: string): Promise<void> {
 export async function startWorker(): Promise<{
   stop: () => Promise<void>;
 }> {
-  await Promise.all([
-    createConsumerGroup(STREAM_KEYS.EVENTS, CONSUMER_GROUP),
-    createConsumerGroup(STREAM_KEYS.PINGS, CONSUMER_GROUP),
-    createConsumerGroup(STREAM_KEYS.ERRORS, CONSUMER_GROUP),
-  ]);
+  await createConsumerGroup(STREAM_KEYS.PINGS, CONSUMER_GROUP);
 
   console.log('[Worker] Started batch processor');
 
@@ -486,11 +290,7 @@ export async function startWorker(): Promise<{
   async function runLoop(): Promise<void> {
     while (!shouldStop) {
       try {
-        await Promise.all([
-          processStream(STREAM_KEYS.EVENTS),
-          processStream(STREAM_KEYS.PINGS),
-          processStream(STREAM_KEYS.ERRORS),
-        ]);
+        await processStream(STREAM_KEYS.PINGS);
       } catch (error) {
         console.error('[Worker] Error in main loop:', error);
         await new Promise((resolve) => {

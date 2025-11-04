@@ -1,14 +1,14 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { count, desc, eq, type SQL } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { ulid } from 'ulid';
-import { db, devices, errors, sessions } from '@/db';
+import { db, devices } from '@/db';
 import type { ApiKey, Session, User } from '@/db/schema';
 import {
   requireApiKey,
   requireAuth,
   verifyApiKeyOwnership,
 } from '@/lib/middleware';
-import { addToQueue } from '@/lib/queue';
+import { getErrors, writeError } from '@/lib/questdb';
 import { methodNotAllowed } from '@/lib/response';
 import {
   buildFilters,
@@ -161,16 +161,33 @@ errorSdkRouter.openapi(createErrorRoute, async (c) => {
       );
     }
 
+    // Get device to retrieve apiKeyId
+    const device = await db.query.devices.findFirst({
+      where: eq(devices.deviceId, session.deviceId),
+    });
+
+    if (!device) {
+      return c.json(
+        {
+          code: ErrorCode.NOT_FOUND,
+          detail: 'Device not found',
+        },
+        HttpStatus.NOT_FOUND
+      );
+    }
+
     const errorId = ulid();
 
-    await addToQueue({
-      type: 'error',
+    // Write directly to QuestDB
+    await writeError({
       errorId,
       sessionId: body.sessionId,
+      deviceId: session.deviceId,
+      apiKeyId: device.apiKeyId,
       message: body.message,
-      errorType: body.type,
-      stackTrace: body.stackTrace,
-      timestamp: clientTimestamp.toISOString(),
+      type: body.type,
+      stackTrace: body.stackTrace ?? null,
+      timestamp: clientTimestamp,
     });
 
     return c.json(
@@ -228,82 +245,24 @@ errorWebRouter.openapi(getErrorsRoute, async (c) => {
       return dateRangeValidation.response;
     }
 
-    let errorsList: (typeof errors.$inferSelect)[];
-    let totalCount: number;
-
-    if (sessionId) {
-      const filters: SQL[] = [eq(errors.sessionId, sessionId)];
-
-      if (query.type) {
-        filters.push(eq(errors.type, query.type));
-      }
-
-      const whereClause = buildFilters({
-        filters,
-        startDateColumn: errors.timestamp,
-        startDateValue: query.startDate,
-        endDateColumn: errors.timestamp,
-        endDateValue: query.endDate,
-      });
-
-      [errorsList, [{ count: totalCount }]] = await Promise.all([
-        db
-          .select()
-          .from(errors)
-          .where(whereClause)
-          .orderBy(desc(errors.timestamp))
-          .limit(pageSize)
-          .offset(offset),
-        db.select({ count: count() }).from(errors).where(whereClause),
-      ]);
-    } else {
-      const filters: SQL[] = [eq(devices.apiKeyId, apiKeyId)];
-
-      if (query.type) {
-        filters.push(eq(errors.type, query.type));
-      }
-
-      const whereClause = buildFilters({
-        filters,
-        startDateColumn: errors.timestamp,
-        startDateValue: query.startDate,
-        endDateColumn: errors.timestamp,
-        endDateValue: query.endDate,
-      });
-
-      [errorsList, [{ count: totalCount }]] = await Promise.all([
-        db
-          .select({
-            errorId: errors.errorId,
-            sessionId: errors.sessionId,
-            message: errors.message,
-            type: errors.type,
-            stackTrace: errors.stackTrace,
-            timestamp: errors.timestamp,
-          })
-          .from(errors)
-          .innerJoin(sessions, eq(errors.sessionId, sessions.sessionId))
-          .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
-          .where(whereClause)
-          .orderBy(desc(errors.timestamp))
-          .limit(pageSize)
-          .offset(offset),
-        db
-          .select({ count: count() })
-          .from(errors)
-          .innerJoin(sessions, eq(errors.sessionId, sessions.sessionId))
-          .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
-          .where(whereClause),
-      ]);
-    }
+    // Query QuestDB
+    const { errors: errorsList, total: totalCount } = await getErrors({
+      sessionId: sessionId || undefined,
+      apiKeyId,
+      errorType: query.type || undefined,
+      startDate: query.startDate || undefined,
+      endDate: query.endDate || undefined,
+      limit: pageSize,
+      offset,
+    });
 
     const formattedErrors = errorsList.map((error) => ({
-      errorId: error.errorId,
-      sessionId: error.sessionId,
+      errorId: error.error_id,
+      sessionId: error.session_id,
       message: error.message,
       type: error.type,
-      stackTrace: error.stackTrace,
-      timestamp: error.timestamp.toISOString(),
+      stackTrace: error.stack_trace,
+      timestamp: new Date(error.timestamp).toISOString(),
     }));
 
     return c.json(

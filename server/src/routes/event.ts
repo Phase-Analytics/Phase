@@ -1,14 +1,14 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { count, desc, eq, type SQL } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { ulid } from 'ulid';
-import { db, events, sessions } from '@/db';
+import { db, devices } from '@/db';
 import type { ApiKey, Session, User } from '@/db/schema';
 import {
   requireApiKey,
   requireAuth,
   verifyApiKeyOwnership,
 } from '@/lib/middleware';
-import { addToQueue } from '@/lib/queue';
+import { getEvents, writeEvent } from '@/lib/questdb';
 import { methodNotAllowed } from '@/lib/response';
 import {
   buildFilters,
@@ -162,15 +162,32 @@ eventSdkRouter.openapi(createEventRoute, async (c) => {
       );
     }
 
+    // Get device to retrieve apiKeyId
+    const device = await db.query.devices.findFirst({
+      where: eq(devices.deviceId, session.deviceId),
+    });
+
+    if (!device) {
+      return c.json(
+        {
+          code: ErrorCode.NOT_FOUND,
+          detail: 'Device not found',
+        },
+        HttpStatus.NOT_FOUND
+      );
+    }
+
     const eventId = ulid();
 
-    await addToQueue({
-      type: 'event',
+    // Write directly to QuestDB
+    await writeEvent({
       eventId,
       sessionId: body.sessionId,
+      deviceId: session.deviceId,
+      apiKeyId: device.apiKeyId,
       name: body.name,
-      params: body.params,
-      timestamp: clientTimestamp.toISOString(),
+      params: body.params ?? null,
+      timestamp: clientTimestamp,
     });
 
     return c.json(
@@ -235,86 +252,24 @@ eventWebRouter.openapi(getEventsRoute, async (c) => {
       return dateRangeValidation.response;
     }
 
-    let eventsList: (typeof events.$inferSelect)[];
-    let totalCount: number;
-
-    if (sessionId) {
-      const filters: SQL[] = [eq(events.sessionId, sessionId)];
-
-      if (query.eventName) {
-        filters.push(eq(events.name, query.eventName));
-      }
-
-      const whereClause = buildFilters({
-        filters,
-        startDateColumn: events.timestamp,
-        startDateValue: query.startDate,
-        endDateColumn: events.timestamp,
-        endDateValue: query.endDate,
-      });
-
-      [eventsList, [{ count: totalCount }]] = await Promise.all([
-        db
-          .select()
-          .from(events)
-          .where(whereClause)
-          .orderBy(desc(events.timestamp))
-          .limit(pageSize)
-          .offset(offset),
-        db.select({ count: count() }).from(events).where(whereClause),
-      ]);
-    } else if (deviceId) {
-      const filters: SQL[] = [eq(sessions.deviceId, deviceId)];
-
-      if (query.eventName) {
-        filters.push(eq(events.name, query.eventName));
-      }
-
-      const whereClause = buildFilters({
-        filters,
-        startDateColumn: events.timestamp,
-        startDateValue: query.startDate,
-        endDateColumn: events.timestamp,
-        endDateValue: query.endDate,
-      });
-
-      [eventsList, [{ count: totalCount }]] = await Promise.all([
-        db
-          .select({
-            eventId: events.eventId,
-            sessionId: events.sessionId,
-            name: events.name,
-            params: events.params,
-            timestamp: events.timestamp,
-          })
-          .from(events)
-          .innerJoin(sessions, eq(events.sessionId, sessions.sessionId))
-          .where(whereClause)
-          .orderBy(desc(events.timestamp))
-          .limit(pageSize)
-          .offset(offset),
-        db
-          .select({ count: count() })
-          .from(events)
-          .innerJoin(sessions, eq(events.sessionId, sessions.sessionId))
-          .where(whereClause),
-      ]);
-    } else {
-      return c.json(
-        {
-          code: ErrorCode.BAD_REQUEST,
-          detail: 'Either sessionId or deviceId must be provided',
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
+    // Query QuestDB
+    const { events: eventsList, total: totalCount } = await getEvents({
+      sessionId: sessionId || undefined,
+      deviceId: deviceId || undefined,
+      apiKeyId,
+      eventName: query.eventName || undefined,
+      startDate: query.startDate || undefined,
+      endDate: query.endDate || undefined,
+      limit: pageSize,
+      offset,
+    });
 
     const formattedEvents = eventsList.map((event) => ({
-      eventId: event.eventId,
-      sessionId: event.sessionId,
+      eventId: event.event_id,
+      sessionId: event.session_id,
       name: event.name,
-      params: event.params,
-      timestamp: event.timestamp.toISOString(),
+      params: event.params ? JSON.parse(event.params) : null,
+      timestamp: new Date(event.timestamp).toISOString(),
     }));
 
     return c.json(
