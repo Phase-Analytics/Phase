@@ -2,12 +2,10 @@ import {
   boolean,
   index,
   integer,
-  jsonb,
   pgTable,
   text,
   timestamp,
 } from 'drizzle-orm/pg-core';
-import { ulid } from 'ulid';
 
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
@@ -164,54 +162,6 @@ export const sessions = pgTable(
   })
 );
 
-export const events = pgTable(
-  'events',
-  {
-    eventId: text('event_id')
-      .primaryKey()
-      .$defaultFn(() => ulid()),
-    sessionId: text('session_id')
-      .notNull()
-      .references(() => sessions.sessionId, { onDelete: 'cascade' }),
-    name: text('name').notNull(),
-    params: jsonb('params').$type<Record<
-      string,
-      string | number | boolean | null
-    > | null>(),
-    timestamp: timestamp('timestamp').notNull(),
-  },
-  (table) => ({
-    nameIdx: index('events_name_idx').on(table.name),
-    sessionTimestampIdx: index('events_session_timestamp_idx').on(
-      table.sessionId,
-      table.timestamp.desc()
-    ),
-  })
-);
-
-export const errors = pgTable(
-  'errors',
-  {
-    errorId: text('error_id')
-      .primaryKey()
-      .$defaultFn(() => ulid()),
-    sessionId: text('session_id')
-      .notNull()
-      .references(() => sessions.sessionId, { onDelete: 'cascade' }),
-    message: text('message').notNull(),
-    type: text('type').notNull(),
-    stackTrace: text('stack_trace'),
-    timestamp: timestamp('timestamp').notNull(),
-  },
-  (table) => ({
-    typeIdx: index('errors_type_idx').on(table.type),
-    sessionTimestampIdx: index('errors_session_timestamp_idx').on(
-      table.sessionId,
-      table.timestamp.desc()
-    ),
-  })
-);
-
 export type User = typeof user.$inferSelect;
 export type NewUser = typeof user.$inferInsert;
 
@@ -232,9 +182,3 @@ export type NewDevice = typeof devices.$inferInsert;
 
 export type AnalyticsSession = typeof sessions.$inferSelect;
 export type NewAnalyticsSession = typeof sessions.$inferInsert;
-
-export type Event = typeof events.$inferSelect;
-export type NewEvent = typeof events.$inferInsert;
-
-export type ErrorLog = typeof errors.$inferSelect;
-export type NewErrorLog = typeof errors.$inferInsert;

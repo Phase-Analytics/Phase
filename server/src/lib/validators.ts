@@ -160,7 +160,12 @@ export async function validateSession(
   c: Context,
   sessionId: string,
   apiKeyId?: string
-): Promise<ValidationResult<typeof sessions.$inferSelect>> {
+): Promise<
+  ValidationResult<{
+    session: typeof sessions.$inferSelect;
+    device: typeof devices.$inferSelect;
+  }>
+> {
   const result = await db
     .select({
       session: sessions,
@@ -204,7 +209,10 @@ export async function validateSession(
 
   return {
     success: true,
-    data: sessionData.session,
+    data: {
+      session: sessionData.session,
+      device: sessionData.device,
+    },
   };
 }
 

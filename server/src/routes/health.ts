@@ -1,6 +1,5 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 import { pool } from '@/db';
-import { redisHealth } from '@/lib/redis';
 import { methodNotAllowed } from '@/lib/response';
 import { errorResponses, HttpStatus } from '@/schemas';
 
@@ -10,12 +9,6 @@ const healthResponseSchema = z.object({
   status: z.enum(['healthy', 'unhealthy']).openapi({ example: 'healthy' }),
   services: z.object({
     database: z.object({
-      status: z.enum(['healthy', 'unhealthy', 'unknown']),
-      latency: z.number(),
-      error: z.string().optional(),
-      message: z.string().optional(),
-    }),
-    redis: z.object({
       status: z.enum(['healthy', 'unhealthy', 'unknown']),
       latency: z.number(),
       error: z.string().optional(),
@@ -77,7 +70,6 @@ type HealthCheckData = {
   status: 'healthy' | 'unhealthy';
   services: {
     database: ServiceStatus;
-    redis: ServiceStatus;
     cache?: {
       enabled: boolean;
       strategy?: string;
@@ -94,7 +86,6 @@ health.openapi(getHealthRoute, async (c) => {
 
   const services: HealthCheckData['services'] = {
     database: { status: 'unknown', latency: 0 },
-    redis: { status: 'unknown', latency: 0 },
   };
 
   try {
@@ -114,26 +105,6 @@ health.openapi(getHealthRoute, async (c) => {
         error instanceof Error
           ? error.message
           : 'Unknown database connection error',
-    };
-  }
-
-  try {
-    const redisStart = Date.now();
-    await redisHealth.ping();
-    services.redis = {
-      status: 'healthy',
-      latency: Date.now() - redisStart,
-    };
-  } catch (error) {
-    console.error('Redis health check failed:', error);
-    overallStatus = 'unhealthy';
-    services.redis = {
-      status: 'unhealthy',
-      latency: 0,
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Unknown Redis connection error',
     };
   }
 

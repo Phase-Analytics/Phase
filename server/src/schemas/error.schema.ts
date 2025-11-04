@@ -1,5 +1,4 @@
 import { z } from '@hono/zod-openapi';
-import type { ErrorLog } from '@/db/schema';
 import {
   dateFilterQuerySchema,
   paginationQuerySchema,
@@ -22,12 +21,7 @@ export const errorSchema = z
       .datetime()
       .openapi({ example: '2024-01-01T00:00:00Z' }),
   })
-  .openapi('Error') satisfies z.ZodType<
-  Omit<ErrorLog, 'timestamp' | 'stackTrace'> & {
-    timestamp: string;
-    stackTrace: string | null;
-  }
->;
+  .openapi('Error');
 
 export const createErrorRequestSchema = z
   .object({

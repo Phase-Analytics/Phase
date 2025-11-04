@@ -5,8 +5,7 @@ import { pool } from '@/db';
 import { auth } from '@/lib/auth';
 import { authMiddleware } from '@/lib/middleware';
 import { configureOpenAPI } from '@/lib/openapi';
-import { redis, redisHealth, redisQueue } from '@/lib/redis';
-import { startWorker } from '@/lib/worker';
+import { initQuestDB } from '@/lib/questdb';
 import { activityWebRouter } from '@/routes/activity';
 import { deviceSdkRouter, deviceWebRouter } from '@/routes/device';
 import { errorSdkRouter, errorWebRouter } from '@/routes/error';
@@ -96,29 +95,17 @@ app.on(['POST', 'GET'], '/api/auth/**', (c) => auth.handler(c.req.raw));
 
 configureOpenAPI(app);
 
-let workerHandle: { stop: () => Promise<void> } | null = null;
-
-startWorker()
-  .then((handle) => {
-    workerHandle = handle;
-  })
-  .catch((error) => {
-    console.error('[Server] Failed to start worker:', error);
-    process.exit(1);
-  });
+try {
+  await initQuestDB();
+  console.log('[Server] QuestDB initialized');
+} catch (error) {
+  console.error('[Server] Failed to start:', error);
+  process.exit(1);
+}
 
 const shutdown = async (signal: string) => {
   try {
     console.log(`[Server] Received ${signal}, shutting down gracefully...`);
-
-    if (workerHandle) {
-      console.log('[Server] Stopping worker...');
-      await workerHandle.stop();
-      console.log('[Server] Worker stopped');
-    }
-
-    await Promise.all([redis.quit(), redisHealth.quit(), redisQueue.quit()]);
-    console.log('[Server] Redis connections closed');
 
     await pool.end();
     console.log('[Server] Database pool closed');

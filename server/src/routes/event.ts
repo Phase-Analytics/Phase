@@ -1,17 +1,14 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { count, desc, eq, type SQL } from 'drizzle-orm';
 import { ulid } from 'ulid';
-import { db, events, sessions } from '@/db';
 import type { ApiKey, Session, User } from '@/db/schema';
 import {
   requireApiKey,
   requireAuth,
   verifyApiKeyOwnership,
 } from '@/lib/middleware';
-import { addToQueue } from '@/lib/queue';
+import { getEvents, writeEvent } from '@/lib/questdb';
 import { methodNotAllowed } from '@/lib/response';
 import {
-  buildFilters,
   formatPaginationResponse,
   validateDateRange,
   validateDevice,
@@ -150,7 +147,7 @@ eventSdkRouter.openapi(createEventRoute, async (c) => {
     }
 
     const clientTimestamp = timestampValidation.data;
-    const session = sessionValidation.data;
+    const { session, device } = sessionValidation.data;
 
     if (clientTimestamp < session.startedAt) {
       return c.json(
@@ -164,13 +161,14 @@ eventSdkRouter.openapi(createEventRoute, async (c) => {
 
     const eventId = ulid();
 
-    await addToQueue({
-      type: 'event',
+    await writeEvent({
       eventId,
       sessionId: body.sessionId,
+      deviceId: session.deviceId,
+      apiKeyId: device.apiKeyId,
       name: body.name,
-      params: body.params,
-      timestamp: clientTimestamp.toISOString(),
+      params: body.params ?? null,
+      timestamp: clientTimestamp,
     });
 
     return c.json(
@@ -195,7 +193,6 @@ eventSdkRouter.openapi(createEventRoute, async (c) => {
   }
 });
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Query optimization requires branching by query type (session vs device)
 eventWebRouter.openapi(getEventsRoute, async (c) => {
   try {
     const query = c.req.valid('query');
@@ -235,87 +232,42 @@ eventWebRouter.openapi(getEventsRoute, async (c) => {
       return dateRangeValidation.response;
     }
 
-    let eventsList: (typeof events.$inferSelect)[];
-    let totalCount: number;
+    const { events: eventsList, total: totalCount } = await getEvents({
+      sessionId: sessionId || undefined,
+      deviceId: deviceId || undefined,
+      apiKeyId,
+      eventName: query.eventName || undefined,
+      startDate: query.startDate || undefined,
+      endDate: query.endDate || undefined,
+      limit: pageSize,
+      offset,
+    });
 
-    if (sessionId) {
-      const filters: SQL[] = [eq(events.sessionId, sessionId)];
-
-      if (query.eventName) {
-        filters.push(eq(events.name, query.eventName));
+    const formattedEvents = eventsList.map((event) => {
+      let parsedParams: Record<
+        string,
+        string | number | boolean | null
+      > | null = null;
+      if (event.params) {
+        try {
+          parsedParams = JSON.parse(event.params);
+        } catch (error) {
+          console.error(
+            `[Event.List] Failed to parse params for event ${event.event_id}:`,
+            error
+          );
+          parsedParams = null;
+        }
       }
 
-      const whereClause = buildFilters({
-        filters,
-        startDateColumn: events.timestamp,
-        startDateValue: query.startDate,
-        endDateColumn: events.timestamp,
-        endDateValue: query.endDate,
-      });
-
-      [eventsList, [{ count: totalCount }]] = await Promise.all([
-        db
-          .select()
-          .from(events)
-          .where(whereClause)
-          .orderBy(desc(events.timestamp))
-          .limit(pageSize)
-          .offset(offset),
-        db.select({ count: count() }).from(events).where(whereClause),
-      ]);
-    } else if (deviceId) {
-      const filters: SQL[] = [eq(sessions.deviceId, deviceId)];
-
-      if (query.eventName) {
-        filters.push(eq(events.name, query.eventName));
-      }
-
-      const whereClause = buildFilters({
-        filters,
-        startDateColumn: events.timestamp,
-        startDateValue: query.startDate,
-        endDateColumn: events.timestamp,
-        endDateValue: query.endDate,
-      });
-
-      [eventsList, [{ count: totalCount }]] = await Promise.all([
-        db
-          .select({
-            eventId: events.eventId,
-            sessionId: events.sessionId,
-            name: events.name,
-            params: events.params,
-            timestamp: events.timestamp,
-          })
-          .from(events)
-          .innerJoin(sessions, eq(events.sessionId, sessions.sessionId))
-          .where(whereClause)
-          .orderBy(desc(events.timestamp))
-          .limit(pageSize)
-          .offset(offset),
-        db
-          .select({ count: count() })
-          .from(events)
-          .innerJoin(sessions, eq(events.sessionId, sessions.sessionId))
-          .where(whereClause),
-      ]);
-    } else {
-      return c.json(
-        {
-          code: ErrorCode.BAD_REQUEST,
-          detail: 'Either sessionId or deviceId must be provided',
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
-
-    const formattedEvents = eventsList.map((event) => ({
-      eventId: event.eventId,
-      sessionId: event.sessionId,
-      name: event.name,
-      params: event.params,
-      timestamp: event.timestamp.toISOString(),
-    }));
+      return {
+        eventId: event.event_id,
+        sessionId: event.session_id,
+        name: event.name,
+        params: parsedParams,
+        timestamp: new Date(event.timestamp).toISOString(),
+      };
+    });
 
     return c.json(
       {
