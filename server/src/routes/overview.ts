@@ -61,10 +61,12 @@ overviewWebRouter.openapi(getOverviewRoute, async (c: any) => {
     const { apiKeyId } = query;
 
     const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     const [
       [{ count: totalDevices }],
       activeDevicesResult,
+      dailyActiveUsersResult,
       [{ count: totalSessions }],
       avgDurationResult,
     ] = await Promise.all([
@@ -79,6 +81,14 @@ overviewWebRouter.openapi(getOverviewRoute, async (c: any) => {
         INNER JOIN sessions_analytics s ON d.device_id = s.device_id
         WHERE d.api_key_id = ${apiKeyId}
         AND s.last_activity_at >= ${twoMinutesAgo}
+      `),
+
+      db.execute<{ count: number }>(sql`
+        SELECT COUNT(DISTINCT s.device_id) as count
+        FROM sessions_analytics s
+        INNER JOIN devices d ON s.device_id = d.device_id
+        WHERE d.api_key_id = ${apiKeyId}
+        AND s.started_at >= ${twentyFourHoursAgo}
       `),
 
       db
@@ -98,6 +108,7 @@ overviewWebRouter.openapi(getOverviewRoute, async (c: any) => {
     ]);
 
     const activeDevices = Number(activeDevicesResult.rows[0]?.count ?? 0);
+    const dailyActiveUsers = Number(dailyActiveUsersResult.rows[0]?.count ?? 0);
     const averageSessionDuration = avgDurationResult.rows[0]?.avg
       ? Number(avgDurationResult.rows[0].avg)
       : null;
@@ -105,6 +116,7 @@ overviewWebRouter.openapi(getOverviewRoute, async (c: any) => {
     const response: OverviewResponse = {
       totalDevices: Number(totalDevices),
       activeDevices,
+      dailyActiveUsers,
       totalSessions: Number(totalSessions),
       averageSessionDuration,
     };

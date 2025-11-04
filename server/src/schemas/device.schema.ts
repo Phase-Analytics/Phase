@@ -10,7 +10,7 @@ export const deviceSchema = z
   .object({
     deviceId: z.string().openapi({ example: 'device_abc123' }),
     identifier: z.string().nullable().openapi({ example: 'user@example.com' }),
-    brand: z.string().nullable().openapi({ example: 'Apple' }),
+    model: z.string().nullable().openapi({ example: 'iPhone 15 Pro' }),
     osVersion: z.string().nullable().openapi({ example: '17.0.1' }),
     platform: z.string().nullable().openapi({ example: 'ios' }),
     appVersion: z.string().nullable().openapi({ example: '1.2.3' }),
@@ -27,7 +27,7 @@ export const createDeviceRequestSchema = z
   .object({
     deviceId: z.string().openapi({ example: 'device_abc123' }),
     identifier: z.string().nullish().openapi({ example: 'user@example.com' }),
-    brand: z.string().nullish().openapi({ example: 'Apple' }),
+    model: z.string().nullish().openapi({ example: 'iPhone 15 Pro' }),
     osVersion: z.string().nullish().openapi({ example: '17.0.1' }),
     platform: z.string().nullish().openapi({ example: 'ios' }),
     appVersion: z.string().nullish().openapi({ example: '1.2.3' }),
@@ -46,7 +46,7 @@ export const deviceDetailSchema = z
   .object({
     deviceId: z.string().openapi({ example: 'device_abc123' }),
     identifier: z.string().nullable().openapi({ example: 'user@example.com' }),
-    brand: z.string().nullable().openapi({ example: 'Apple' }),
+    model: z.string().nullable().openapi({ example: 'iPhone 15 Pro' }),
     osVersion: z.string().nullable().openapi({ example: '17.0.1' }),
     platform: z.string().nullable().openapi({ example: 'ios' }),
     appVersion: z.string().nullable().openapi({ example: '1.2.3' }),
