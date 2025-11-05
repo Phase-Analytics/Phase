@@ -1,35 +1,38 @@
-if (
-  !(
-    process.env.QUESTDB_HOST &&
-    process.env.QUESTDB_USER &&
-    process.env.QUESTDB_PASSWORD
-  )
-) {
-  throw new Error(
-    'QUESTDB_HOST, QUESTDB_USER, and QUESTDB_PASSWORD must be set'
-  );
-}
+import { Sender } from '@questdb/nodejs-client';
 
-const QUESTDB_HOST = process.env.QUESTDB_HOST;
-const QUESTDB_USER = process.env.QUESTDB_USER;
-const QUESTDB_PASSWORD = process.env.QUESTDB_PASSWORD;
+const QUESTDB_HTTP = 'http://questdb:9000';
+const QUESTDB_ILP_HOST = 'questdb';
+const QUESTDB_ILP_PORT = 9009;
+
+let sender: Sender | null = null;
+
+async function getSender(): Promise<Sender> {
+  if (!sender) {
+    try {
+      console.log(
+        `[QuestDB] Connecting to ILP at ${QUESTDB_ILP_HOST}:${QUESTDB_ILP_PORT}`
+      );
+      sender = await Sender.fromConfig(
+        `tcp::addr=${QUESTDB_ILP_HOST}:${QUESTDB_ILP_PORT};auto_flush=on;auto_flush_rows=1000;timeout=10000;`
+      );
+      console.log('[QuestDB] ILP connection established');
+    } catch (error) {
+      console.error('[QuestDB] Failed to connect to ILP:', error);
+      throw new Error(
+        `Failed to connect to QuestDB ILP: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+  
+  if (!sender) {
+    throw new Error('[QuestDB] Sender is null after initialization');
+  }
+  
+  return sender;
+}
 
 let tablesInitialized = false;
 let initPromise: Promise<void> | null = null;
-
-const escapeSymbol = (value: string): string =>
-  value.replace(/[,= \n\r]/g, (match) => {
-    if (match === '\n') {
-      return '\\n';
-    }
-    if (match === '\r') {
-      return '\\r';
-    }
-    return `\\${match}`;
-  });
-
-const escapeString = (value: string): string =>
-  value.replace(/["\\]/g, '\\$&').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
 
 const IDENTIFIER_REGEX = /^[a-zA-Z0-9_-]+$/;
 // biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally checking for control characters
@@ -57,80 +60,41 @@ export type ErrorRecord = {
 };
 
 export async function writeEvent(event: EventRecord): Promise<void> {
-  const auth = Buffer.from(`${QUESTDB_USER}:${QUESTDB_PASSWORD}`).toString(
-    'base64'
-  );
-  const timestampNs = event.timestamp.getTime() * 1_000_000;
+  const client = await getSender();
 
-  const symbols = [
-    `event_id=${escapeSymbol(event.eventId)}`,
-    `session_id=${escapeSymbol(event.sessionId)}`,
-    `device_id=${escapeSymbol(event.deviceId)}`,
-    `api_key_id=${escapeSymbol(event.apiKeyId)}`,
-    `name=${escapeSymbol(event.name)}`,
-  ].join(',');
+  client
+    .table('events')
+    .symbol('event_id', event.eventId)
+    .symbol('session_id', event.sessionId)
+    .symbol('device_id', event.deviceId)
+    .symbol('api_key_id', event.apiKeyId)
+    .symbol('name', event.name);
 
-  let ilpLine: string;
   if (event.params !== null) {
     const paramsJson = JSON.stringify(event.params);
-    ilpLine = `events,${symbols} params="${escapeString(paramsJson)}" ${timestampNs}`;
-  } else {
-    ilpLine = `events,${symbols} ${timestampNs}`;
+    client.stringColumn('params', paramsJson);
   }
 
-  const response = await fetch(`${QUESTDB_HOST}/write`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${auth}`,
-      'Content-Type': 'text/plain',
-    },
-    body: ilpLine,
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `QuestDB write failed: ${response.status} ${response.statusText} - ${errorText}`
-    );
-  }
+  client.at(event.timestamp.getTime() * 1_000_000, 'ns');
 }
 
 export async function writeError(error: ErrorRecord): Promise<void> {
-  const auth = Buffer.from(`${QUESTDB_USER}:${QUESTDB_PASSWORD}`).toString(
-    'base64'
-  );
-  const timestampNs = error.timestamp.getTime() * 1_000_000;
+  const client = await getSender();
 
-  const symbols = [
-    `error_id=${escapeSymbol(error.errorId)}`,
-    `session_id=${escapeSymbol(error.sessionId)}`,
-    `device_id=${escapeSymbol(error.deviceId)}`,
-    `api_key_id=${escapeSymbol(error.apiKeyId)}`,
-    `type=${escapeSymbol(error.type)}`,
-  ].join(',');
+  client
+    .table('errors')
+    .symbol('error_id', error.errorId)
+    .symbol('session_id', error.sessionId)
+    .symbol('device_id', error.deviceId)
+    .symbol('api_key_id', error.apiKeyId)
+    .symbol('type', error.type)
+    .stringColumn('message', error.message);
 
-  const fields: string[] = [`message="${escapeString(error.message)}"`];
   if (error.stackTrace !== null) {
-    fields.push(`stack_trace="${escapeString(error.stackTrace)}"`);
+    client.stringColumn('stack_trace', error.stackTrace);
   }
 
-  const ilpLine = `errors,${symbols} ${fields.join(',')} ${timestampNs}`;
-
-  const response = await fetch(`${QUESTDB_HOST}/write`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${auth}`,
-      'Content-Type': 'text/plain',
-    },
-    body: ilpLine,
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `QuestDB write failed: ${response.status} ${response.statusText} - ${errorText}`
-    );
-  }
+  client.at(error.timestamp.getTime() * 1_000_000, 'ns');
 }
 
 type QueryResponse<T> = {
@@ -199,15 +163,11 @@ function sanitizeNumeric(
 }
 
 async function executeQuery<T>(query: string): Promise<T[]> {
-  const url = `${QUESTDB_HOST}/exec`;
-  const auth = Buffer.from(`${QUESTDB_USER}:${QUESTDB_PASSWORD}`).toString(
-    'base64'
-  );
+  const url = `${QUESTDB_HTTP}/exec`;
 
   const response = await fetch(`${url}?query=${encodeURIComponent(query)}`, {
     method: 'GET',
     headers: {
-      Authorization: `Basic ${auth}`,
       'Content-Type': 'application/json',
     },
   });
@@ -535,10 +495,7 @@ export async function initQuestDB(): Promise<void> {
   }
 
   initPromise = (async () => {
-    const url = `${QUESTDB_HOST}/exec`;
-    const auth = Buffer.from(`${QUESTDB_USER}:${QUESTDB_PASSWORD}`).toString(
-      'base64'
-    );
+    const url = `${QUESTDB_HTTP}/exec`;
 
     try {
       const eventsTableQuery = `
@@ -558,7 +515,6 @@ export async function initQuestDB(): Promise<void> {
         {
           method: 'GET',
           headers: {
-            Authorization: `Basic ${auth}`,
             'Content-Type': 'application/json',
           },
         }
@@ -591,7 +547,6 @@ export async function initQuestDB(): Promise<void> {
         {
           method: 'GET',
           headers: {
-            Authorization: `Basic ${auth}`,
             'Content-Type': 'application/json',
           },
         }
@@ -616,4 +571,12 @@ export async function initQuestDB(): Promise<void> {
   })();
 
   return await initPromise;
+}
+
+export async function closeQuestDB(): Promise<void> {
+  if (sender) {
+    await sender.flush();
+    await sender.close();
+    sender = null;
+  }
 }
