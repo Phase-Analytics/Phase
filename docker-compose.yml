@@ -3,7 +3,7 @@ services:
     image: postgres:16-alpine
     container_name: telemetra-postgres
     volumes:
-      - "./files/postgres-data:/var/lib/postgresql/data"
+      - postgres-data:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -40,7 +40,7 @@ services:
     image: questdb/questdb:9.1.1
     container_name: telemetra-questdb
     volumes:
-      - "./files/questdb-data:/var/lib/questdb"
+      - questdb-data:/var/lib/questdb
     environment:
       # JVM
       - QDB_JAVA_OPTS=-Xms2G -Xmx6G -XX:+UseG1GC
@@ -128,4 +128,10 @@ services:
 networks:
   telemetra-network:
     driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
+  questdb-data:
+    driver: local
 
