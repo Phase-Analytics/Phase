@@ -99,12 +99,15 @@ services:
     container_name: telemetra-server
     environment:
       - NODE_ENV=${NODE_ENV}
+      - PORT=3001
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - BETTER_AUTH_URL=${BETTER_AUTH_URL}
       - WEB_URL=${WEB_URL}
       - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/telemetra
       - REDIS_REST_URL=${REDIS_REST_URL}
       - REDIS_REST_TOKEN=${REDIS_REST_TOKEN}
+    ports:
+      - "3001:3001"
     depends_on:
       postgres:
         condition: service_healthy
