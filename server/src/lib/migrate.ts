@@ -7,7 +7,6 @@ export async function runMigrations(): Promise<void> {
 		throw new Error('DATABASE_URL is not set');
 	}
 
-	// Use node-postgres (pg) instead of postgres-js for consistency with main db connection
 	const migrationPool = new Pool({
 		connectionString: process.env.DATABASE_URL,
 		max: 1,
