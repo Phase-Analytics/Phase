@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17
     container_name: telemetra-postgres
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -10,15 +10,15 @@ services:
       - POSTGRES_DB=telemetra
     command: >
       postgres
-      -c shared_buffers=256MB
-      -c effective_cache_size=1GB
-      -c maintenance_work_mem=128MB
+      -c shared_buffers=512MB
+      -c effective_cache_size=2GB
+      -c maintenance_work_mem=256MB
       -c checkpoint_completion_target=0.9
       -c wal_buffers=16MB
       -c default_statistics_target=100
       -c random_page_cost=1.1
       -c effective_io_concurrency=200
-      -c work_mem=4MB
+      -c work_mem=8MB
       -c min_wal_size=1GB
       -c max_wal_size=4GB
       -c max_connections=100
@@ -42,54 +42,41 @@ services:
     volumes:
       - questdb-data:/var/lib/questdb
     environment:
-      # JVM
       - QDB_JAVA_OPTS=-Xms2G -Xmx6G -XX:+UseG1GC
-
-      # HTTP
       - QDB_HTTP_ENABLED=true
       - QDB_HTTP_BIND_TO=0.0.0.0:9000
       - QDB_HTTP_NET_CONNECTION_LIMIT=32
       - QDB_HTTP_SECURITY_READONLY=false
       - QDB_HTTP_MIN_ENABLED=false
       - QDB_HTTP_RECEIVE_BUFFER_SIZE=512K
-
-      # PostgreSQL
       - QDB_PG_ENABLED=false
-
-      # InfluxDB Line Protocol
       - QDB_LINE_TCP_ENABLED=true
       - QDB_LINE_TCP_BIND_TO=0.0.0.0:9009
       - QDB_LINE_HTTP_ENABLED=true
-
-      # CPU
       - QDB_SHARED_WORKER_COUNT=2
       - QDB_HTTP_WORKER_COUNT=2
-
-      # Memory
       - QDB_CAIRO_PAGE_FRAME_COUNT=1024
       - QDB_CAIRO_PAGE_FRAME_SIZE=64k
       - QDB_CAIRO_O3_COLUMN_MEMORY_SIZE=2M
       - QDB_CAIRO_SQL_MAP_PAGE_SIZE=2M
-
-      # Write
       - QDB_CAIRO_WRITER_DATA_APPEND_PAGE_SIZE=1M
       - QDB_CAIRO_MAX_UNCOMMITTED_ROWS=250000
       - QDB_CAIRO_COMMIT_LAG=10000
-
-      # Query
       - QDB_CAIRO_SQL_QUERY_TIMEOUT=30000
-
-      # Logging
       - QDB_LOG_W_LEVEL=CRITICAL
       - QDB_LOG_W_FILE_LOCATION=stdout
-
-      # Telemetry
       - QDB_TELEMETRY_ENABLED=false
       - QDB_METRICS_ENABLED=false
     networks:
       telemetra-network:
         aliases:
           - questdb
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/9000 || exit 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
 
   server:
@@ -112,11 +99,17 @@ services:
       postgres:
         condition: service_healthy
       questdb:
-        condition: service_started
+        condition: service_healthy
     networks:
       telemetra-network:
         aliases:
           - server
+    healthcheck:
+      test: ["CMD", "/bin/busybox", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
 
 networks:
