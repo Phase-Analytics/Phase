@@ -14,6 +14,12 @@ const healthResponseSchema = z.object({
       error: z.string().optional(),
       message: z.string().optional(),
     }),
+    questdb: z.object({
+      status: z.enum(['healthy', 'unhealthy', 'unknown']),
+      latency: z.number(),
+      error: z.string().optional(),
+      message: z.string().optional(),
+    }),
     cache: z
       .object({
         enabled: z.boolean(),
@@ -70,6 +76,7 @@ type HealthCheckData = {
   status: 'healthy' | 'unhealthy';
   services: {
     database: ServiceStatus;
+    questdb: ServiceStatus;
     cache?: {
       enabled: boolean;
       strategy?: string;
@@ -86,6 +93,7 @@ health.openapi(getHealthRoute, async (c) => {
 
   const services: HealthCheckData['services'] = {
     database: { status: 'unknown', latency: 0 },
+    questdb: { status: 'unknown', latency: 0 },
   };
 
   try {
@@ -105,6 +113,39 @@ health.openapi(getHealthRoute, async (c) => {
         error instanceof Error
           ? error.message
           : 'Unknown database connection error',
+    };
+  }
+
+  try {
+    const questdbStart = Date.now();
+    const response = await fetch('http://questdb:9000/status', {
+      method: 'GET',
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (response.ok) {
+      services.questdb = {
+        status: 'healthy',
+        latency: Date.now() - questdbStart,
+      };
+    } else {
+      overallStatus = 'unhealthy';
+      services.questdb = {
+        status: 'unhealthy',
+        latency: Date.now() - questdbStart,
+        error: `HTTP ${response.status}: ${response.statusText}`,
+      };
+    }
+  } catch (error) {
+    console.error('QuestDB health check failed:', error);
+    overallStatus = 'unhealthy';
+    services.questdb = {
+      status: 'unhealthy',
+      latency: 0,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Unknown QuestDB connection error',
     };
   }
 
