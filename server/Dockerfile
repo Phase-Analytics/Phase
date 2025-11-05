@@ -20,6 +20,7 @@ FROM gcr.io/distroless/base AS runtime
 WORKDIR /app
 
 COPY --from=builder --chown=65532:65532 /app/server .
+COPY --from=builder --chown=65532:65532 /app/drizzle ./drizzle
 
 USER 65532:65532
 
