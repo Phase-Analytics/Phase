@@ -26,7 +26,6 @@ coverage
 *.db
 *.db-shm
 *.db-wal
-drizzle
 
 # IDE / Editor
 .vscode
