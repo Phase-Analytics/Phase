@@ -97,8 +97,6 @@ services:
       context: ./server
       dockerfile: Dockerfile
     container_name: telemetra-server
-    ports:
-      - "${SERVER_PORT}:3000"
     environment:
       - NODE_ENV=${NODE_ENV}
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
@@ -117,7 +115,7 @@ services:
         aliases:
           - server
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:3001/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3

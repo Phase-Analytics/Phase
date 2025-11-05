@@ -23,6 +23,6 @@ COPY --from=builder --chown=65532:65532 /app/server .
 
 USER 65532:65532
 
-EXPOSE 3000
+EXPOSE 3001
 
 CMD ["./server"]

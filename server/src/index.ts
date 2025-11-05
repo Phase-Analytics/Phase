@@ -45,7 +45,7 @@ const app = new OpenAPIHono<{
   },
 }).basePath('/v1');
 
-const corsOrigins = [process.env.WEB_URL || 'http://localhost:3001'].filter(
+const corsOrigins = [process.env.WEB_URL || 'http://localhost:3002'].filter(
   Boolean
 );
 

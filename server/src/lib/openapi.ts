@@ -29,7 +29,7 @@ export const configureOpenAPI = (app: any) => {
         description: 'Production server',
       },
       {
-        url: 'http://localhost:3000',
+        url: 'http://localhost:3001',
         description: 'Development server',
       },
     ],
