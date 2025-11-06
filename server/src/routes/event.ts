@@ -1,10 +1,10 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import { ulid } from 'ulid';
-import type { ApiKey, Session, User } from '@/db/schema';
+import type { App, Session, User } from '@/db/schema';
 import {
-  requireApiKey,
+  requireAppKey,
   requireAuth,
-  verifyApiKeyOwnership,
+  verifyAppOwnership,
 } from '@/lib/middleware';
 import { getEvents, writeEvent } from '@/lib/questdb';
 import { methodNotAllowed } from '@/lib/response';
@@ -78,12 +78,12 @@ const getEventsRoute = createRoute({
 
 const eventSdkRouter = new OpenAPIHono<{
   Variables: {
-    apiKey: ApiKey;
+    app: App;
     userId: string;
   };
 }>();
 
-eventSdkRouter.use('*', requireApiKey);
+eventSdkRouter.use('*', requireAppKey);
 
 eventSdkRouter.all('*', async (c, next) => {
   const method = c.req.method;
@@ -100,11 +100,11 @@ const eventWebRouter = new OpenAPIHono<{
   Variables: {
     user: User;
     session: Session;
-    apiKey: ApiKey;
+    app: App;
   };
 }>();
 
-eventWebRouter.use('*', requireAuth, verifyApiKeyOwnership);
+eventWebRouter.use('*', requireAuth, verifyAppOwnership);
 
 eventWebRouter.all('*', async (c, next) => {
   const method = c.req.method;
@@ -120,9 +120,9 @@ eventWebRouter.all('*', async (c, next) => {
 eventSdkRouter.openapi(createEventRoute, async (c) => {
   try {
     const body = c.req.valid('json');
-    const apiKey = c.get('apiKey');
+    const app = c.get('app');
 
-    if (!apiKey?.id) {
+    if (!app?.id) {
       return c.json(
         {
           code: ErrorCode.UNAUTHORIZED,
@@ -132,11 +132,7 @@ eventSdkRouter.openapi(createEventRoute, async (c) => {
       );
     }
 
-    const sessionValidation = await validateSession(
-      c,
-      body.sessionId,
-      apiKey.id
-    );
+    const sessionValidation = await validateSession(c, body.sessionId, app.id);
     if (!sessionValidation.success) {
       return sessionValidation.response;
     }
@@ -165,7 +161,7 @@ eventSdkRouter.openapi(createEventRoute, async (c) => {
       eventId,
       sessionId: body.sessionId,
       deviceId: session.deviceId,
-      apiKeyId: device.apiKeyId,
+      appId: device.appId,
       name: body.name,
       params: body.params ?? null,
       timestamp: clientTimestamp,
@@ -196,17 +192,17 @@ eventSdkRouter.openapi(createEventRoute, async (c) => {
 eventWebRouter.openapi(getEventsRoute, async (c) => {
   try {
     const query = c.req.valid('query');
-    const { sessionId, deviceId, apiKeyId } = query;
+    const { sessionId, deviceId, appId } = query;
 
     if (sessionId) {
-      const sessionValidation = await validateSession(c, sessionId, apiKeyId);
+      const sessionValidation = await validateSession(c, sessionId, appId);
       if (!sessionValidation.success) {
         return sessionValidation.response;
       }
     }
 
     if (deviceId) {
-      const deviceValidation = await validateDevice(c, deviceId, apiKeyId);
+      const deviceValidation = await validateDevice(c, deviceId, appId);
       if (!deviceValidation.success) {
         return deviceValidation.response;
       }
@@ -235,7 +231,7 @@ eventWebRouter.openapi(getEventsRoute, async (c) => {
     const { events: eventsList, total: totalCount } = await getEvents({
       sessionId: sessionId || undefined,
       deviceId: deviceId || undefined,
-      apiKeyId,
+      appId,
       eventName: query.eventName || undefined,
       startDate: query.startDate || undefined,
       endDate: query.endDate || undefined,

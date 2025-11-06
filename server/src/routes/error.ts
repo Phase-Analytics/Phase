@@ -1,10 +1,10 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import { ulid } from 'ulid';
-import type { ApiKey, Session, User } from '@/db/schema';
+import type { App, Session, User } from '@/db/schema';
 import {
-  requireApiKey,
+  requireAppKey,
   requireAuth,
-  verifyApiKeyOwnership,
+  verifyAppOwnership,
 } from '@/lib/middleware';
 import { getErrors, writeError } from '@/lib/questdb';
 import { methodNotAllowed } from '@/lib/response';
@@ -77,12 +77,12 @@ const getErrorsRoute = createRoute({
 
 const errorSdkRouter = new OpenAPIHono<{
   Variables: {
-    apiKey: ApiKey;
+    app: App;
     userId: string;
   };
 }>();
 
-errorSdkRouter.use('*', requireApiKey);
+errorSdkRouter.use('*', requireAppKey);
 
 errorSdkRouter.all('*', async (c, next) => {
   const method = c.req.method;
@@ -99,11 +99,11 @@ const errorWebRouter = new OpenAPIHono<{
   Variables: {
     user: User;
     session: Session;
-    apiKey: ApiKey;
+    app: App;
   };
 }>();
 
-errorWebRouter.use('*', requireAuth, verifyApiKeyOwnership);
+errorWebRouter.use('*', requireAuth, verifyAppOwnership);
 
 errorWebRouter.all('*', async (c, next) => {
   const method = c.req.method;
@@ -119,9 +119,9 @@ errorWebRouter.all('*', async (c, next) => {
 errorSdkRouter.openapi(createErrorRoute, async (c) => {
   try {
     const body = c.req.valid('json');
-    const apiKey = c.get('apiKey');
+    const app = c.get('app');
 
-    if (!apiKey?.id) {
+    if (!app?.id) {
       return c.json(
         {
           code: ErrorCode.UNAUTHORIZED,
@@ -131,11 +131,7 @@ errorSdkRouter.openapi(createErrorRoute, async (c) => {
       );
     }
 
-    const sessionValidation = await validateSession(
-      c,
-      body.sessionId,
-      apiKey.id
-    );
+    const sessionValidation = await validateSession(c, body.sessionId, app.id);
     if (!sessionValidation.success) {
       return sessionValidation.response;
     }
@@ -164,7 +160,7 @@ errorSdkRouter.openapi(createErrorRoute, async (c) => {
       errorId,
       sessionId: body.sessionId,
       deviceId: session.deviceId,
-      apiKeyId: device.apiKeyId,
+      appId: device.appId,
       message: body.message,
       type: body.type,
       stackTrace: body.stackTrace ?? null,
@@ -197,10 +193,10 @@ errorSdkRouter.openapi(createErrorRoute, async (c) => {
 errorWebRouter.openapi(getErrorsRoute, async (c) => {
   try {
     const query = c.req.valid('query');
-    const { sessionId, apiKeyId } = query;
+    const { sessionId, appId } = query;
 
     if (sessionId) {
-      const sessionValidation = await validateSession(c, sessionId, apiKeyId);
+      const sessionValidation = await validateSession(c, sessionId, appId);
       if (!sessionValidation.success) {
         return sessionValidation.response;
       }
@@ -228,7 +224,7 @@ errorWebRouter.openapi(getErrorsRoute, async (c) => {
 
     const { errors: errorsList, total: totalCount } = await getErrors({
       sessionId: sessionId || undefined,
-      apiKeyId,
+      appId,
       errorType: query.type || undefined,
       startDate: query.startDate || undefined,
       endDate: query.endDate || undefined,

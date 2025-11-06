@@ -42,7 +42,7 @@ export type EventRecord = {
   eventId: string;
   sessionId: string;
   deviceId: string;
-  apiKeyId: string;
+  appId: string;
   name: string;
   params: Record<string, string | number | boolean | null> | null;
   timestamp: Date;
@@ -52,7 +52,7 @@ export type ErrorRecord = {
   errorId: string;
   sessionId: string;
   deviceId: string;
-  apiKeyId: string;
+  appId: string;
   message: string;
   type: string;
   stackTrace: string | null;
@@ -67,7 +67,7 @@ export async function writeEvent(event: EventRecord): Promise<void> {
     .symbol('event_id', event.eventId)
     .symbol('session_id', event.sessionId)
     .symbol('device_id', event.deviceId)
-    .symbol('api_key_id', event.apiKeyId)
+    .symbol('app_id', event.appId)
     .symbol('name', event.name);
 
   if (event.params !== null) {
@@ -86,7 +86,7 @@ export async function writeError(error: ErrorRecord): Promise<void> {
     .symbol('error_id', error.errorId)
     .symbol('session_id', error.sessionId)
     .symbol('device_id', error.deviceId)
-    .symbol('api_key_id', error.apiKeyId)
+    .symbol('app_id', error.appId)
     .symbol('type', error.type)
     .stringColumn('message', error.message);
 
@@ -223,7 +223,7 @@ type ActivityRawResult = {
 export type GetEventsOptions = {
   sessionId?: string;
   deviceId?: string;
-  apiKeyId?: string;
+  appId?: string;
   eventName?: string;
   startDate?: string;
   endDate?: string;
@@ -246,9 +246,9 @@ export async function getEvents(
     conditions.push(`device_id = '${escapeSqlString(options.deviceId)}'`);
   }
 
-  if (options.apiKeyId) {
-    validateIdentifier(options.apiKeyId, 'apiKeyId');
-    conditions.push(`api_key_id = '${escapeSqlString(options.apiKeyId)}'`);
+  if (options.appId) {
+    validateIdentifier(options.appId, 'appId');
+    conditions.push(`app_id = '${escapeSqlString(options.appId)}'`);
   }
 
   if (options.eventName) {
@@ -302,7 +302,7 @@ export async function getEvents(
 export type GetErrorsOptions = {
   sessionId?: string;
   deviceId?: string;
-  apiKeyId?: string;
+  appId?: string;
   errorType?: string;
   startDate?: string;
   endDate?: string;
@@ -325,9 +325,9 @@ export async function getErrors(
     conditions.push(`device_id = '${escapeSqlString(options.deviceId)}'`);
   }
 
-  if (options.apiKeyId) {
-    validateIdentifier(options.apiKeyId, 'apiKeyId');
-    conditions.push(`api_key_id = '${escapeSqlString(options.apiKeyId)}'`);
+  if (options.appId) {
+    validateIdentifier(options.appId, 'appId');
+    conditions.push(`app_id = '${escapeSqlString(options.appId)}'`);
   }
 
   if (options.errorType) {
@@ -512,7 +512,7 @@ export async function initQuestDB(): Promise<void> {
           event_id SYMBOL,
           session_id SYMBOL,
           device_id SYMBOL,
-          api_key_id SYMBOL,
+          app_id SYMBOL,
           name SYMBOL,
           params STRING,
           timestamp TIMESTAMP
@@ -543,7 +543,7 @@ export async function initQuestDB(): Promise<void> {
           error_id SYMBOL,
           session_id SYMBOL,
           device_id SYMBOL,
-          api_key_id SYMBOL,
+          app_id SYMBOL,
           message STRING,
           type SYMBOL,
           stack_trace STRING,

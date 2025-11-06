@@ -1,8 +1,8 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import { count, eq, sql } from 'drizzle-orm';
 import { db, devices, sessions } from '@/db';
-import type { ApiKey, Session, User } from '@/db/schema';
-import { requireAuth, verifyApiKeyOwnership } from '@/lib/middleware';
+import type { App, Session, User } from '@/db/schema';
+import { requireAuth, verifyAppOwnership } from '@/lib/middleware';
 import { methodNotAllowed } from '@/lib/response';
 import {
   ErrorCode,
@@ -16,7 +16,7 @@ import {
 type OverviewVariables = {
   user: User;
   session: Session;
-  apikey: ApiKey;
+  app: App;
 };
 
 const getOverviewRoute = createRoute({
@@ -41,7 +41,7 @@ const getOverviewRoute = createRoute({
 
 const overviewWebRouter = new OpenAPIHono<{ Variables: OverviewVariables }>();
 
-overviewWebRouter.use('*', requireAuth, verifyApiKeyOwnership);
+overviewWebRouter.use('*', requireAuth, verifyAppOwnership);
 
 overviewWebRouter.all('*', async (c, next) => {
   const method = c.req.method;
@@ -58,7 +58,7 @@ overviewWebRouter.all('*', async (c, next) => {
 overviewWebRouter.openapi(getOverviewRoute, async (c: any) => {
   try {
     const query = c.req.valid('query');
-    const { apiKeyId } = query;
+    const { appId } = query;
 
     const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -73,13 +73,13 @@ overviewWebRouter.openapi(getOverviewRoute, async (c: any) => {
       db
         .select({ count: count() })
         .from(devices)
-        .where(eq(devices.apiKeyId, apiKeyId)),
+        .where(eq(devices.appId, appId)),
 
       db.execute<{ count: number }>(sql`
         SELECT COUNT(DISTINCT d.device_id) as count
         FROM devices d
         INNER JOIN sessions_analytics s ON d.device_id = s.device_id
-        WHERE d.api_key_id = ${apiKeyId}
+        WHERE d.app_id = ${appId}
         AND s.last_activity_at >= ${twoMinutesAgo}
       `),
 
@@ -87,7 +87,7 @@ overviewWebRouter.openapi(getOverviewRoute, async (c: any) => {
         SELECT COUNT(DISTINCT s.device_id) as count
         FROM sessions_analytics s
         INNER JOIN devices d ON s.device_id = d.device_id
-        WHERE d.api_key_id = ${apiKeyId}
+        WHERE d.app_id = ${appId}
         AND s.started_at >= ${twentyFourHoursAgo}
       `),
 
@@ -95,7 +95,7 @@ overviewWebRouter.openapi(getOverviewRoute, async (c: any) => {
         .select({ count: count() })
         .from(sessions)
         .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
-        .where(eq(devices.apiKeyId, apiKeyId)),
+        .where(eq(devices.appId, appId)),
 
       db.execute<{ avg: number | null }>(sql`
         SELECT AVG(
@@ -103,7 +103,7 @@ overviewWebRouter.openapi(getOverviewRoute, async (c: any) => {
         ) as avg
         FROM sessions_analytics s
         INNER JOIN devices d ON s.device_id = d.device_id
-        WHERE d.api_key_id = ${apiKeyId}
+        WHERE d.app_id = ${appId}
       `),
     ]);
 

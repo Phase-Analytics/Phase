@@ -20,7 +20,7 @@ export const deviceSchema = z
       .openapi({ example: '2024-01-01T00:00:00Z' }),
   })
   .openapi('Device') satisfies z.ZodType<
-  Omit<Device, 'firstSeen' | 'apiKeyId'> & { firstSeen: string }
+  Omit<Device, 'firstSeen' | 'appId'> & { firstSeen: string }
 >;
 
 export const createDeviceRequestSchema = z
@@ -38,7 +38,7 @@ export const listDevicesQuerySchema = paginationQuerySchema
   .merge(dateFilterQuerySchema)
   .extend({
     platform: z.string().optional().openapi({ example: 'ios' }),
-    apiKeyId: z.string().openapi({ example: 'apikey_abc123' }),
+    appId: z.string().openapi({ example: '12345678901234' }),
   })
   .openapi('ListDevicesQuery');
 
@@ -64,7 +64,7 @@ export const deviceDetailSchema = z
 
 export const getDeviceQuerySchema = z
   .object({
-    apiKeyId: z.string().openapi({ example: 'apikey_abc123' }),
+    appId: z.string().openapi({ example: '12345678901234' }),
   })
   .openapi('GetDeviceQuery');
 

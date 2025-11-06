@@ -1,11 +1,11 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import { and, count, desc, eq, type SQL, sql } from 'drizzle-orm';
 import { db, devices, sessions } from '@/db';
-import type { ApiKey, Session, User } from '@/db/schema';
+import type { App, Session, User } from '@/db/schema';
 import {
-  requireApiKey,
+  requireAppKey,
   requireAuth,
-  verifyApiKeyOwnership,
+  verifyAppOwnership,
 } from '@/lib/middleware';
 import { methodNotAllowed } from '@/lib/response';
 import {
@@ -100,12 +100,12 @@ const getDeviceRoute = createRoute({
 
 const deviceSdkRouter = new OpenAPIHono<{
   Variables: {
-    apiKey: ApiKey;
+    app: App;
     userId: string;
   };
 }>();
 
-deviceSdkRouter.use('*', requireApiKey);
+deviceSdkRouter.use('*', requireAppKey);
 
 deviceSdkRouter.all('*', async (c, next) => {
   const method = c.req.method;
@@ -122,11 +122,11 @@ const deviceWebRouter = new OpenAPIHono<{
   Variables: {
     user: User;
     session: Session;
-    apiKey: ApiKey;
+    app: App;
   };
 }>();
 
-deviceWebRouter.use('*', requireAuth, verifyApiKeyOwnership);
+deviceWebRouter.use('*', requireAuth, verifyAppOwnership);
 
 deviceWebRouter.all('*', async (c, next) => {
   const method = c.req.method;
@@ -144,13 +144,13 @@ deviceWebRouter.all('*', async (c, next) => {
 deviceSdkRouter.openapi(createDeviceRoute, async (c: any) => {
   try {
     const body = c.req.valid('json');
-    const apiKey = c.get('apiKey');
+    const app = c.get('app');
 
-    if (!apiKey?.id) {
+    if (!app?.id) {
       return c.json(
         {
           code: ErrorCode.UNAUTHORIZED,
-          detail: 'API key is required',
+          detail: 'App key is required',
         },
         HttpStatus.UNAUTHORIZED
       );
@@ -163,7 +163,7 @@ deviceSdkRouter.openapi(createDeviceRoute, async (c: any) => {
     let device: typeof devices.$inferSelect;
 
     if (existingDevice) {
-      if (existingDevice.apiKeyId !== apiKey.id) {
+      if (existingDevice.appId !== app.id) {
         return c.json(
           {
             code: ErrorCode.FORBIDDEN,
@@ -189,7 +189,7 @@ deviceSdkRouter.openapi(createDeviceRoute, async (c: any) => {
         .insert(devices)
         .values({
           deviceId: body.deviceId,
-          apiKeyId: apiKey.id,
+          appId: app.id,
           identifier: body.identifier ?? null,
           model: body.model ?? null,
           osVersion: body.osVersion ?? null,
@@ -247,7 +247,7 @@ deviceWebRouter.openapi(getDevicesRoute, async (c) => {
       return dateRangeValidation.response;
     }
 
-    const filters: SQL[] = [eq(devices.apiKeyId, query.apiKeyId)];
+    const filters: SQL[] = [eq(devices.appId, query.appId)];
 
     if (query.platform) {
       filters.push(eq(devices.platform, query.platform));
@@ -272,11 +272,11 @@ deviceWebRouter.openapi(getDevicesRoute, async (c) => {
           .offset(offset),
         db.select({ count: count() }).from(devices).where(whereClause),
         db.execute<{ platform: string; count: number }>(sql`
-          SELECT 
+          SELECT
             COALESCE(platform, 'unknown') as platform,
             COUNT(*)::int as count
           FROM devices
-          WHERE api_key_id = ${query.apiKeyId}
+          WHERE app_id = ${query.appId}
           ${query.platform ? sql`AND platform = ${query.platform}` : sql``}
           ${query.startDate ? sql`AND first_seen >= ${query.startDate}` : sql``}
           ${query.endDate ? sql`AND first_seen <= ${query.endDate}` : sql``}
@@ -339,10 +339,7 @@ deviceWebRouter.openapi(getDeviceRoute, async (c: any) => {
       .from(devices)
       .leftJoin(sessions, eq(devices.deviceId, sessions.deviceId))
       .where(
-        and(
-          eq(devices.deviceId, deviceId),
-          eq(devices.apiKeyId, query.apiKeyId)
-        )
+        and(eq(devices.deviceId, deviceId), eq(devices.appId, query.appId))
       )
       .orderBy(desc(sessions.lastActivityAt))
       .limit(1);

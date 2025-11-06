@@ -1,11 +1,4 @@
-import {
-  boolean,
-  index,
-  integer,
-  pgTable,
-  text,
-  timestamp,
-} from 'drizzle-orm/pg-core';
+import { boolean, index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
@@ -86,38 +79,21 @@ export const verification = pgTable(
   })
 );
 
-export const apikey = pgTable(
-  'apikey',
+export const apps = pgTable(
+  'apps',
   {
     id: text('id').primaryKey(),
-    name: text('name'),
-    start: text('start'),
-    prefix: text('prefix'),
-    key: text('key').notNull(),
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
-    refillInterval: integer('refill_interval'),
-    refillAmount: integer('refill_amount'),
-    lastRefillAt: timestamp('last_refill_at'),
-    enabled: boolean('enabled').default(true),
-    rateLimitEnabled: boolean('rate_limit_enabled').default(false),
-    rateLimitTimeWindow: integer('rate_limit_time_window').default(86_400_000),
-    rateLimitMax: integer('rate_limit_max').default(10),
-    requestCount: integer('request_count').default(0),
-    remaining: integer('remaining'),
-    lastRequest: timestamp('last_request'),
+    name: text('name').notNull(),
+    image: text('image'),
+    key: text('key').notNull().unique(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at')
-      .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
-    permissions: text('permissions'),
-    metadata: text('metadata'),
   },
   (table) => ({
-    userIdIdx: index('apikey_user_id_idx').on(table.userId),
-    keyIdx: index('apikey_key_idx').on(table.key),
+    userIdIdx: index('apps_user_id_idx').on(table.userId),
+    keyIdx: index('apps_key_idx').on(table.key),
   })
 );
 
@@ -125,9 +101,9 @@ export const devices = pgTable(
   'devices',
   {
     deviceId: text('device_id').primaryKey(),
-    apiKeyId: text('api_key_id')
+    appId: text('app_id')
       .notNull()
-      .references(() => apikey.id, { onDelete: 'cascade' }),
+      .references(() => apps.id, { onDelete: 'cascade' }),
     identifier: text('identifier'),
     model: text('model'),
     osVersion: text('os_version'),
@@ -136,7 +112,7 @@ export const devices = pgTable(
     firstSeen: timestamp('first_seen').defaultNow().notNull(),
   },
   (table) => ({
-    apiKeyIdIdx: index('devices_api_key_id_idx').on(table.apiKeyId),
+    appIdIdx: index('devices_app_id_idx').on(table.appId),
     platformIdx: index('devices_platform_idx').on(table.platform),
   })
 );
@@ -174,8 +150,8 @@ export type NewAccount = typeof account.$inferInsert;
 export type Verification = typeof verification.$inferSelect;
 export type NewVerification = typeof verification.$inferInsert;
 
-export type ApiKey = typeof apikey.$inferSelect;
-export type NewApiKey = typeof apikey.$inferInsert;
+export type App = typeof apps.$inferSelect;
+export type NewApp = typeof apps.$inferInsert;
 
 export type Device = typeof devices.$inferSelect;
 export type NewDevice = typeof devices.$inferInsert;

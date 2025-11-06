@@ -1,4 +1,5 @@
-import { db } from '@/db';
+import { eq } from 'drizzle-orm';
+import { apps, db } from '@/db';
 import { auth } from '@/lib/auth';
 import { unauthorized } from '@/lib/response';
 
@@ -32,7 +33,7 @@ export const requireAuth = async (c: any, next: any) => {
 };
 
 // biome-ignore lint/suspicious/noExplicitAny: Hono middleware context typing requires any
-export const requireApiKey = async (c: any, next: any) => {
+export const requireAppKey = async (c: any, next: any) => {
   const authHeader = c.req.header('authorization');
 
   if (!authHeader) {
@@ -44,40 +45,35 @@ export const requireApiKey = async (c: any, next: any) => {
     return unauthorized(c, 'Invalid authorization format. Use: Bearer <token>');
   }
 
-  const apiKey = parts[1];
+  const appKey = parts[1];
 
-  if (!apiKey) {
-    return unauthorized(c, 'API key is required');
+  if (!appKey) {
+    return unauthorized(c, 'App key is required');
   }
 
   try {
-    const result = await auth.api.verifyApiKey({
-      body: {
-        key: apiKey,
-      },
+    const app = await db.query.apps.findFirst({
+      where: eq(apps.key, appKey),
     });
 
-    if (!(result.valid && result.key)) {
-      return unauthorized(
-        c,
-        result.error?.message || 'Invalid or expired API key'
-      );
+    if (!app) {
+      return unauthorized(c, 'Invalid app key');
     }
 
-    c.set('apiKey', result.key);
-    c.set('userId', result.key.userId);
+    c.set('app', app);
+    c.set('userId', app.userId);
     await next();
   } catch (error) {
-    console.error('[Middleware] API key verification error:', error);
-    return unauthorized(c, 'Failed to verify API key');
+    console.error('[Middleware] App key verification error:', error);
+    return unauthorized(c, 'Failed to verify app key');
   }
 };
 
 // biome-ignore lint/suspicious/noExplicitAny: Hono middleware context typing requires any
-export const verifyApiKeyOwnership = async (c: any, next: any) => {
+export const verifyAppOwnership = async (c: any, next: any) => {
   const user = c.get('user');
   const query = c.req.valid('query');
-  const apiKeyId = query.apiKeyId;
+  const appId = query.appId;
 
   if (!user) {
     return c.json(
@@ -89,40 +85,40 @@ export const verifyApiKeyOwnership = async (c: any, next: any) => {
     );
   }
 
-  if (!apiKeyId) {
+  if (!appId) {
     return c.json(
       {
         code: 'VALIDATION_ERROR',
-        detail: 'apiKeyId is required',
+        detail: 'appId is required',
       },
       400
     );
   }
 
   try {
-    const userApiKey = await db.query.apikey.findFirst({
+    const userApp = await db.query.apps.findFirst({
       where: (table, { eq: eqFn, and: andFn }) =>
-        andFn(eqFn(table.id, apiKeyId), eqFn(table.userId, user.id)),
+        andFn(eqFn(table.id, appId), eqFn(table.userId, user.id)),
     });
 
-    if (!userApiKey) {
+    if (!userApp) {
       return c.json(
         {
           code: 'FORBIDDEN',
-          detail: 'You do not have permission to access this API key',
+          detail: 'You do not have permission to access this app',
         },
         403
       );
     }
 
-    c.set('apiKey', userApiKey);
+    c.set('app', userApp);
     await next();
   } catch (error) {
-    console.error('[Middleware] API key ownership verification error:', error);
+    console.error('[Middleware] App ownership verification error:', error);
     return c.json(
       {
         code: 'INTERNAL_SERVER_ERROR',
-        detail: 'Failed to verify API key ownership',
+        detail: 'Failed to verify app ownership',
       },
       500
     );

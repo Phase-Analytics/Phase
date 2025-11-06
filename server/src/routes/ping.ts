@@ -1,8 +1,8 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import { eq } from 'drizzle-orm';
 import { db, sessions } from '@/db';
-import type { ApiKey } from '@/db/schema';
-import { requireApiKey } from '@/lib/middleware';
+import type { App } from '@/db/schema';
+import { requireAppKey } from '@/lib/middleware';
 import { methodNotAllowed } from '@/lib/response';
 import {
   invalidateSessionCache,
@@ -46,12 +46,12 @@ const pingSessionRoute = createRoute({
 
 const pingSdkRouter = new OpenAPIHono<{
   Variables: {
-    apiKey: ApiKey;
+    app: App;
     userId: string;
   };
 }>();
 
-pingSdkRouter.use('*', requireApiKey);
+pingSdkRouter.use('*', requireAppKey);
 
 pingSdkRouter.all('*', async (c, next) => {
   const method = c.req.method;
@@ -67,9 +67,9 @@ pingSdkRouter.all('*', async (c, next) => {
 pingSdkRouter.openapi(pingSessionRoute, async (c) => {
   try {
     const body = c.req.valid('json');
-    const apiKey = c.get('apiKey');
+    const app = c.get('app');
 
-    if (!apiKey?.id) {
+    if (!app?.id) {
       return c.json(
         {
           code: ErrorCode.UNAUTHORIZED,
@@ -79,11 +79,7 @@ pingSdkRouter.openapi(pingSessionRoute, async (c) => {
       );
     }
 
-    const sessionValidation = await validateSession(
-      c,
-      body.sessionId,
-      apiKey.id
-    );
+    const sessionValidation = await validateSession(c, body.sessionId, app.id);
     if (!sessionValidation.success) {
       return sessionValidation.response;
     }

@@ -44,7 +44,7 @@ export const listErrorsQuerySchema = paginationQuerySchema
   .merge(dateFilterQuerySchema)
   .extend({
     sessionId: z.string().optional().openapi({ example: 'session_xyz123' }),
-    apiKeyId: z.string().openapi({ example: 'apikey_abc123' }),
+    appId: z.string().openapi({ example: '12345678901234' }),
     type: z.string().optional().openapi({ example: 'TypeError' }),
   })
   .openapi('ListErrorsQuery');

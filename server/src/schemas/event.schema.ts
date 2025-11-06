@@ -44,7 +44,7 @@ export const listEventsQuerySchema = paginationQuerySchema
   .extend({
     sessionId: z.string().optional().openapi({ example: 'session_xyz123' }),
     deviceId: z.string().optional().openapi({ example: 'device_abc123' }),
-    apiKeyId: z.string().openapi({ example: 'apikey_abc123' }),
+    appId: z.string().openapi({ example: '12345678901234' }),
     eventName: z.string().optional().openapi({ example: 'button_clicked' }),
   })
   .refine(

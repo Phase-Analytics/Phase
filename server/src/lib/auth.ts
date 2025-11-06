@@ -1,13 +1,13 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { apiKey, lastLoginMethod, openAPI } from 'better-auth/plugins';
+import { lastLoginMethod, openAPI } from 'better-auth/plugins';
 import { db } from '@/db';
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: 'pg',
   }),
-  plugins: [apiKey(), lastLoginMethod(), openAPI()],
+  plugins: [lastLoginMethod(), openAPI()],
   emailAndPassword: {
     enabled: true,
   },

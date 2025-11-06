@@ -3,7 +3,7 @@ import { Pool } from 'pg';
 import { redisCache } from '@/lib/cache';
 import {
   account,
-  apikey,
+  apps,
   devices,
   session,
   sessions,
@@ -35,7 +35,7 @@ const schema = {
   session,
   account,
   verification,
-  apikey,
+  apps,
   devices,
   sessions,
 };
@@ -68,7 +68,7 @@ export { pool };
 
 export {
   account,
-  apikey,
+  apps,
   devices,
   session,
   sessions,

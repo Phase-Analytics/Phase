@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import type { ApiKey, Session, User } from '@/db/schema';
-import { requireAuth, verifyApiKeyOwnership } from '@/lib/middleware';
+import type { App, Session, User } from '@/db/schema';
+import { requireAuth, verifyAppOwnership } from '@/lib/middleware';
 import { getActivity } from '@/lib/questdb';
 import { methodNotAllowed } from '@/lib/response';
 import {
@@ -46,11 +46,11 @@ const activityWebRouter = new OpenAPIHono<{
   Variables: {
     user: User;
     session: Session;
-    apiKey: ApiKey;
+    app: App;
   };
 }>();
 
-activityWebRouter.use('*', requireAuth, verifyApiKeyOwnership);
+activityWebRouter.use('*', requireAuth, verifyAppOwnership);
 
 activityWebRouter.all('*', async (c, next) => {
   const method = c.req.method;
@@ -66,9 +66,9 @@ activityWebRouter.all('*', async (c, next) => {
 activityWebRouter.openapi(getActivityRoute, async (c) => {
   try {
     const query = c.req.valid('query');
-    const { sessionId, apiKeyId } = query;
+    const { sessionId, appId } = query;
 
-    const sessionValidation = await validateSession(c, sessionId, apiKeyId);
+    const sessionValidation = await validateSession(c, sessionId, appId);
     if (!sessionValidation.success) {
       return sessionValidation.response;
     }

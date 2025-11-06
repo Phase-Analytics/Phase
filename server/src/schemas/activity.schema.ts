@@ -66,7 +66,7 @@ export const listActivityQuerySchema = paginationQuerySchema
   .merge(dateFilterQuerySchema)
   .extend({
     sessionId: z.string().openapi({ example: 'session_xyz123' }),
-    apiKeyId: z.string().openapi({ example: 'apikey_abc123' }),
+    appId: z.string().openapi({ example: '12345678901234' }),
   })
   .openapi('ListActivityQuery');
 

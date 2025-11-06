@@ -1,11 +1,11 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import { count, desc, eq, type SQL } from 'drizzle-orm';
 import { db, devices, sessions } from '@/db';
-import type { ApiKey, Session, User } from '@/db/schema';
+import type { App, Session, User } from '@/db/schema';
 import {
-  requireApiKey,
+  requireAppKey,
   requireAuth,
-  verifyApiKeyOwnership,
+  verifyAppOwnership,
 } from '@/lib/middleware';
 import { methodNotAllowed } from '@/lib/response';
 import {
@@ -78,12 +78,12 @@ const getSessionsRoute = createRoute({
 
 const sessionSdkRouter = new OpenAPIHono<{
   Variables: {
-    apiKey: ApiKey;
+    app: App;
     userId: string;
   };
 }>();
 
-sessionSdkRouter.use('*', requireApiKey);
+sessionSdkRouter.use('*', requireAppKey);
 
 sessionSdkRouter.all('*', async (c, next) => {
   const method = c.req.method;
@@ -100,11 +100,11 @@ const sessionWebRouter = new OpenAPIHono<{
   Variables: {
     user: User;
     session: Session;
-    apiKey: ApiKey;
+    app: App;
   };
 }>();
 
-sessionWebRouter.use('*', requireAuth, verifyApiKeyOwnership);
+sessionWebRouter.use('*', requireAuth, verifyAppOwnership);
 
 sessionWebRouter.all('*', async (c, next) => {
   const method = c.req.method;
@@ -120,9 +120,9 @@ sessionWebRouter.all('*', async (c, next) => {
 sessionSdkRouter.openapi(createSessionRoute, async (c) => {
   try {
     const body = c.req.valid('json');
-    const apiKey = c.get('apiKey');
+    const app = c.get('app');
 
-    const deviceValidation = await validateDevice(c, body.deviceId, apiKey.id);
+    const deviceValidation = await validateDevice(c, body.deviceId, app.id);
     if (!deviceValidation.success) {
       return deviceValidation.response;
     }
@@ -195,9 +195,9 @@ sessionSdkRouter.openapi(createSessionRoute, async (c) => {
 sessionWebRouter.openapi(getSessionsRoute, async (c) => {
   try {
     const query = c.req.valid('query');
-    const { deviceId, apiKeyId } = query;
+    const { deviceId, appId } = query;
 
-    const deviceValidation = await validateDevice(c, deviceId, apiKeyId);
+    const deviceValidation = await validateDevice(c, deviceId, appId);
     if (!deviceValidation.success) {
       return deviceValidation.response;
     }

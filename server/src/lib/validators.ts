@@ -118,7 +118,7 @@ export function validateTimestamp(
 export async function validateDevice(
   c: Context,
   deviceId: string,
-  apiKeyId?: string
+  appId?: string
 ): Promise<ValidationResult<typeof devices.$inferSelect>> {
   const device = await db.query.devices.findFirst({
     where: (table, { eq: eqFn }) => eqFn(table.deviceId, deviceId),
@@ -137,7 +137,7 @@ export async function validateDevice(
     };
   }
 
-  if (apiKeyId && device.apiKeyId !== apiKeyId) {
+  if (appId && device.appId !== appId) {
     return {
       success: false,
       response: c.json(
@@ -159,7 +159,7 @@ export async function validateDevice(
 export async function validateSession(
   c: Context,
   sessionId: string,
-  apiKeyId?: string
+  appId?: string
 ): Promise<
   ValidationResult<{
     session: typeof sessions.$inferSelect;
@@ -194,7 +194,7 @@ export async function validateSession(
     };
   }
 
-  if (apiKeyId && sessionData.device.apiKeyId !== apiKeyId) {
+  if (appId && sessionData.device.appId !== appId) {
     return {
       success: false,
       response: c.json(
