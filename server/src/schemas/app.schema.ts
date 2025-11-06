@@ -12,8 +12,8 @@ export const createAppRequestSchema = z
 export const appSchema = z
   .object({
     id: z.string().openapi({ example: '87654321098765' }),
-    name: z.string().openapi({ example: 'My Awesome App' }),
-    image: z.string().nullable().openapi({
+    name: z.string().min(1).max(255).openapi({ example: 'My Awesome App' }),
+    image: z.string().url().nullable().openapi({
       example: 'https://example.com/logo.png',
     }),
   })
@@ -22,8 +22,8 @@ export const appSchema = z
 export const appDetailSchema = z
   .object({
     id: z.string().openapi({ example: '87654321098765' }),
-    name: z.string().openapi({ example: 'My Awesome App' }),
-    image: z.string().nullable().openapi({
+    name: z.string().min(1).max(255).openapi({ example: 'My Awesome App' }),
+    image: z.string().url().nullable().openapi({
       example: 'https://example.com/logo.png',
     }),
     key: z.string().openapi({
@@ -40,8 +40,8 @@ export const appDetailSchema = z
 export const appCreatedSchema = z
   .object({
     id: z.string().openapi({ example: '87654321098765' }),
-    name: z.string().openapi({ example: 'My Awesome App' }),
-    image: z.string().nullable().openapi({
+    name: z.string().min(1).max(255).openapi({ example: 'My Awesome App' }),
+    image: z.string().url().nullable().openapi({
       example: 'https://example.com/logo.png',
     }),
     createdAt: z
