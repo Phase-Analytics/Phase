@@ -6,7 +6,7 @@ import {
   requireAuth,
   verifyAppOwnership,
 } from '@/lib/middleware';
-import { getEvents, writeEvent } from '@/lib/questdb';
+import { getEvents, getTopEvents, writeEvent } from '@/lib/questdb';
 import { methodNotAllowed } from '@/lib/response';
 import {
   formatPaginationResponse,
@@ -24,6 +24,8 @@ import {
   eventsListResponseSchema,
   HttpStatus,
   listEventsQuerySchema,
+  topEventsQuerySchema,
+  topEventsResponseSchema,
 } from '@/schemas';
 
 const createEventRoute = createRoute({
@@ -69,6 +71,28 @@ const getEventsRoute = createRoute({
       content: {
         'application/json': {
           schema: eventsListResponseSchema,
+        },
+      },
+    },
+    ...errorResponses,
+  },
+});
+
+const getTopEventsRoute = createRoute({
+  method: 'get',
+  path: '/top',
+  tags: ['event'],
+  description: 'Get top events by count for an app',
+  security: [{ CookieAuth: [] }],
+  request: {
+    query: topEventsQuerySchema,
+  },
+  responses: {
+    200: {
+      description: 'Top events',
+      content: {
+        'application/json': {
+          schema: topEventsResponseSchema,
         },
       },
     },
@@ -278,6 +302,44 @@ eventWebRouter.openapi(getEventsRoute, async (c) => {
       {
         code: ErrorCode.INTERNAL_SERVER_ERROR,
         detail: 'Failed to fetch events',
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
+});
+
+eventWebRouter.openapi(getTopEventsRoute, async (c) => {
+  try {
+    const query = c.req.valid('query');
+    const { appId, startDate, endDate, limit } = query;
+
+    const dateRangeValidation = validateDateRange(c, startDate, endDate);
+    if (!dateRangeValidation.success) {
+      return dateRangeValidation.response;
+    }
+
+    const topEvents = await getTopEvents({
+      appId,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      limit: limit ? Number.parseInt(limit, 10) : undefined,
+    });
+
+    return c.json(
+      {
+        events: topEvents,
+        appId,
+        startDate: startDate || null,
+        endDate: endDate || null,
+      },
+      HttpStatus.OK
+    );
+  } catch (error) {
+    console.error('[Event.TopEvents] Error:', error);
+    return c.json(
+      {
+        code: ErrorCode.INTERNAL_SERVER_ERROR,
+        detail: 'Failed to fetch top events',
       },
       HttpStatus.INTERNAL_SERVER_ERROR
     );

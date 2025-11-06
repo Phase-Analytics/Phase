@@ -73,6 +73,12 @@ export {
   eventsListResponseSchema,
   type ListEventsQuery,
   listEventsQuerySchema,
+  type TopEvent,
+  type TopEventsQuery,
+  type TopEventsResponse,
+  topEventSchema,
+  topEventsQuerySchema,
+  topEventsResponseSchema,
 } from './event.schema';
 export {
   type OverviewQuery,

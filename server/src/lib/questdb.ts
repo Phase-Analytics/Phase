@@ -378,6 +378,50 @@ export async function getErrors(
   };
 }
 
+export type TopEventQueryResult = {
+  name: string;
+  count: number;
+};
+
+export type GetTopEventsOptions = {
+  appId: string;
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+};
+
+export async function getTopEvents(
+  options: GetTopEventsOptions
+): Promise<TopEventQueryResult[]> {
+  validateIdentifier(options.appId, 'appId');
+
+  const conditions: string[] = [`app_id = '${escapeSqlString(options.appId)}'`];
+
+  if (options.startDate) {
+    validateTimestamp(options.startDate, 'startDate');
+    conditions.push(`timestamp >= '${escapeSqlString(options.startDate)}'`);
+  }
+
+  if (options.endDate) {
+    validateTimestamp(options.endDate, 'endDate');
+    conditions.push(`timestamp <= '${escapeSqlString(options.endDate)}'`);
+  }
+
+  const whereClause = `WHERE ${conditions.join(' AND ')}`;
+  const limit = sanitizeNumeric(options.limit, 5, 1, 100);
+
+  const topEventsQuery = `
+    SELECT name, COUNT(*) as count
+    FROM events
+    ${whereClause}
+    GROUP BY name
+    ORDER BY count DESC
+    LIMIT ${limit}
+  `;
+
+  return await executeQuery<TopEventQueryResult>(topEventsQuery);
+}
+
 export type GetActivityOptions = {
   sessionId: string;
   startDate?: string;

@@ -76,8 +76,42 @@ export const eventsListResponseSchema = z
   })
   .openapi('EventsListResponse');
 
+export const topEventsQuerySchema = dateFilterQuerySchema
+  .extend({
+    appId: z.string().openapi({ example: '123456789012345' }),
+    limit: z.coerce.number().int().min(1).max(100).optional().default(5).openapi({ example: 5 }),
+  })
+  .openapi('TopEventsQuery');
+
+export const topEventSchema = z
+  .object({
+    name: z.string().openapi({ example: 'button_clicked' }),
+    count: z.number().int().min(0).openapi({ example: 42 }),
+  })
+  .openapi('TopEvent');
+
+export const topEventsResponseSchema = z
+  .object({
+    events: z.array(topEventSchema),
+    appId: z.string().openapi({ example: '123456789012345' }),
+    startDate: z
+      .string()
+      .datetime()
+      .nullable()
+      .openapi({ example: '2024-01-01T00:00:00Z' }),
+    endDate: z
+      .string()
+      .datetime()
+      .nullable()
+      .openapi({ example: '2024-12-31T23:59:59Z' }),
+  })
+  .openapi('TopEventsResponse');
+
 export type EventSchema = z.infer<typeof eventSchema>;
 export type CreateEventRequest = z.infer<typeof createEventRequestSchema>;
 export type ListEventsQuery = z.infer<typeof listEventsQuerySchema>;
 export type EventsListResponse = z.infer<typeof eventsListResponseSchema>;
 export type EventParams = z.infer<typeof eventParamsSchema>;
+export type TopEventsQuery = z.infer<typeof topEventsQuerySchema>;
+export type TopEvent = z.infer<typeof topEventSchema>;
+export type TopEventsResponse = z.infer<typeof topEventsResponseSchema>;
