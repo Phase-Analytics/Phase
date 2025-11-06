@@ -79,7 +79,14 @@ export const eventsListResponseSchema = z
 export const topEventsQuerySchema = dateFilterQuerySchema
   .extend({
     appId: z.string().openapi({ example: '123456789012345' }),
-    limit: z.coerce.number().int().min(1).max(100).optional().default(5).openapi({ example: 5 }),
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(10)
+      .optional()
+      .default(5)
+      .openapi({ example: 5 }),
   })
   .openapi('TopEventsQuery');
 

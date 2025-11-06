@@ -322,7 +322,7 @@ eventWebRouter.openapi(getTopEventsRoute, async (c) => {
       appId,
       startDate: startDate || undefined,
       endDate: endDate || undefined,
-      limit: limit ? Number.parseInt(limit, 10) : undefined,
+      limit,
     });
 
     return c.json(
