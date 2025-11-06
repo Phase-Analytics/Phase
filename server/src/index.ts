@@ -8,6 +8,7 @@ import { runMigrations } from '@/lib/migrate';
 import { configureOpenAPI } from '@/lib/openapi';
 import { initQuestDB } from '@/lib/questdb';
 import { activityWebRouter } from '@/routes/activity';
+import { appWebRouter } from '@/routes/app';
 import { deviceSdkRouter, deviceWebRouter } from '@/routes/device';
 import { errorSdkRouter, errorWebRouter } from '@/routes/error';
 import { eventSdkRouter, eventWebRouter } from '@/routes/event';
@@ -86,6 +87,7 @@ app.route('/sdk/errors', errorSdkRouter);
 app.route('/sdk/ping', pingSdkRouter);
 
 app.route('/web/activity', activityWebRouter);
+app.route('/web/apps', appWebRouter);
 app.route('/web/devices', deviceWebRouter);
 app.route('/web/errors', errorWebRouter);
 app.route('/web/events', eventWebRouter);
