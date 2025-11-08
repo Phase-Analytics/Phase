@@ -6,7 +6,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=telemetra
     command: >
       postgres
@@ -107,7 +107,7 @@ services:
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - BETTER_AUTH_URL=${BETTER_AUTH_URL}
       - WEB_URL=${WEB_URL}
-      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/telemetra
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/telemetra
       - REDIS_URL=redis://redis:6379
     expose:
       - "3001"
