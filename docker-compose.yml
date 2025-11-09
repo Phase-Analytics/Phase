@@ -39,7 +39,7 @@ services:
   redis:
     image: redis:8.0.5-alpine
     container_name: telemetra-redis
-    command: redis-server --maxmemory 768mb --maxmemory-policy allkeys-lru
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
     volumes:
       - redis-data:/data
     networks:
