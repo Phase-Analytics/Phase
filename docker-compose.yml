@@ -119,9 +119,8 @@ services:
       redis:
         condition: service_healthy
     networks:
-      telemetra-network:
-        aliases:
-          - server
+      - telemetra-network
+      - dokploy-network
     healthcheck:
       test: ["CMD", "/bin/busybox", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/v1/health"]
       interval: 10s
@@ -137,6 +136,8 @@ services:
       args:
         - NODE_ENV=${NODE_ENV}
         - NEXT_TELEMETRY_DISABLED=1
+        - BETTER_AUTH_URL=${BETTER_AUTH_URL}
+        - WEB_URL=${WEB_URL}
     container_name: telemetra-web
     environment:
       - NODE_ENV=${NODE_ENV}
@@ -149,9 +150,8 @@ services:
       server:
         condition: service_healthy
     networks:
-      telemetra-network:
-        aliases:
-          - web
+      - telemetra-network
+      - dokploy-network
     healthcheck:
       test: ["CMD", "/bin/busybox", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3002"]
       interval: 10s
@@ -163,6 +163,8 @@ services:
 networks:
   telemetra-network:
     driver: bridge
+  dokploy-network:
+    external: true
 
 volumes:
   postgres-data:
