@@ -75,8 +75,8 @@
 
   --color-border-luxe: var(--border-luxe);
 
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-clash-display);
+  --font-mono: var(--font-clash-display);
 
   --animate-spotlight: spotlight 2s ease 1 forwards;
   --animate-shine: shine 6s linear infinite;
@@ -169,6 +169,10 @@
 }
 
 @layer base {
+  * {
+    font-family: var(--font-clash-display), system-ui, sans-serif;
+  }
+
   img,
   button {
     @apply select-none;
@@ -209,7 +213,7 @@
     font-size: 14px;
 
     code {
-      font-family: var(--font-geist-mono);
+      font-family: var(--font-clash-display);
     }
 
     [data-line] {

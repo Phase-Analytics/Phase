@@ -1,15 +1,12 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
+const clashDisplay = localFont({
+  src: '../../public/fonts/ClashDisplay-Variable.woff2',
+  variable: '--font-clash-display',
+  weight: '200 700',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -24,9 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${clashDisplay.variable} antialiased`}>
         {children}
       </body>
     </html>
