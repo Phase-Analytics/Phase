@@ -1,34 +1,33 @@
 {
-    "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-    "extends": ["ultracite"],
-    "javascript": {
-      "formatter": {
-        "quoteStyle": "single",
-        "trailingCommas": "es5"
-      }
-    },
-    "linter": {
-      "rules": {
-        "complexity": {
-          "noExcessiveCognitiveComplexity": "off"
-        },
-        "suspicious": {
-          "noUnknownAtRules": "off",
-          "noConsole": {
-            "level": "warn",
-            "options": {
-              "allow": ["log", "warn", "error"]
-            }
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "extends": ["ultracite"],
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "trailingCommas": "es5"
+    }
+  },
+  "linter": {
+    "rules": {
+      "complexity": {
+        "noExcessiveCognitiveComplexity": "off"
+      },
+      "suspicious": {
+        "noUnknownAtRules": "off",
+        "noConsole": {
+          "level": "warn",
+          "options": {
+            "allow": ["log", "warn", "error"]
           }
-        },
-        "style": {
-          "useFilenamingConvention": "off",
-          "noMagicNumbers": "off"
-        },
-        "performance": {
-          "noBarrelFile": "off"
         }
+      },
+      "style": {
+        "useFilenamingConvention": "off",
+        "noMagicNumbers": "off"
+      },
+      "performance": {
+        "noBarrelFile": "off"
       }
     }
   }
-  
+}
