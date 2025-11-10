@@ -1,10 +1,16 @@
-import * as RadixAccordion from '@radix-ui/react-accordion';
+import {
+  Content,
+  Header,
+  Item,
+  Root,
+  Trigger,
+} from '@radix-ui/react-accordion';
 
 import { cn } from '@/utils/cn';
 
-export const Accordion = RadixAccordion.Root;
+export const Accordion = Root;
 
-type AccordionItemProps = React.ComponentProps<typeof RadixAccordion.Item>;
+type AccordionItemProps = React.ComponentProps<typeof Item>;
 
 export function AccordionItem({
   children,
@@ -13,7 +19,7 @@ export function AccordionItem({
   ...props
 }: AccordionItemProps) {
   return (
-    <RadixAccordion.Item
+    <Item
       className={cn(
         'mt-px w-full overflow-hidden border-border border-b last:border-none focus-within:relative focus-within:z-10',
         className
@@ -22,13 +28,11 @@ export function AccordionItem({
       {...props}
     >
       {children}
-    </RadixAccordion.Item>
+    </Item>
   );
 }
 
-type AccordionTriggerProps = React.ComponentProps<
-  typeof RadixAccordion.Trigger
->;
+type AccordionTriggerProps = React.ComponentProps<typeof Trigger>;
 
 export function AccordionTrigger({
   children,
@@ -36,8 +40,8 @@ export function AccordionTrigger({
   ...props
 }: AccordionTriggerProps) {
   return (
-    <RadixAccordion.Header className="flex">
-      <RadixAccordion.Trigger
+    <Header className="flex">
+      <Trigger
         className={cn(
           'group flex h-11 w-full items-center justify-between px-3.5 text-base/none text-primary outline-none',
           'motion-safe:ease-out [&[data-state=open]>svg]:rotate-45',
@@ -61,14 +65,12 @@ export function AccordionTrigger({
           <path d="M5 12h14" />
           <path d="M12 5v14" />
         </svg>
-      </RadixAccordion.Trigger>
-    </RadixAccordion.Header>
+      </Trigger>
+    </Header>
   );
 }
 
-type AccordionContentProps = React.ComponentProps<
-  typeof RadixAccordion.Content
->;
+type AccordionContentProps = React.ComponentProps<typeof Content>;
 
 export function AccordionContent({
   children,
@@ -76,7 +78,7 @@ export function AccordionContent({
   ...props
 }: AccordionContentProps) {
   return (
-    <RadixAccordion.Content
+    <Content
       className={cn(
         'transition-transform motion-safe:data-[state=closed]:animate-accordion-close motion-safe:data-[state=open]:animate-accordion-open',
         className
@@ -84,6 +86,6 @@ export function AccordionContent({
       {...props}
     >
       <div className="px-3.5 pb-3 text-primary-muted">{children}</div>
-    </RadixAccordion.Content>
+    </Content>
   );
 }

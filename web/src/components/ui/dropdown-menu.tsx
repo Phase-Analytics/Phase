@@ -1,4 +1,4 @@
-'use client'; // @NOTE: Add in case you are using Next.js
+'use client';
 
 import { Slot } from '@radix-ui/react-slot';
 

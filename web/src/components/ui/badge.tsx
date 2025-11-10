@@ -1,6 +1,6 @@
-'use client'; // @NOTE: Add in case you are using Next.js
+'use client';
 
-import * as Slot from '@radix-ui/react-slot';
+import { Slot } from '@radix-ui/react-slot';
 import { motion } from 'motion/react';
 
 import { cn } from '@/utils/cn';
@@ -159,8 +159,8 @@ export function Badge({
   const Component = variantComponent || variants[FALLBACK_INDEX].component;
 
   return (
-    <Slot.Root className={cn('font-medium text-xs')}>
+    <Slot className={cn('font-medium text-xs')}>
       <Component {...props} className={className} />
-    </Slot.Root>
+    </Slot>
   );
 }

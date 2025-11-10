@@ -1,16 +1,25 @@
-import * as RadixDialog from '@radix-ui/react-dialog';
+import {
+  Close,
+  Content,
+  Description,
+  Overlay,
+  Portal,
+  Root,
+  Title,
+  Trigger,
+} from '@radix-ui/react-dialog';
 
 import { cn } from '@/utils/cn';
 
-export const Dialog = RadixDialog.Root;
+export const Dialog = Root;
 
-export const DialogTrigger = RadixDialog.Trigger;
+export const DialogTrigger = Trigger;
 
-export const DialogClose = RadixDialog.Close;
+export const DialogClose = Close;
 
 function DialogOverlay() {
   return (
-    <RadixDialog.Overlay className="fixed top-0 left-0 z-[999] size-full">
+    <Overlay className="fixed top-0 left-0 z-[999] size-full">
       <div
         className={cn(
           'fixed inset-0 bg-black/50 ease-out dark:bg-black/80',
@@ -18,11 +27,11 @@ function DialogOverlay() {
           'motion-safe:data-[state=closed]:fade-out motion-safe:data-[state=closed]:animate-out'
         )}
       />
-    </RadixDialog.Overlay>
+    </Overlay>
   );
 }
 
-type DialogContentProps = React.ComponentProps<typeof RadixDialog.Content>;
+type DialogContentProps = React.ComponentProps<typeof Content>;
 
 export function DialogContent({
   children,
@@ -30,9 +39,9 @@ export function DialogContent({
   ...props
 }: DialogContentProps) {
   return (
-    <RadixDialog.Portal>
+    <Portal>
       <DialogOverlay />
-      <RadixDialog.Content
+      <Content
         className={cn(
           '-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 z-[1001] max-h-[85vh] w-[90vw] max-w-[400px] pt-5',
           'rounded-xl border border-border bg-main focus:outline-none motion-safe:ease-out',
@@ -52,16 +61,17 @@ export function DialogContent({
             strokeWidth="2"
             viewBox="0 0 24 24"
           >
+            <title>Close</title>
             <path d="M18 6 6 18" />
             <path d="m6 6 12 12" />
           </svg>
         </DialogClose>
-      </RadixDialog.Content>
-    </RadixDialog.Portal>
+      </Content>
+    </Portal>
   );
 }
 
-type DialogTitleProps = React.ComponentProps<typeof RadixDialog.Title>;
+type DialogTitleProps = React.ComponentProps<typeof Title>;
 
 export function DialogTitle({
   children,
@@ -69,18 +79,16 @@ export function DialogTitle({
   ...props
 }: DialogTitleProps) {
   return (
-    <RadixDialog.Title
+    <Title
       className={cn('px-6 font-semibold text-primary', className)}
       {...props}
     >
       {children}
-    </RadixDialog.Title>
+    </Title>
   );
 }
 
-type DialogDescriptionProps = React.ComponentProps<
-  typeof RadixDialog.Description
->;
+type DialogDescriptionProps = React.ComponentProps<typeof Description>;
 
 export function DialogDescription({
   children,
@@ -88,7 +96,7 @@ export function DialogDescription({
   ...props
 }: DialogDescriptionProps) {
   return (
-    <RadixDialog.Description
+    <Description
       className={cn(
         'px-6 pt-2 text-primary-muted text-sm leading-tight',
         className
@@ -96,7 +104,7 @@ export function DialogDescription({
       {...props}
     >
       {children}
-    </RadixDialog.Description>
+    </Description>
   );
 }
 

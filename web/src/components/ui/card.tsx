@@ -1,6 +1,6 @@
-'use client'; // @NOTE: Add in case you are using Next.js
+'use client';
 
-import * as Slot from '@radix-ui/react-slot';
+import { Slot } from '@radix-ui/react-slot';
 import { motion, useMotionTemplate, useMotionValue } from 'motion/react';
 
 import { cn } from '@/utils/cn';
@@ -87,6 +87,8 @@ const variants = [
       const mouseY = useMotionValue(0);
 
       return (
+        // biome-ignore lint/a11y/noStaticElementInteractions: Mouse tracking for visual effect only, not interactive
+        // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Mouse tracking for visual effect only, not interactive
         <div
           className={cn(
             'group relative overflow-hidden rounded-xl bg-border/50 p-px'
@@ -136,8 +138,8 @@ export function Card({ variant = 'default', className, ...props }: CardProps) {
   const Component = variantComponent || variants[FALLBACK_INDEX].component;
 
   return (
-    <Slot.Root className="w-full max-w-[350px]">
+    <Slot className="w-full max-w-[350px]">
       <Component {...props} className={className} />
-    </Slot.Root>
+    </Slot>
   );
 }

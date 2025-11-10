@@ -1,22 +1,28 @@
-import * as RadixTooltip from '@radix-ui/react-tooltip';
+import {
+  Content,
+  Portal,
+  Provider,
+  Root,
+  Trigger,
+} from '@radix-ui/react-tooltip';
 
 import { cn } from '@/utils/cn';
 
-export const Tooltip = RadixTooltip.Root;
+export const Tooltip = Root;
 
-export const TooltipTrigger = RadixTooltip.Trigger;
+export const TooltipTrigger = Trigger;
 
-type TooltipProviderProps = React.ComponentProps<typeof RadixTooltip.Provider>;
+type TooltipProviderProps = React.ComponentProps<typeof Provider>;
 
 export function TooltipProvider({ children, ...props }: TooltipProviderProps) {
   return (
-    <RadixTooltip.Provider delayDuration={0} {...props}>
+    <Provider delayDuration={0} {...props}>
       {children}
-    </RadixTooltip.Provider>
+    </Provider>
   );
 }
 
-type TooltipContentProps = React.ComponentProps<typeof RadixTooltip.Content>;
+type TooltipContentProps = React.ComponentProps<typeof Content>;
 
 export function TooltipContent({
   children,
@@ -25,8 +31,8 @@ export function TooltipContent({
   ...props
 }: TooltipContentProps) {
   return (
-    <RadixTooltip.Portal>
-      <RadixTooltip.Content
+    <Portal>
+      <Content
         className={cn(
           'z-50 overflow-hidden rounded-lg border border-border bg-main px-3 py-1.5 text-primary-muted text-xs',
           'motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:data-[state=closed]:fade-out-0 motion-safe:animate-in motion-safe:data-[state=closed]:animate-out',
@@ -38,7 +44,7 @@ export function TooltipContent({
         {...props}
       >
         {children}
-      </RadixTooltip.Content>
-    </RadixTooltip.Portal>
+      </Content>
+    </Portal>
   );
 }

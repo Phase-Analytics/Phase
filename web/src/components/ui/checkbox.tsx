@@ -1,6 +1,6 @@
-'use client'; // @NOTE: Add in case you are using Next.js
+'use client';
 
-import * as RadixCheckbox from '@radix-ui/react-checkbox';
+import { Indicator, Root } from '@radix-ui/react-checkbox';
 
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 
@@ -9,22 +9,22 @@ import { cn } from '@/utils/cn';
 const showAnimationProps = {
   initial: { opacity: 0, scale: 0.5 },
   animate: { opacity: 1, scale: 1 },
-  transition: { duration: 0.3, ease: [0.175, 0.885, 0.32, 1.1] },
+  transition: { duration: 0.3, ease: [0.175, 0.885, 0.32, 1.1] as const },
 };
 
 const checkIconAnimationProps = {
   initial: { pathLength: 0 },
   animate: { pathLength: 1 },
-  transition: { duration: 0.3, ease: [0.645, 0.045, 0.355, 1] },
+  transition: { duration: 0.3, ease: [0.645, 0.045, 0.355, 1] as const },
 };
 
-type CheckboxProps = React.ComponentProps<typeof RadixCheckbox.Root>;
+type CheckboxProps = React.ComponentProps<typeof Root>;
 
 export function Checkbox({ checked, className, ...props }: CheckboxProps) {
   const isReducedMotion = useReducedMotion();
 
   return (
-    <RadixCheckbox.Root
+    <Root
       {...props}
       className={cn(
         'relative inset-ring-1 inset-ring-border inline-block size-5 appearance-none rounded bg-main-muted',
@@ -32,7 +32,7 @@ export function Checkbox({ checked, className, ...props }: CheckboxProps) {
       )}
     >
       <AnimatePresence mode="popLayout">
-        <RadixCheckbox.Indicator
+        <Indicator
           asChild
           className="absolute inset-0 flex items-center justify-center rounded-[inherit] bg-primary"
         >
@@ -42,9 +42,9 @@ export function Checkbox({ checked, className, ...props }: CheckboxProps) {
               isReducedMotion={isReducedMotion}
             />
           </motion.div>
-        </RadixCheckbox.Indicator>
+        </Indicator>
       </AnimatePresence>
-    </RadixCheckbox.Root>
+    </Root>
   );
 }
 
@@ -68,6 +68,7 @@ function CheckIcon({ checkedState, isReducedMotion }: CheckIconProps) {
       strokeLinejoin="round"
       viewBox="0 0 24 24"
     >
+      <title>Check</title>
       <motion.path
         d={path}
         {...(!isReducedMotion && checkIconAnimationProps)}

@@ -1,4 +1,4 @@
-'use client'; // @NOTE: Add in case you are using Next.js
+'use client';
 
 import { AnimatePresence, motion, type Variants } from 'motion/react';
 import { useState } from 'react';

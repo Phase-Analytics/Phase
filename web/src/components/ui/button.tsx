@@ -1,6 +1,6 @@
-'use client'; // @NOTE: Add in case you are using Next.js
+'use client';
 
-import * as Slot from '@radix-ui/react-slot';
+import { Slot } from '@radix-ui/react-slot';
 
 import { motion } from 'motion/react';
 import { useRef, useState } from 'react';
@@ -158,15 +158,19 @@ const variants = [
         </button>
       );
 
-      function TextGlitch({ children }: { children: React.ReactNode }) {
+      function TextGlitch({
+        children: content,
+      }: {
+        children: React.ReactNode;
+      }) {
         return (
           <div className="relative overflow-hidden">
-            <span className="invisible">{children}</span>
+            <span className="invisible">{content}</span>
             <span className="group-hover:-translate-y-full absolute top-0 left-0 transition-transform duration-500 ease-in-out hover:duration-300">
-              {children}
+              {content}
             </span>
             <span className="absolute top-0 left-0 translate-y-full transition-transform duration-500 ease-in-out hover:duration-300 group-hover:translate-y-0">
-              {children}
+              {content}
             </span>
           </div>
         );
@@ -206,9 +210,9 @@ export function Button({
   const Component = variantComponent || variants[FALLBACK_INDEX].component;
 
   const buttonContent = (
-    <Slot.Root className={cn('font-medium text-sm')}>
+    <Slot className={cn('font-medium text-sm')}>
       <Component {...props} className={className} />
-    </Slot.Root>
+    </Slot>
   );
 
   if (isMagnetic) {
@@ -245,7 +249,12 @@ function useMagnetic() {
 
   function handleMouseMove(e: React.MouseEvent) {
     const { clientX, clientY } = e;
-    const { height, width, left, top } = ref.current?.getBoundingClientRect();
+    const rect = ref.current?.getBoundingClientRect();
+    if (!rect) {
+      return;
+    }
+
+    const { height, width, left, top } = rect;
 
     const middleX = clientX - (left + width / 2);
     const middleY = clientY - (top + height / 2);

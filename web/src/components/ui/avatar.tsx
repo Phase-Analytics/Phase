@@ -1,14 +1,14 @@
-import * as RadixAvatar from '@radix-ui/react-avatar';
+import { Fallback, Image, Root } from '@radix-ui/react-avatar';
 
 import { cn } from '@/utils/cn';
 
 type AvatarProps = {
   hasBorder?: boolean;
-} & React.ComponentProps<typeof RadixAvatar.Root>;
+} & React.ComponentProps<typeof Root>;
 
 export function Avatar({ className, hasBorder, ...props }: AvatarProps) {
   return (
-    <RadixAvatar.Root
+    <Root
       className={cn(
         'group inline-flex size-10 overflow-hidden rounded-full outline-2 outline-transparent',
         hasBorder && 'data-[has-border=true]:outline-border',
@@ -21,11 +21,11 @@ export function Avatar({ className, hasBorder, ...props }: AvatarProps) {
   );
 }
 
-type AvatarImageProps = React.ComponentProps<typeof RadixAvatar.Image>;
+type AvatarImageProps = React.ComponentProps<typeof Image>;
 
 export function AvatarImage({ className, ...props }: AvatarImageProps) {
   return (
-    <RadixAvatar.Image
+    <Image
       className={cn('size-full object-cover', className)}
       data-slot="avatar-image"
       {...props}
@@ -33,11 +33,11 @@ export function AvatarImage({ className, ...props }: AvatarImageProps) {
   );
 }
 
-type AvatarFallbackProps = React.ComponentProps<typeof RadixAvatar.Fallback>;
+type AvatarFallbackProps = React.ComponentProps<typeof Fallback>;
 
 export function AvatarFallback({ className, ...props }: AvatarFallbackProps) {
   return (
-    <RadixAvatar.Fallback
+    <Fallback
       className={cn(
         'pointer flex size-full select-none items-center justify-center bg-main-foreground text-primary-muted',
         'group-data-[has-border=true]:bg-main-background',
