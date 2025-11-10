@@ -1,6 +1,6 @@
 import { Fallback, Image, Root } from '@radix-ui/react-avatar';
 
-import { cn } from '@/utils/cn';
+import { cn } from '@/lib/utils';
 
 type AvatarProps = {
   hasBorder?: boolean;

@@ -3,7 +3,7 @@
 import { Slot } from '@radix-ui/react-slot';
 import { motion, useMotionTemplate, useMotionValue } from 'motion/react';
 
-import { cn } from '@/utils/cn';
+import { cn } from '@/lib/utils';
 
 type Variant = {
   variant: string;

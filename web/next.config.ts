@@ -21,7 +21,6 @@ const getContentSecurityPolicy = () => {
 const nextConfig: NextConfig = {
   reactCompiler: true,
   output: 'standalone',
-  cacheComponents: true,
   poweredByHeader: false,
   compress: true,
   headers: () => [

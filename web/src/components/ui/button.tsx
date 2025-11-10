@@ -5,7 +5,7 @@ import { Slot } from '@radix-ui/react-slot';
 import { motion } from 'motion/react';
 import { useRef, useState } from 'react';
 
-import { cn } from '@/utils/cn';
+import { cn } from '@/lib/utils';
 
 type Variant = {
   variant: string;

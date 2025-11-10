@@ -3,7 +3,7 @@
 import { AnimatePresence, motion, type Variants } from 'motion/react';
 import { useState } from 'react';
 
-import { cn } from '@/utils/cn';
+import { cn } from '@/lib/utils';
 
 type InputProps = React.ComponentPropsWithRef<'input'>;
 

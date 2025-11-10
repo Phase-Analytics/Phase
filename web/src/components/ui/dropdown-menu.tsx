@@ -4,7 +4,7 @@ import { Slot } from '@radix-ui/react-slot';
 
 import { motion, type Variants } from 'motion/react';
 import { createContext, useContext, useState } from 'react';
-import { cn } from '@/utils/cn';
+import { cn } from '@/lib/utils';
 
 const content: Variants = {
   hidden: {

@@ -4,7 +4,7 @@ import { Indicator, Root } from '@radix-ui/react-checkbox';
 
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 
-import { cn } from '@/utils/cn';
+import { cn } from '@/lib/utils';
 
 const showAnimationProps = {
   initial: { opacity: 0, scale: 0.5 },

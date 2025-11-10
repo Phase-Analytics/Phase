@@ -6,7 +6,7 @@ import {
   Trigger,
 } from '@radix-ui/react-tooltip';
 
-import { cn } from '@/utils/cn';
+import { cn } from '@/lib/utils';
 
 export const Tooltip = Root;
 
