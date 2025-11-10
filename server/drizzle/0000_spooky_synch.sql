@@ -14,38 +14,53 @@ CREATE TABLE "account" (
 	"updated_at" timestamp NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "apikey" (
+CREATE TABLE "apps" (
 	"id" text PRIMARY KEY NOT NULL,
-	"name" text,
-	"start" text,
-	"prefix" text,
-	"key" text NOT NULL,
 	"user_id" text NOT NULL,
-	"refill_interval" integer,
-	"refill_amount" integer,
-	"last_refill_at" timestamp,
-	"enabled" boolean DEFAULT true,
-	"rate_limit_enabled" boolean DEFAULT false,
-	"rate_limit_time_window" integer DEFAULT 86400000,
-	"rate_limit_max" integer DEFAULT 10,
-	"request_count" integer DEFAULT 0,
-	"remaining" integer,
-	"last_request" timestamp,
+	"name" text NOT NULL,
+	"image" text,
+	"key" text NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL,
-	"permissions" text,
-	"metadata" text
+	CONSTRAINT "apps_key_unique" UNIQUE("key")
 );
 --> statement-breakpoint
 CREATE TABLE "devices" (
 	"device_id" text PRIMARY KEY NOT NULL,
-	"api_key_id" text NOT NULL,
+	"app_id" text NOT NULL,
 	"identifier" text,
 	"model" text,
 	"os_version" text,
 	"platform" text,
 	"app_version" text,
 	"first_seen" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "invitation" (
+	"id" text PRIMARY KEY NOT NULL,
+	"organization_id" text NOT NULL,
+	"email" text NOT NULL,
+	"role" text,
+	"status" text NOT NULL,
+	"expires_at" timestamp NOT NULL,
+	"inviter_id" text NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "member" (
+	"id" text PRIMARY KEY NOT NULL,
+	"organization_id" text NOT NULL,
+	"user_id" text NOT NULL,
+	"role" text NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "organization" (
+	"id" text PRIMARY KEY NOT NULL,
+	"name" text NOT NULL,
+	"slug" text,
+	"logo" text,
+	"metadata" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "organization_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
 CREATE TABLE "session" (
@@ -88,15 +103,24 @@ CREATE TABLE "verification" (
 );
 --> statement-breakpoint
 ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "apikey" ADD CONSTRAINT "apikey_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "devices" ADD CONSTRAINT "devices_api_key_id_apikey_id_fk" FOREIGN KEY ("api_key_id") REFERENCES "public"."apikey"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "apps" ADD CONSTRAINT "apps_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "devices" ADD CONSTRAINT "devices_app_id_apps_id_fk" FOREIGN KEY ("app_id") REFERENCES "public"."apps"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "invitation" ADD CONSTRAINT "invitation_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "invitation" ADD CONSTRAINT "invitation_inviter_id_user_id_fk" FOREIGN KEY ("inviter_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "member" ADD CONSTRAINT "member_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "member" ADD CONSTRAINT "member_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sessions_analytics" ADD CONSTRAINT "sessions_analytics_device_id_devices_device_id_fk" FOREIGN KEY ("device_id") REFERENCES "public"."devices"("device_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "account_user_id_idx" ON "account" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "apikey_user_id_idx" ON "apikey" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "apikey_key_idx" ON "apikey" USING btree ("key");--> statement-breakpoint
-CREATE INDEX "devices_api_key_id_idx" ON "devices" USING btree ("api_key_id");--> statement-breakpoint
+CREATE INDEX "apps_user_id_idx" ON "apps" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "apps_key_idx" ON "apps" USING btree ("key");--> statement-breakpoint
+CREATE INDEX "devices_app_id_idx" ON "devices" USING btree ("app_id");--> statement-breakpoint
 CREATE INDEX "devices_platform_idx" ON "devices" USING btree ("platform");--> statement-breakpoint
+CREATE INDEX "invitation_email_idx" ON "invitation" USING btree ("email");--> statement-breakpoint
+CREATE INDEX "invitation_organization_id_idx" ON "invitation" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "member_user_id_idx" ON "member" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "member_organization_id_idx" ON "member" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "organization_slug_idx" ON "organization" USING btree ("slug");--> statement-breakpoint
 CREATE INDEX "session_user_id_idx" ON "session" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "sessions_device_started_at_idx" ON "sessions_analytics" USING btree ("device_id","started_at" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "sessions_analytics_last_activity_at_idx" ON "sessions_analytics" USING btree ("last_activity_at");--> statement-breakpoint
