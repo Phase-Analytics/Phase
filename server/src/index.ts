@@ -96,7 +96,9 @@ app.route('/web/sessions', sessionWebRouter);
 
 app.on(['POST', 'GET'], '/api/auth/**', (c) => auth.handler(c.req.raw));
 
-configureOpenAPI(app);
+if (process.env.NODE_ENV !== 'production') {
+  configureOpenAPI(app);
+}
 
 try {
   await runMigrations();
