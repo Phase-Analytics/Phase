@@ -23,6 +23,9 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   poweredByHeader: false,
   compress: true,
+  turbopack: {
+    root: '../',
+  },
   headers: () => [
     {
       source: '/:path*',
