@@ -27,11 +27,11 @@ FROM base AS runner
 
 RUN adduser --system --uid 1001 nextjs
 
-WORKDIR /app/web
+WORKDIR /app
 
 COPY --from=builder --chown=nextjs:bun /app/web/.next/standalone ./
-COPY --from=builder --chown=nextjs:bun /app/web/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:bun /app/web/public ./public
+COPY --from=builder --chown=nextjs:bun /app/web/.next/static ./web/.next/static
+COPY --from=builder --chown=nextjs:bun /app/web/public ./web/public
 
 USER nextjs
 
@@ -40,4 +40,4 @@ EXPOSE 3002
 ENV PORT=3002
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["bun", "server.js"]
+CMD ["bun", "web/server.js"]
