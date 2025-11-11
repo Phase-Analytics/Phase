@@ -13,6 +13,7 @@ import {
   useState,
 } from 'react';
 import { flushSync } from 'react-dom';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 type ThemeSelection = 'light' | 'dark' | 'system';
@@ -214,12 +215,10 @@ type ThemeTogglerButtonProps = {
   onImmediateChange?: (theme: ThemeSelection) => void;
   direction?: Direction;
   className?: string;
-  variant?: 'default' | 'outline' | 'ghost';
   size?: 'default' | 'sm' | 'lg';
 } & Omit<React.ComponentProps<'button'>, 'children'>;
 
 function ThemeTogglerButton({
-  variant = 'default',
   size = 'default',
   modes = ['light', 'dark'],
   direction = 'rtl',
@@ -237,17 +236,6 @@ function ThemeTogglerButton({
 
   const isReady = mounted && resolvedTheme;
 
-  const baseStyles =
-    'flex shrink-0 items-center justify-center rounded-full outline-none transition-[box-shadow,color,background-color,border-color] focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0';
-
-  const variantStyles = {
-    default:
-      'bg-neutral-100 text-neutral-900 shadow-md shadow-neutral-900/20 hover:bg-neutral-200 hover:shadow-lg dark:bg-neutral-900 dark:text-neutral-100 dark:shadow-neutral-900/30 dark:hover:bg-neutral-800 dark:hover:shadow-xl',
-    outline:
-      'border border-neutral-200 bg-transparent hover:bg-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-900',
-    ghost: 'hover:bg-neutral-100 dark:hover:bg-neutral-900',
-  };
-
   const sizeStyles = {
     default: 'size-9',
     sm: 'size-8',
@@ -255,24 +243,24 @@ function ThemeTogglerButton({
   };
 
   const buttonClassName = cn(
-    baseStyles,
-    variantStyles[variant],
+    'flex items-center justify-center rounded-full p-0 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
     sizeStyles[size],
     className
   );
 
   if (!isReady) {
     return (
-      <button
+      <Button
         className={buttonClassName}
         data-slot="theme-toggler-button"
         disabled
+        variant="outline"
         {...props}
       >
         <Blur blur={0} initialBlur={10} inView>
           <HugeiconsIcon icon={Sun03Icon} />
         </Blur>
-      </button>
+      </Button>
     );
   }
 
@@ -285,19 +273,20 @@ function ThemeTogglerButton({
       theme={theme as ThemeSelection}
     >
       {({ effective, resolved, toggleTheme }) => (
-        <button
+        <Button
           className={buttonClassName}
           data-slot="theme-toggler-button"
           onClick={(e) => {
             onClick?.(e);
             toggleTheme(getNextTheme(effective, modes));
           }}
+          variant="outline"
           {...props}
         >
           <Blur blur={0} initialBlur={0} inView>
             {getIcon(resolved)}
           </Blur>
-        </button>
+        </Button>
       )}
     </ThemeToggler>
   );
