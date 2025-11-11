@@ -3,6 +3,7 @@ WORKDIR /app
 
 COPY package.json bun.lock ./
 COPY server/package.json ./server/
+COPY web/package.json ./web/
 
 RUN bun install --frozen-lockfile --filter server
 
