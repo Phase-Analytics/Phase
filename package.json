@@ -13,9 +13,6 @@
     "build": "bun run --filter server build && bun run --filter web build",
     "build:server": "bun run --filter server build",
     "build:web": "bun run --filter web build",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "check": "bunx ultracite fix --unsafe",
     "typecheck": "bun run --filter server typecheck && bun run --filter web typecheck"
