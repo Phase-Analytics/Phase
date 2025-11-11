@@ -83,7 +83,7 @@ function MenuPanel({
       >
         <MenuPopupPrimitive
           className={cn(
-            'max-h-(--available-height) min-w-[8rem] origin-(--transform-origin) overflow-y-auto overflow-x-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none',
+            'max-h-(--available-height) min-w-32 origin-(--transform-origin) overflow-y-auto overflow-x-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none',
             className
           )}
           finalFocus={finalFocus}
@@ -113,7 +113,7 @@ function MenuGroupLabel({ className, inset, ...props }: MenuGroupLabelProps) {
   return (
     <MenuGroupLabelPrimitive
       className={cn(
-        'px-2 py-1.5 font-medium text-sm data-[inset]:pl-8',
+        'px-2 py-1.5 font-medium text-sm data-inset:pl-8',
         className
       )}
       data-inset={inset}
@@ -145,7 +145,7 @@ function MenuItem({
     >
       <MenuItemPrimitive
         className={cn(
-          "data-[variant=destructive]:*:[svg]:!text-destructive relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden focus:text-accent-foreground data-[disabled=true]:pointer-events-none data-[inset]:pl-8 data-[variant=destructive]:text-destructive data-[disabled=true]:opacity-50 data-[variant=destructive]:focus:text-destructive [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0",
+          "relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden focus:text-accent-foreground data-[disabled=true]:pointer-events-none data-inset:pl-8 data-[variant=destructive]:text-destructive data-[disabled=true]:opacity-50 data-[variant=destructive]:focus:text-destructive [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 data-[variant=destructive]:*:[svg]:text-destructive!",
           className
         )}
         data-inset={inset}
@@ -279,8 +279,8 @@ function MenuSubmenuTrigger({
     <MenuHighlightItemPrimitive disabled={disabled}>
       <MenuSubmenuTriggerPrimitive
         className={cn(
-          'flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-hidden focus:text-accent-foreground data-[inset]:pl-8 data-[state=open]:text-accent-foreground',
-          '[&_[data-slot=chevron]]:transition-transform [&_[data-slot=chevron]]:duration-300 [&_[data-slot=chevron]]:ease-in-out aria-[expanded=true]:[&_[data-slot=chevron]]:rotate-90',
+          'flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-hidden focus:text-accent-foreground data-inset:pl-8 data-[state=open]:text-accent-foreground',
+          '**:data-[slot=chevron]:transition-transform **:data-[slot=chevron]:duration-300 **:data-[slot=chevron]:ease-in-out aria-expanded:**:data-[slot=chevron]:rotate-90',
           className
         )}
         data-inset={inset}
@@ -319,7 +319,7 @@ function MenuSubmenuPanel({
       >
         <MenuPopupPrimitive
           className={cn(
-            'max-h-(--available-height) min-w-[8rem] origin-(--transform-origin) overflow-y-auto overflow-x-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md',
+            'max-h-(--available-height) min-w-32 origin-(--transform-origin) overflow-y-auto overflow-x-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md',
             className
           )}
           finalFocus={finalFocus}
