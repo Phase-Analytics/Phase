@@ -17,8 +17,8 @@ const variants = [
       <div
         {...props}
         className={cn(
-          'relative rounded-xl border border-primary/10 bg-main-background px-4 py-5',
-          'shadow-[var(--highlight-top),var(--shadow-sm)]',
+          'relative rounded-xl border border-border bg-main-secondary px-4 py-5',
+          'shadow-[var(--highlight-top-subtle),var(--shadow-xs)]',
           className
         )}
       >

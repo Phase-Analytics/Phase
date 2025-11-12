@@ -18,11 +18,10 @@ const variants = [
       <button
         {...props}
         className={cn(
-          'relative overflow-hidden rounded-xl border border-transparent bg-neutral-800 px-4 py-2 text-neutral-100 shadow-inner transition-all duration-200',
-          'shadow-[var(--highlight-top),var(--shadow-sm)] shadow-main-foreground/70',
-          'hover:scale-[1.02] hover:bg-neutral-700 hover:shadow-[var(--highlight-top),var(--shadow-md)]',
-          'active:scale-[0.98] active:shadow-[var(--highlight-top),var(--shadow-xs)]',
-          'dark:bg-neutral-300 dark:text-neutral-900 dark:shadow-main-foreground/80 dark:hover:bg-neutral-400',
+          'relative overflow-hidden rounded-xl border border-border bg-main-secondary px-4 py-2 text-primary-foreground shadow-inner transition-all duration-200',
+          'shadow-[var(--highlight-top-subtle),var(--shadow-xs)]',
+          'hover:scale-[1.02] hover:bg-main-foreground/40 hover:shadow-[var(--highlight-top-subtle),var(--shadow-sm)]',
+          'active:scale-[0.98] active:shadow-[var(--highlight-top-subtle),var(--shadow-xs)]',
           className
         )}
       />

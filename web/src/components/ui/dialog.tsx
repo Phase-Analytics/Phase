@@ -44,7 +44,8 @@ export function DialogContent({
       <Content
         className={cn(
           '-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 z-1001 max-h-[85vh] w-[90vw] max-w-[400px] pt-5',
-          'rounded-xl border border-border bg-main focus:outline-none motion-safe:ease-out',
+          'rounded-xl border border-border bg-main-secondary focus:outline-none motion-safe:ease-out',
+          'shadow-[var(--highlight-top-subtle),var(--shadow-md)]',
           'motion-safe:data-[state=open]:zoom-in-95 motion-safe:data-[state=open]:fade-in motion-safe:data-[state=open]:animate-in',
           'motion-safe:data-[state=closed]:zoom-out-95 motion-safe:data-[state=closed]:fade-out motion-safe:data-[state=closed]:animate-out',
           className

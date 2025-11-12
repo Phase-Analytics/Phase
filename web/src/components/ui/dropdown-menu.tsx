@@ -4,20 +4,26 @@ import { Slot } from '@radix-ui/react-slot';
 
 import { motion, type Variants } from 'motion/react';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
 const content: Variants = {
   hidden: {
     clipPath: 'inset(10% 50% 90% 50% round 12px)',
+    transition: {
+      type: 'spring',
+      bounce: 0,
+      duration: 0.2,
+    },
   },
   show: {
     clipPath: 'inset(0% 0% 0% 0% round 12px)',
     transition: {
       type: 'spring',
       bounce: 0,
-      duration: 0.5,
-      delayChildren: 0.15,
-      staggerChildren: 0.1,
+      duration: 0.2,
+      delayChildren: 0.03,
+      staggerChildren: 0.03,
     },
   },
 };
@@ -27,11 +33,17 @@ const item: Variants = {
     opacity: 0,
     scale: 0.3,
     filter: 'blur(20px)',
+    transition: {
+      duration: 0.15,
+    },
   },
   show: {
     opacity: 1,
     scale: 1,
     filter: 'blur(0px)',
+    transition: {
+      duration: 0.15,
+    },
   },
 };
 
@@ -82,47 +94,70 @@ export function DropdownMenu(props: DropdownMenuProps) {
 
 type DropdownMenuTriggerProps = {
   asChild?: boolean;
+  icon?: React.ReactNode;
+  iconOpen?: React.ReactNode;
 } & React.ComponentProps<'button'>;
 
 export function DropdownMenuTrigger({
   asChild = false,
   children,
   className,
+  icon,
+  iconOpen,
   ...props
 }: DropdownMenuTriggerProps) {
   const { isOpen, setIsOpen } = useDropdownMenu();
 
   const Comp = asChild ? Slot : 'button';
 
+  const hasIconTransition = icon && iconOpen;
+
+  const shouldShowIcon = icon || iconOpen;
+
   return (
     <Comp
       className={cn(
-        'flex w-full max-w-[300px] items-center justify-between rounded-xl border border-border bg-main-secondary px-3.5 py-2.5 ease-out',
-        'shadow-[var(--highlight-top-subtle),var(--shadow-xs)] duration-200 focus-visible:border-border focus-visible:outline-none active:scale-[0.97]',
+        'flex w-full max-w-[300px] items-center justify-between rounded-xl border border-border bg-main-secondary px-4 py-2 text-primary-foreground transition-all duration-200',
+        'shadow-[var(--highlight-top-subtle),var(--shadow-xs)]',
+        'hover:scale-[1.02] hover:bg-main-foreground/40 hover:shadow-[var(--highlight-top-subtle),var(--shadow-sm)]',
+        'active:scale-[0.98] active:shadow-[var(--highlight-top-subtle),var(--shadow-xs)]',
+        'focus-visible:outline-none',
         className
       )}
       onClick={() => setIsOpen((prev) => !prev)}
       {...props}
     >
       {children}
-      <svg
-        className={cn(
-          'text-neutral-400 duration-300 ease-out',
-          isOpen && 'rotate-180'
-        )}
-        fill="none"
-        height="15"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-        viewBox="0 0 24 24"
-        width="15"
-      >
-        <title>Chevron</title>
-        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-        <circle cx="12" cy="12" r="3" />
-      </svg>
+      {shouldShowIcon && (
+        <span className="relative inline-flex items-center justify-center">
+          {hasIconTransition ? (
+            <>
+              <span
+                className={cn(
+                  'absolute transition-all duration-300 ease-out',
+                  isOpen
+                    ? 'rotate-90 scale-0 opacity-0'
+                    : 'rotate-0 scale-100 opacity-100'
+                )}
+              >
+                {icon}
+              </span>
+              <span
+                className={cn(
+                  'absolute transition-all duration-300 ease-out',
+                  isOpen
+                    ? 'rotate-0 scale-100 opacity-100'
+                    : '-rotate-90 scale-0 opacity-0'
+                )}
+              >
+                {iconOpen}
+              </span>
+            </>
+          ) : (
+            <span>{icon || iconOpen}</span>
+          )}
+        </span>
+      )}
     </Comp>
   );
 }
@@ -143,15 +178,16 @@ export function DropdownMenuContent({
     <motion.ul
       animate={isOpen ? 'show' : 'hidden'}
       className={cn(
-        'z-1 mx-auto flex w-full max-w-[200px] flex-col gap-1.5 rounded-xl px-1.5 py-2.5',
+        'z-1 mx-auto flex w-full max-w-[200px] flex-col gap-1 rounded-xl px-1.5 py-2',
         'border border-border bg-main-secondary shadow-[var(--highlight-top-subtle),var(--shadow-md)]',
-        isOpen ? 'pointer-events-auto' : 'pointer-events-none',
         floating ? 'absolute' : 'relative',
         className
       )}
       exit="hidden"
       initial="hidden"
-      transition={{ duration: 0.2 }}
+      style={{
+        pointerEvents: isOpen ? 'auto' : 'none',
+      }}
       variants={content}
       {...props}
     >
@@ -162,31 +198,66 @@ export function DropdownMenuContent({
 
 type DropdownMenuItemProps = {
   asChild?: boolean;
+  shortcut?: React.ReactNode;
 } & React.ComponentProps<'button'>;
 
 export function DropdownMenuItem({
   asChild = false,
   children,
   className,
+  shortcut,
   ...props
 }: DropdownMenuItemProps) {
   const Comp = asChild ? Slot : 'button';
 
   return (
-    <motion.li transition={{ duration: 0.2 }} variants={item}>
+    <motion.li variants={item}>
       <Comp
         className={cn(
-          'flex w-full items-center gap-2 rounded-lg border border-transparent py-1 text-primary-muted transition-colors',
+          'flex w-full items-center justify-between gap-2 rounded-lg border border-transparent py-1 text-primary-muted transition-colors',
           'hover:text-primary-foreground focus-visible:border-border focus-visible:text-primary-foreground focus-visible:outline-none',
-          'select-none px-1.5 hover:bg-main-foreground/60 focus-visible:bg-main-foreground/60',
+          'select-none px-1.5 hover:bg-main-foreground/80 focus-visible:bg-main-foreground/80',
           className
         )}
         {...props}
       >
-        {children}
+        <span className="flex items-center gap-2">{children}</span>
+        {shortcut && (
+          <span className="ml-auto text-primary-muted/50 text-xs">
+            {shortcut}
+          </span>
+        )}
       </Comp>
     </motion.li>
   );
+}
+
+type DropdownMenuGroupProps = {
+  title?: string;
+} & React.ComponentProps<'div'>;
+
+export function DropdownMenuGroup({
+  title,
+  children,
+  className,
+}: DropdownMenuGroupProps) {
+  return (
+    <div className={cn('space-y-1', className)}>
+      {title && (
+        <div className="px-1.5 py-0.5 font-medium text-primary-muted/70 text-xs">
+          {title}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+export function DropdownMenuSeparator({
+  className,
+  ...props
+}: React.ComponentProps<typeof Separator>) {
+  return <Separator className={cn('my-1.5', className)} {...props} />;
 }
 
 const Context = createContext(

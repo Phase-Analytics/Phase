@@ -17,8 +17,8 @@ const variants = [
       <div
         {...props}
         className={cn(
-          'relative overflow-hidden rounded-xl border border-transparent bg-neutral-900 px-3 py-1 text-neutral-200 shadow-inner transition-all duration-200',
-          'shadow-[var(--highlight-top-subtle),var(--shadow-xs)] shadow-main-foreground/70 hover:bg-main-invert/90 dark:shadow-main-foreground/80 dark:hover:bg-main-foreground/56',
+          'relative overflow-hidden rounded-xl border border-border bg-main-secondary px-3 py-1 text-primary-foreground shadow-inner transition-all duration-200',
+          'shadow-[var(--highlight-top-subtle),var(--shadow-xs)] hover:bg-main-foreground/40',
           className
         )}
       />
