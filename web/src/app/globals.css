@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@font-face {
+  font-family: "Menlo";
+  src: url("/fonts/Menlo-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
@@ -75,7 +83,7 @@
   --color-primary-invert: var(--primary-invert);
 
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-mono: var(--font-menlo);
 
   --shadow-xs: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --shadow-sm:
@@ -232,7 +240,7 @@
     font-size: 14px;
 
     code {
-      font-family: var(--font-geist-mono);
+      font-family: var(--font-mono);
     }
 
     [data-line] {

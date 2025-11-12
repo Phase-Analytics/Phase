@@ -1,8 +1,15 @@
 import { GeistMono } from 'geist/font/mono';
 import { GeistSans } from 'geist/font/sans';
 import type { Metadata } from 'next';
+import localFont from 'next/font/local';
 import './globals.css';
 import { ThemeProvider } from '@/lib/theme-provider';
+
+const menlo = localFont({
+  src: '../../public/fonts/Menlo-Regular.woff2',
+  variable: '--font-menlo',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Create Next App',
@@ -17,7 +24,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${GeistSans.variable} ${GeistMono.variable} font-sans antialiased`}
+        className={`${GeistSans.variable} ${GeistMono.variable} ${menlo.variable} font-sans antialiased`}
       >
         <ThemeProvider forceTheme="dark">{children}</ThemeProvider>
       </body>
