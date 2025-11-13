@@ -598,7 +598,7 @@ function SidebarMenuButton({
   ...props
 }: SidebarMenuButtonProps) {
   const Comp = asChild ? Slot.Root : 'button';
-  const { state } = useSidebar();
+  const { state, isMobile } = useSidebar();
 
   const button = (
     <Comp
@@ -611,7 +611,7 @@ function SidebarMenuButton({
     />
   );
 
-  const shouldShowTooltip = tooltip && state === 'collapsed';
+  const shouldShowTooltip = tooltip && state === 'collapsed' && !isMobile;
 
   return (
     <HighlightItem
