@@ -237,9 +237,6 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   --breakpoint-3xl: 1670px;
-
-  --animate-accordion-open: accordion-open 0.2s ease-out;
-  --animate-accordion-close: accordion-close 0.2s ease-out;
 }
 
 @layer base {
@@ -259,24 +256,6 @@
   @keyframes blink {
     50% {
       opacity: 0.6;
-    }
-  }
-
-  @keyframes accordion-open {
-    from {
-      height: 0;
-    }
-    to {
-      height: var(--radix-accordion-content-height);
-    }
-  }
-
-  @keyframes accordion-close {
-    from {
-      height: var(--radix-accordion-content-height);
-    }
-    to {
-      height: 0;
     }
   }
 
