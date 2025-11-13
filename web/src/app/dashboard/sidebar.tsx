@@ -11,7 +11,7 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import { generateIdenteapot } from '@teapotlabs/identeapots';
 import { useEffect, useState } from 'react';
-import { Avatar, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,15 +37,21 @@ export function DashboardSidebar() {
   const [avatarSrc, setAvatarSrc] = useState<string>('');
 
   useEffect(() => {
-    generateIdenteapot('berk@example.com', {
-      size: 384,
-      gridSize: 11,
-      patternSize: 7,
-      overlap: 1,
-      paletteSize: 8,
-      coloredCellLightness: 60,
-      emptyCellLightness: 90,
-    }).then(setAvatarSrc);
+    if (typeof window !== 'undefined' && window.crypto?.subtle) {
+      generateIdenteapot('berk@example.com', {
+        size: 384,
+        gridSize: 11,
+        patternSize: 7,
+        overlap: 1,
+        paletteSize: 8,
+        coloredCellLightness: 60,
+        emptyCellLightness: 90,
+      })
+        .then(setAvatarSrc)
+        .catch(() => {
+          // Silent failure
+        });
+    }
   }, []);
 
   return (
@@ -128,6 +134,7 @@ export function DashboardSidebar() {
                 <SidebarMenuButton size="lg" tooltip="Account">
                   <Avatar className="size-8">
                     <AvatarImage alt="User avatar" src={avatarSrc} />
+                    <AvatarFallback>U</AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col gap-0.5 leading-none">
                     <span className="font-semibold text-sm">Berk</span>
