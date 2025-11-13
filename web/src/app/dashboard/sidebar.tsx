@@ -67,7 +67,7 @@ export function DashboardSidebar() {
                   <div className="flex flex-col gap-0.5 leading-none">
                     <span className="font-semibold">Telemetra</span>
                     <span className="text-sidebar-foreground/70 text-xs">
-                      Analytics Platform
+                      Analytics
                     </span>
                   </div>
                   <HugeiconsIcon
