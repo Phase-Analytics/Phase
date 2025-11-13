@@ -216,7 +216,7 @@ type ThemeTogglerButtonProps = {
   direction?: Direction;
   className?: string;
   size?: 'default' | 'sm' | 'lg';
-} & Omit<React.ComponentProps<'button'>, 'children'>;
+} & Omit<HTMLMotionProps<'button'>, 'children'>;
 
 function ThemeTogglerButton({
   size = 'default',
