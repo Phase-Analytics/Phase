@@ -9,9 +9,9 @@ import {
   UnfoldMoreIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { generateIdenteapot } from '@teapotlabs/identeapots';
-import { useEffect, useState } from 'react';
-import { Avatar, AvatarImage } from '@/components/ui/avatar';
+import { minidenticon } from 'minidenticons';
+import { useEffect, useMemo, useState } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,18 +35,22 @@ import {
 
 export function DashboardSidebar() {
   const [avatarSrc, setAvatarSrc] = useState<string>('');
+  const [isAvatarLoaded, setIsAvatarLoaded] = useState(false);
+
+  const username = 'berk@example.com';
+
+  const generatedAvatar = useMemo(
+    () =>
+      `data:image/svg+xml;utf8,${encodeURIComponent(
+        minidenticon(username, 60, 50)
+      )}`,
+    []
+  );
 
   useEffect(() => {
-    generateIdenteapot('berk@example.com', {
-      size: 384,
-      gridSize: 11,
-      patternSize: 7,
-      overlap: 1,
-      paletteSize: 8,
-      coloredCellLightness: 60,
-      emptyCellLightness: 90,
-    }).then(setAvatarSrc);
-  }, []);
+    // Client-side only avatar generation
+    setAvatarSrc(generatedAvatar);
+  }, [generatedAvatar]);
 
   return (
     <Sidebar
@@ -126,13 +130,23 @@ export function DashboardSidebar() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton size="lg" tooltip="Account">
-                  <Avatar className="size-8">
-                    <AvatarImage alt="User avatar" src={avatarSrc} />
+                  <Avatar className="size-8 ring-2 ring-sidebar-border ring-offset-1 ring-offset-sidebar">
+                    {avatarSrc && (
+                      <AvatarImage
+                        alt={username}
+                        className={`transition-opacity duration-300 ${
+                          isAvatarLoaded ? 'opacity-100' : 'opacity-0'
+                        }`}
+                        onLoad={() => setIsAvatarLoaded(true)}
+                        src={avatarSrc}
+                      />
+                    )}
+                    <AvatarFallback className="bg-transparent" />
                   </Avatar>
                   <div className="flex flex-col gap-0.5 leading-none">
                     <span className="font-semibold text-sm">Berk</span>
                     <span className="text-sidebar-foreground/70 text-xs">
-                      berk@example.com
+                      {username}
                     </span>
                   </div>
                   <HugeiconsIcon
