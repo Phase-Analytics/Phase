@@ -28,12 +28,6 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { getStrictContext } from '@/hooks/get-strict-context';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
@@ -44,6 +38,18 @@ const SIDEBAR_WIDTH = '16rem';
 const SIDEBAR_WIDTH_MOBILE = '18rem';
 const SIDEBAR_WIDTH_ICON = '3rem';
 const SIDEBAR_KEYBOARD_SHORTCUT = 'b';
+
+function _getCookie(name: string): string | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) {
+    return parts.pop()?.split(';').shift() ?? null;
+  }
+  return null;
+}
 
 type SidebarContextProps = {
   state: 'expanded' | 'collapsed';
@@ -78,6 +84,7 @@ function SidebarProvider({
 
   const [_open, _setOpen] = useState(defaultOpen);
   const open = openProp ?? _open;
+
   const setOpen = useCallback(
     (newValue: boolean | ((prevValue: boolean) => boolean)) => {
       const openState =
@@ -134,25 +141,23 @@ function SidebarProvider({
 
   return (
     <LocalSidebarProvider value={contextValue}>
-      <TooltipProvider delayDuration={0}>
-        <div
-          className={cn(
-            'group/sidebar-wrapper flex min-h-svh w-full has-data-[variant=inset]:bg-sidebar',
-            className
-          )}
-          data-slot="sidebar-wrapper"
-          style={
-            {
-              '--sidebar-width': SIDEBAR_WIDTH,
-              '--sidebar-width-icon': SIDEBAR_WIDTH_ICON,
-              ...style,
-            } as CSSProperties
-          }
-          {...props}
-        >
-          {children}
-        </div>
-      </TooltipProvider>
+      <div
+        className={cn(
+          'group/sidebar-wrapper flex min-h-svh w-full has-data-[variant=inset]:bg-sidebar',
+          className
+        )}
+        data-slot="sidebar-wrapper"
+        style={
+          {
+            '--sidebar-width': SIDEBAR_WIDTH,
+            '--sidebar-width-icon': SIDEBAR_WIDTH_ICON,
+            ...style,
+          } as CSSProperties
+        }
+        {...props}
+      >
+        {children}
+      </div>
     </LocalSidebarProvider>
   );
 }
@@ -575,7 +580,6 @@ const sidebarMenuButtonVariants = cva(
 type SidebarMenuButtonProps = ComponentProps<'button'> & {
   asChild?: boolean;
   isActive?: boolean;
-  tooltip?: string | ComponentProps<typeof TooltipContent>;
 } & VariantProps<typeof sidebarMenuButtonVariants>;
 
 function SidebarMenuButton({
@@ -583,14 +587,12 @@ function SidebarMenuButton({
   isActive = false,
   variant = 'default',
   size = 'default',
-  tooltip,
   className,
   ...props
 }: SidebarMenuButtonProps) {
   const Comp = asChild ? Slot.Root : 'button';
-  const { isMobile, state } = useSidebar();
 
-  const button = (
+  return (
     <HighlightItem
       activeClassName={sidebarMenuButtonActiveVariants({ variant })}
     >
@@ -603,28 +605,6 @@ function SidebarMenuButton({
         {...props}
       />
     </HighlightItem>
-  );
-
-  if (!tooltip) {
-    return button;
-  }
-
-  if (typeof tooltip === 'string') {
-    tooltip = {
-      children: tooltip,
-    };
-  }
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{button}</TooltipTrigger>
-      <TooltipContent
-        align="center"
-        hidden={state !== 'collapsed' || isMobile}
-        side="right"
-        {...tooltip}
-      />
-    </Tooltip>
   );
 }
 
