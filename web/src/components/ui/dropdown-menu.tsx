@@ -57,6 +57,7 @@ function DropdownMenuContent({
   sideOffset = 4,
   className,
   children,
+  onCloseAutoFocus,
   ...props
 }: DropdownMenuContentProps) {
   return (
@@ -65,6 +66,11 @@ function DropdownMenuContent({
         'z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-32 origin-(--radix-dropdown-menu-content-transform-origin) overflow-y-auto overflow-x-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-[var(--shadow-elevated),var(--highlight)] outline-none',
         className
       )}
+      onCloseAutoFocus={(e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onCloseAutoFocus?.(e);
+      }}
       sideOffset={sideOffset}
       {...props}
     >

@@ -1,6 +1,6 @@
 'use client';
 
-import { AnimatePresence, motion, type Transition } from 'motion/react';
+import { motion, type Transition } from 'motion/react';
 import {
   Children,
   type ComponentProps,
@@ -158,6 +158,7 @@ function Highlight<T extends ElementType = 'div'>({
   );
   const [boundsState, setBoundsState] = useState<Bounds | null>(null);
   const [activeClassNameState, setActiveClassNameState] = useState<string>('');
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   const boundsOffset = (props as ParentModeHighlightProps)?.boundsOffset;
 
@@ -204,8 +205,12 @@ function Highlight<T extends ElementType = 'div'>({
         }
         return newBounds;
       });
+
+      if (!hasInitialized) {
+        setHasInitialized(true);
+      }
     },
-    [boundsOffset]
+    [boundsOffset, hasInitialized]
   );
 
   const clearBounds = useCallback(() => {
@@ -261,37 +266,44 @@ function Highlight<T extends ElementType = 'div'>({
             ref={localRef}
             style={{ position: 'relative', zIndex: 1 }}
           >
-            <AnimatePresence initial={false} mode="wait">
-              {boundsState && (
-                <motion.div
-                  animate={{
-                    top: boundsState.top,
-                    left: boundsState.left,
-                    width: boundsState.width,
-                    height: boundsState.height,
-                    opacity: 1,
-                  }}
-                  className={cn(className, activeClassNameState)}
-                  data-slot="motion-highlight"
-                  exit={{
-                    opacity: 0,
-                    transition: {
-                      ...transition,
-                      delay: (transition?.delay ?? 0) + (exitDelay ?? 0) / 1000,
-                    },
-                  }}
-                  initial={{
-                    top: boundsState.top,
-                    left: boundsState.left,
-                    width: boundsState.width,
-                    height: boundsState.height,
-                    opacity: 0,
-                  }}
-                  style={{ position: 'absolute', zIndex: 0, ...style }}
-                  transition={transition}
-                />
-              )}
-            </AnimatePresence>
+            {boundsState && (
+              <motion.div
+                animate={{
+                  top: boundsState.top,
+                  left: boundsState.left,
+                  width: boundsState.width,
+                  height: boundsState.height,
+                  opacity: 1,
+                }}
+                className={cn(className, activeClassNameState)}
+                data-slot="motion-highlight"
+                exit={{
+                  opacity: 0,
+                  transition: {
+                    ...transition,
+                    delay: (transition?.delay ?? 0) + (exitDelay ?? 0) / 1000,
+                  },
+                }}
+                initial={
+                  hasInitialized
+                    ? false
+                    : {
+                        top: boundsState.top,
+                        left: boundsState.left,
+                        width: boundsState.width,
+                        height: boundsState.height,
+                        opacity: 0,
+                      }
+                }
+                layout
+                style={{
+                  position: 'absolute',
+                  zIndex: 0,
+                  ...style,
+                }}
+                transition={transition}
+              />
+            )}
             {renderChildren}
           </Comp>
         );
@@ -309,6 +321,7 @@ function Highlight<T extends ElementType = 'div'>({
       style,
       className,
       activeClassNameState,
+      hasInitialized,
     ]
   );
 
@@ -443,7 +456,6 @@ function HighlightItem<T extends ElementType>({
     transition: contextTransition,
     id: contextId,
     disabled: contextDisabled,
-    exitDelay: contextExitDelay,
     forceUpdateBounds: contextForceUpdateBounds,
     setActiveClassName,
   } = useHighlight();
@@ -455,9 +467,16 @@ function HighlightItem<T extends ElementType>({
   const isActive = activeValue === childValue;
   const isDisabled = disabled === undefined ? contextDisabled : disabled;
   const itemTransition = transition ?? contextTransition;
+  const [wasActive, setWasActive] = useState(false);
 
   const localRef = useRef<HTMLDivElement>(null);
   useImperativeHandle(ref, () => localRef.current as HTMLDivElement);
+
+  useEffect(() => {
+    if (isActive !== wasActive) {
+      setWasActive(isActive);
+    }
+  }, [isActive, wasActive]);
 
   useEffect(() => {
     if (mode !== 'parent') {
@@ -570,34 +589,27 @@ function HighlightItem<T extends ElementType>({
           ...props,
         },
         <>
-          <AnimatePresence initial={false} mode="wait">
-            {isActive && !isDisabled && (
-              <motion.div
-                animate={{ opacity: 1 }}
-                className={cn(contextClassName, activeClassName)}
-                data-slot="motion-highlight"
-                exit={{
-                  opacity: 0,
-                  transition: {
-                    ...itemTransition,
-                    delay:
-                      (itemTransition?.delay ?? 0) +
-                      (exitDelay ?? contextExitDelay ?? 0) / 1000,
-                  },
-                }}
-                initial={{ opacity: 0 }}
-                layoutId={`transition-background-${contextId}`}
-                style={{
-                  position: 'absolute',
-                  zIndex: 0,
-                  ...contextStyle,
-                  ...style,
-                }}
-                transition={itemTransition}
-                {...dataAttributes}
-              />
-            )}
-          </AnimatePresence>
+          {isActive && !isDisabled && (
+            <motion.div
+              animate={{ opacity: 1 }}
+              className={cn(contextClassName, activeClassName)}
+              data-slot="motion-highlight"
+              initial={wasActive ? false : { opacity: 0 }}
+              layoutId={`highlight-${contextId}`}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 0,
+                ...contextStyle,
+                ...style,
+              }}
+              transition={itemTransition}
+              {...dataAttributes}
+            />
+          )}
 
           <ComponentTag
             className={className}
@@ -635,35 +647,26 @@ function HighlightItem<T extends ElementType>({
       {...props}
       {...commonHandlers}
     >
-      {mode === 'children' && (
-        <AnimatePresence initial={false} mode="wait">
-          {isActive && !isDisabled && (
-            <motion.div
-              animate={{ opacity: 1 }}
-              className={cn(contextClassName, activeClassName)}
-              data-slot="motion-highlight"
-              exit={{
-                opacity: 0,
-                transition: {
-                  ...itemTransition,
-                  delay:
-                    (itemTransition?.delay ?? 0) +
-                    (exitDelay ?? contextExitDelay ?? 0) / 1000,
-                },
-              }}
-              initial={{ opacity: 0 }}
-              layoutId={`transition-background-${contextId}`}
-              style={{
-                position: 'absolute',
-                zIndex: 0,
-                ...contextStyle,
-                ...style,
-              }}
-              transition={itemTransition}
-              {...dataAttributes}
-            />
-          )}
-        </AnimatePresence>
+      {mode === 'children' && isActive && !isDisabled && (
+        <motion.div
+          animate={{ opacity: 1 }}
+          className={cn(contextClassName, activeClassName)}
+          data-slot="motion-highlight"
+          initial={wasActive ? false : { opacity: 0 }}
+          layoutId={`highlight-${contextId}`}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 0,
+            ...contextStyle,
+            ...style,
+          }}
+          transition={itemTransition}
+          {...dataAttributes}
+        />
       )}
 
       {cloneElement(element, {
