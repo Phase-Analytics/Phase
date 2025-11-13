@@ -39,7 +39,7 @@ export function DashboardSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg">
+            <SidebarMenuButton size="lg" tooltip="Telemetra">
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                 <HugeiconsIcon className="size-4" icon={ArtboardIcon} />
               </div>
@@ -60,7 +60,7 @@ export function DashboardSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton isActive>
+                <SidebarMenuButton isActive tooltip="Overview">
                   <HugeiconsIcon icon={Analytics01Icon} />
                   <span>Overview</span>
                 </SidebarMenuButton>
@@ -75,7 +75,7 @@ export function DashboardSidebar() {
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton size="lg">
+                <SidebarMenuButton size="lg" tooltip="Account">
                   <Avatar className="size-8">
                     <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground">
                       BK

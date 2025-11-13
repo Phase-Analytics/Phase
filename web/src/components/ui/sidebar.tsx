@@ -28,6 +28,11 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { getStrictContext } from '@/hooks/get-strict-context';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
@@ -580,6 +585,7 @@ const sidebarMenuButtonVariants = cva(
 type SidebarMenuButtonProps = ComponentProps<'button'> & {
   asChild?: boolean;
   isActive?: boolean;
+  tooltip?: string;
 } & VariantProps<typeof sidebarMenuButtonVariants>;
 
 function SidebarMenuButton({
@@ -588,22 +594,39 @@ function SidebarMenuButton({
   variant = 'default',
   size = 'default',
   className,
+  tooltip,
   ...props
 }: SidebarMenuButtonProps) {
   const Comp = asChild ? Slot.Root : 'button';
+  const { state } = useSidebar();
+
+  const button = (
+    <Comp
+      className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
+      data-active={isActive}
+      data-sidebar="menu-button"
+      data-size={size}
+      data-slot="sidebar-menu-button"
+      {...props}
+    />
+  );
+
+  const shouldShowTooltip = tooltip && state === 'collapsed';
 
   return (
     <HighlightItem
       activeClassName={sidebarMenuButtonActiveVariants({ variant })}
     >
-      <Comp
-        className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-        data-active={isActive}
-        data-sidebar="menu-button"
-        data-size={size}
-        data-slot="sidebar-menu-button"
-        {...props}
-      />
+      {shouldShowTooltip ? (
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>{button}</TooltipTrigger>
+          <TooltipContent side="right" sideOffset={8}>
+            {tooltip}
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        button
+      )}
     </HighlightItem>
   );
 }
