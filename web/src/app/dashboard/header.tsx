@@ -15,6 +15,7 @@ import {
   UserGroupIcon,
 } from '@hugeicons/core-free-icons';
 import { usePathname } from 'next/navigation';
+import { useQueryState } from 'nuqs';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import type { CommandItem } from '@/components/command-menu';
 import { CommandMenu, CommandMenuTrigger } from '@/components/command-menu';
@@ -24,15 +25,9 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 export function DashboardHeader({ children }: { children: ReactNode }) {
   const isMobile = useIsMobile();
-  const pathname = usePathname();
+  const _pathname = usePathname();
   const [commandMenuOpen, setCommandMenuOpen] = useState(false);
-
-  const appId = useMemo(() => {
-    const pathParts = pathname.split('/');
-    const lastPart = pathParts.at(-1);
-    // biome-ignore lint/performance/useTopLevelRegex: <>
-    return lastPart && /^[0-9]+$/.test(lastPart) ? lastPart : null;
-  }, [pathname]);
+  const [appId] = useQueryState('app');
 
   const commandItems = useMemo<CommandItem[]>(() => {
     if (!appId) {
@@ -74,56 +69,56 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
         name: 'Overview',
         icon: Analytics01Icon,
         keywords: ['overview', 'analytics', 'dashboard', 'stats'],
-        path: `/dashboard/analytics/overview/${appId}`,
+        path: `/dashboard/analytics/overview?app=${appId}`,
       },
       {
         id: 'users',
         name: 'Users',
         icon: ComputerPhoneSyncIcon,
         keywords: ['users', 'people', 'accounts', 'analytics'],
-        path: `/dashboard/analytics/users/${appId}`,
+        path: `/dashboard/analytics/users?app=${appId}`,
       },
       {
         id: 'sessions',
         name: 'Sessions',
         icon: PlaySquareIcon,
         keywords: ['sessions', 'activity', 'analytics'],
-        path: `/dashboard/analytics/sessions/${appId}`,
+        path: `/dashboard/analytics/sessions?app=${appId}`,
       },
       {
         id: 'events',
         name: 'Events',
         icon: Blockchain05Icon,
         keywords: ['events', 'tracking', 'analytics'],
-        path: `/dashboard/analytics/events/${appId}`,
+        path: `/dashboard/analytics/events?app=${appId}`,
       },
       {
         id: 'feedbacks',
         name: 'Feedbacks',
         icon: ChatEditIcon,
         keywords: ['feedbacks', 'reports', 'comments', 'reviews'],
-        path: `/dashboard/reports/feedbacks/${appId}`,
+        path: `/dashboard/reports/feedbacks?app=${appId}`,
       },
       {
         id: 'settings',
         name: 'Settings',
         icon: Setting07Icon,
         keywords: ['settings', 'configuration', 'preferences', 'app'],
-        path: `/dashboard/application/settings/${appId}`,
+        path: `/dashboard/application/settings?app=${appId}`,
       },
       {
         id: 'api-keys',
         name: 'API Keys',
         icon: Key01Icon,
         keywords: ['api', 'keys', 'tokens', 'credentials', 'authentication'],
-        path: `/dashboard/application/api-keys/${appId}`,
+        path: `/dashboard/application/api-keys?app=${appId}`,
       },
       {
         id: 'team',
         name: 'Team',
         icon: UserGroupIcon,
         keywords: ['team', 'members', 'users', 'collaboration'],
-        path: `/dashboard/application/team/${appId}`,
+        path: `/dashboard/application/team?app=${appId}`,
       },
       {
         id: 'docs',

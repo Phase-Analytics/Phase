@@ -23,6 +23,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { minidenticon } from 'minidenticons';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useQueryState } from 'nuqs';
 import { useEffect, useMemo, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -46,7 +47,6 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from '@/components/ui/sidebar';
-import { Skeleton } from '@/components/ui/skeleton';
 
 type App = {
   id: string;
@@ -143,8 +143,8 @@ export function DashboardSidebar() {
   const router = useRouter();
   const [avatarSrc, setAvatarSrc] = useState<string>('');
   const [isAvatarLoaded, setIsAvatarLoaded] = useState(false);
-  const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
-  const [isLoadingApp, setIsLoadingApp] = useState(true);
+  const [appId, setAppId] = useQueryState('app');
+  const [appDropdownOpen, setAppDropdownOpen] = useState(false);
 
   const username = 'berk@example.com';
 
@@ -156,18 +156,7 @@ export function DashboardSidebar() {
     []
   );
 
-  useEffect(() => {
-    const pathParts = pathname.split('/');
-    const appIdFromUrl = pathParts.at(-1);
-
-    if (apps.some((app) => app.id === appIdFromUrl)) {
-      setSelectedAppId(appIdFromUrl ?? null);
-    }
-
-    setIsLoadingApp(false);
-  }, [pathname, apps]);
-
-  const selectedApp = apps.find((app) => app.id === selectedAppId);
+  const selectedApp = apps.find((app) => app.id === appId);
 
   const generatedAvatar = useMemo(
     () =>
@@ -181,6 +170,18 @@ export function DashboardSidebar() {
     setAvatarSrc(generatedAvatar);
   }, [generatedAvatar]);
 
+  useEffect(() => {
+    if (!appId) {
+      const hasLastApp =
+        typeof window !== 'undefined' &&
+        localStorage.getItem('lastSelectedApp');
+
+      if (!hasLastApp) {
+        setAppDropdownOpen(true);
+      }
+    }
+  }, [appId]);
+
   return (
     <Sidebar
       animateOnHover={false}
@@ -191,7 +192,11 @@ export function DashboardSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu modal={false}>
+            <DropdownMenu
+              modal={false}
+              onOpenChange={setAppDropdownOpen}
+              open={appDropdownOpen}
+            >
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
                   size="lg"
@@ -200,21 +205,14 @@ export function DashboardSidebar() {
                   <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                     <HugeiconsIcon className="size-4" icon={ArtboardIcon} />
                   </div>
-                  {isLoadingApp ? (
-                    <div className="flex flex-col gap-1 leading-none">
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="h-3 w-16" />
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-0.5 leading-none">
-                      <span className="font-semibold">
-                        {selectedApp ? selectedApp.name : 'Select an App'}
-                      </span>
-                      <span className="text-sidebar-foreground/70 text-xs">
-                        {selectedApp ? 'Analytics' : 'No app selected'}
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex flex-col gap-0.5 leading-none">
+                    <span className="font-semibold">
+                      {selectedApp ? selectedApp.name : 'Select an App'}
+                    </span>
+                    <span className="text-sidebar-foreground/70 text-xs">
+                      {selectedApp ? 'Analytics' : 'No app selected'}
+                    </span>
+                  </div>
                   <HugeiconsIcon
                     className="ml-auto size-4"
                     icon={UnfoldMoreIcon}
@@ -228,8 +226,11 @@ export function DashboardSidebar() {
                   <DropdownMenuItem
                     key={app.id}
                     onClick={() => {
-                      setSelectedAppId(app.id);
-                      router.push(`/dashboard/${app.id}`);
+                      setAppId(app.id);
+                      if (typeof window !== 'undefined') {
+                        localStorage.setItem('lastSelectedApp', app.id);
+                      }
+                      router.push(`/dashboard?app=${app.id}`);
                     }}
                   >
                     {app.name}
@@ -257,13 +258,13 @@ export function DashboardSidebar() {
             <SidebarMenu>
               {analyticsNavItems.map((item) => (
                 <SidebarMenuItem key={item.label}>
-                  {selectedAppId ? (
+                  {appId ? (
                     <SidebarMenuButton
                       asChild
                       isActive={pathname.includes(item.path)}
                       tooltip={item.tooltip}
                     >
-                      <Link href={`${item.path}/${selectedAppId}`}>
+                      <Link href={`${item.path}?app=${appId}`}>
                         <HugeiconsIcon icon={item.icon} />
                         <span>{item.label}</span>
                       </Link>
@@ -286,13 +287,13 @@ export function DashboardSidebar() {
             <SidebarMenu>
               {reportsNavItems.map((item) => (
                 <SidebarMenuItem key={item.label}>
-                  {selectedAppId ? (
+                  {appId ? (
                     <SidebarMenuButton
                       asChild
                       isActive={pathname.includes(item.path)}
                       tooltip={item.tooltip}
                     >
-                      <Link href={`${item.path}/${selectedAppId}`}>
+                      <Link href={`${item.path}?app=${appId}`}>
                         <HugeiconsIcon icon={item.icon} />
                         <span>{item.label}</span>
                       </Link>
@@ -315,13 +316,13 @@ export function DashboardSidebar() {
             <SidebarMenu>
               {applicationNavItems.map((item) => (
                 <SidebarMenuItem key={item.label}>
-                  {selectedAppId ? (
+                  {appId ? (
                     <SidebarMenuButton
                       asChild
                       isActive={pathname.includes(item.path)}
                       tooltip={item.tooltip}
                     >
-                      <Link href={`${item.path}/${selectedAppId}`}>
+                      <Link href={`${item.path}?app=${appId}`}>
                         <HugeiconsIcon icon={item.icon} />
                         <span>{item.label}</span>
                       </Link>
