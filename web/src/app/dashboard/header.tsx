@@ -27,17 +27,15 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [commandMenuOpen, setCommandMenuOpen] = useState(false);
 
-  // Extract app ID from current pathname
   const appId = useMemo(() => {
     const pathParts = pathname.split('/');
     const lastPart = pathParts.at(-1);
-    // Check if last part looks like an app ID (simple validation)
+    // biome-ignore lint/performance/useTopLevelRegex: <>
     return lastPart && /^[0-9]+$/.test(lastPart) ? lastPart : null;
   }, [pathname]);
 
   const commandItems = useMemo<CommandItem[]>(() => {
     if (!appId) {
-      // Return only global commands when no app is selected
       return [
         {
           id: 'docs',
@@ -70,9 +68,7 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
       ];
     }
 
-    // Return app-specific commands when app is selected
     return [
-      // Analytics
       {
         id: 'overview',
         name: 'Overview',
@@ -101,7 +97,6 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
         keywords: ['events', 'tracking', 'analytics'],
         path: `/dashboard/analytics/events/${appId}`,
       },
-      // Reports
       {
         id: 'feedbacks',
         name: 'Feedbacks',
@@ -109,7 +104,6 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
         keywords: ['feedbacks', 'reports', 'comments', 'reviews'],
         path: `/dashboard/reports/feedbacks/${appId}`,
       },
-      // Application
       {
         id: 'settings',
         name: 'Settings',
@@ -131,7 +125,6 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
         keywords: ['team', 'members', 'users', 'collaboration'],
         path: `/dashboard/application/team/${appId}`,
       },
-      // Global
       {
         id: 'docs',
         name: 'Documentation',

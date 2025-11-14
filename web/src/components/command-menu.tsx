@@ -240,7 +240,7 @@ export function CommandMenuTrigger({ onClick }: { onClick: () => void }) {
 
   return (
     <button
-      className="flex h-9 w-full items-center gap-2 rounded-md border bg-background px-3 text-muted-foreground text-sm shadow-[var(--shadow),var(--highlight)] transition-colors hover:bg-accent hover:text-accent-foreground sm:w-54"
+      className="hidden h-9 w-full items-center gap-2 rounded-md border bg-background px-3 text-muted-foreground text-sm shadow-[var(--shadow),var(--highlight)] transition-colors hover:bg-accent hover:text-accent-foreground sm:flex sm:w-54"
       onClick={onClick}
       type="button"
     >

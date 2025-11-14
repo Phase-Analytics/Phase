@@ -53,6 +53,91 @@ type App = {
   name: string;
 };
 
+type NavItem = {
+  label: string;
+  icon: typeof Analytics01Icon;
+  path: string;
+  tooltip: string;
+};
+
+const analyticsNavItems: NavItem[] = [
+  {
+    label: 'Overview',
+    icon: Analytics01Icon,
+    path: '/dashboard/analytics/overview',
+    tooltip: 'Overview',
+  },
+  {
+    label: 'Users',
+    icon: ComputerPhoneSyncIcon,
+    path: '/dashboard/analytics/users',
+    tooltip: 'Users',
+  },
+  {
+    label: 'Sessions',
+    icon: PlaySquareIcon,
+    path: '/dashboard/analytics/sessions',
+    tooltip: 'Sessions',
+  },
+  {
+    label: 'Events',
+    icon: Blockchain05Icon,
+    path: '/dashboard/analytics/events',
+    tooltip: 'Events',
+  },
+];
+
+const reportsNavItems: NavItem[] = [
+  {
+    label: 'Feedbacks',
+    icon: ChatEditIcon,
+    path: '/dashboard/reports/feedbacks',
+    tooltip: 'Feedbacks',
+  },
+];
+
+const applicationNavItems: NavItem[] = [
+  {
+    label: 'Settings',
+    icon: Setting07Icon,
+    path: '/dashboard/application/settings',
+    tooltip: 'Settings',
+  },
+  {
+    label: 'API Keys',
+    icon: Key01Icon,
+    path: '/dashboard/application/api-keys',
+    tooltip: 'API Keys',
+  },
+  {
+    label: 'Team',
+    icon: UserGroupIcon,
+    path: '/dashboard/application/team',
+    tooltip: 'Team',
+  },
+];
+
+const footerNavItems: NavItem[] = [
+  {
+    label: 'Docs',
+    icon: File02Icon,
+    path: '/docs',
+    tooltip: 'Docs',
+  },
+  {
+    label: 'Support',
+    icon: BubbleChatIcon,
+    path: '/support',
+    tooltip: 'Support',
+  },
+  {
+    label: 'Github',
+    icon: GithubIcon,
+    path: 'https://github.com',
+    tooltip: 'Github',
+  },
+];
+
 export function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -170,70 +255,27 @@ export function DashboardSidebar() {
           <SidebarGroupLabel>Analytics</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                {selectedAppId ? (
-                  <SidebarMenuButton asChild isActive tooltip="Overview">
-                    <Link
-                      href={`/dashboard/analytics/overview/${selectedAppId}`}
+              {analyticsNavItems.map((item) => (
+                <SidebarMenuItem key={item.label}>
+                  {selectedAppId ? (
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname.includes(item.path)}
+                      tooltip={item.tooltip}
                     >
-                      <HugeiconsIcon icon={Analytics01Icon} />
-                      <span>Overview</span>
-                    </Link>
-                  </SidebarMenuButton>
-                ) : (
-                  <SidebarMenuButton disabled tooltip="Overview">
-                    <HugeiconsIcon icon={Analytics01Icon} />
-                    <span>Overview</span>
-                  </SidebarMenuButton>
-                )}
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                {selectedAppId ? (
-                  <SidebarMenuButton asChild tooltip="Users">
-                    <Link href={`/dashboard/analytics/users/${selectedAppId}`}>
-                      <HugeiconsIcon icon={ComputerPhoneSyncIcon} />
-                      <span>Users</span>
-                    </Link>
-                  </SidebarMenuButton>
-                ) : (
-                  <SidebarMenuButton disabled tooltip="Users">
-                    <HugeiconsIcon icon={ComputerPhoneSyncIcon} />
-                    <span>Users</span>
-                  </SidebarMenuButton>
-                )}
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                {selectedAppId ? (
-                  <SidebarMenuButton asChild tooltip="Sessions">
-                    <Link
-                      href={`/dashboard/analytics/sessions/${selectedAppId}`}
-                    >
-                      <HugeiconsIcon icon={PlaySquareIcon} />
-                      <span>Sessions</span>
-                    </Link>
-                  </SidebarMenuButton>
-                ) : (
-                  <SidebarMenuButton disabled tooltip="Sessions">
-                    <HugeiconsIcon icon={PlaySquareIcon} />
-                    <span>Sessions</span>
-                  </SidebarMenuButton>
-                )}
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                {selectedAppId ? (
-                  <SidebarMenuButton asChild tooltip="Events">
-                    <Link href={`/dashboard/analytics/events/${selectedAppId}`}>
-                      <HugeiconsIcon icon={Blockchain05Icon} />
-                      <span>Events</span>
-                    </Link>
-                  </SidebarMenuButton>
-                ) : (
-                  <SidebarMenuButton disabled tooltip="Events">
-                    <HugeiconsIcon icon={Blockchain05Icon} />
-                    <span>Events</span>
-                  </SidebarMenuButton>
-                )}
-              </SidebarMenuItem>
+                      <Link href={`${item.path}/${selectedAppId}`}>
+                        <HugeiconsIcon icon={item.icon} />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  ) : (
+                    <SidebarMenuButton disabled tooltip={item.tooltip}>
+                      <HugeiconsIcon icon={item.icon} />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  )}
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -242,23 +284,27 @@ export function DashboardSidebar() {
           <SidebarGroupLabel>Reports</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                {selectedAppId ? (
-                  <SidebarMenuButton asChild tooltip="Feedbacks">
-                    <Link
-                      href={`/dashboard/reports/feedbacks/${selectedAppId}`}
+              {reportsNavItems.map((item) => (
+                <SidebarMenuItem key={item.label}>
+                  {selectedAppId ? (
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname.includes(item.path)}
+                      tooltip={item.tooltip}
                     >
-                      <HugeiconsIcon icon={ChatEditIcon} />
-                      <span>Feedbacks</span>
-                    </Link>
-                  </SidebarMenuButton>
-                ) : (
-                  <SidebarMenuButton disabled tooltip="Feedbacks">
-                    <HugeiconsIcon icon={ChatEditIcon} />
-                    <span>Feedbacks</span>
-                  </SidebarMenuButton>
-                )}
-              </SidebarMenuItem>
+                      <Link href={`${item.path}/${selectedAppId}`}>
+                        <HugeiconsIcon icon={item.icon} />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  ) : (
+                    <SidebarMenuButton disabled tooltip={item.tooltip}>
+                      <HugeiconsIcon icon={item.icon} />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  )}
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -267,55 +313,27 @@ export function DashboardSidebar() {
           <SidebarGroupLabel>Application</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                {selectedAppId ? (
-                  <SidebarMenuButton asChild tooltip="Settings">
-                    <Link
-                      href={`/dashboard/application/settings/${selectedAppId}`}
+              {applicationNavItems.map((item) => (
+                <SidebarMenuItem key={item.label}>
+                  {selectedAppId ? (
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname.includes(item.path)}
+                      tooltip={item.tooltip}
                     >
-                      <HugeiconsIcon icon={Setting07Icon} />
-                      <span>Settings</span>
-                    </Link>
-                  </SidebarMenuButton>
-                ) : (
-                  <SidebarMenuButton disabled tooltip="Settings">
-                    <HugeiconsIcon icon={Setting07Icon} />
-                    <span>Settings</span>
-                  </SidebarMenuButton>
-                )}
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                {selectedAppId ? (
-                  <SidebarMenuButton asChild tooltip="API Keys">
-                    <Link
-                      href={`/dashboard/application/api-keys/${selectedAppId}`}
-                    >
-                      <HugeiconsIcon icon={Key01Icon} />
-                      <span>API Keys</span>
-                    </Link>
-                  </SidebarMenuButton>
-                ) : (
-                  <SidebarMenuButton disabled tooltip="API Keys">
-                    <HugeiconsIcon icon={Key01Icon} />
-                    <span>API Keys</span>
-                  </SidebarMenuButton>
-                )}
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                {selectedAppId ? (
-                  <SidebarMenuButton asChild tooltip="Team">
-                    <Link href={`/dashboard/application/team/${selectedAppId}`}>
-                      <HugeiconsIcon icon={UserGroupIcon} />
-                      <span>Team</span>
-                    </Link>
-                  </SidebarMenuButton>
-                ) : (
-                  <SidebarMenuButton disabled tooltip="Team">
-                    <HugeiconsIcon icon={UserGroupIcon} />
-                    <span>Team</span>
-                  </SidebarMenuButton>
-                )}
-              </SidebarMenuItem>
+                      <Link href={`${item.path}/${selectedAppId}`}>
+                        <HugeiconsIcon icon={item.icon} />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  ) : (
+                    <SidebarMenuButton disabled tooltip={item.tooltip}>
+                      <HugeiconsIcon icon={item.icon} />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  )}
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -323,24 +341,14 @@ export function DashboardSidebar() {
 
       <SidebarFooter>
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Docs">
-              <HugeiconsIcon icon={File02Icon} />
-              <span>Docs</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Support">
-              <HugeiconsIcon icon={BubbleChatIcon} />
-              <span>Support</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Github">
-              <HugeiconsIcon icon={GithubIcon} />
-              <span>Github</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {footerNavItems.map((item) => (
+            <SidebarMenuItem key={item.label}>
+              <SidebarMenuButton tooltip={item.tooltip}>
+                <HugeiconsIcon icon={item.icon} />
+                <span>{item.label}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
         </SidebarMenu>
         <SidebarSeparator />
         <SidebarMenu>
