@@ -35,6 +35,8 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
         {
           id: 'docs',
           name: 'Documentation',
+          description: 'Browse guides and API references',
+          category: 'Resources',
           icon: File02Icon,
           keywords: ['docs', 'documentation', 'help', 'guide'],
           path: '/docs',
@@ -42,6 +44,8 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
         {
           id: 'support',
           name: 'Support',
+          description: 'Get help from our team',
+          category: 'Resources',
           icon: QuestionIcon,
           keywords: ['support', 'help', 'contact'],
           path: '/support',
@@ -49,6 +53,8 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
         {
           id: 'github',
           name: 'Github',
+          description: 'View source code and contribute',
+          category: 'Resources',
           icon: GithubIcon,
           keywords: ['github', 'source', 'code', 'repository'],
           path: 'https://github.com',
@@ -56,6 +62,8 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
         {
           id: 'billing',
           name: 'Billing',
+          description: 'Manage your subscription',
+          category: 'Account',
           icon: CreditCardIcon,
           keywords: ['billing', 'payment', 'subscription', 'invoice'],
           path: '/billing',
@@ -67,6 +75,8 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
       {
         id: 'overview',
         name: 'Overview',
+        description: 'View analytics dashboard',
+        category: 'Analytics',
         icon: Analytics01Icon,
         keywords: ['overview', 'analytics', 'dashboard', 'stats'],
         path: `/dashboard/analytics/overview?app=${appId}`,
@@ -74,6 +84,8 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
       {
         id: 'users',
         name: 'Users',
+        description: 'Track user activity and engagement',
+        category: 'Analytics',
         icon: ComputerPhoneSyncIcon,
         keywords: ['users', 'people', 'accounts', 'analytics'],
         path: `/dashboard/analytics/users?app=${appId}`,
@@ -81,6 +93,8 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
       {
         id: 'sessions',
         name: 'Sessions',
+        description: 'Monitor user sessions',
+        category: 'Analytics',
         icon: PlaySquareIcon,
         keywords: ['sessions', 'activity', 'analytics'],
         path: `/dashboard/analytics/sessions?app=${appId}`,
@@ -88,6 +102,8 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
       {
         id: 'events',
         name: 'Events',
+        description: 'View tracked events and actions',
+        category: 'Analytics',
         icon: Blockchain05Icon,
         keywords: ['events', 'tracking', 'analytics'],
         path: `/dashboard/analytics/events?app=${appId}`,
@@ -95,6 +111,8 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
       {
         id: 'feedbacks',
         name: 'Feedbacks',
+        description: 'Read user feedback and reviews',
+        category: 'Reports',
         icon: ChatEditIcon,
         keywords: ['feedbacks', 'reports', 'comments', 'reviews'],
         path: `/dashboard/reports/feedbacks?app=${appId}`,
@@ -102,6 +120,8 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
       {
         id: 'settings',
         name: 'Settings',
+        description: 'Configure application settings',
+        category: 'Application',
         icon: Setting07Icon,
         keywords: ['settings', 'configuration', 'preferences', 'app'],
         path: `/dashboard/application/settings?app=${appId}`,
@@ -109,6 +129,8 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
       {
         id: 'api-keys',
         name: 'API Keys',
+        description: 'Manage API keys and tokens',
+        category: 'Application',
         icon: Key01Icon,
         keywords: ['api', 'keys', 'tokens', 'credentials', 'authentication'],
         path: `/dashboard/application/api-keys?app=${appId}`,
@@ -116,6 +138,8 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
       {
         id: 'team',
         name: 'Team',
+        description: 'Manage team members',
+        category: 'Application',
         icon: UserGroupIcon,
         keywords: ['team', 'members', 'users', 'collaboration'],
         path: `/dashboard/application/team?app=${appId}`,
@@ -123,6 +147,8 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
       {
         id: 'docs',
         name: 'Documentation',
+        description: 'Browse guides and API references',
+        category: 'Resources',
         icon: File02Icon,
         keywords: ['docs', 'documentation', 'help', 'guide'],
         path: '/docs',
@@ -130,6 +156,8 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
       {
         id: 'support',
         name: 'Support',
+        description: 'Get help from our team',
+        category: 'Resources',
         icon: QuestionIcon,
         keywords: ['support', 'help', 'contact'],
         path: '/support',
@@ -137,6 +165,8 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
       {
         id: 'github',
         name: 'Github',
+        description: 'View source code and contribute',
+        category: 'Resources',
         icon: GithubIcon,
         keywords: ['github', 'source', 'code', 'repository'],
         path: 'https://github.com',
@@ -144,6 +174,8 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
       {
         id: 'billing',
         name: 'Billing',
+        description: 'Manage your subscription',
+        category: 'Account',
         icon: CreditCardIcon,
         keywords: ['billing', 'payment', 'subscription', 'invoice'],
         path: '/billing',

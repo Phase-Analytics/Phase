@@ -15,14 +15,14 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
-import { getAltKey, getModifierKey } from '@/lib/platform';
+import { getModifierKey } from '@/lib/platform';
 import { cn } from '@/lib/utils';
-
-const NUMBER_KEY_REGEX = /^[1-9]$/;
 
 type CommandItem = {
   id: string;
   name: string;
+  description?: string;
+  category?: string;
   icon: typeof Search01Icon;
   keywords: string[];
   path: string;
@@ -36,7 +36,6 @@ type CommandMenuProps = {
 
 function CommandMenuItem({
   item,
-  index,
   isSelected,
   onClick,
   onMouseEnter,
@@ -47,17 +46,11 @@ function CommandMenuItem({
   onClick: () => void;
   onMouseEnter: () => void;
 }) {
-  const [altKey, setAltKey] = useState<string | null>('⌥');
-
-  useEffect(() => {
-    setAltKey(getAltKey());
-  }, []);
-
   return (
     <motion.button
       animate={{ opacity: 1, scale: 1 }}
       className={cn(
-        'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left transition-colors duration-100 hover:bg-accent/50',
+        'flex w-full items-center gap-3 rounded-md px-3 py-3 text-left transition-colors duration-100 hover:bg-accent/50',
         isSelected && 'bg-accent text-accent-foreground hover:bg-accent'
       )}
       exit={{ opacity: 0, scale: 0.95 }}
@@ -68,12 +61,18 @@ function CommandMenuItem({
       type="button"
     >
       <HugeiconsIcon className="size-4 shrink-0" icon={item.icon} />
-      <span className="flex-1 text-sm">{item.name}</span>
-      {index < 9 && altKey && (
-        <KbdGroup>
-          <Kbd>{altKey}</Kbd>
-          <Kbd>{index + 1}</Kbd>
-        </KbdGroup>
+      <div className="flex flex-1 flex-col gap-0.5">
+        <span className="font-medium text-sm">{item.name}</span>
+        {item.description && (
+          <span className="text-muted-foreground text-xs">
+            {item.description}
+          </span>
+        )}
+      </div>
+      {item.category && (
+        <span className="shrink-0 self-center text-muted-foreground text-xs">
+          {item.category}
+        </span>
       )}
     </motion.button>
   );
@@ -128,18 +127,6 @@ export function CommandMenu({ open, onOpenChange, items }: CommandMenuProps) {
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.altKey && e.code.startsWith('Digit') && e.code.length === 6) {
-        const digit = e.code.slice(-1);
-        if (NUMBER_KEY_REGEX.test(digit)) {
-          e.preventDefault();
-          const index = Number.parseInt(digit, 10) - 1;
-          if (filteredItems[index]) {
-            handleSelect(filteredItems[index]);
-          }
-          return;
-        }
-      }
-
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         setSelectedIndex((prev) =>
@@ -160,27 +147,20 @@ export function CommandMenu({ open, onOpenChange, items }: CommandMenuProps) {
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="gap-2 p-0 sm:max-w-md" showCloseButton={false}>
+      <DialogContent className="gap-0 p-0 sm:max-w-md" showCloseButton={false}>
         <DialogHeader className="sr-only">
           <DialogTitle>Command Menu</DialogTitle>
         </DialogHeader>
-        <div className="relative border-b px-4 py-3">
-          <div className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-7 z-10">
-            <HugeiconsIcon
-              className="size-4 text-muted-foreground"
-              icon={Search01Icon}
-            />
-          </div>
-          <Input
-            className="h-8 border-none shadow-none focus-within:ring-0 [&_.absolute]:left-9 [&_input]:pl-9"
-            maxLength={24}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Type a command or search..."
-            type="text"
-            value={search}
-          />
-        </div>
-        <div className="max-h-[200px] min-h-[200px] overflow-y-auto px-2">
+        <Input
+          className="h-auto rounded-none border-none bg-transparent px-4 py-3 shadow-none focus-within:ring-0 [&_input]:px-0 [&_input]:py-0 [&_span]:left-4"
+          maxLength={24}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Type a command or search..."
+          type="text"
+          value={search}
+        />
+        <div className="border-t" />
+        <div className="max-h-[300px] min-h-[300px] overflow-y-auto px-2 py-2">
           {filteredItems.length > 0 ? (
             <div className="flex flex-col gap-1">
               <AnimatePresence mode="popLayout">
@@ -224,6 +204,18 @@ export function CommandMenu({ open, onOpenChange, items }: CommandMenuProps) {
             </div>
           )}
         </div>
+        {filteredItems.length > 0 && filteredItems[selectedIndex] && (
+          <>
+            <div className="border-t" />
+            <div className="flex items-center gap-2 px-4 py-2">
+              <Kbd>↵</Kbd>
+              <span className="text-muted-foreground text-xs">
+                {filteredItems[selectedIndex].description ||
+                  filteredItems[selectedIndex].name}
+              </span>
+            </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
