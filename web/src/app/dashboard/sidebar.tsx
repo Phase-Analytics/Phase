@@ -45,7 +45,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarSeparator,
   useSidebar,
 } from '@/components/ui/sidebar';
 
@@ -359,7 +358,6 @@ export function DashboardSidebar() {
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
-        <SidebarSeparator />
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu modal={false}>
