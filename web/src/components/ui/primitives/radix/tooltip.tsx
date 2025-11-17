@@ -99,7 +99,6 @@ function TooltipContent({
       align={align}
       alignOffset={alignOffset}
       arrowPadding={arrowPadding}
-      asChild
       avoidCollisions={avoidCollisions}
       collisionBoundary={collisionBoundary}
       collisionPadding={collisionPadding}

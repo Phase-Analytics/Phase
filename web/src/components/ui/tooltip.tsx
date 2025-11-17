@@ -52,8 +52,7 @@ function TooltipContent({
     <TooltipPortalPrimitive>
       <TooltipContentPrimitive
         className={cn(
-          'z-50 w-fit origin-(--radix-tooltip-content-transform-origin) text-balance rounded-md bg-primary px-3 py-1.5 text-primary-foreground text-xs',
-          'max-md:hidden',
+          'z-50 w-fit origin-(--radix-tooltip-content-transform-origin) text-balance rounded-md bg-primary px-3 py-1.5 text-primary-foreground text-xs max-md:hidden',
           className
         )}
         onPointerDownOutside={(e) => {
