@@ -1,7 +1,9 @@
 import { cookies } from 'next/headers';
+import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { DashboardHeader } from '@/app/dashboard/header';
 import { DashboardSidebar } from '@/app/dashboard/sidebar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
+import { QueryProvider } from '@/lib/queries/query-provider';
 
 export default async function DashboardLayout({
   children,
@@ -13,11 +15,15 @@ export default async function DashboardLayout({
   const defaultOpen = sidebarState?.value === 'true';
 
   return (
-    <SidebarProvider defaultOpen={defaultOpen}>
-      <DashboardSidebar />
-      <SidebarInset>
-        <DashboardHeader>{children}</DashboardHeader>
-      </SidebarInset>
-    </SidebarProvider>
+    <QueryProvider>
+      <NuqsAdapter>
+        <SidebarProvider defaultOpen={defaultOpen}>
+          <DashboardSidebar />
+          <SidebarInset>
+            <DashboardHeader>{children}</DashboardHeader>
+          </SidebarInset>
+        </SidebarProvider>
+      </NuqsAdapter>
+    </QueryProvider>
   );
 }
