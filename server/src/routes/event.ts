@@ -6,7 +6,13 @@ import {
   requireAuth,
   verifyAppOwnership,
 } from '@/lib/middleware';
-import { getEvents, getTopEvents, writeEvent } from '@/lib/questdb';
+import {
+  getEventById,
+  getEventStats,
+  getEvents,
+  getTopEvents,
+  writeEvent,
+} from '@/lib/questdb';
 import { methodNotAllowed } from '@/lib/response';
 import {
   formatPaginationResponse,
@@ -20,8 +26,11 @@ import {
   createEventRequestSchema,
   ErrorCode,
   errorResponses,
+  eventOverviewQuerySchema,
+  eventOverviewResponseSchema,
   eventSchema,
   eventsListResponseSchema,
+  getEventQuerySchema,
   HttpStatus,
   listEventsQuerySchema,
   topEventsQuerySchema,
@@ -82,17 +91,61 @@ const getTopEventsRoute = createRoute({
   method: 'get',
   path: '/top',
   tags: ['event'],
-  description: 'Get top events by count for an app',
+  description: 'Get top 10 most frequent events by count for an app',
   security: [{ CookieAuth: [] }],
   request: {
     query: topEventsQuerySchema,
   },
   responses: {
     200: {
-      description: 'Top events',
+      description: 'Top events (max 10)',
       content: {
         'application/json': {
           schema: topEventsResponseSchema,
+        },
+      },
+    },
+    ...errorResponses,
+  },
+});
+
+const getEventOverviewRoute = createRoute({
+  method: 'get',
+  path: '/overview',
+  tags: ['event'],
+  description: 'Get event overview metrics (total events, 24h events)',
+  security: [{ CookieAuth: [] }],
+  request: {
+    query: eventOverviewQuerySchema,
+  },
+  responses: {
+    200: {
+      description: 'Event overview metrics',
+      content: {
+        'application/json': {
+          schema: eventOverviewResponseSchema,
+        },
+      },
+    },
+    ...errorResponses,
+  },
+});
+
+const getEventRoute = createRoute({
+  method: 'get',
+  path: '/:eventId',
+  tags: ['event'],
+  description: 'Get event details by ID',
+  security: [{ CookieAuth: [] }],
+  request: {
+    query: getEventQuerySchema,
+  },
+  responses: {
+    200: {
+      description: 'Event details',
+      content: {
+        'application/json': {
+          schema: eventSchema,
         },
       },
     },
@@ -263,31 +316,11 @@ eventWebRouter.openapi(getEventsRoute, async (c) => {
       offset,
     });
 
-    const formattedEvents = eventsList.map((event) => {
-      let parsedParams: Record<
-        string,
-        string | number | boolean | null
-      > | null = null;
-      if (event.params) {
-        try {
-          parsedParams = JSON.parse(event.params);
-        } catch (error) {
-          console.error(
-            `[Event.List] Failed to parse params for event ${event.event_id}:`,
-            error
-          );
-          parsedParams = null;
-        }
-      }
-
-      return {
-        eventId: event.event_id,
-        sessionId: event.session_id,
-        name: event.name,
-        params: parsedParams,
-        timestamp: new Date(event.timestamp).toISOString(),
-      };
-    });
+    const formattedEvents = eventsList.map((event) => ({
+      eventId: event.event_id,
+      name: event.name,
+      timestamp: new Date(event.timestamp).toISOString(),
+    }));
 
     return c.json(
       {
@@ -308,10 +341,31 @@ eventWebRouter.openapi(getEventsRoute, async (c) => {
   }
 });
 
+// biome-ignore lint/suspicious/noExplicitAny: OpenAPI handler type inference issue with union response types
+eventWebRouter.openapi(getEventOverviewRoute, async (c: any) => {
+  try {
+    const query = c.req.valid('query');
+    const { appId } = query;
+
+    const stats = await getEventStats({ appId });
+
+    return c.json(stats, HttpStatus.OK);
+  } catch (error) {
+    console.error('[Event.Overview] Error:', error);
+    return c.json(
+      {
+        code: ErrorCode.INTERNAL_SERVER_ERROR,
+        detail: 'Failed to fetch event overview',
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
+});
+
 eventWebRouter.openapi(getTopEventsRoute, async (c) => {
   try {
     const query = c.req.valid('query');
-    const { appId, startDate, endDate, limit } = query;
+    const { appId, startDate, endDate } = query;
 
     const dateRangeValidation = validateDateRange(c, startDate, endDate);
     if (!dateRangeValidation.success) {
@@ -322,7 +376,7 @@ eventWebRouter.openapi(getTopEventsRoute, async (c) => {
       appId,
       startDate: startDate || undefined,
       endDate: endDate || undefined,
-      limit,
+      limit: 10,
     });
 
     return c.json(
@@ -340,6 +394,61 @@ eventWebRouter.openapi(getTopEventsRoute, async (c) => {
       {
         code: ErrorCode.INTERNAL_SERVER_ERROR,
         detail: 'Failed to fetch top events',
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
+});
+
+// biome-ignore lint/suspicious/noExplicitAny: OpenAPI handler type inference issue with union response types
+eventWebRouter.openapi(getEventRoute, async (c: any) => {
+  try {
+    const { eventId } = c.req.param();
+    const query = c.req.valid('query');
+    const { appId } = query;
+
+    const event = await getEventById({ eventId, appId });
+
+    if (!event) {
+      return c.json(
+        {
+          code: ErrorCode.NOT_FOUND,
+          detail: 'Event not found',
+        },
+        HttpStatus.NOT_FOUND
+      );
+    }
+
+    let parsedParams: Record<string, string | number | boolean | null> | null =
+      null;
+    if (event.params) {
+      try {
+        parsedParams = JSON.parse(event.params);
+      } catch (error) {
+        console.error(
+          `[Event.Get] Failed to parse params for event ${event.event_id}:`,
+          error
+        );
+        parsedParams = null;
+      }
+    }
+
+    return c.json(
+      {
+        eventId: event.event_id,
+        sessionId: event.session_id,
+        name: event.name,
+        params: parsedParams,
+        timestamp: new Date(event.timestamp).toISOString(),
+      },
+      HttpStatus.OK
+    );
+  } catch (error) {
+    console.error('[Event.Get] Error:', error);
+    return c.json(
+      {
+        code: ErrorCode.INTERNAL_SERVER_ERROR,
+        detail: 'Failed to fetch event',
       },
       HttpStatus.INTERNAL_SERVER_ERROR
     );

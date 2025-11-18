@@ -187,6 +187,14 @@ export type EventQueryResult = {
   timestamp: string;
 };
 
+export type EventDetailResult = {
+  event_id: string;
+  session_id: string;
+  name: string;
+  params: string | null;
+  timestamp: string;
+};
+
 export type ErrorQueryResult = {
   error_id: string;
   session_id: string;
@@ -404,7 +412,7 @@ export async function getTopEvents(
   }
 
   const whereClause = `WHERE ${conditions.join(' AND ')}`;
-  const limit = sanitizeNumeric(options.limit, 5, 1, 100);
+  const limit = sanitizeNumeric(options.limit, 10, 1, 10);
 
   const topEventsQuery = `
     SELECT name, COUNT(*) as count
@@ -416,6 +424,63 @@ export async function getTopEvents(
   `;
 
   return await executeQuery<TopEventQueryResult>(topEventsQuery);
+}
+
+export type GetEventByIdOptions = {
+  eventId: string;
+  appId: string;
+};
+
+export async function getEventById(
+  options: GetEventByIdOptions
+): Promise<EventDetailResult | null> {
+  validateIdentifier(options.eventId, 'eventId');
+  validateIdentifier(options.appId, 'appId');
+
+  const query = `
+    SELECT event_id, session_id, name, params, timestamp
+    FROM events
+    WHERE event_id = '${escapeSqlString(options.eventId)}'
+    AND app_id = '${escapeSqlString(options.appId)}'
+    LIMIT 1
+  `;
+
+  const results = await executeQuery<EventDetailResult>(query);
+  return results[0] || null;
+}
+
+export type GetEventStatsOptions = {
+  appId: string;
+};
+
+export async function getEventStats(
+  options: GetEventStatsOptions
+): Promise<{ totalEvents: number; events24h: number }> {
+  validateIdentifier(options.appId, 'appId');
+
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    .toISOString()
+    .replace('T', ' ')
+    .replace('Z', '');
+
+  const [totalResult, events24hResult] = await Promise.all([
+    executeQuery<{ count: number }>(`
+      SELECT COUNT(*) as count
+      FROM events
+      WHERE app_id = '${escapeSqlString(options.appId)}'
+    `),
+    executeQuery<{ count: number }>(`
+      SELECT COUNT(*) as count
+      FROM events
+      WHERE app_id = '${escapeSqlString(options.appId)}'
+      AND timestamp >= '${twentyFourHoursAgo}'
+    `),
+  ]);
+
+  return {
+    totalEvents: totalResult[0]?.count || 0,
+    events24h: events24hResult[0]?.count || 0,
+  };
 }
 
 export type GetActivityOptions = {
