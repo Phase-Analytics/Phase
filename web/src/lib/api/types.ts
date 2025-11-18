@@ -69,7 +69,7 @@ export interface DeviceDetail extends Device {
   osVersion: string | null;
   appVersion: string | null;
   firstSeen: string;
-  lastActivity: string | null;
+  lastActivityAt: string | null;
   totalSessions: number;
 }
 

@@ -529,7 +529,7 @@ deviceWebRouter.openapi(getDeviceRoute, async (c: any) => {
         platform: deviceWithSession.platform,
         appVersion: deviceWithSession.appVersion,
         firstSeen: deviceWithSession.firstSeen.toISOString(),
-        lastActivity: deviceWithSession.lastActivityAt
+        lastActivityAt: deviceWithSession.lastActivityAt
           ? deviceWithSession.lastActivityAt.toISOString()
           : null,
         totalSessions: Number(totalSessions),
