@@ -7,10 +7,8 @@ import { authMiddleware } from '@/lib/middleware';
 import { runMigrations } from '@/lib/migrate';
 import { configureOpenAPI } from '@/lib/openapi';
 import { initQuestDB } from '@/lib/questdb';
-import { activityWebRouter } from '@/routes/activity';
 import { appWebRouter } from '@/routes/app';
 import { deviceSdkRouter, deviceWebRouter } from '@/routes/device';
-import { errorSdkRouter, errorWebRouter } from '@/routes/error';
 import { eventSdkRouter, eventWebRouter } from '@/routes/event';
 import health from '@/routes/health';
 import { pingSdkRouter } from '@/routes/ping';
@@ -82,13 +80,10 @@ app.route('/health', health);
 app.route('/sdk/devices', deviceSdkRouter);
 app.route('/sdk/sessions', sessionSdkRouter);
 app.route('/sdk/events', eventSdkRouter);
-app.route('/sdk/errors', errorSdkRouter);
 app.route('/sdk/ping', pingSdkRouter);
 
-app.route('/web/activity', activityWebRouter);
 app.route('/web/apps', appWebRouter);
 app.route('/web/devices', deviceWebRouter);
-app.route('/web/errors', errorWebRouter);
 app.route('/web/events', eventWebRouter);
 app.route('/web/sessions', sessionWebRouter);
 

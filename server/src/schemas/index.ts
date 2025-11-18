@@ -1,18 +1,4 @@
 export {
-  type ActivityItem,
-  type ActivityListResponse,
-  activityItemSchema,
-  activityListResponseSchema,
-  type ErrorActivity,
-  type EventActivity,
-  errorActivitySchema,
-  errorDataSchema,
-  eventActivitySchema,
-  eventDataSchema,
-  type ListActivityQuery,
-  listActivityQuerySchema,
-} from './activity.schema';
-export {
   type AppCreatedSchema,
   type AppDetailSchema,
   type AppSchema,
@@ -62,16 +48,6 @@ export {
   type ListDevicesQuery,
   listDevicesQuerySchema,
 } from './device.schema';
-export {
-  type CreateErrorRequest,
-  createErrorRequestSchema,
-  type ErrorSchema,
-  type ErrorsListResponse,
-  errorSchema,
-  errorsListResponseSchema,
-  type ListErrorsQuery,
-  listErrorsQuerySchema,
-} from './error.schema';
 export {
   type CreateEventRequest,
   createEventRequestSchema,
