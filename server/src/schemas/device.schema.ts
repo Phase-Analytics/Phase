@@ -62,7 +62,7 @@ export const deviceDetailSchema = z
       .string()
       .datetime()
       .openapi({ example: '2024-01-01T00:00:00Z' }),
-    lastActivity: z
+    lastActivityAt: z
       .string()
       .datetime()
       .nullable()

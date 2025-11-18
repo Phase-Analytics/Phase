@@ -2,7 +2,6 @@ import { GeistMono } from 'geist/font/mono';
 import { GeistSans } from 'geist/font/sans';
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
-import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import './globals.css';
 import { ThemeProvider } from '@/lib/theme-provider';
 
@@ -27,9 +26,7 @@ export default function RootLayout({
       <body
         className={`${GeistSans.variable} ${GeistMono.variable} ${menlo.variable} font-sans antialiased`}
       >
-        <NuqsAdapter>
-          <ThemeProvider>{children}</ThemeProvider>
-        </NuqsAdapter>
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );
