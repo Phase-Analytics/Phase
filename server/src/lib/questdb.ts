@@ -44,17 +44,6 @@ export type EventRecord = {
   timestamp: Date;
 };
 
-export type ErrorRecord = {
-  errorId: string;
-  sessionId: string;
-  deviceId: string;
-  appId: string;
-  message: string;
-  type: string;
-  stackTrace: string | null;
-  timestamp: Date;
-};
-
 export async function writeEvent(event: EventRecord): Promise<void> {
   const client = await getSender();
 
@@ -72,25 +61,6 @@ export async function writeEvent(event: EventRecord): Promise<void> {
   }
 
   client.at(event.timestamp.getTime() * 1_000_000, 'ns');
-}
-
-export async function writeError(error: ErrorRecord): Promise<void> {
-  const client = await getSender();
-
-  client
-    .table('errors')
-    .symbol('error_id', error.errorId)
-    .symbol('session_id', error.sessionId)
-    .symbol('device_id', error.deviceId)
-    .symbol('app_id', error.appId)
-    .symbol('type', error.type)
-    .stringColumn('message', error.message);
-
-  if (error.stackTrace !== null) {
-    client.stringColumn('stack_trace', error.stackTrace);
-  }
-
-  client.at(error.timestamp.getTime() * 1_000_000, 'ns');
 }
 
 type QueryResponse<T> = {
@@ -195,35 +165,6 @@ export type EventDetailResult = {
   timestamp: string;
 };
 
-export type ErrorQueryResult = {
-  error_id: string;
-  session_id: string;
-  message: string;
-  type: string;
-  stack_trace: string | null;
-  timestamp: string;
-};
-
-export type ActivityQueryResult = {
-  type: 'event' | 'error';
-  id: string;
-  session_id: string;
-  timestamp: string;
-  data: string;
-};
-
-type ActivityRawResult = {
-  type: 'event' | 'error';
-  id: string;
-  session_id: string;
-  timestamp: string;
-  name?: string;
-  params?: string | null;
-  message?: string;
-  error_type?: string;
-  stack_trace?: string | null;
-};
-
 export type GetEventsOptions = {
   sessionId?: string;
   deviceId?: string;
@@ -299,85 +240,6 @@ export async function getEvents(
 
   return {
     events,
-    total: countResult[0]?.count || 0,
-  };
-}
-
-export type GetErrorsOptions = {
-  sessionId?: string;
-  deviceId?: string;
-  appId?: string;
-  errorType?: string;
-  startDate?: string;
-  endDate?: string;
-  limit?: number;
-  offset?: number;
-};
-
-export async function getErrors(
-  options: GetErrorsOptions
-): Promise<{ errors: ErrorQueryResult[]; total: number }> {
-  const conditions: string[] = [];
-
-  if (options.sessionId) {
-    validateIdentifier(options.sessionId, 'sessionId');
-    conditions.push(`session_id = '${escapeSqlString(options.sessionId)}'`);
-  }
-
-  if (options.deviceId) {
-    validateIdentifier(options.deviceId, 'deviceId');
-    conditions.push(`device_id = '${escapeSqlString(options.deviceId)}'`);
-  }
-
-  if (options.appId) {
-    validateIdentifier(options.appId, 'appId');
-    conditions.push(`app_id = '${escapeSqlString(options.appId)}'`);
-  }
-
-  if (options.errorType) {
-    validateSymbol(options.errorType, 'errorType');
-    conditions.push(`type = '${escapeSqlString(options.errorType)}'`);
-  }
-
-  if (options.startDate) {
-    validateTimestamp(options.startDate, 'startDate');
-    conditions.push(`timestamp >= '${escapeSqlString(options.startDate)}'`);
-  }
-
-  if (options.endDate) {
-    validateTimestamp(options.endDate, 'endDate');
-    conditions.push(`timestamp <= '${escapeSqlString(options.endDate)}'`);
-  }
-
-  const whereClause =
-    conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-  const limit = sanitizeNumeric(options.limit, 20, 1, 1000);
-  const offset = sanitizeNumeric(options.offset, 0, 0, 1_000_000);
-
-  const limitClause =
-    offset > 0 ? `LIMIT ${offset}, ${limit}` : `LIMIT ${limit}`;
-
-  const errorsQuery = `
-    SELECT error_id, session_id, message, type, stack_trace, timestamp
-    FROM errors
-    ${whereClause}
-    ORDER BY timestamp DESC
-    ${limitClause}
-  `;
-
-  const countQuery = `
-    SELECT COUNT(*) as count 
-    FROM errors 
-    ${whereClause}
-  `;
-
-  const [errors, countResult] = await Promise.all([
-    executeQuery<ErrorQueryResult>(errorsQuery),
-    executeQuery<{ count: number }>(countQuery),
-  ]);
-
-  return {
-    errors,
     total: countResult[0]?.count || 0,
   };
 }
@@ -526,120 +388,6 @@ export async function getEventStats(options: GetEventStatsOptions): Promise<{
   };
 }
 
-export type GetActivityOptions = {
-  sessionId: string;
-  startDate?: string;
-  endDate?: string;
-  limit?: number;
-  offset?: number;
-};
-
-export async function getActivity(
-  options: GetActivityOptions
-): Promise<{ activities: ActivityQueryResult[]; total: number }> {
-  validateIdentifier(options.sessionId, 'sessionId');
-
-  const conditions: string[] = [
-    `session_id = '${escapeSqlString(options.sessionId)}'`,
-  ];
-
-  if (options.startDate) {
-    validateTimestamp(options.startDate, 'startDate');
-    conditions.push(`timestamp >= '${escapeSqlString(options.startDate)}'`);
-  }
-
-  if (options.endDate) {
-    validateTimestamp(options.endDate, 'endDate');
-    conditions.push(`timestamp <= '${escapeSqlString(options.endDate)}'`);
-  }
-
-  const whereClause = `WHERE ${conditions.join(' AND ')}`;
-  const limit = sanitizeNumeric(options.limit, 20, 1, 1000);
-  const offset = sanitizeNumeric(options.offset, 0, 0, 1_000_000);
-
-  const limitClause =
-    offset > 0 ? `LIMIT ${offset}, ${limit}` : `LIMIT ${limit}`;
-
-  const activitiesQuery = `
-    SELECT * FROM (
-      SELECT
-        'event' as type,
-        event_id as id,
-        session_id,
-        timestamp,
-        name,
-        params,
-        null as message,
-        null as error_type,
-        null as stack_trace
-      FROM events
-      ${whereClause}
-      UNION ALL
-      SELECT
-        'error' as type,
-        error_id as id,
-        session_id,
-        timestamp,
-        null as name,
-        null as params,
-        message,
-        type as error_type,
-        stack_trace
-      FROM errors
-      ${whereClause}
-    )
-    ORDER BY timestamp DESC
-    ${limitClause}
-  `;
-
-  const countQuery = `
-    SELECT 
-      (SELECT COUNT(*) FROM events ${whereClause}) + 
-      (SELECT COUNT(*) FROM errors ${whereClause}) as count
-  `;
-
-  const [rawActivities, countResult] = await Promise.all([
-    executeQuery<ActivityRawResult>(activitiesQuery),
-    executeQuery<{ count: number }>(countQuery),
-  ]);
-
-  const activities: ActivityQueryResult[] = rawActivities.map((row) => {
-    let data: string;
-
-    if (row.type === 'event') {
-      let parsedParams: Record<string, unknown> | null = null;
-      try {
-        parsedParams = row.params ? JSON.parse(row.params) : null;
-      } catch {
-        parsedParams = null;
-      }
-      data = JSON.stringify({
-        name: row.name || '',
-        params: parsedParams,
-      });
-    } else {
-      data = JSON.stringify({
-        message: row.message || '',
-        type: row.error_type || '',
-        stackTrace: row.stack_trace || null,
-      });
-    }
-
-    return {
-      type: row.type,
-      id: row.id,
-      session_id: row.session_id,
-      timestamp: row.timestamp,
-      data,
-    };
-  });
-
-  return {
-    activities,
-    total: countResult[0]?.count || 0,
-  };
-}
-
 export async function initQuestDB(): Promise<void> {
   if (initPromise) {
     return await initPromise;
@@ -679,36 +427,6 @@ export async function initQuestDB(): Promise<void> {
         const errorText = await eventsResponse.text();
         throw new Error(
           `Failed to create events table: ${eventsResponse.status} - ${errorText}`
-        );
-      }
-
-      const errorsTableQuery = `
-        CREATE TABLE IF NOT EXISTS errors (
-          error_id SYMBOL,
-          session_id SYMBOL,
-          device_id SYMBOL,
-          app_id SYMBOL,
-          message STRING,
-          type SYMBOL,
-          stack_trace STRING,
-          timestamp TIMESTAMP
-        ) TIMESTAMP(timestamp) PARTITION BY WEEK
-      `;
-
-      const errorsResponse = await fetch(
-        `${url}?query=${encodeURIComponent(errorsTableQuery)}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (!errorsResponse.ok) {
-        const errorText = await errorsResponse.text();
-        throw new Error(
-          `Failed to create errors table: ${errorsResponse.status} - ${errorText}`
         );
       }
 
