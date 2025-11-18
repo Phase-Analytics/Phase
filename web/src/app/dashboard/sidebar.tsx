@@ -1,10 +1,7 @@
 'use client';
 
 import {
-  AddSquareIcon,
   Analytics01Icon,
-  ArrowRight01Icon,
-  ArtboardIcon,
   Blockchain05Icon,
   BubbleChatIcon,
   ChatEditIcon,
@@ -22,9 +19,10 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import { minidenticon } from 'minidenticons';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useQueryState } from 'nuqs';
 import { useEffect, useMemo, useState } from 'react';
+import { AppSwitcher } from '@/components/app-switcher';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -47,11 +45,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
-
-type App = {
-  id: string;
-  name: string;
-};
 
 type NavItem = {
   label: string;
@@ -140,23 +133,12 @@ const footerNavItems: NavItem[] = [
 
 export function DashboardSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const [avatarSrc, setAvatarSrc] = useState<string>('');
   const [isAvatarLoaded, setIsAvatarLoaded] = useState(false);
-  const [appId, setAppId] = useQueryState('app');
+  const [appId] = useQueryState('app');
   const { isMobile, setOpenMobile } = useSidebar();
 
   const username = 'berk@example.com';
-
-  const apps: App[] = useMemo(
-    () => [
-      { id: '1', name: 'Artover' },
-      { id: '2', name: 'Telemetra' },
-    ],
-    []
-  );
-
-  const selectedApp = apps.find((app) => app.id === appId);
 
   const generatedAvatar = useMemo(
     () =>
@@ -180,59 +162,14 @@ export function DashboardSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton
-                  size="lg"
-                  tooltip={selectedApp ? selectedApp.name : 'Select an App'}
-                >
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                    <HugeiconsIcon className="size-4" icon={ArtboardIcon} />
-                  </div>
-                  <div className="flex flex-col gap-0.5 leading-none">
-                    <span className="font-semibold">
-                      {selectedApp ? selectedApp.name : 'Select an App'}
-                    </span>
-                    <span className="text-sidebar-foreground/70 text-xs">
-                      {selectedApp ? 'Analytics' : 'No app selected'}
-                    </span>
-                  </div>
-                  <HugeiconsIcon
-                    className="ml-auto size-4"
-                    icon={UnfoldMoreIcon}
-                  />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56" side="bottom">
-                <DropdownMenuLabel>Switch App</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {apps.map((app) => (
-                  <DropdownMenuItem
-                    key={app.id}
-                    onClick={() => {
-                      setAppId(app.id);
-                      if (typeof window !== 'undefined') {
-                        localStorage.setItem('lastSelectedApp', app.id);
-                      }
-                      router.push(
-                        `/dashboard/analytics/overview?app=${app.id}`
-                      );
-                    }}
-                  >
-                    {app.name}
-                    <HugeiconsIcon
-                      className="ml-auto size-4"
-                      icon={ArrowRight01Icon}
-                    />
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem variant="success">
-                  <HugeiconsIcon className="mr-2 size-4" icon={AddSquareIcon} />
-                  Create New App
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <AppSwitcher
+              onMobileClose={() => {
+                if (isMobile) {
+                  setOpenMobile(false);
+                }
+              }}
+              variant="sidebar"
+            />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
