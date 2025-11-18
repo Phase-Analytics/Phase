@@ -41,6 +41,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { Loading } from '@/components/ui/loading';
 import {
   Popover,
   PopoverContent,
@@ -805,6 +806,39 @@ export default Example;`}</code>
               </CardContent>
             </Card>
           </div>
+        </section>
+
+        <Separator />
+
+        <section className="space-y-4">
+          <h2 className="font-semibold text-2xl">Dot Loading</h2>
+          <Card>
+            <CardHeader>
+              <CardTitle>Loading Animation</CardTitle>
+              <CardDescription>
+                Pulse & fill combination - center to edge and back
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8">
+              <div className="flex items-center justify-center py-8">
+                <Loading />
+              </div>
+              <Separator />
+              <div className="flex flex-wrap items-center justify-center gap-8">
+                <div className="rounded-lg border bg-accent/20 p-8">
+                  <Loading />
+                </div>
+                <div className="flex items-center gap-3 rounded-lg border bg-card p-6">
+                  <Loading />
+                  <span className="text-sm">Loading data...</span>
+                </div>
+                <Button className="min-w-32" disabled>
+                  <Loading />
+                  <span className="ml-3">Loading</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </section>
       </div>
     </div>
