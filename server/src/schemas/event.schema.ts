@@ -21,7 +21,6 @@ export const eventListItemSchema = z
   })
   .openapi('EventListItem');
 
-// Detaylı event (id ile getirirken)
 export const eventSchema = z
   .object({
     eventId: z.string().openapi({ example: '01JCXYZ5K3QWERTYUIOP01234' }),
