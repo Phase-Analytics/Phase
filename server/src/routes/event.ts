@@ -1,5 +1,7 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
+import { eq } from 'drizzle-orm';
 import { ulid } from 'ulid';
+import { db, sessions } from '@/db';
 import type { App, Session, User } from '@/db/schema';
 import { requireAppKey, requireAuth, verifyAppAccess } from '@/lib/middleware';
 import {
@@ -228,6 +230,27 @@ eventSdkRouter.openapi(createEventRoute, async (c) => {
       );
     }
 
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    if (session.startedAt < oneDayAgo) {
+      return c.json(
+        {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: 'Session is too old (>24h), please start a new session',
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    if (clientTimestamp <= session.lastActivityAt) {
+      return c.json(
+        {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: 'Event timestamp must be after last activity',
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
     const eventId = ulid();
 
     await writeEvent({
@@ -239,6 +262,11 @@ eventSdkRouter.openapi(createEventRoute, async (c) => {
       params: body.params ?? null,
       timestamp: clientTimestamp,
     });
+
+    await db
+      .update(sessions)
+      .set({ lastActivityAt: clientTimestamp })
+      .where(eq(sessions.sessionId, session.sessionId));
 
     return c.json(
       {

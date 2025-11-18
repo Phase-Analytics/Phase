@@ -149,7 +149,7 @@ const getDeviceLiveRoute = createRoute({
   method: 'get',
   path: '/live',
   tags: ['device'],
-  description: 'Get currently active devices (last 2 minutes)',
+  description: 'Get currently active devices (last 1 minute)',
   security: [{ CookieAuth: [] }],
   request: {
     query: deviceLiveQuerySchema,
@@ -409,7 +409,7 @@ deviceWebRouter.openapi(getDeviceLiveRoute, async (c: any) => {
     const query = c.req.valid('query');
     const { appId } = query;
 
-    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+    const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
 
     const activeDevicesResult = await db
       .select({
@@ -423,7 +423,7 @@ deviceWebRouter.openapi(getDeviceLiveRoute, async (c: any) => {
       .where(
         and(
           eq(devices.appId, appId),
-          sql`${sessions.lastActivityAt} >= ${twoMinutesAgo}`
+          sql`${sessions.lastActivityAt} >= ${oneMinuteAgo}`
         )
       )
       .orderBy(desc(sessions.lastActivityAt));

@@ -92,6 +92,27 @@ pingSdkRouter.openapi(pingSessionRoute, async (c) => {
     const clientTimestamp = timestampValidation.data;
     const { session } = sessionValidation.data;
 
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    if (session.startedAt < oneDayAgo) {
+      return c.json(
+        {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: 'Session is too old (>24h), please start a new session',
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    if (clientTimestamp <= session.lastActivityAt) {
+      return c.json(
+        {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: 'Ping timestamp must be after last activity',
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
     await db
       .update(sessions)
       .set({ lastActivityAt: clientTimestamp })
