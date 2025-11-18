@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { boolean, index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 
 export const user = pgTable('user', {
@@ -89,12 +90,13 @@ export const apps = pgTable(
     name: text('name').notNull(),
     image: text('image'),
     key: text('key').notNull().unique(),
-    memberIds: text('member_ids').array().notNull().default([]),
+    memberIds: text('member_ids').array().notNull().default(sql`'{}'::text[]`),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => ({
     userIdIdx: index('apps_user_id_idx').on(table.userId),
     keyIdx: index('apps_key_idx').on(table.key),
+    memberIdsIdx: index('apps_member_ids_idx').using('gin', table.memberIds),
   })
 );
 

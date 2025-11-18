@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { eq } from 'drizzle-orm';
+import { eq, or, sql } from 'drizzle-orm';
 import { apps, db } from '@/db';
 import type { Session, User } from '@/db/schema';
 import { generateAppId, generateAppKey } from '@/lib/keys';
@@ -220,24 +220,17 @@ appWebRouter.openapi(listAppsRoute, async (c: any) => {
       );
     }
 
-    const allApps = await db.query.apps.findMany({
+    const accessibleApps = await db.query.apps.findMany({
+      where: or(
+        eq(apps.userId, user.id),
+        sql`${user.id} = ANY(${apps.memberIds})`
+      ),
       columns: {
         id: true,
         name: true,
-        userId: true,
-        memberIds: true,
       },
       orderBy: (appsTable, { desc }) => [desc(appsTable.createdAt)],
     });
-
-    const accessibleApps = allApps
-      .filter(
-        (app) => app.userId === user.id || app.memberIds?.includes(user.id)
-      )
-      .map((app) => ({
-        id: app.id,
-        name: app.name,
-      }));
 
     return c.json(
       {
