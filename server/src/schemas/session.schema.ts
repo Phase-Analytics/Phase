@@ -53,7 +53,32 @@ export const sessionsListResponseSchema = z
   })
   .openapi('SessionsListResponse');
 
+export const sessionOverviewQuerySchema = z
+  .object({
+    appId: z.string().openapi({ example: '123456789012345' }),
+  })
+  .openapi('SessionOverviewQuery');
+
+export const sessionOverviewResponseSchema = z
+  .object({
+    totalSessions: z.number().int().min(0).openapi({ example: 5420 }),
+    averageSessionDuration: z
+      .number()
+      .nullable()
+      .openapi({ example: 342.5, description: 'Average duration in seconds' }),
+    activeSessions24h: z
+      .number()
+      .int()
+      .min(0)
+      .openapi({ example: 180, description: 'Sessions started in last 24h' }),
+  })
+  .openapi('SessionOverviewResponse');
+
 export type SessionSchema = z.infer<typeof sessionSchema>;
 export type CreateSessionRequest = z.infer<typeof createSessionRequestSchema>;
 export type ListSessionsQuery = z.infer<typeof listSessionsQuerySchema>;
 export type SessionsListResponse = z.infer<typeof sessionsListResponseSchema>;
+export type SessionOverviewQuery = z.infer<typeof sessionOverviewQuerySchema>;
+export type SessionOverviewResponse = z.infer<
+  typeof sessionOverviewResponseSchema
+>;

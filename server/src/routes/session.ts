@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { count, desc, eq, type SQL } from 'drizzle-orm';
+import { and, count, desc, eq, type SQL, sql } from 'drizzle-orm';
 import { db, devices, sessions } from '@/db';
 import type { App, Session, User } from '@/db/schema';
 import {
@@ -22,6 +22,8 @@ import {
   errorResponses,
   HttpStatus,
   listSessionsQuerySchema,
+  sessionOverviewQuerySchema,
+  sessionOverviewResponseSchema,
   sessionSchema,
   sessionsListResponseSchema,
 } from '@/schemas';
@@ -69,6 +71,29 @@ const getSessionsRoute = createRoute({
       content: {
         'application/json': {
           schema: sessionsListResponseSchema,
+        },
+      },
+    },
+    ...errorResponses,
+  },
+});
+
+const getSessionOverviewRoute = createRoute({
+  method: 'get',
+  path: '/overview',
+  tags: ['session'],
+  description:
+    'Get session overview metrics (total sessions, average duration, 24h active sessions)',
+  security: [{ CookieAuth: [] }],
+  request: {
+    query: sessionOverviewQuerySchema,
+  },
+  responses: {
+    200: {
+      description: 'Session overview metrics',
+      content: {
+        'application/json': {
+          schema: sessionOverviewResponseSchema,
         },
       },
     },
@@ -186,6 +211,72 @@ sessionSdkRouter.openapi(createSessionRoute, async (c) => {
       {
         code: ErrorCode.INTERNAL_SERVER_ERROR,
         detail: 'Failed to create session',
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
+});
+
+// biome-ignore lint/suspicious/noExplicitAny: OpenAPI handler type inference issue with union response types
+sessionWebRouter.openapi(getSessionOverviewRoute, async (c: any) => {
+  try {
+    const query = c.req.valid('query');
+    const { appId } = query;
+
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const [
+      [{ count: totalSessions }],
+      activeSessions24hResult,
+      avgDurationResult,
+    ] = await Promise.all([
+      db
+        .select({ count: count() })
+        .from(sessions)
+        .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
+        .where(eq(devices.appId, appId)),
+
+      db
+        .select({ count: count() })
+        .from(sessions)
+        .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
+        .where(
+          and(
+            eq(devices.appId, appId),
+            sql`${sessions.startedAt} >= ${twentyFourHoursAgo}`
+          )
+        ),
+
+      db
+        .select({
+          avg: sql<number | null>`AVG(
+            EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt}))
+          )`,
+        })
+        .from(sessions)
+        .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
+        .where(eq(devices.appId, appId)),
+    ]);
+
+    const activeSessions24h = Number(activeSessions24hResult[0]?.count ?? 0);
+    const averageSessionDuration = avgDurationResult[0]?.avg
+      ? Number(avgDurationResult[0].avg)
+      : null;
+
+    return c.json(
+      {
+        totalSessions: Number(totalSessions),
+        averageSessionDuration,
+        activeSessions24h,
+      },
+      HttpStatus.OK
+    );
+  } catch (error) {
+    console.error('[Session.Overview] Error:', error);
+    return c.json(
+      {
+        code: ErrorCode.INTERNAL_SERVER_ERROR,
+        detail: 'Failed to fetch session overview',
       },
       HttpStatus.INTERNAL_SERVER_ERROR
     );

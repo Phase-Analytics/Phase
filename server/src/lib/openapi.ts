@@ -39,24 +39,12 @@ export const configureOpenAPI = (app: any) => {
         description: 'System health and status checks',
       },
       {
-        name: 'activity',
-        description: 'Unified activity timeline (events + errors)',
-      },
-      {
         name: 'device',
         description: 'Device management and operations',
       },
       {
-        name: 'error',
-        description: 'Error tracking and reporting',
-      },
-      {
         name: 'event',
         description: 'Event tracking and analytics',
-      },
-      {
-        name: 'overview',
-        description: 'Dashboard overview metrics and statistics',
       },
       {
         name: 'ping',

@@ -10,6 +10,17 @@ export const eventParamsSchema = z.record(
   z.union([z.string(), z.number(), z.boolean(), z.null()])
 );
 
+export const eventListItemSchema = z
+  .object({
+    eventId: z.string().openapi({ example: '01JCXYZ5K3QWERTYUIOP01234' }),
+    name: z.string().openapi({ example: 'button_clicked' }),
+    timestamp: z
+      .string()
+      .datetime()
+      .openapi({ example: '2024-01-01T00:00:00Z' }),
+  })
+  .openapi('EventListItem');
+
 export const eventSchema = z
   .object({
     eventId: z.string().openapi({ example: '01JCXYZ5K3QWERTYUIOP01234' }),
@@ -71,22 +82,33 @@ export const listEventsQuerySchema = paginationQuerySchema
 
 export const eventsListResponseSchema = z
   .object({
-    events: z.array(eventSchema),
+    events: z.array(eventListItemSchema),
     pagination: paginationSchema,
   })
   .openapi('EventsListResponse');
 
+export const getEventQuerySchema = z
+  .object({
+    appId: z.string().openapi({ example: '123456789012345' }),
+  })
+  .openapi('GetEventQuery');
+
+export const eventOverviewQuerySchema = z
+  .object({
+    appId: z.string().openapi({ example: '123456789012345' }),
+  })
+  .openapi('EventOverviewQuery');
+
+export const eventOverviewResponseSchema = z
+  .object({
+    totalEvents: z.number().int().min(0).openapi({ example: 15_420 }),
+    events24h: z.number().int().min(0).openapi({ example: 842 }),
+  })
+  .openapi('EventOverviewResponse');
+
 export const topEventsQuerySchema = dateFilterQuerySchema
   .extend({
     appId: z.string().openapi({ example: '123456789012345' }),
-    limit: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .max(10)
-      .optional()
-      .default(5)
-      .openapi({ example: 5 }),
   })
   .openapi('TopEventsQuery');
 
@@ -114,11 +136,15 @@ export const topEventsResponseSchema = z
   })
   .openapi('TopEventsResponse');
 
+export type EventListItemSchema = z.infer<typeof eventListItemSchema>;
 export type EventSchema = z.infer<typeof eventSchema>;
 export type CreateEventRequest = z.infer<typeof createEventRequestSchema>;
+export type GetEventQuery = z.infer<typeof getEventQuerySchema>;
 export type ListEventsQuery = z.infer<typeof listEventsQuerySchema>;
 export type EventsListResponse = z.infer<typeof eventsListResponseSchema>;
 export type EventParams = z.infer<typeof eventParamsSchema>;
+export type EventOverviewQuery = z.infer<typeof eventOverviewQuerySchema>;
+export type EventOverviewResponse = z.infer<typeof eventOverviewResponseSchema>;
 export type TopEventsQuery = z.infer<typeof topEventsQuerySchema>;
 export type TopEvent = z.infer<typeof topEventSchema>;
 export type TopEventsResponse = z.infer<typeof topEventsResponseSchema>;
