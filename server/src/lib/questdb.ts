@@ -453,21 +453,40 @@ export type GetEventStatsOptions = {
   appId: string;
 };
 
-export async function getEventStats(
-  options: GetEventStatsOptions
-): Promise<{ totalEvents: number; events24h: number }> {
+export async function getEventStats(options: GetEventStatsOptions): Promise<{
+  totalEvents: number;
+  events24h: number;
+  totalEventsChange24h: number;
+  events24hChange: number;
+}> {
   validateIdentifier(options.appId, 'appId');
 
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+  const now = new Date();
+  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+    .toISOString()
+    .replace('T', ' ')
+    .replace('Z', '');
+  const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000)
     .toISOString()
     .replace('T', ' ')
     .replace('Z', '');
 
-  const [totalResult, events24hResult] = await Promise.all([
+  const [
+    totalResult,
+    totalYesterdayResult,
+    events24hResult,
+    eventsYesterdayResult,
+  ] = await Promise.all([
     executeQuery<{ count: number }>(`
       SELECT COUNT(*) as count
       FROM events
       WHERE app_id = '${escapeSqlString(options.appId)}'
+    `),
+    executeQuery<{ count: number }>(`
+      SELECT COUNT(*) as count
+      FROM events
+      WHERE app_id = '${escapeSqlString(options.appId)}'
+      AND timestamp < '${twentyFourHoursAgo}'
     `),
     executeQuery<{ count: number }>(`
       SELECT COUNT(*) as count
@@ -475,11 +494,35 @@ export async function getEventStats(
       WHERE app_id = '${escapeSqlString(options.appId)}'
       AND timestamp >= '${twentyFourHoursAgo}'
     `),
+    executeQuery<{ count: number }>(`
+      SELECT COUNT(*) as count
+      FROM events
+      WHERE app_id = '${escapeSqlString(options.appId)}'
+      AND timestamp >= '${fortyEightHoursAgo}'
+      AND timestamp < '${twentyFourHoursAgo}'
+    `),
   ]);
 
+  const totalEvents = totalResult[0]?.count || 0;
+  const totalEventsYesterday = totalYesterdayResult[0]?.count || 0;
+  const events24h = events24hResult[0]?.count || 0;
+  const eventsYesterday = eventsYesterdayResult[0]?.count || 0;
+
+  const totalEventsChange24h =
+    totalEventsYesterday > 0
+      ? ((totalEvents - totalEventsYesterday) / totalEventsYesterday) * 100
+      : 0;
+
+  const events24hChange =
+    eventsYesterday > 0
+      ? ((events24h - eventsYesterday) / eventsYesterday) * 100
+      : 0;
+
   return {
-    totalEvents: totalResult[0]?.count || 0,
-    events24h: events24hResult[0]?.count || 0,
+    totalEvents,
+    events24h,
+    totalEventsChange24h: Number(totalEventsChange24h.toFixed(2)),
+    events24hChange: Number(events24hChange.toFixed(2)),
   };
 }
 

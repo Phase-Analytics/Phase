@@ -2,11 +2,7 @@ import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import { and, count, desc, eq, type SQL, sql } from 'drizzle-orm';
 import { db, devices, sessions } from '@/db';
 import type { App, Session, User } from '@/db/schema';
-import {
-  requireAppKey,
-  requireAuth,
-  verifyAppOwnership,
-} from '@/lib/middleware';
+import { requireAppKey, requireAuth, verifyAppAccess } from '@/lib/middleware';
 import { methodNotAllowed } from '@/lib/response';
 import {
   buildFilters,
@@ -23,6 +19,8 @@ import {
   deviceOverviewResponseSchema,
   deviceSchema,
   devicesListResponseSchema,
+  deviceTimeseriesQuerySchema,
+  deviceTimeseriesResponseSchema,
   ErrorCode,
   errorResponses,
   getDeviceQuerySchema,
@@ -125,6 +123,28 @@ const getDeviceOverviewRoute = createRoute({
   },
 });
 
+const getDeviceTimeseriesRoute = createRoute({
+  method: 'get',
+  path: '/timeseries',
+  tags: ['device'],
+  description: 'Get daily active users time-series (default: last year)',
+  security: [{ CookieAuth: [] }],
+  request: {
+    query: deviceTimeseriesQuerySchema,
+  },
+  responses: {
+    200: {
+      description: 'Daily active users time-series data',
+      content: {
+        'application/json': {
+          schema: deviceTimeseriesResponseSchema,
+        },
+      },
+    },
+    ...errorResponses,
+  },
+});
+
 const getDeviceLiveRoute = createRoute({
   method: 'get',
   path: '/live',
@@ -175,7 +195,7 @@ const deviceWebRouter = new OpenAPIHono<{
   };
 }>();
 
-deviceWebRouter.use('*', requireAuth, verifyAppOwnership);
+deviceWebRouter.use('*', requireAuth, verifyAppAccess);
 
 deviceWebRouter.all('*', async (c, next) => {
   const method = c.req.method;
@@ -277,11 +297,15 @@ deviceWebRouter.openapi(getDeviceOverviewRoute, async (c: any) => {
     const query = c.req.valid('query');
     const { appId } = query;
 
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const now = new Date();
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
 
     const [
       [{ count: totalDevices }],
+      [{ count: totalDevicesYesterday }],
       activeDevices24hResult,
+      activeDevicesYesterdayResult,
       platformStatsResult,
     ] = await Promise.all([
       db
@@ -290,13 +314,35 @@ deviceWebRouter.openapi(getDeviceOverviewRoute, async (c: any) => {
         .where(eq(devices.appId, appId)),
 
       db
+        .select({ count: count() })
+        .from(devices)
+        .where(
+          and(
+            eq(devices.appId, appId),
+            sql`${devices.firstSeen} < ${twentyFourHoursAgo}`
+          )
+        ),
+
+      db
         .selectDistinct({ deviceId: sessions.deviceId })
         .from(sessions)
         .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
         .where(
           and(
             eq(devices.appId, appId),
-            sql`${sessions.startedAt} >= ${twentyFourHoursAgo}`
+            sql`${sessions.lastActivityAt} >= ${twentyFourHoursAgo}`
+          )
+        ),
+
+      db
+        .selectDistinct({ deviceId: sessions.deviceId })
+        .from(sessions)
+        .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
+        .where(
+          and(
+            eq(devices.appId, appId),
+            sql`${sessions.lastActivityAt} >= ${fortyEightHoursAgo}`,
+            sql`${sessions.lastActivityAt} < ${twentyFourHoursAgo}`
           )
         ),
 
@@ -311,6 +357,24 @@ deviceWebRouter.openapi(getDeviceOverviewRoute, async (c: any) => {
     ]);
 
     const activeDevices24h = activeDevices24hResult.length;
+    const activeDevicesYesterday = activeDevicesYesterdayResult.length;
+
+    const totalDevicesNum = Number(totalDevices);
+    const totalDevicesYesterdayNum = Number(totalDevicesYesterday);
+
+    const totalDevicesChange24h =
+      totalDevicesYesterdayNum > 0
+        ? ((totalDevicesNum - totalDevicesYesterdayNum) /
+            totalDevicesYesterdayNum) *
+          100
+        : 0;
+
+    const activeDevicesChange24h =
+      activeDevicesYesterday > 0
+        ? ((activeDevices24h - activeDevicesYesterday) /
+            activeDevicesYesterday) *
+          100
+        : 0;
 
     const platformStats: Record<string, number> = {};
     for (const row of platformStatsResult) {
@@ -319,9 +383,11 @@ deviceWebRouter.openapi(getDeviceOverviewRoute, async (c: any) => {
 
     return c.json(
       {
-        totalDevices: Number(totalDevices),
+        totalDevices: totalDevicesNum,
         activeDevices24h,
         platformStats,
+        totalDevicesChange24h: Number(totalDevicesChange24h.toFixed(2)),
+        activeDevicesChange24h: Number(activeDevicesChange24h.toFixed(2)),
       },
       HttpStatus.OK
     );
@@ -474,6 +540,67 @@ deviceWebRouter.openapi(getDevicesRoute, async (c) => {
       {
         code: ErrorCode.INTERNAL_SERVER_ERROR,
         detail: 'Failed to fetch devices',
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
+});
+
+// biome-ignore lint/suspicious/noExplicitAny: OpenAPI handler type inference issue with union response types
+deviceWebRouter.openapi(getDeviceTimeseriesRoute, async (c: any) => {
+  try {
+    const query = c.req.valid('query');
+    const { appId, startDate, endDate } = query;
+
+    const dateRangeValidation = validateDateRange(c, startDate, endDate);
+    if (!dateRangeValidation.success) {
+      return dateRangeValidation.response;
+    }
+
+    const now = new Date();
+    const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+
+    const start = startDate ? new Date(startDate) : oneYearAgo;
+    const end = endDate ? new Date(endDate) : now;
+
+    const result = await db
+      .select({
+        date: sql<string>`DATE(${sessions.lastActivityAt})`,
+        activeUsers: sql<number>`COUNT(DISTINCT ${sessions.deviceId})`,
+      })
+      .from(sessions)
+      .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
+      .where(
+        and(
+          eq(devices.appId, appId),
+          sql`${sessions.lastActivityAt} >= ${start}`,
+          sql`${sessions.lastActivityAt} < ${end}`
+        )
+      )
+      .groupBy(sql`DATE(${sessions.lastActivityAt})`)
+      .orderBy(sql`DATE(${sessions.lastActivityAt})`);
+
+    const data = result.map((row) => ({
+      date: row.date,
+      activeUsers: Number(row.activeUsers),
+    }));
+
+    return c.json(
+      {
+        data,
+        period: {
+          startDate: start.toISOString(),
+          endDate: end.toISOString(),
+        },
+      },
+      HttpStatus.OK
+    );
+  } catch (error) {
+    console.error('[Device.Timeseries] Error:', error);
+    return c.json(
+      {
+        code: ErrorCode.INTERNAL_SERVER_ERROR,
+        detail: 'Failed to fetch device timeseries',
       },
       HttpStatus.INTERNAL_SERVER_ERROR
     );

@@ -98,6 +98,10 @@ export type DeviceTimeseriesDataPoint = {
 
 export type DeviceTimeseriesResponse = {
   data: DeviceTimeseriesDataPoint[];
+  period: {
+    startDate: string;
+    endDate: string;
+  };
 };
 
 export type DeviceLive = {

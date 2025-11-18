@@ -70,6 +70,68 @@ export const requireAppKey = async (c: any, next: any) => {
 };
 
 // biome-ignore lint/suspicious/noExplicitAny: Hono middleware context typing requires any
+export const verifyAppAccess = async (c: any, next: any) => {
+  const user = c.get('user');
+  const query = c.req.valid('query');
+  const appId = query.appId;
+
+  if (!user) {
+    return c.json(
+      {
+        code: 'UNAUTHORIZED',
+        detail: 'Authentication required',
+      },
+      401
+    );
+  }
+
+  if (!appId) {
+    return c.json(
+      {
+        code: 'VALIDATION_ERROR',
+        detail: 'appId is required',
+      },
+      400
+    );
+  }
+
+  try {
+    const userApp = await db.query.apps.findFirst({
+      where: (table, { eq: eqFn, or: orFn, and: andFn, sql }) =>
+        andFn(
+          eqFn(table.id, appId),
+          orFn(
+            eqFn(table.userId, user.id),
+            sql`${user.id} = ANY(${table.memberIds})`
+          )
+        ),
+    });
+
+    if (!userApp) {
+      return c.json(
+        {
+          code: 'FORBIDDEN',
+          detail: 'You do not have permission to access this app',
+        },
+        403
+      );
+    }
+
+    c.set('app', userApp);
+    await next();
+  } catch (error) {
+    console.error('[Middleware] App access verification error:', error);
+    return c.json(
+      {
+        code: 'INTERNAL_SERVER_ERROR',
+        detail: 'Failed to verify app access',
+      },
+      500
+    );
+  }
+};
+
+// biome-ignore lint/suspicious/noExplicitAny: Hono middleware context typing requires any
 export const verifyAppOwnership = async (c: any, next: any) => {
   const user = c.get('user');
   const query = c.req.valid('query');
@@ -105,7 +167,7 @@ export const verifyAppOwnership = async (c: any, next: any) => {
       return c.json(
         {
           code: 'FORBIDDEN',
-          detail: 'You do not have permission to access this app',
+          detail: 'You must be the app owner to perform this action',
         },
         403
       );

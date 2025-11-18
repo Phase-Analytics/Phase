@@ -1,11 +1,7 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import { ulid } from 'ulid';
 import type { App, Session, User } from '@/db/schema';
-import {
-  requireAppKey,
-  requireAuth,
-  verifyAppOwnership,
-} from '@/lib/middleware';
+import { requireAppKey, requireAuth, verifyAppAccess } from '@/lib/middleware';
 import {
   getEventById,
   getEventStats,
@@ -181,7 +177,7 @@ const eventWebRouter = new OpenAPIHono<{
   };
 }>();
 
-eventWebRouter.use('*', requireAuth, verifyAppOwnership);
+eventWebRouter.use('*', requireAuth, verifyAppAccess);
 
 eventWebRouter.all('*', async (c, next) => {
   const method = c.req.method;

@@ -2,11 +2,7 @@ import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import { and, count, desc, eq, type SQL, sql } from 'drizzle-orm';
 import { db, devices, sessions } from '@/db';
 import type { App, Session, User } from '@/db/schema';
-import {
-  requireAppKey,
-  requireAuth,
-  verifyAppOwnership,
-} from '@/lib/middleware';
+import { requireAppKey, requireAuth, verifyAppAccess } from '@/lib/middleware';
 import { methodNotAllowed } from '@/lib/response';
 import {
   buildFilters,
@@ -129,7 +125,7 @@ const sessionWebRouter = new OpenAPIHono<{
   };
 }>();
 
-sessionWebRouter.use('*', requireAuth, verifyAppOwnership);
+sessionWebRouter.use('*', requireAuth, verifyAppAccess);
 
 sessionWebRouter.all('*', async (c, next) => {
   const method = c.req.method;
@@ -223,11 +219,15 @@ sessionWebRouter.openapi(getSessionOverviewRoute, async (c: any) => {
     const query = c.req.valid('query');
     const { appId } = query;
 
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const now = new Date();
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
 
     const [
       [{ count: totalSessions }],
+      [{ count: totalSessionsYesterday }],
       activeSessions24hResult,
+      activeSessionsYesterdayResult,
       avgDurationResult,
     ] = await Promise.all([
       db
@@ -243,7 +243,30 @@ sessionWebRouter.openapi(getSessionOverviewRoute, async (c: any) => {
         .where(
           and(
             eq(devices.appId, appId),
+            sql`${sessions.startedAt} < ${twentyFourHoursAgo}`
+          )
+        ),
+
+      db
+        .select({ count: count() })
+        .from(sessions)
+        .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
+        .where(
+          and(
+            eq(devices.appId, appId),
             sql`${sessions.startedAt} >= ${twentyFourHoursAgo}`
+          )
+        ),
+
+      db
+        .select({ count: count() })
+        .from(sessions)
+        .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
+        .where(
+          and(
+            eq(devices.appId, appId),
+            sql`${sessions.startedAt} >= ${fortyEightHoursAgo}`,
+            sql`${sessions.startedAt} < ${twentyFourHoursAgo}`
           )
         ),
 
@@ -258,16 +281,38 @@ sessionWebRouter.openapi(getSessionOverviewRoute, async (c: any) => {
         .where(eq(devices.appId, appId)),
     ]);
 
+    const totalSessionsNum = Number(totalSessions);
+    const totalSessionsYesterdayNum = Number(totalSessionsYesterday);
     const activeSessions24h = Number(activeSessions24hResult[0]?.count ?? 0);
+    const activeSessionsYesterday = Number(
+      activeSessionsYesterdayResult[0]?.count ?? 0
+    );
+
     const averageSessionDuration = avgDurationResult[0]?.avg
       ? Number(avgDurationResult[0].avg)
       : null;
 
+    const totalSessionsChange24h =
+      totalSessionsYesterdayNum > 0
+        ? ((totalSessionsNum - totalSessionsYesterdayNum) /
+            totalSessionsYesterdayNum) *
+          100
+        : 0;
+
+    const activeSessions24hChange =
+      activeSessionsYesterday > 0
+        ? ((activeSessions24h - activeSessionsYesterday) /
+            activeSessionsYesterday) *
+          100
+        : 0;
+
     return c.json(
       {
-        totalSessions: Number(totalSessions),
+        totalSessions: totalSessionsNum,
         averageSessionDuration,
         activeSessions24h,
+        totalSessionsChange24h: Number(totalSessionsChange24h.toFixed(2)),
+        activeSessions24hChange: Number(activeSessions24hChange.toFixed(2)),
       },
       HttpStatus.OK
     );
