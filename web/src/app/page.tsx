@@ -823,20 +823,6 @@ export default Example;`}</code>
               <div className="flex items-center justify-center py-8">
                 <Loading />
               </div>
-              <Separator />
-              <div className="flex flex-wrap items-center justify-center gap-8">
-                <div className="rounded-lg border bg-accent/20 p-8">
-                  <Loading />
-                </div>
-                <div className="flex items-center gap-3 rounded-lg border bg-card p-6">
-                  <Loading />
-                  <span className="text-sm">Loading data...</span>
-                </div>
-                <Button className="min-w-32" disabled>
-                  <Loading />
-                  <span className="ml-3">Loading</span>
-                </Button>
-              </div>
             </CardContent>
           </Card>
         </section>
