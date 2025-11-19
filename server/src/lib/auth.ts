@@ -12,7 +12,10 @@ export const auth = betterAuth({
     enabled: true,
   },
   baseURL: process.env.SERVER_URL || 'http://localhost:3001',
-  trustedOrigins: [process.env.WEB_URL || 'http://localhost:3002'],
+  trustedOrigins: [
+    process.env.WEB_URL || 'http://localhost:3002',
+    'http://localhost:3002',
+  ],
   session: {
     cookieCache: {
       enabled: true,

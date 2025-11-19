@@ -34,6 +34,9 @@ export default function AuthPage() {
     }
 
     console.log('✅ Login success:', data);
+
+    // Debug: Check cookies
+    console.log('🍪 All cookies:', document.cookie);
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -55,6 +58,9 @@ export default function AuthPage() {
     }
 
     console.log('✅ Register success:', data);
+
+    // Debug: Check cookies
+    console.log('🍪 All cookies:', document.cookie);
   };
 
   return (
