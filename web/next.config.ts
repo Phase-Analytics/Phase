@@ -1,13 +1,16 @@
 import type { NextConfig } from 'next';
 
 const getContentSecurityPolicy = () => {
+  const serverUrl =
+    process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
+
   const policy = {
     'default-src': ["'self'"],
     'script-src': ["'self'", "'unsafe-eval'", "'unsafe-inline'"],
     'style-src': ["'self'", "'unsafe-inline'"],
     'img-src': ["'self'", 'data:', 'blob:', 'https:'],
     'font-src': ["'self'", 'data:'],
-    'connect-src': ["'self'"],
+    'connect-src': ["'self'", serverUrl],
     'frame-ancestors': ["'none'"],
     'base-uri': ["'self'"],
     'form-action': ["'self'"],

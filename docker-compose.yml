@@ -102,13 +102,15 @@ services:
       dockerfile: ./server/Dockerfile
     container_name: telemetra-server
     environment:
-      - NODE_ENV=${NODE_ENV}
+      - NODE_ENV=production
       - PORT=3001
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - SERVER_URL=${SERVER_URL}
       - WEB_URL=${WEB_URL}
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/telemetra
       - REDIS_URL=redis://redis:6379
+      - QUESTDB_HOST=questdb
+      - QUESTDB_ILP_PORT=9009
     expose:
       - "3001"
     depends_on:
@@ -134,16 +136,14 @@ services:
       context: .
       dockerfile: ./web/Dockerfile
       args:
-        - NODE_ENV=${NODE_ENV}
+        - NODE_ENV=production
         - NEXT_TELEMETRY_DISABLED=1
-        - SERVER_URL=${SERVER_URL}
-        - WEB_URL=${WEB_URL}
+        - NEXT_PUBLIC_SERVER_URL=${SERVER_URL}
     container_name: telemetra-web
     environment:
-      - NODE_ENV=${NODE_ENV}
+      - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
-      - SERVER_URL=${SERVER_URL}
-      - WEB_URL=${WEB_URL}
+      - NEXT_PUBLIC_SERVER_URL=${SERVER_URL}
     expose:
       - "3002"
     depends_on:

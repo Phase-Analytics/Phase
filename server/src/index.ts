@@ -61,6 +61,34 @@ app.use(
   })
 );
 
+app.use(
+  '/v1/sdk/*',
+  cors({
+    origin: '*',
+    allowHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
+    allowMethods: ['POST', 'GET', 'OPTIONS', 'PUT', 'PATCH', 'DELETE'],
+    exposeHeaders: [
+      'Content-Length',
+      'X-RateLimit-Limit',
+      'X-RateLimit-Remaining',
+    ],
+    maxAge: 600,
+    credentials: false,
+  })
+);
+
+app.use(
+  '/v1/web/*',
+  cors({
+    origin: corsOrigins,
+    allowHeaders: ['Content-Type', 'Authorization'],
+    allowMethods: ['POST', 'GET', 'OPTIONS', 'PUT', 'PATCH', 'DELETE'],
+    exposeHeaders: ['Content-Length'],
+    maxAge: 600,
+    credentials: true,
+  })
+);
+
 app.use('/web/*', authMiddleware);
 
 app.onError((err, c) => {

@@ -11,10 +11,23 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  baseURL: process.env.SERVER_URL || 'http://localhost:3001',
+  trustedOrigins: [process.env.WEB_URL || 'http://localhost:3002'],
   session: {
     cookieCache: {
       enabled: true,
       maxAge: 5 * 60,
+    },
+  },
+  advanced: {
+    crossSubDomainCookies: {
+      enabled: true,
+    },
+    defaultCookieAttributes: {
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      domain:
+        process.env.NODE_ENV === 'production' ? '.telemetra.dev' : undefined,
     },
   },
 });

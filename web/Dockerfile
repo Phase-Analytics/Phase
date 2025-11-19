@@ -9,12 +9,12 @@ RUN bun install --frozen-lockfile --filter web
 
 FROM base AS builder
 
-ARG NODE_ENV
+ARG NODE_ENV=production
 ARG NEXT_TELEMETRY_DISABLED=1
-ARG SERVER_URL
-ARG WEB_URL
+ARG NEXT_PUBLIC_SERVER_URL
 ENV NODE_ENV=$NODE_ENV
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_SERVER_URL=$NEXT_PUBLIC_SERVER_URL
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY web/ ./web/
