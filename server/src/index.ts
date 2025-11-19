@@ -123,9 +123,12 @@ apiApp.route('/web/devices', deviceWebRouter);
 apiApp.route('/web/events', eventWebRouter);
 apiApp.route('/web/sessions', sessionWebRouter);
 
-rootApp.on(['POST', 'GET'], '/api/auth/**', (c) => auth.handler(c.req.raw));
-
 rootApp.route('/', apiApp);
+
+rootApp.use('/api/auth/*', (c) => {
+  console.log('[Auth] Request:', c.req.method, c.req.url);
+  return auth.handler(c.req.raw);
+});
 
 if (process.env.NODE_ENV !== 'production') {
   configureOpenAPI(apiApp);
