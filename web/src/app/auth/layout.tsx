@@ -1,5 +1,6 @@
 import { AuthRedirect } from '@/components/auth-redirect';
 import { Toaster } from '@/components/ui/sonner';
+import { ThemeProvider } from '@/lib/theme-provider';
 
 export default function AuthLayout({
   children,
@@ -8,7 +9,7 @@ export default function AuthLayout({
 }) {
   return (
     <AuthRedirect requireAuth={false}>
-      {children}
+      <ThemeProvider>{children}</ThemeProvider>
       <Toaster
         duration={5000}
         position="top-center"

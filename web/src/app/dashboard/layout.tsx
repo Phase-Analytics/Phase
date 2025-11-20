@@ -6,6 +6,7 @@ import { AuthRedirect } from '@/components/auth-redirect';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/sonner';
 import { QueryProvider } from '@/lib/queries/query-provider';
+import { ThemeProvider } from '@/lib/theme-provider';
 
 export default async function DashboardLayout({
   children,
@@ -23,7 +24,9 @@ export default async function DashboardLayout({
           <SidebarProvider defaultOpen={defaultOpen}>
             <DashboardSidebar />
             <SidebarInset>
-              <DashboardHeader>{children}</DashboardHeader>
+              <ThemeProvider>
+                <DashboardHeader>{children}</DashboardHeader>
+              </ThemeProvider>
             </SidebarInset>
           </SidebarProvider>
         </NuqsAdapter>

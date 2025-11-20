@@ -3,8 +3,6 @@ import { GeistSans } from 'geist/font/sans';
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import './globals.css';
-import { Toaster } from '@/components/ui/sonner';
-import { ThemeProvider } from '@/lib/theme-provider';
 
 const menlo = localFont({
   src: '../../public/fonts/Menlo-Regular.woff2',
@@ -27,13 +25,7 @@ export default function RootLayout({
       <body
         className={`${GeistSans.variable} ${GeistMono.variable} ${menlo.variable} font-sans antialiased`}
       >
-        <ThemeProvider>{children}</ThemeProvider>
-        <Toaster
-          duration={5000}
-          position="top-center"
-          richColors
-          visibleToasts={3}
-        />
+        {children}
       </body>
     </html>
   );
