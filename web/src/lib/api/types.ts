@@ -203,6 +203,15 @@ export type UpdateAppRequest = {
   name: string;
 };
 
+export type AddTeamMemberRequest = {
+  email: string;
+};
+
+export type AddTeamMemberResponse = {
+  userId: string;
+  email: string;
+};
+
 export type AppDetail = {
   id: string;
   name: string;

@@ -2,6 +2,8 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { fetchApi } from '@/lib/api/client';
 import type {
+  AddTeamMemberRequest,
+  AddTeamMemberResponse,
   AppCreated,
   AppDetail,
   AppKeysResponse,
@@ -123,6 +125,49 @@ export function useRotateAppKey() {
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to rotate API key');
+    },
+  });
+}
+
+export function useAddTeamMember() {
+  return useMutation({
+    mutationFn: ({
+      appId,
+      data,
+    }: {
+      appId: string;
+      data: AddTeamMemberRequest;
+    }) =>
+      fetchApi<AddTeamMemberResponse>(`/web/apps/${appId}/team/members`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.apps.team(variables.appId),
+      });
+      toast.success(`${data.email} added to team successfully!`);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to add team member');
+    },
+  });
+}
+
+export function useRemoveTeamMember() {
+  return useMutation({
+    mutationFn: ({ appId, userId }: { appId: string; userId: string }) =>
+      fetchApi<void>(`/web/apps/${appId}/team/members/${userId}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.apps.team(variables.appId),
+      });
+      toast.success('Team member removed successfully');
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to remove team member');
     },
   });
 }
