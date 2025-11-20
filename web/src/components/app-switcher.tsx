@@ -89,7 +89,7 @@ export function AppSwitcher({ variant, onMobileClose }: AppSwitcherProps) {
               const isSelected = app.id === appId;
               return (
                 <DropdownMenuItem
-                  className={isSelected ? 'bg-accent' : ''}
+                  className={`my-0.5 ${isSelected ? 'bg-accent' : ''}`}
                   key={app.id}
                   onClick={() => handleAppSelect(app.id)}
                 >
@@ -154,7 +154,7 @@ export function AppSwitcher({ variant, onMobileClose }: AppSwitcherProps) {
             const isSelected = app.id === appId;
             return (
               <DropdownMenuItem
-                className={isSelected ? 'bg-accent' : ''}
+                className={`my-0.5 ${isSelected ? 'bg-accent' : ''}`}
                 key={app.id}
                 onClick={() => handleAppSelect(app.id)}
               >
