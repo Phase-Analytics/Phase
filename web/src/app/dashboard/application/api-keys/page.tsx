@@ -84,40 +84,42 @@ export default function ApiKeysPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 rounded-lg border bg-muted/50 px-3 py-2 font-mono text-sm">
-                      {displayKey}
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <div className="flex-1 overflow-hidden rounded-lg border bg-muted/50 px-3 py-2 font-mono text-sm">
+                      <div className="overflow-x-auto">{displayKey}</div>
                     </div>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          onClick={() => setIsKeyVisible(!isKeyVisible)}
-                          size="icon-sm"
-                          type="button"
-                          variant="outline"
-                        >
-                          <HugeiconsIcon
-                            className="size-4"
-                            icon={isKeyVisible ? ViewOffIcon : ViewIcon}
-                          />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {isKeyVisible ? 'Hide API key' : 'Show API key'}
-                      </TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div>
-                          <CopyButton
-                            content={apiKey}
-                            size="sm"
+                    <div className="flex gap-2">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={() => setIsKeyVisible(!isKeyVisible)}
+                            size="icon-sm"
+                            type="button"
                             variant="outline"
-                          />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>Copy API key</TooltipContent>
-                    </Tooltip>
+                          >
+                            <HugeiconsIcon
+                              className="size-4"
+                              icon={isKeyVisible ? ViewOffIcon : ViewIcon}
+                            />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {isKeyVisible ? 'Hide API key' : 'Show API key'}
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div>
+                            <CopyButton
+                              content={apiKey}
+                              size="sm"
+                              variant="outline"
+                            />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>Copy API key</TooltipContent>
+                      </Tooltip>
+                    </div>
                   </div>
 
                   <p className="text-muted-foreground text-sm">

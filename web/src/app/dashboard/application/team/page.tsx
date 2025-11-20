@@ -4,6 +4,7 @@ import {
   AddSquareIcon,
   ArrowRight01Icon,
   BookOpen01Icon,
+  UserRemove01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { minidenticon } from 'minidenticons';
@@ -53,7 +54,6 @@ export default function TeamPage() {
         </div>
 
         <div className="space-y-4">
-          {/* Owner Section */}
           <Card className="py-0">
             <CardContent className="space-y-4 p-4">
               <div>
@@ -75,8 +75,8 @@ export default function TeamPage() {
                     />
                     <AvatarFallback className="bg-transparent" />
                   </Avatar>
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-sm">
                       {teamData?.owner.email}
                     </p>
                     <p className="text-muted-foreground text-xs">Owner</p>
@@ -86,11 +86,10 @@ export default function TeamPage() {
             </CardContent>
           </Card>
 
-          {/* Team Members Section */}
           <Card className="py-0">
             <CardContent className="space-y-4 p-4">
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex-1">
                   <h2 className="font-semibold text-lg">Team Members</h2>
                   <p className="text-muted-foreground text-sm">
                     Members can view analytics and reports but cannot modify
@@ -99,7 +98,11 @@ export default function TeamPage() {
                 </div>
                 {!showLoading && isOwner && (
                   <AddMemberDialog appId={appId || ''}>
-                    <Button size="sm" type="button">
+                    <Button
+                      className="w-full sm:w-auto"
+                      size="sm"
+                      type="button"
+                    >
                       <HugeiconsIcon
                         className="mr-1.5 size-3"
                         icon={AddSquareIcon}
@@ -128,7 +131,7 @@ export default function TeamPage() {
 
                       return (
                         <div
-                          className="flex items-center justify-between rounded-lg border p-3"
+                          className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
                           key={member.userId}
                         >
                           <div className="flex items-center gap-3">
@@ -139,8 +142,8 @@ export default function TeamPage() {
                               />
                               <AvatarFallback className="bg-transparent" />
                             </Avatar>
-                            <div>
-                              <p className="font-medium text-sm">
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate font-medium text-sm">
                                 {member.email}
                               </p>
                               <p className="text-muted-foreground text-xs">
@@ -148,29 +151,36 @@ export default function TeamPage() {
                               </p>
                             </div>
                           </div>
-                          {isOwner ? (
-                            <RemoveMemberDialog
-                              appId={appId || ''}
-                              email={member.email}
-                              userId={member.userId}
-                            />
-                          ) : (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span>
-                                  <Button
-                                    disabled
-                                    size="sm"
-                                    type="button"
-                                    variant="outline"
-                                  >
-                                    Remove
-                                  </Button>
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>Owner only</TooltipContent>
-                            </Tooltip>
-                          )}
+                          <div className="w-full sm:w-auto">
+                            {isOwner ? (
+                              <RemoveMemberDialog
+                                appId={appId || ''}
+                                email={member.email}
+                                userId={member.userId}
+                              />
+                            ) : (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="block w-full sm:inline-block sm:w-auto">
+                                    <Button
+                                      className="w-full sm:w-auto"
+                                      disabled
+                                      size="sm"
+                                      type="button"
+                                      variant="destructive"
+                                    >
+                                      <HugeiconsIcon
+                                        className="mr-1.5 size-3"
+                                        icon={UserRemove01Icon}
+                                      />
+                                      Remove
+                                    </Button>
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>Owner only</TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
                         </div>
                       );
                     })}

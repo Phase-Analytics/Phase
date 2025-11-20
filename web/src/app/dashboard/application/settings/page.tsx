@@ -3,6 +3,7 @@
 import {
   ArrowRight01Icon,
   CheckmarkSquare01Icon,
+  Delete02Icon,
   Key01Icon,
   PencilEdit02Icon,
   UserGroupIcon,
@@ -163,7 +164,7 @@ export default function SettingsPage() {
     }
 
     return (
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="font-medium text-base">{app?.name}</p>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -286,16 +287,16 @@ export default function SettingsPage() {
               </div>
 
               {showLoading ? (
-                <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
+                <div className="flex flex-col gap-4 rounded-lg border border-destructive/50 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="space-y-2">
                     <Skeleton className="h-5 w-24" />
                     <Skeleton className="h-4 w-64" />
                   </div>
-                  <Skeleton className="h-8 w-24" />
+                  <Skeleton className="h-8 w-full sm:w-auto" />
                 </div>
               ) : (
-                <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
-                  <div>
+                <div className="flex flex-col gap-4 rounded-lg border border-destructive/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex-1">
                     <h3 className="font-semibold">Delete Application</h3>
                     <p className="text-muted-foreground text-sm">
                       Permanently delete this app and all associated data
@@ -303,18 +304,23 @@ export default function SettingsPage() {
                   </div>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span tabIndex={isOwner ? undefined : 0}>
+                      <span className="w-full sm:w-auto" tabIndex={isOwner ? undefined : 0}>
                         <DeleteAppDialog
                           appId={appId || ''}
                           appName={app?.name || ''}
                           onSuccess={() => router.push('/dashboard')}
                         >
                           <Button
+                            className="w-full sm:w-auto"
                             disabled={!isOwner}
                             size="sm"
                             type="button"
                             variant="destructive"
                           >
+                            <HugeiconsIcon
+                              className="mr-1.5 size-3"
+                              icon={Delete02Icon}
+                            />
                             Delete Application
                           </Button>
                         </DeleteAppDialog>
