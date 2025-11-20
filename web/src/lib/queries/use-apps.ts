@@ -3,10 +3,12 @@ import { toast } from 'sonner';
 import { fetchApi } from '@/lib/api/client';
 import type {
   AppCreated,
+  AppDetail,
   AppKeysResponse,
   AppsListResponse,
   AppTeamResponse,
   CreateAppRequest,
+  UpdateAppRequest,
 } from '@/lib/api/types';
 import { useSession } from '@/lib/auth';
 import { cacheConfig, queryClient } from './query-client';
@@ -20,6 +22,17 @@ export function useApps() {
     queryFn: () => fetchApi<AppsListResponse>('/web/apps'),
     ...cacheConfig.static,
     enabled: !!session,
+  });
+}
+
+export function useApp(appId: string) {
+  const { data: session } = useSession();
+
+  return useQuery({
+    queryKey: queryKeys.apps.detail(appId),
+    queryFn: () => fetchApi<AppDetail>(`/web/apps/${appId}`),
+    ...cacheConfig.detail,
+    enabled: !!session && Boolean(appId),
   });
 }
 
@@ -70,10 +83,30 @@ export function useDeleteApp() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
-      toast.success('App deleted successfully');
+      toast.success('Application deleted successfully');
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to delete app');
+      toast.error(error.message || 'Failed to delete application');
+    },
+  });
+}
+
+export function useRenameApp() {
+  return useMutation({
+    mutationFn: ({ appId, data }: { appId: string; data: UpdateAppRequest }) =>
+      fetchApi<AppCreated>(`/web/apps/${appId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.apps.detail(variables.appId),
+      });
+      toast.success(`Application renamed to "${data.name}"`);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to rename application');
     },
   });
 }
@@ -86,7 +119,7 @@ export function useRotateAppKey() {
       }),
     onSuccess: (_, appId) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.apps.keys(appId) });
-      toast.success('API key rotated successfully');
+      toast.success('API key rotated successfully!');
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to rotate API key');
