@@ -1,11 +1,13 @@
 export {
   type AppCreatedSchema,
+  type AppDetailResponse,
   type AppKeysResponse,
   type AppListItemSchema,
   type AppsListResponse,
   type AppTeamMember,
   type AppTeamResponse,
   appCreatedSchema,
+  appDetailResponseSchema,
   appKeysResponseSchema,
   appListItemSchema,
   appsListResponseSchema,
@@ -13,6 +15,8 @@ export {
   appTeamResponseSchema,
   type CreateAppRequest,
   createAppRequestSchema,
+  type UpdateAppRequest,
+  updateAppRequestSchema,
 } from './app.schema';
 export {
   dateFilterQuerySchema,
