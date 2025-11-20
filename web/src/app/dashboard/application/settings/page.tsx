@@ -19,6 +19,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useApp, useRenameApp } from '@/lib/queries';
 
 const APP_NAME_MIN_LENGTH = 3;
@@ -160,17 +165,27 @@ export default function SettingsPage() {
     return (
       <div className="flex items-center justify-between">
         <p className="font-medium text-base">{app?.name}</p>
-        {isOwner && (
-          <Button
-            onClick={handleEdit}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            <HugeiconsIcon className="mr-1.5 size-3" icon={PencilEdit01Icon} />
-            Edit
-          </Button>
-        )}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span tabIndex={isOwner ? undefined : 0}>
+              <Button
+                disabled={!isOwner}
+                onClick={handleEdit}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <HugeiconsIcon className="mr-1.5 size-3" icon={PencilEdit01Icon} />
+                Edit
+              </Button>
+            </span>
+          </TooltipTrigger>
+          {!isOwner && (
+            <TooltipContent>
+              Only owners can perform this action
+            </TooltipContent>
+          )}
+        </Tooltip>
       </div>
     );
   };
@@ -260,48 +275,62 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {(showLoading || isOwner) && (
-            <Card className="py-0">
-              <CardContent className="space-y-4 p-4">
-                <div>
-                  <h2 className="font-semibold text-destructive text-lg">
-                    Danger Zone
-                  </h2>
-                  <p className="text-muted-foreground text-sm">
-                    Irreversible and destructive actions
-                  </p>
-                </div>
+          <Card className="py-0">
+            <CardContent className="space-y-4 p-4">
+              <div>
+                <h2 className="font-semibold text-destructive text-lg">
+                  Danger Zone
+                </h2>
+                <p className="text-muted-foreground text-sm">
+                  Irreversible and destructive actions
+                </p>
+              </div>
 
-                {showLoading ? (
-                  <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
-                    <div className="space-y-2">
-                      <Skeleton className="h-5 w-24" />
-                      <Skeleton className="h-4 w-64" />
-                    </div>
-                    <Skeleton className="h-8 w-24" />
+              {showLoading ? (
+                <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
+                  <div className="space-y-2">
+                    <Skeleton className="h-5 w-24" />
+                    <Skeleton className="h-4 w-64" />
                   </div>
-                ) : (
-                  <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
-                    <div>
-                      <h3 className="font-semibold">Delete Application</h3>
-                      <p className="text-muted-foreground text-sm">
-                        Permanently delete this app and all associated data
-                      </p>
-                    </div>
-                    <DeleteAppDialog
-                      appId={appId || ''}
-                      appName={app?.name || ''}
-                      onSuccess={() => router.push('/dashboard')}
-                    >
-                      <Button size="sm" type="button" variant="destructive">
-                        Delete Application
-                      </Button>
-                    </DeleteAppDialog>
+                  <Skeleton className="h-8 w-24" />
+                </div>
+              ) : (
+                <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
+                  <div>
+                    <h3 className="font-semibold">Delete Application</h3>
+                    <p className="text-muted-foreground text-sm">
+                      Permanently delete this app and all associated data
+                    </p>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span tabIndex={isOwner ? undefined : 0}>
+                        <DeleteAppDialog
+                          appId={appId || ''}
+                          appName={app?.name || ''}
+                          onSuccess={() => router.push('/dashboard')}
+                        >
+                          <Button
+                            disabled={!isOwner}
+                            size="sm"
+                            type="button"
+                            variant="destructive"
+                          >
+                            Delete Application
+                          </Button>
+                        </DeleteAppDialog>
+                      </span>
+                    </TooltipTrigger>
+                    {!isOwner && (
+                      <TooltipContent>
+                        Only owners can perform this action
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </RequireApp>
