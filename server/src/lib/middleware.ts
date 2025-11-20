@@ -72,8 +72,7 @@ export const requireAppKey = async (c: any, next: any) => {
 // biome-ignore lint/suspicious/noExplicitAny: Hono middleware context typing requires any
 export const verifyAppAccess = async (c: any, next: any) => {
   const user = c.get('user');
-  const query = c.req.valid('query');
-  const appId = query.appId;
+  const appId = c.req.query('appId');
 
   if (!user) {
     return c.json(
@@ -134,8 +133,7 @@ export const verifyAppAccess = async (c: any, next: any) => {
 // biome-ignore lint/suspicious/noExplicitAny: Hono middleware context typing requires any
 export const verifyAppOwnership = async (c: any, next: any) => {
   const user = c.get('user');
-  const query = c.req.valid('query');
-  const appId = query.appId;
+  const appId = c.req.query('appId');
 
   if (!user) {
     return c.json(
