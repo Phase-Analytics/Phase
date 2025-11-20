@@ -132,10 +132,7 @@ apiApp.route('/web/sessions', sessionWebRouter);
 
 rootApp.route('/', apiApp);
 
-rootApp.use('/api/auth/*', (c) => {
-  console.log('[Auth] Request:', c.req.method, c.req.url);
-  return auth.handler(c.req.raw);
-});
+rootApp.use('/api/auth/*', (c) => auth.handler(c.req.raw));
 
 if (process.env.NODE_ENV !== 'production') {
   configureOpenAPI(apiApp);
