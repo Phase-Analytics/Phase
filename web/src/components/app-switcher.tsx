@@ -2,10 +2,10 @@
 
 import {
   AddSquareIcon,
-  ArrowRight01Icon,
   ArtboardIcon,
-  CheckmarkSquare01Icon,
   UnfoldMoreIcon,
+  UserGroupIcon,
+  UserSquareIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useRouter } from 'next/navigation';
@@ -96,7 +96,7 @@ export function AppSwitcher({ variant, onMobileClose }: AppSwitcherProps) {
                   {app.name}
                   <HugeiconsIcon
                     className="ml-auto size-4"
-                    icon={isSelected ? CheckmarkSquare01Icon : ArrowRight01Icon}
+                    icon={app.role === 'owner' ? UserSquareIcon : UserGroupIcon}
                   />
                 </DropdownMenuItem>
               );
@@ -161,7 +161,7 @@ export function AppSwitcher({ variant, onMobileClose }: AppSwitcherProps) {
                 {app.name}
                 <HugeiconsIcon
                   className="ml-auto size-4"
-                  icon={isSelected ? CheckmarkSquare01Icon : ArrowRight01Icon}
+                  icon={app.role === 'owner' ? UserSquareIcon : UserGroupIcon}
                 />
               </DropdownMenuItem>
             );

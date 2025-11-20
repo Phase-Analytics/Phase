@@ -277,13 +277,20 @@ appWebRouter.openapi(listAppsRoute, async (c: any) => {
       columns: {
         id: true,
         name: true,
+        userId: true,
       },
       orderBy: (appsTable, { desc }) => [desc(appsTable.createdAt)],
     });
 
+    const appsWithRole = accessibleApps.map((app) => ({
+      id: app.id,
+      name: app.name,
+      role: app.userId === user.id ? ('owner' as const) : ('member' as const),
+    }));
+
     return c.json(
       {
-        apps: accessibleApps,
+        apps: appsWithRole,
       },
       HttpStatus.OK
     );

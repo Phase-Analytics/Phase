@@ -21,6 +21,7 @@ export const appListItemSchema = z
   .object({
     id: z.string().openapi({ example: '87654321098765' }),
     name: z.string().min(1).max(255).openapi({ example: 'My Awesome App' }),
+    role: z.enum(['owner', 'member']).openapi({ example: 'owner' }),
   })
   .openapi('AppListItem');
 
