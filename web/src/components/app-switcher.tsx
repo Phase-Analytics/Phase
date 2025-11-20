@@ -4,11 +4,13 @@ import {
   AddSquareIcon,
   ArrowRight01Icon,
   ArtboardIcon,
+  CheckmarkCircle02Icon,
   UnfoldMoreIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useRouter } from 'next/navigation';
 import { useQueryState } from 'nuqs';
+import { CreateAppDialog } from '@/components/create-app-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -80,23 +82,32 @@ export function AppSwitcher({ variant, onMobileClose }: AppSwitcherProps) {
           )}
           {!isLoading &&
             apps.length > 0 &&
-            apps.map((app) => (
-              <DropdownMenuItem
-                key={app.id}
-                onClick={() => handleAppSelect(app.id)}
-              >
-                {app.name}
-                <HugeiconsIcon
-                  className="ml-auto size-4"
-                  icon={ArrowRight01Icon}
-                />
-              </DropdownMenuItem>
-            ))}
+            apps.map((app) => {
+              const isSelected = app.id === appId;
+              return (
+                <DropdownMenuItem
+                  className={isSelected ? 'bg-accent' : ''}
+                  key={app.id}
+                  onClick={() => handleAppSelect(app.id)}
+                >
+                  {app.name}
+                  <HugeiconsIcon
+                    className="ml-auto size-4"
+                    icon={isSelected ? CheckmarkCircle02Icon : ArrowRight01Icon}
+                  />
+                </DropdownMenuItem>
+              );
+            })}
           <DropdownMenuSeparator />
-          <DropdownMenuItem disabled variant="success">
-            <HugeiconsIcon className="mr-2 size-4" icon={AddSquareIcon} />
-            Create New App
-          </DropdownMenuItem>
+          <CreateAppDialog onSuccess={handleAppSelect}>
+            <DropdownMenuItem
+              onSelect={(event) => event.preventDefault()}
+              variant="success"
+            >
+              <HugeiconsIcon className="mr-2 size-4" icon={AddSquareIcon} />
+              Create New App
+            </DropdownMenuItem>
+          </CreateAppDialog>
         </DropdownMenuContent>
       </DropdownMenu>
     );
@@ -136,23 +147,32 @@ export function AppSwitcher({ variant, onMobileClose }: AppSwitcherProps) {
         )}
         {!isLoading &&
           apps.length > 0 &&
-          apps.map((app) => (
-            <DropdownMenuItem
-              key={app.id}
-              onClick={() => handleAppSelect(app.id)}
-            >
-              {app.name}
-              <HugeiconsIcon
-                className="ml-auto size-4"
-                icon={ArrowRight01Icon}
-              />
-            </DropdownMenuItem>
-          ))}
+          apps.map((app) => {
+            const isSelected = app.id === appId;
+            return (
+              <DropdownMenuItem
+                className={isSelected ? 'bg-accent' : ''}
+                key={app.id}
+                onClick={() => handleAppSelect(app.id)}
+              >
+                {app.name}
+                <HugeiconsIcon
+                  className="ml-auto size-4"
+                  icon={isSelected ? CheckmarkCircle02Icon : ArrowRight01Icon}
+                />
+              </DropdownMenuItem>
+            );
+          })}
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled variant="success">
-          <HugeiconsIcon className="mr-2 size-4" icon={AddSquareIcon} />
-          Create New App
-        </DropdownMenuItem>
+        <CreateAppDialog onSuccess={handleAppSelect}>
+          <DropdownMenuItem
+            onSelect={(event) => event.preventDefault()}
+            variant="success"
+          >
+            <HugeiconsIcon className="mr-2 size-4" icon={AddSquareIcon} />
+            Create New App
+          </DropdownMenuItem>
+        </CreateAppDialog>
       </DropdownMenuContent>
     </DropdownMenu>
   );
