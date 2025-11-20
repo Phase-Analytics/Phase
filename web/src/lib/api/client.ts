@@ -54,6 +54,10 @@ export async function fetchApi<T>(
     );
   }
 
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   return response.json();
 }
 

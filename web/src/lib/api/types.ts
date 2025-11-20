@@ -196,3 +196,15 @@ export type CreateAppRequest = {
   name: string;
   image?: string;
 };
+
+export type UpdateAppRequest = {
+  name: string;
+};
+
+export type AppDetail = {
+  id: string;
+  name: string;
+  image: string | null;
+  createdAt: string;
+  role: 'owner' | 'member';
+};
