@@ -38,9 +38,6 @@ export function AppSwitcher({ variant, onMobileClose }: AppSwitcherProps) {
 
   const handleAppSelect = (id: string) => {
     setAppId(id);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('lastSelectedApp', id);
-    }
     router.push(`/dashboard/analytics/overview?app=${id}`);
     onMobileClose?.();
   };
@@ -57,16 +54,18 @@ export function AppSwitcher({ variant, onMobileClose }: AppSwitcherProps) {
               <HugeiconsIcon className="size-4" icon={ArtboardIcon} />
             </div>
             <div className="flex flex-col gap-0.5 leading-none">
-              {isLoading ? (
+              {isLoading || !selectedApp ? (
                 <Skeleton className="h-4 w-20" />
               ) : (
-                <span className="font-semibold">
-                  {selectedApp ? selectedApp.name : 'Select App'}
+                <span className="font-semibold">{selectedApp.name}</span>
+              )}
+              {isLoading || !selectedApp ? (
+                <Skeleton className="h-3 w-16" />
+              ) : (
+                <span className="text-sidebar-foreground/70 text-xs">
+                  Analytics
                 </span>
               )}
-              <span className="text-sidebar-foreground/70 text-xs">
-                {selectedApp ? 'Analytics' : 'to get started'}
-              </span>
             </div>
             <HugeiconsIcon className="ml-auto size-4" icon={UnfoldMoreIcon} />
           </SidebarMenuButton>

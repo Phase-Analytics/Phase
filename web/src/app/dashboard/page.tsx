@@ -12,15 +12,6 @@ export default function DashboardPage() {
   useEffect(() => {
     if (appId) {
       router.replace(`/dashboard/analytics/overview?app=${appId}`);
-    } else {
-      const lastAppId =
-        typeof window !== 'undefined'
-          ? localStorage.getItem('lastSelectedApp')
-          : null;
-
-      if (lastAppId) {
-        router.replace(`/dashboard/analytics/overview?app=${lastAppId}`);
-      }
     }
   }, [appId, router]);
 
