@@ -7,32 +7,40 @@ import type {
   AppTeamResponse,
   CreateAppRequest,
 } from '@/lib/api/types';
+import { useSession } from '@/lib/auth';
 import { cacheConfig, queryClient } from './query-client';
 import { queryKeys } from './query-keys';
 
 export function useApps() {
+  const { data: session } = useSession();
+
   return useQuery({
     queryKey: queryKeys.apps.list(),
     queryFn: () => fetchApi<AppsListResponse>('/web/apps'),
     ...cacheConfig.static,
+    enabled: !!session,
   });
 }
 
 export function useAppKeys(appId: string) {
+  const { data: session } = useSession();
+
   return useQuery({
     queryKey: queryKeys.apps.keys(appId),
     queryFn: () => fetchApi<AppKeysResponse>(`/web/apps/${appId}/keys`),
     ...cacheConfig.static,
-    enabled: Boolean(appId),
+    enabled: !!session && Boolean(appId),
   });
 }
 
 export function useAppTeam(appId: string) {
+  const { data: session } = useSession();
+
   return useQuery({
     queryKey: queryKeys.apps.team(appId),
     queryFn: () => fetchApi<AppTeamResponse>(`/web/apps/${appId}/team`),
     ...cacheConfig.detail,
-    enabled: Boolean(appId),
+    enabled: !!session && Boolean(appId),
   });
 }
 
