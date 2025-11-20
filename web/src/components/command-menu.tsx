@@ -171,7 +171,6 @@ export function CommandMenu({ open, onOpenChange, items }: CommandMenuProps) {
           type="text"
           value={search}
         />
-        <div className="border-t" />
         <div className="max-h-[300px] min-h-[300px] overflow-y-auto px-2 py-2">
           {filteredItems.length > 0 ? (
             <div className="flex flex-col gap-1">
@@ -217,16 +216,13 @@ export function CommandMenu({ open, onOpenChange, items }: CommandMenuProps) {
           )}
         </div>
         {filteredItems.length > 0 && filteredItems[selectedIndex] && (
-          <>
-            <div className="border-t" />
-            <div className="flex items-center gap-2 px-4 py-2">
-              <Kbd>↵</Kbd>
-              <span className="text-muted-foreground text-xs">
-                {filteredItems[selectedIndex].description ||
-                  filteredItems[selectedIndex].name}
-              </span>
-            </div>
-          </>
+          <div className="flex items-center gap-2 px-4 py-2">
+            <Kbd>↵</Kbd>
+            <span className="text-muted-foreground text-xs">
+              {filteredItems[selectedIndex].description ||
+                filteredItems[selectedIndex].name}
+            </span>
+          </div>
         )}
       </DialogContent>
     </Dialog>
