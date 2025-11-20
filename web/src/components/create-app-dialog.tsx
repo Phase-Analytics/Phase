@@ -73,7 +73,7 @@ export function CreateAppDialog({ children, onSuccess }: CreateAppDialogProps) {
           onSuccess?.(data.id);
         },
         onError: (err) => {
-          setError(err.message || 'Failed to create app');
+          setError(err.message || 'Failed to create application');
         },
       }
     );
@@ -122,7 +122,7 @@ export function CreateAppDialog({ children, onSuccess }: CreateAppDialogProps) {
               disabled={createApp.isPending}
               maxLength={APP_NAME_MAX_LENGTH}
               onChange={(event) => handleNameChange(event.target.value)}
-              placeholder="Enter app name"
+              placeholder="Enter application name"
               type="text"
               value={appName}
             />

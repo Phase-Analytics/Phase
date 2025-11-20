@@ -131,7 +131,7 @@ export default function SettingsPage() {
             id="app-name"
             maxLength={APP_NAME_MAX_LENGTH}
             onChange={(event) => handleNameChange(event.target.value)}
-            placeholder="Enter app name"
+            placeholder="Enter application name"
             type="text"
             value={newName}
           />

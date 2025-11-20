@@ -73,11 +73,11 @@ export function DeleteAppDialog({
           <DialogTitle>Delete Application</DialogTitle>
           <DialogDescription>
             This action cannot be undone. This will permanently delete the{' '}
-            <span className="font-semibold text-foreground">{appName}</span> app
-            and remove all associated data.
+            <span className="font-semibold text-foreground">{appName}</span>{' '}
+            application and remove all associated data.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-2 pb-2">
+        <div className="space-y-2 pt-4 pb-2">
           <label className="font-medium text-sm" htmlFor="confirm-name">
             Please type your application name{' '}
             <span className="font-semibold text-foreground">"{appName}"</span>{' '}
@@ -88,7 +88,7 @@ export function DeleteAppDialog({
             disabled={deleteApp.isPending}
             id="confirm-name"
             onChange={(event) => setConfirmName(event.target.value)}
-            placeholder="Enter app name"
+            placeholder="Enter application name"
             type="text"
             value={confirmName}
           />
