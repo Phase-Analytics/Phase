@@ -181,6 +181,7 @@ export type AppsListResponse = {
 
 export type AppKeysResponse = {
   key: string;
+  keyRotatedAt: string | null;
 };
 
 export type AppTeamMember = {
