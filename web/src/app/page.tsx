@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { ThemeTogglerButton } from '@/components/theme-toggler';
 import {
   Accordion,
@@ -816,6 +817,110 @@ export default Example;`}</code>
                 <Button className="w-full" disabled>
                   <Spinner className="mr-2 size-4" />
                   Loading...
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+
+        <Separator />
+
+        <section className="space-y-4">
+          <h2 className="font-semibold text-2xl">Toast Notifications</h2>
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Toast Variants</CardTitle>
+                <CardDescription>
+                  Different types of toast notifications
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button
+                  className="w-full"
+                  onClick={() =>
+                    toast.success('Success! Your changes have been saved.')
+                  }
+                  variant="outline"
+                >
+                  Show Success Toast
+                </Button>
+                <Button
+                  className="w-full"
+                  onClick={() => toast.error('Error! Something went wrong.')}
+                  variant="outline"
+                >
+                  Show Error Toast
+                </Button>
+                <Button
+                  className="w-full"
+                  onClick={() =>
+                    toast.info('Info: Here is some information for you.')
+                  }
+                  variant="outline"
+                >
+                  Show Info Toast
+                </Button>
+                <Button
+                  className="w-full"
+                  onClick={() =>
+                    toast.warning('Warning! Please check your input.')
+                  }
+                  variant="outline"
+                >
+                  Show Warning Toast
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Toast with Actions</CardTitle>
+                <CardDescription>Interactive toast messages</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button
+                  className="w-full"
+                  onClick={() =>
+                    toast('Event has been created', {
+                      description: 'Sunday, December 03, 2023 at 9:00 AM',
+                      action: {
+                        label: 'Undo',
+                        onClick: () => console.log('Undo'),
+                      },
+                    })
+                  }
+                  variant="outline"
+                >
+                  Toast with Action
+                </Button>
+                <Button
+                  className="w-full"
+                  onClick={() =>
+                    toast.promise(
+                      new Promise((resolve) => setTimeout(resolve, 2000)),
+                      {
+                        loading: 'Loading...',
+                        success: 'Data loaded successfully!',
+                        error: 'Failed to load data.',
+                      }
+                    )
+                  }
+                  variant="outline"
+                >
+                  Promise Toast
+                </Button>
+                <Button
+                  className="w-full"
+                  onClick={() =>
+                    toast('Custom styled toast', {
+                      description: 'This toast has a custom duration',
+                      duration: 5000,
+                    })
+                  }
+                  variant="outline"
+                >
+                  Custom Duration (5s)
                 </Button>
               </CardContent>
             </Card>

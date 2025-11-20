@@ -4,7 +4,7 @@ import {
   AddSquareIcon,
   ArrowRight01Icon,
   ArtboardIcon,
-  CheckmarkCircle02Icon,
+  CheckmarkSquare01Icon,
   UnfoldMoreIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -93,7 +93,7 @@ export function AppSwitcher({ variant, onMobileClose }: AppSwitcherProps) {
                   {app.name}
                   <HugeiconsIcon
                     className="ml-auto size-4"
-                    icon={isSelected ? CheckmarkCircle02Icon : ArrowRight01Icon}
+                    icon={isSelected ? CheckmarkSquare01Icon : ArrowRight01Icon}
                   />
                 </DropdownMenuItem>
               );
@@ -158,7 +158,7 @@ export function AppSwitcher({ variant, onMobileClose }: AppSwitcherProps) {
                 {app.name}
                 <HugeiconsIcon
                   className="ml-auto size-4"
-                  icon={isSelected ? CheckmarkCircle02Icon : ArrowRight01Icon}
+                  icon={isSelected ? CheckmarkSquare01Icon : ArrowRight01Icon}
                 />
               </DropdownMenuItem>
             );

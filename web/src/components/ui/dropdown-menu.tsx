@@ -1,6 +1,6 @@
 import {
   ArrowRight01Icon,
-  CheckmarkCircle02Icon,
+  CheckmarkSquare01Icon,
   CircleIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -156,7 +156,7 @@ function DropdownMenuCheckboxItem({
             animate={{ opacity: 1, scale: 1 }}
             initial={{ opacity: 0, scale: 0.5 }}
           >
-            <HugeiconsIcon className="size-4" icon={CheckmarkCircle02Icon} />
+            <HugeiconsIcon className="size-4" icon={CheckmarkSquare01Icon} />
           </DropdownMenuItemIndicatorPrimitive>
         </span>
         {children}

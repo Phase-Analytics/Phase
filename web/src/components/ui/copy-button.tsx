@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckmarkCircle02Icon, Copy01Icon } from '@hugeicons/core-free-icons';
+import { CheckmarkSquare01Icon, Copy01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { AnimatePresence, motion } from 'motion/react';
@@ -94,7 +94,7 @@ function CopyButton({
     [onClick, copied, content, setIsCopied, onCopiedChange, delay]
   );
 
-  const Icon = isCopied ? CheckmarkCircle02Icon : Copy01Icon;
+  const Icon = isCopied ? CheckmarkSquare01Icon : Copy01Icon;
 
   return (
     <ButtonPrimitive

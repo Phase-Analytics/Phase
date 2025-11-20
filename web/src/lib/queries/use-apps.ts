@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { fetchApi } from '@/lib/api/client';
 import type {
   AppCreated,
@@ -51,8 +52,12 @@ export function useCreateApp() {
         method: 'POST',
         body: JSON.stringify(data),
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
+      toast.success(`App "${data.name}" created successfully!`);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to create app');
     },
   });
 }
@@ -65,6 +70,10 @@ export function useDeleteApp() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
+      toast.success('App deleted successfully');
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to delete app');
     },
   });
 }
@@ -77,6 +86,10 @@ export function useRotateAppKey() {
       }),
     onSuccess: (_, appId) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.apps.keys(appId) });
+      toast.success('API key rotated successfully');
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to rotate API key');
     },
   });
 }

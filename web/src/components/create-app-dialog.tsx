@@ -14,7 +14,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Loading } from '@/components/ui/loading';
+import { Spinner } from '@/components/ui/spinner';
 import { useCreateApp } from '@/lib/queries';
 
 type CreateAppDialogProps = {
@@ -138,7 +138,7 @@ export function CreateAppDialog({ children, onSuccess }: CreateAppDialogProps) {
               Cancel
             </Button>
             <Button disabled={!isValid || createApp.isPending} type="submit">
-              {createApp.isPending && <Loading size="sm" variant="button" />}
+              {createApp.isPending && <Spinner className="mr-2 size-4" />}
               {createApp.isPending ? 'Creating' : 'Create App'}
             </Button>
           </DialogFooter>

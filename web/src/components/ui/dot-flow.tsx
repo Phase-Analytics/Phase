@@ -34,7 +34,6 @@ export const DotLoader = ({
   const repeats = useRef(0);
   const interval = useRef<NodeJS.Timeout>(null);
 
-  // Generate stable unique keys once
   const dotKeys = useMemo(
     () => Array.from({ length: 49 }, (_, i) => `dot-${i}-${Date.now()}`),
     []
