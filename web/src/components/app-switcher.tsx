@@ -53,7 +53,10 @@ export function AppSwitcher({ variant, onMobileClose }: AppSwitcherProps) {
             <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <HugeiconsIcon className="size-4" icon={ArtboardIcon} />
             </div>
-            <div className="flex flex-col gap-0.5 leading-none">
+            <div
+              className="flex flex-col gap-0.5 leading-none"
+              suppressHydrationWarning
+            >
               {isPending ? (
                 <Skeleton className="h-4 w-20" />
               ) : (
@@ -126,7 +129,10 @@ export function AppSwitcher({ variant, onMobileClose }: AppSwitcherProps) {
           <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <HugeiconsIcon className="size-5" icon={ArtboardIcon} />
           </div>
-          <div className="flex flex-col items-start gap-0.5 leading-none">
+          <div
+            className="flex flex-col items-start gap-0.5 leading-none"
+            suppressHydrationWarning
+          >
             {isPending ? (
               <Skeleton className="h-4 w-24" />
             ) : (

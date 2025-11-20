@@ -1,21 +1,26 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AppSwitcher } from '@/components/app-switcher';
 
 export default function DashboardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const appId = searchParams.get('app');
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (appId) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && appId) {
       router.replace(`/dashboard/analytics/overview?app=${appId}`);
     }
-  }, [appId, router]);
+  }, [appId, router, mounted]);
 
-  if (appId) {
+  if (!mounted || appId) {
     return null;
   }
 
