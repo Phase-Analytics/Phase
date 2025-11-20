@@ -54,7 +54,12 @@ export function RemoveMemberDialog({
     <Dialog onOpenChange={handleOpenChange} open={open}>
       <DialogTrigger asChild>
         {children || (
-          <Button className="w-full sm:w-auto" size="sm" type="button" variant="destructive">
+          <Button
+            className="w-full sm:w-auto"
+            size="sm"
+            type="button"
+            variant="destructive"
+          >
             <HugeiconsIcon className="mr-1.5 size-3" icon={UserRemove01Icon} />
             Remove
           </Button>
