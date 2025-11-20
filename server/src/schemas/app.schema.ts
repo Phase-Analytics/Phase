@@ -77,10 +77,41 @@ export const appsListResponseSchema = z
   })
   .openapi('AppsListResponse');
 
+export const updateAppRequestSchema = z
+  .object({
+    name: z
+      .string()
+      .min(3, 'App name must be at least 3 characters')
+      .max(14, 'App name must be at most 14 characters')
+      .regex(
+        /^[a-zA-Z0-9\s-]+$/,
+        'App name can only contain letters, numbers, spaces, and hyphens'
+      )
+      .openapi({ example: 'My Renamed App' }),
+  })
+  .openapi('UpdateAppRequest');
+
+export const appDetailResponseSchema = z
+  .object({
+    id: z.string().openapi({ example: '87654321098765' }),
+    name: z.string().min(1).max(255).openapi({ example: 'My Awesome App' }),
+    image: z.string().url().nullable().openapi({
+      example: 'https://example.com/logo.png',
+    }),
+    createdAt: z
+      .string()
+      .datetime()
+      .openapi({ example: '2024-01-01T00:00:00Z' }),
+    role: z.enum(['owner', 'member']).openapi({ example: 'owner' }),
+  })
+  .openapi('AppDetailResponse');
+
 export type CreateAppRequest = z.infer<typeof createAppRequestSchema>;
+export type UpdateAppRequest = z.infer<typeof updateAppRequestSchema>;
 export type AppListItemSchema = z.infer<typeof appListItemSchema>;
 export type AppCreatedSchema = z.infer<typeof appCreatedSchema>;
 export type AppsListResponse = z.infer<typeof appsListResponseSchema>;
+export type AppDetailResponse = z.infer<typeof appDetailResponseSchema>;
 export type AppKeysResponse = z.infer<typeof appKeysResponseSchema>;
 export type AppTeamMember = z.infer<typeof appTeamMemberSchema>;
 export type AppTeamResponse = z.infer<typeof appTeamResponseSchema>;

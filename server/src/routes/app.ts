@@ -7,6 +7,7 @@ import { requireAuth } from '@/lib/middleware';
 import { methodNotAllowed } from '@/lib/response';
 import {
   appCreatedSchema,
+  appDetailResponseSchema,
   appKeysResponseSchema,
   appsListResponseSchema,
   appTeamResponseSchema,
@@ -14,6 +15,7 @@ import {
   ErrorCode,
   errorResponses,
   HttpStatus,
+  updateAppRequestSchema,
 } from '@/schemas';
 
 const createAppRoute = createRoute({
@@ -56,6 +58,25 @@ const listAppsRoute = createRoute({
       content: {
         'application/json': {
           schema: appsListResponseSchema,
+        },
+      },
+    },
+    ...errorResponses,
+  },
+});
+
+const getAppRoute = createRoute({
+  method: 'get',
+  path: '/:id',
+  tags: ['app'],
+  description: 'Get app details with user role',
+  security: [{ CookieAuth: [] }],
+  responses: {
+    200: {
+      description: 'App details',
+      content: {
+        'application/json': {
+          schema: appDetailResponseSchema,
         },
       },
     },
@@ -115,6 +136,34 @@ const deleteAppRoute = createRoute({
   },
 });
 
+const updateAppRoute = createRoute({
+  method: 'patch',
+  path: '/:id',
+  tags: ['app'],
+  description: 'Update app name (owner only)',
+  security: [{ CookieAuth: [] }],
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: updateAppRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: 'App updated successfully',
+      content: {
+        'application/json': {
+          schema: appCreatedSchema,
+        },
+      },
+    },
+    ...errorResponses,
+  },
+});
+
 const rotateAppKeyRoute = createRoute({
   method: 'post',
   path: '/:id/keys/rotate',
@@ -145,7 +194,7 @@ appWebRouter.use('*', requireAuth);
 
 appWebRouter.all('*', async (c, next) => {
   const method = c.req.method;
-  const allowedMethods = ['GET', 'POST', 'DELETE'];
+  const allowedMethods = ['GET', 'POST', 'PATCH', 'DELETE'];
 
   if (!allowedMethods.includes(method)) {
     return methodNotAllowed(c, allowedMethods);
@@ -244,6 +293,73 @@ appWebRouter.openapi(listAppsRoute, async (c: any) => {
       {
         code: ErrorCode.INTERNAL_SERVER_ERROR,
         detail: 'Failed to list apps',
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
+});
+
+// biome-ignore lint/suspicious/noExplicitAny: OpenAPI handler type inference issue with union response types
+appWebRouter.openapi(getAppRoute, async (c: any) => {
+  try {
+    const { id } = c.req.param();
+    const user = c.get('user');
+
+    if (!user?.id) {
+      return c.json(
+        {
+          code: ErrorCode.UNAUTHORIZED,
+          detail: 'User authentication required',
+        },
+        HttpStatus.UNAUTHORIZED
+      );
+    }
+
+    const app = await db.query.apps.findFirst({
+      where: (table, { eq: eqFn }) => eqFn(table.id, id),
+    });
+
+    if (!app) {
+      return c.json(
+        {
+          code: ErrorCode.NOT_FOUND,
+          detail: 'App not found',
+        },
+        HttpStatus.NOT_FOUND
+      );
+    }
+
+    const hasAccess =
+      app.userId === user.id || app.memberIds?.includes(user.id);
+
+    if (!hasAccess) {
+      return c.json(
+        {
+          code: ErrorCode.FORBIDDEN,
+          detail: 'Access denied',
+        },
+        HttpStatus.FORBIDDEN
+      );
+    }
+
+    const role = app.userId === user.id ? 'owner' : 'member';
+
+    return c.json(
+      {
+        id: app.id,
+        name: app.name,
+        image: app.image,
+        createdAt: app.createdAt.toISOString(),
+        role,
+      },
+      HttpStatus.OK
+    );
+  } catch (error) {
+    console.error('[App.Get] Error:', error);
+    return c.json(
+      {
+        code: ErrorCode.INTERNAL_SERVER_ERROR,
+        detail: 'Failed to get app details',
       },
       HttpStatus.INTERNAL_SERVER_ERROR
     );
@@ -454,6 +570,74 @@ appWebRouter.openapi(deleteAppRoute, async (c: any) => {
       {
         code: ErrorCode.INTERNAL_SERVER_ERROR,
         detail: 'Failed to delete app',
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
+});
+
+// biome-ignore lint/suspicious/noExplicitAny: OpenAPI handler type inference issue with union response types
+appWebRouter.openapi(updateAppRoute, async (c: any) => {
+  try {
+    const { id } = c.req.param();
+    const body = c.req.valid('json');
+    const user = c.get('user');
+
+    if (!user?.id) {
+      return c.json(
+        {
+          code: ErrorCode.UNAUTHORIZED,
+          detail: 'User authentication required',
+        },
+        HttpStatus.UNAUTHORIZED
+      );
+    }
+
+    const app = await db.query.apps.findFirst({
+      where: (table, { eq: eqFn }) => eqFn(table.id, id),
+    });
+
+    if (!app) {
+      return c.json(
+        {
+          code: ErrorCode.NOT_FOUND,
+          detail: 'App not found',
+        },
+        HttpStatus.NOT_FOUND
+      );
+    }
+
+    if (app.userId !== user.id) {
+      return c.json(
+        {
+          code: ErrorCode.FORBIDDEN,
+          detail: 'Only the app owner can update the app',
+        },
+        HttpStatus.FORBIDDEN
+      );
+    }
+
+    const [updatedApp] = await db
+      .update(apps)
+      .set({ name: body.name })
+      .where(eq(apps.id, id))
+      .returning();
+
+    return c.json(
+      {
+        id: updatedApp.id,
+        name: updatedApp.name,
+        image: updatedApp.image,
+        createdAt: updatedApp.createdAt.toISOString(),
+      },
+      HttpStatus.OK
+    );
+  } catch (error) {
+    console.error('[App.Update] Error:', error);
+    return c.json(
+      {
+        code: ErrorCode.INTERNAL_SERVER_ERROR,
+        detail: 'Failed to update app',
       },
       HttpStatus.INTERNAL_SERVER_ERROR
     );
