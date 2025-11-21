@@ -368,15 +368,13 @@ export async function getEventStats(options: GetEventStatsOptions): Promise<{
   const events24h = events24hResult[0]?.count || 0;
   const eventsYesterday = eventsYesterdayResult[0]?.count || 0;
 
+  const totalEventsYesterdayForCalc = Math.max(totalEventsYesterday, 1);
   const totalEventsChange24h =
-    totalEventsYesterday > 0
-      ? ((totalEvents - totalEventsYesterday) / totalEventsYesterday) * 100
-      : 0;
+    ((totalEvents - totalEventsYesterday) / totalEventsYesterdayForCalc) * 100;
 
+  const eventsYesterdayForCalc = Math.max(eventsYesterday, 1);
   const events24hChange =
-    eventsYesterday > 0
-      ? ((events24h - eventsYesterday) / eventsYesterday) * 100
-      : 0;
+    ((events24h - eventsYesterday) / eventsYesterdayForCalc) * 100;
 
   return {
     totalEvents,

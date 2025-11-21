@@ -292,19 +292,20 @@ sessionWebRouter.openapi(getSessionOverviewRoute, async (c: any) => {
       ? Number(avgDurationResult[0].avg)
       : null;
 
+    const totalSessionsYesterdayForCalc = Math.max(
+      totalSessionsYesterdayNum,
+      1
+    );
     const totalSessionsChange24h =
-      totalSessionsYesterdayNum > 0
-        ? ((totalSessionsNum - totalSessionsYesterdayNum) /
-            totalSessionsYesterdayNum) *
-          100
-        : 0;
+      ((totalSessionsNum - totalSessionsYesterdayNum) /
+        totalSessionsYesterdayForCalc) *
+      100;
 
+    const activeSessionsYesterdayForCalc = Math.max(activeSessionsYesterday, 1);
     const activeSessions24hChange =
-      activeSessionsYesterday > 0
-        ? ((activeSessions24h - activeSessionsYesterday) /
-            activeSessionsYesterday) *
-          100
-        : 0;
+      ((activeSessions24h - activeSessionsYesterday) /
+        activeSessionsYesterdayForCalc) *
+      100;
 
     return c.json(
       {
