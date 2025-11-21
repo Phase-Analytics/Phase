@@ -4,6 +4,7 @@ import type {
   DateRangeParams,
   DeviceDetail,
   DeviceLive,
+  DeviceMetric,
   DeviceOverview,
   DevicesListResponse,
   DeviceTimeseriesResponse,
@@ -74,18 +75,24 @@ export function useDeviceLive(appId: string) {
 
 export function useDeviceTimeseries(
   appId: string,
-  range?: TimeRange | DateRangeParams
+  range?: TimeRange | DateRangeParams,
+  metric?: DeviceMetric
 ) {
   const dateParams =
     range && typeof range === 'string'
       ? getTimeRangeDates(range)
       : (range as DateRangeParams | undefined);
 
+  const queryParams = {
+    ...dateParams,
+    ...(metric && { metric }),
+  };
+
   return useQuery({
-    queryKey: queryKeys.devices.timeseries(appId, dateParams),
+    queryKey: queryKeys.devices.timeseries(appId, queryParams),
     queryFn: () =>
       fetchApi<DeviceTimeseriesResponse>(
-        `/web/devices/timeseries${buildQueryString({ appId, ...dateParams })}`
+        `/web/devices/timeseries${buildQueryString({ appId, ...queryParams })}`
       ),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,

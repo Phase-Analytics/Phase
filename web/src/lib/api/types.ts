@@ -95,9 +95,12 @@ export type DeviceOverview = {
   activeDevicesChange24h: number;
 };
 
+export type DeviceMetric = 'dau' | 'total';
+
 export type DeviceTimeseriesDataPoint = {
   date: string;
-  activeUsers: number;
+  activeUsers?: number;
+  totalUsers?: number;
 };
 
 export type DeviceTimeseriesResponse = {

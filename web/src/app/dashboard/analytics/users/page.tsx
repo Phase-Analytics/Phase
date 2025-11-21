@@ -13,12 +13,18 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { parseAsInteger, parseAsString, useQueryState } from 'nuqs';
 import { RequireApp } from '@/components/require-app';
+import { TimescaleChart } from '@/components/timescale-chart';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { DataTableServer } from '@/components/ui/data-table-server';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Device } from '@/lib/api/types';
-import { useDeviceLive, useDeviceOverview, useDevices } from '@/lib/queries';
+import type { Device, DeviceMetric, TimeRange } from '@/lib/api/types';
+import {
+  useDeviceLive,
+  useDeviceOverview,
+  useDevices,
+  useDeviceTimeseries,
+} from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
 const columns: ColumnDef<Device>[] = [
@@ -118,6 +124,14 @@ export default function UsersPage() {
   const [pageSize] = useQueryState('pageSize', parseAsInteger.withDefault(5));
   const [search] = useQueryState('search', parseAsString.withDefault(''));
   const [filter] = useQueryState('filter', parseAsString.withDefault(''));
+  const [timeRange, setTimeRange] = useQueryState(
+    'range',
+    parseAsString.withDefault('7d')
+  );
+  const [metric, setMetric] = useQueryState(
+    'metric',
+    parseAsString.withDefault('total')
+  );
 
   const { data: overview, isPending: overviewLoading } = useDeviceOverview(
     appId || ''
@@ -132,6 +146,12 @@ export default function UsersPage() {
       platform: filter || undefined,
     }
   );
+  const { data: timeseriesData, isPending: timeseriesPending } =
+    useDeviceTimeseries(
+      appId || '',
+      timeRange as TimeRange,
+      metric as DeviceMetric
+    );
 
   const getChangeColor = (change: number) => {
     if (change === 0) {
@@ -139,6 +159,33 @@ export default function UsersPage() {
     }
     return change > 0 ? 'text-green-600' : 'text-red-600';
   };
+
+  const chartData = (() => {
+    if (!(timeseriesData?.data && timeseriesData.period)) {
+      return [];
+    }
+
+    const valueKey = metric === 'dau' ? 'activeUsers' : 'totalUsers';
+    const dataMap = new Map(
+      timeseriesData.data.map((item) => [item.date, item[valueKey] || 0])
+    );
+
+    const startDate = new Date(timeseriesData.period.startDate);
+    const endDate = new Date(timeseriesData.period.endDate);
+    const allDates: Array<{ date: string; value: number }> = [];
+
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      allDates.push({
+        date: dateStr,
+        value: dataMap.get(dateStr) || 0,
+      });
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return allDates;
+  })();
 
   return (
     <RequireApp>
@@ -150,9 +197,7 @@ export default function UsersPage() {
           </p>
         </div>
 
-        {/* Overview Stats */}
         <div className="grid gap-4 md:grid-cols-2">
-          {/* Total Users */}
           <Card className="py-0">
             <CardContent className="p-4">
               {overviewLoading || liveLoading ? (
@@ -209,7 +254,6 @@ export default function UsersPage() {
             </CardContent>
           </Card>
 
-          {/* Daily Active Users */}
           <Card className="py-0">
             <CardContent className="p-4">
               {overviewLoading ? (
@@ -258,7 +302,6 @@ export default function UsersPage() {
           </Card>
         </div>
 
-        {/* Platform Distribution */}
         <Card className="py-0">
           <CardContent className="space-y-4 p-4">
             <div>
@@ -376,7 +419,36 @@ export default function UsersPage() {
           </CardContent>
         </Card>
 
-        {/* All Users List */}
+        {appId && (
+          <TimescaleChart
+            chartColor="var(--color-chart-2)"
+            data={chartData}
+            dataKey="activeUsers"
+            dataLabel={metric === 'dau' ? 'Active Users' : 'Total Users'}
+            description={
+              metric === 'dau'
+                ? 'Daily active users over selected period'
+                : 'Cumulative total users over selected period'
+            }
+            isPending={timeseriesPending}
+            metric={metric}
+            metricOptions={[
+              { value: 'total', label: 'Total Users' },
+              { value: 'dau', label: 'Daily Active Users' },
+            ]}
+            onMetricChange={setMetric}
+            onTimeRangeChange={setTimeRange}
+            timeRange={timeRange}
+            timeRangeOptions={[
+              { value: '7d', label: '7 Days' },
+              { value: '30d', label: '1 Month' },
+              { value: '180d', label: '6 Months' },
+              { value: '360d', label: '1 Year' },
+            ]}
+            title="User Activity"
+          />
+        )}
+
         <Card className="py-0">
           <CardContent className="space-y-4 p-4">
             <div>
