@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { and, count, desc, eq, type SQL, sql } from 'drizzle-orm';
+import { and, count, desc, eq, or, type SQL, sql } from 'drizzle-orm';
 import { db, devices, sessions } from '@/db';
 import type { App, Session, User } from '@/db/schema';
 import { requireAppKey, requireAuth, verifyAppAccess } from '@/lib/middleware';
@@ -505,7 +505,13 @@ deviceWebRouter.openapi(getDevicesRoute, async (c) => {
     }
 
     if (query.identifier) {
-      filters.push(eq(devices.identifier, query.identifier));
+      const searchCondition = or(
+        eq(devices.identifier, query.identifier),
+        eq(devices.deviceId, query.identifier)
+      );
+      if (searchCondition) {
+        filters.push(searchCondition);
+      }
     }
 
     const whereClause = buildFilters({
