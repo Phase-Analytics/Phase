@@ -375,9 +375,20 @@ deviceWebRouter.openapi(getDeviceOverviewRoute, async (c: any) => {
         activeDevicesYesterdayForCalc) *
       100;
 
-    const platformStats: Record<string, number> = {};
+    const platformStats: Record<string, number> = {
+      ios: 0,
+      android: 0,
+      web: 0,
+      unknown: 0,
+    };
+
     for (const row of platformStatsResult) {
-      platformStats[row.platform] = Number(row.count);
+      const platform = row.platform.toLowerCase();
+      if (platform === 'ios' || platform === 'android' || platform === 'web') {
+        platformStats[platform] = Number(row.count);
+      } else {
+        platformStats.unknown += Number(row.count);
+      }
     }
 
     return c.json(
