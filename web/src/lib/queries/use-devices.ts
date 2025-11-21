@@ -14,6 +14,7 @@ import { queryKeys } from './query-keys';
 
 type DeviceFilters = PaginationParams & {
   platform?: string;
+  identifier?: string;
   startDate?: string;
   endDate?: string;
 };
