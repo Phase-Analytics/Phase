@@ -8,9 +8,21 @@ import type {
   DevicesListResponse,
   DeviceTimeseriesResponse,
   PaginationParams,
+  TimeRange,
 } from '../api/types';
 import { cacheConfig } from './query-client';
 import { queryKeys } from './query-keys';
+
+function getTimeRangeDates(range: TimeRange): DateRangeParams {
+  const now = new Date();
+  const days = Number.parseInt(range, 10);
+  const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+
+  return {
+    startDate: startDate.toISOString(),
+    endDate: now.toISOString(),
+  };
+}
 
 type DeviceFilters = PaginationParams & {
   platform?: string;
@@ -60,12 +72,20 @@ export function useDeviceLive(appId: string) {
   });
 }
 
-export function useDeviceTimeseries(appId: string, range?: DateRangeParams) {
+export function useDeviceTimeseries(
+  appId: string,
+  range?: TimeRange | DateRangeParams
+) {
+  const dateParams =
+    range && typeof range === 'string'
+      ? getTimeRangeDates(range)
+      : (range as DateRangeParams | undefined);
+
   return useQuery({
-    queryKey: queryKeys.devices.timeseries(appId, range),
+    queryKey: queryKeys.devices.timeseries(appId, dateParams),
     queryFn: () =>
       fetchApi<DeviceTimeseriesResponse>(
-        `/web/devices/timeseries${buildQueryString({ appId, ...range })}`
+        `/web/devices/timeseries${buildQueryString({ appId, ...dateParams })}`
       ),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,

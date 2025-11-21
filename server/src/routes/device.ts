@@ -127,7 +127,7 @@ const getDeviceTimeseriesRoute = createRoute({
   method: 'get',
   path: '/timeseries',
   tags: ['device'],
-  description: 'Get daily active users time-series (default: last year)',
+  description: 'Get daily active users time-series (default: last 7 days)',
   security: [{ CookieAuth: [] }],
   request: {
     query: deviceTimeseriesQuerySchema,
@@ -580,9 +580,9 @@ deviceWebRouter.openapi(getDeviceTimeseriesRoute, async (c: any) => {
     }
 
     const now = new Date();
-    const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    const start = startDate ? new Date(startDate) : oneYearAgo;
+    const start = startDate ? new Date(startDate) : sevenDaysAgo;
     const end = endDate ? new Date(endDate) : now;
 
     const result = await db
