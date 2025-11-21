@@ -22,6 +22,8 @@ import {
   sessionOverviewResponseSchema,
   sessionSchema,
   sessionsListResponseSchema,
+  sessionTimeseriesQuerySchema,
+  sessionTimeseriesResponseSchema,
 } from '@/schemas';
 
 const createSessionRoute = createRoute({
@@ -90,6 +92,29 @@ const getSessionOverviewRoute = createRoute({
       content: {
         'application/json': {
           schema: sessionOverviewResponseSchema,
+        },
+      },
+    },
+    ...errorResponses,
+  },
+});
+
+const getSessionTimeseriesRoute = createRoute({
+  method: 'get',
+  path: '/timeseries',
+  tags: ['session'],
+  description:
+    'Get session timeseries data (daily session count or average session duration)',
+  security: [{ CookieAuth: [] }],
+  request: {
+    query: sessionTimeseriesQuerySchema,
+  },
+  responses: {
+    200: {
+      description: 'Session timeseries data',
+      content: {
+        'application/json': {
+          schema: sessionTimeseriesResponseSchema,
         },
       },
     },
@@ -401,6 +426,98 @@ sessionWebRouter.openapi(getSessionsRoute, async (c) => {
       {
         code: ErrorCode.INTERNAL_SERVER_ERROR,
         detail: 'Failed to fetch sessions',
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
+});
+
+// biome-ignore lint/suspicious/noExplicitAny: OpenAPI handler type inference issue with union response types
+sessionWebRouter.openapi(getSessionTimeseriesRoute, async (c: any) => {
+  try {
+    const query = c.req.valid('query');
+    const { appId, startDate, endDate, metric = 'daily_sessions' } = query;
+
+    const now = new Date();
+    const defaultStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const start = startDate ? new Date(startDate) : defaultStart;
+    const end = endDate ? new Date(endDate) : now;
+
+    if (metric === 'daily_sessions') {
+      const result = await db
+        .select({
+          date: sql<string>`DATE(${sessions.startedAt})`,
+          dailySessions: sql<number>`COUNT(*)`,
+        })
+        .from(sessions)
+        .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
+        .where(
+          and(
+            eq(devices.appId, appId),
+            sql`${sessions.startedAt} >= ${start}`,
+            sql`${sessions.startedAt} < ${end}`
+          )
+        )
+        .groupBy(sql`DATE(${sessions.startedAt})`)
+        .orderBy(sql`DATE(${sessions.startedAt})`);
+
+      const data = result.map((row) => ({
+        date: row.date,
+        dailySessions: Number(row.dailySessions),
+      }));
+
+      return c.json(
+        {
+          data,
+          period: {
+            startDate: start.toISOString(),
+            endDate: end.toISOString(),
+          },
+        },
+        HttpStatus.OK
+      );
+    }
+
+    const result = await db
+      .select({
+        date: sql<string>`DATE(${sessions.startedAt})`,
+        avgDuration: sql<number | null>`AVG(
+          EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt}))
+        )`,
+      })
+      .from(sessions)
+      .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
+      .where(
+        and(
+          eq(devices.appId, appId),
+          sql`${sessions.startedAt} >= ${start}`,
+          sql`${sessions.startedAt} < ${end}`
+        )
+      )
+      .groupBy(sql`DATE(${sessions.startedAt})`)
+      .orderBy(sql`DATE(${sessions.startedAt})`);
+
+    const data = result.map((row) => ({
+      date: row.date,
+      avgDuration: row.avgDuration ? Number(row.avgDuration) : 0,
+    }));
+
+    return c.json(
+      {
+        data,
+        period: {
+          startDate: start.toISOString(),
+          endDate: end.toISOString(),
+        },
+      },
+      HttpStatus.OK
+    );
+  } catch (error) {
+    console.error('[Session.Timeseries] Error:', error);
+    return c.json(
+      {
+        code: ErrorCode.INTERNAL_SERVER_ERROR,
+        detail: 'Failed to fetch session timeseries',
       },
       HttpStatus.INTERNAL_SERVER_ERROR
     );

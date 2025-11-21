@@ -80,6 +80,53 @@ export const sessionOverviewResponseSchema = z
   })
   .openapi('SessionOverviewResponse');
 
+export const sessionTimeseriesMetricEnum = z.enum([
+  'daily_sessions',
+  'avg_duration',
+]);
+
+export const sessionTimeseriesQuerySchema = z
+  .object({
+    appId: z.string().openapi({ example: '123456789012345' }),
+    startDate: z
+      .string()
+      .datetime()
+      .optional()
+      .openapi({ example: '2024-01-01T00:00:00Z' }),
+    endDate: z
+      .string()
+      .datetime()
+      .optional()
+      .openapi({ example: '2024-01-31T23:59:59Z' }),
+    metric: sessionTimeseriesMetricEnum
+      .optional()
+      .default('daily_sessions')
+      .openapi({
+        example: 'daily_sessions',
+        description:
+          'Metric type: daily_sessions (Daily Session Count) or avg_duration (Average Session Duration in seconds)',
+      }),
+  })
+  .openapi('SessionTimeseriesQuery');
+
+export const sessionTimeseriesDataPointSchema = z
+  .object({
+    date: z.string().openapi({ example: '2024-01-01' }),
+    dailySessions: z.number().int().min(0).optional().openapi({ example: 542 }),
+    avgDuration: z.number().min(0).optional().openapi({ example: 180.5 }),
+  })
+  .openapi('SessionTimeseriesDataPoint');
+
+export const sessionTimeseriesResponseSchema = z
+  .object({
+    data: z.array(sessionTimeseriesDataPointSchema),
+    period: z.object({
+      startDate: z.string().datetime(),
+      endDate: z.string().datetime(),
+    }),
+  })
+  .openapi('SessionTimeseriesResponse');
+
 export type SessionSchema = z.infer<typeof sessionSchema>;
 export type CreateSessionRequest = z.infer<typeof createSessionRequestSchema>;
 export type ListSessionsQuery = z.infer<typeof listSessionsQuerySchema>;
@@ -87,4 +134,13 @@ export type SessionsListResponse = z.infer<typeof sessionsListResponseSchema>;
 export type SessionOverviewQuery = z.infer<typeof sessionOverviewQuerySchema>;
 export type SessionOverviewResponse = z.infer<
   typeof sessionOverviewResponseSchema
+>;
+export type SessionTimeseriesQuery = z.infer<
+  typeof sessionTimeseriesQuerySchema
+>;
+export type SessionTimeseriesDataPoint = z.infer<
+  typeof sessionTimeseriesDataPointSchema
+>;
+export type SessionTimeseriesResponse = z.infer<
+  typeof sessionTimeseriesResponseSchema
 >;
