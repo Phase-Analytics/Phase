@@ -40,7 +40,6 @@ export function AddMemberDialog({ appId, children }: AddMemberDialogProps) {
       return;
     }
 
-    // Basic email validation
     if (!EMAIL_REGEX.test(trimmedEmail)) {
       setError('Please enter a valid email address');
       return;
