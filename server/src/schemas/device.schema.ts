@@ -124,10 +124,11 @@ export const deviceTimeseriesQuerySchema = z
       .datetime()
       .optional()
       .openapi({ example: '2024-01-31T23:59:59Z' }),
-    metric: deviceTimeseriesMetricEnum
-      .optional()
-      .default('dau')
-      .openapi({ example: 'dau', description: 'Metric type: dau (Daily Active Users) or total (Total Users)' }),
+    metric: deviceTimeseriesMetricEnum.optional().default('dau').openapi({
+      example: 'dau',
+      description:
+        'Metric type: dau (Daily Active Users) or total (Total Users)',
+    }),
   })
   .openapi('DeviceTimeseriesQuery');
 
