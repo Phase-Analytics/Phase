@@ -4,7 +4,8 @@ import type { Context } from 'hono';
 import { db, devices, sessions } from '@/db';
 import { ErrorCode, HttpStatus } from '@/schemas';
 
-const MAX_PAGE_SIZE = 100;
+const MIN_PAGE_SIZE = 5;
+const MAX_PAGE_SIZE = 25;
 const MAX_TIMESTAMP_AGE_MS = 30 * 60 * 1000;
 
 export type ValidationResult<T = void> =
@@ -39,13 +40,13 @@ export function validatePagination(
     };
   }
 
-  if (Number.isNaN(pageSize) || pageSize < 1) {
+  if (Number.isNaN(pageSize) || pageSize < MIN_PAGE_SIZE) {
     return {
       success: false,
       response: c.json(
         {
           code: ErrorCode.VALIDATION_ERROR,
-          detail: 'Invalid pageSize parameter: must be a positive integer',
+          detail: `Invalid pageSize parameter: must be at least ${MIN_PAGE_SIZE}`,
         },
         HttpStatus.BAD_REQUEST
       ),
@@ -58,7 +59,7 @@ export function validatePagination(
       response: c.json(
         {
           code: ErrorCode.VALIDATION_ERROR,
-          detail: `Invalid pageSize parameter: must be between 1 and ${MAX_PAGE_SIZE}`,
+          detail: `Invalid pageSize parameter: must be between ${MIN_PAGE_SIZE} and ${MAX_PAGE_SIZE}`,
         },
         HttpStatus.BAD_REQUEST
       ),

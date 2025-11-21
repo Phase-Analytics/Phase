@@ -38,6 +38,7 @@ export const listDevicesQuerySchema = paginationQuerySchema
   .merge(dateFilterQuerySchema)
   .extend({
     platform: z.string().optional().openapi({ example: 'ios' }),
+    identifier: z.string().optional().openapi({ example: 'user@example.com' }),
     appId: z.string().openapi({ example: '123456789012345' }),
   })
   .openapi('ListDevicesQuery');

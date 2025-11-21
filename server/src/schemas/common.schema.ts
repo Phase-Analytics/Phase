@@ -79,7 +79,7 @@ export const paginationSchema = z
 
 export const paginationQuerySchema = z.object({
   page: z.string().optional().default('1').openapi({ example: '1' }),
-  pageSize: z.string().optional().default('50').openapi({ example: '50' }),
+  pageSize: z.string().optional().default('5').openapi({ example: '5' }),
 });
 
 export const dateFilterQuerySchema = z.object({
