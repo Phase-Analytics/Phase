@@ -69,6 +69,11 @@ export function DataTableServer<TData, TValue>({
   );
 
   const [searchValue, setSearchValue] = useState(params.search);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const table = useReactTable({
     data,
@@ -246,29 +251,35 @@ export function DataTableServer<TData, TValue>({
               'No results'
             )}
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button disabled={isLoading} size="sm" variant="outline">
-                Rows: {params.pageSize}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center">
-              {[5, 10, 15, 20, 25].map((size) => (
-                <DropdownMenuItem
-                  key={size}
-                  onClick={() => handlePageSizeChange(size)}
-                >
-                  <HugeiconsIcon
-                    className={
-                      params.pageSize === size ? 'opacity-100' : 'opacity-0'
-                    }
-                    icon={CheckmarkSquare01Icon}
-                  />
-                  {size}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {isMounted ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button disabled={isLoading} size="sm" variant="outline">
+                  Rows: {params.pageSize}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center">
+                {[5, 10, 15, 20, 25].map((size) => (
+                  <DropdownMenuItem
+                    key={size}
+                    onClick={() => handlePageSizeChange(size)}
+                  >
+                    <HugeiconsIcon
+                      className={
+                        params.pageSize === size ? 'opacity-100' : 'opacity-0'
+                      }
+                      icon={CheckmarkSquare01Icon}
+                    />
+                    {size}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button disabled size="sm" variant="outline">
+              Rows: {params.pageSize}
+            </Button>
+          )}
         </div>
 
         <Button
