@@ -1,6 +1,14 @@
 'use client';
 
-import { ArrowDown01Icon, ArrowUp01Icon } from '@hugeicons/core-free-icons';
+import {
+  AndroidIcon,
+  AnonymousIcon,
+  AppleIcon,
+  BrowserIcon,
+  ChartDownIcon,
+  ChartUpIcon,
+  ComputerPhoneSyncIcon,
+} from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { parseAsInteger, parseAsString, useQueryState } from 'nuqs';
@@ -10,7 +18,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { DataTableServer } from '@/components/ui/data-table-server';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Device } from '@/lib/api/types';
-import { useDeviceOverview, useDevices } from '@/lib/queries';
+import { useDeviceLive, useDeviceOverview, useDevices } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
 const columns: ColumnDef<Device>[] = [
@@ -53,12 +61,52 @@ const columns: ColumnDef<Device>[] = [
     size: 120,
     cell: ({ row }) => {
       const platform = row.getValue('platform') as string | null;
+
+      const getPlatformIcon = (p: string) => {
+        switch (p) {
+          case 'android':
+            return AndroidIcon;
+          case 'ios':
+            return AppleIcon;
+          case 'web':
+            return BrowserIcon;
+          default:
+            return AnonymousIcon;
+        }
+      };
+
+      const getPlatformLabel = (p: string) => {
+        switch (p) {
+          case 'android':
+            return 'Android';
+          case 'ios':
+            return 'iOS';
+          case 'web':
+            return 'Web';
+          default:
+            return 'Unknown';
+        }
+      };
+
       return platform ? (
-        <Badge className="text-xs" variant="outline">
-          {platform}
+        <Badge
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs"
+          variant="outline"
+        >
+          <HugeiconsIcon
+            className="size-3.5"
+            icon={getPlatformIcon(platform)}
+          />
+          {getPlatformLabel(platform)}
         </Badge>
       ) : (
-        <span className="text-muted-foreground text-sm">Unknown</span>
+        <Badge
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs"
+          variant="outline"
+        >
+          <HugeiconsIcon className="size-3.5" icon={AnonymousIcon} />
+          Unknown
+        </Badge>
       );
     },
   },
@@ -69,16 +117,19 @@ export default function UsersPage() {
   const [page] = useQueryState('page', parseAsInteger.withDefault(1));
   const [pageSize] = useQueryState('pageSize', parseAsInteger.withDefault(5));
   const [search] = useQueryState('search', parseAsString.withDefault(''));
+  const [filter] = useQueryState('filter', parseAsString.withDefault(''));
 
   const { data: overview, isPending: overviewLoading } = useDeviceOverview(
     appId || ''
   );
+  const { data: liveData, isPending: liveLoading } = useDeviceLive(appId || '');
   const { data: devicesData, isPending: devicesLoading } = useDevices(
     appId || '',
     {
       page: page.toString(),
       pageSize: pageSize.toString(),
       identifier: search || undefined,
+      platform: filter || undefined,
     }
   );
 
@@ -104,7 +155,7 @@ export default function UsersPage() {
           {/* Total Users */}
           <Card className="py-0">
             <CardContent className="p-4">
-              {overviewLoading ? (
+              {overviewLoading || liveLoading ? (
                 <div className="space-y-2">
                   <Skeleton className="h-4 w-24" />
                   <Skeleton className="h-8 w-20" />
@@ -112,7 +163,18 @@ export default function UsersPage() {
                 </div>
               ) : (
                 <>
-                  <p className="text-muted-foreground text-sm">Total Users</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-muted-foreground text-sm">Total Users</p>
+                    <div className="flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-2.5 py-0.5 dark:border-green-900/50 dark:bg-green-950/50">
+                      <div className="relative flex size-1.5">
+                        <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-400 opacity-75" />
+                        <span className="relative inline-flex size-1.5 rounded-full bg-green-500" />
+                      </div>
+                      <span className="font-medium text-[10px] text-green-700 dark:text-green-400">
+                        {liveData?.activeNow.toLocaleString() || 0} online
+                      </span>
+                    </div>
+                  </div>
                   <p className="font-bold text-3xl">
                     {overview?.totalDevices.toLocaleString() || 0}
                   </p>
@@ -125,8 +187,8 @@ export default function UsersPage() {
                         )}
                         icon={
                           (overview?.totalDevicesChange24h || 0) > 0
-                            ? ArrowUp01Icon
-                            : ArrowDown01Icon
+                            ? ChartUpIcon
+                            : ChartDownIcon
                         }
                       />
                     )}
@@ -173,8 +235,8 @@ export default function UsersPage() {
                         )}
                         icon={
                           (overview?.activeDevicesChange24h || 0) > 0
-                            ? ArrowUp01Icon
-                            : ArrowDown01Icon
+                            ? ChartUpIcon
+                            : ChartDownIcon
                         }
                       />
                     )}
@@ -209,6 +271,16 @@ export default function UsersPage() {
             <DataTableServer
               columns={columns}
               data={devicesData?.devices || []}
+              filterAllIcon={ComputerPhoneSyncIcon}
+              filterIcon={ComputerPhoneSyncIcon}
+              filterKey="platform"
+              filterOptions={[
+                { label: 'Android', value: 'android', icon: AndroidIcon },
+                { label: 'iOS', value: 'ios', icon: AppleIcon },
+                { label: 'Web', value: 'web', icon: BrowserIcon },
+                { label: 'Unknown', value: 'unknown', icon: AnonymousIcon },
+              ]}
+              filterPlaceholder="Platform"
               isLoading={devicesLoading}
               pagination={
                 devicesData?.pagination || {
