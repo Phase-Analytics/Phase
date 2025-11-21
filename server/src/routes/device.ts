@@ -572,7 +572,7 @@ deviceWebRouter.openapi(getDevicesRoute, async (c) => {
 deviceWebRouter.openapi(getDeviceTimeseriesRoute, async (c: any) => {
   try {
     const query = c.req.valid('query');
-    const { appId, startDate, endDate } = query;
+    const { appId, startDate, endDate, metric = 'dau' } = query;
 
     const dateRangeValidation = validateDateRange(c, startDate, endDate);
     if (!dateRangeValidation.success) {
@@ -585,27 +585,66 @@ deviceWebRouter.openapi(getDeviceTimeseriesRoute, async (c: any) => {
     const start = startDate ? new Date(startDate) : sevenDaysAgo;
     const end = endDate ? new Date(endDate) : now;
 
+    if (metric === 'dau') {
+      // Daily Active Users: count distinct devices per day based on session activity
+      const result = await db
+        .select({
+          date: sql<string>`DATE(${sessions.lastActivityAt})`,
+          activeUsers: sql<number>`COUNT(DISTINCT ${sessions.deviceId})`,
+        })
+        .from(sessions)
+        .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
+        .where(
+          and(
+            eq(devices.appId, appId),
+            sql`${sessions.lastActivityAt} >= ${start}`,
+            sql`${sessions.lastActivityAt} < ${end}`
+          )
+        )
+        .groupBy(sql`DATE(${sessions.lastActivityAt})`)
+        .orderBy(sql`DATE(${sessions.lastActivityAt})`);
+
+      const data = result.map((row) => ({
+        date: row.date,
+        activeUsers: Number(row.activeUsers),
+      }));
+
+      return c.json(
+        {
+          data,
+          period: {
+            startDate: start.toISOString(),
+            endDate: end.toISOString(),
+          },
+        },
+        HttpStatus.OK
+      );
+    }
+
     const result = await db
       .select({
-        date: sql<string>`DATE(${sessions.lastActivityAt})`,
-        activeUsers: sql<number>`COUNT(DISTINCT ${sessions.deviceId})`,
+        date: sql<string>`DATE(${devices.firstSeen})`,
+        totalUsers: sql<number>`COUNT(DISTINCT ${devices.deviceId})`,
       })
-      .from(sessions)
-      .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
+      .from(devices)
       .where(
         and(
           eq(devices.appId, appId),
-          sql`${sessions.lastActivityAt} >= ${start}`,
-          sql`${sessions.lastActivityAt} < ${end}`
+          sql`${devices.firstSeen} >= ${start}`,
+          sql`${devices.firstSeen} < ${end}`
         )
       )
-      .groupBy(sql`DATE(${sessions.lastActivityAt})`)
-      .orderBy(sql`DATE(${sessions.lastActivityAt})`);
+      .groupBy(sql`DATE(${devices.firstSeen})`)
+      .orderBy(sql`DATE(${devices.firstSeen})`);
 
-    const data = result.map((row) => ({
-      date: row.date,
-      activeUsers: Number(row.activeUsers),
-    }));
+    let cumulativeTotal = 0;
+    const data = result.map((row) => {
+      cumulativeTotal += Number(row.totalUsers);
+      return {
+        date: row.date,
+        totalUsers: cumulativeTotal,
+      };
+    });
 
     return c.json(
       {

@@ -109,6 +109,8 @@ export const deviceOverviewResponseSchema = z
   })
   .openapi('DeviceOverviewResponse');
 
+export const deviceTimeseriesMetricEnum = z.enum(['dau', 'total']);
+
 export const deviceTimeseriesQuerySchema = z
   .object({
     appId: z.string().openapi({ example: '123456789012345' }),
@@ -122,13 +124,18 @@ export const deviceTimeseriesQuerySchema = z
       .datetime()
       .optional()
       .openapi({ example: '2024-01-31T23:59:59Z' }),
+    metric: deviceTimeseriesMetricEnum
+      .optional()
+      .default('dau')
+      .openapi({ example: 'dau', description: 'Metric type: dau (Daily Active Users) or total (Total Users)' }),
   })
   .openapi('DeviceTimeseriesQuery');
 
 export const deviceTimeseriesDataPointSchema = z
   .object({
     date: z.string().openapi({ example: '2024-01-01' }),
-    activeUsers: z.number().int().min(0).openapi({ example: 342 }),
+    activeUsers: z.number().int().min(0).optional().openapi({ example: 342 }),
+    totalUsers: z.number().int().min(0).optional().openapi({ example: 1250 }),
   })
   .openapi('DeviceTimeseriesDataPoint');
 
