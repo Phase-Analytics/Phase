@@ -56,7 +56,8 @@ export function useSessionOverview(appId: string) {
 export function useSessionTimeseries(
   appId: string,
   range?: TimeRange | DateRangeParams,
-  metric?: SessionMetric
+  metric?: SessionMetric,
+  enabled = true
 ) {
   const dateParams =
     range && typeof range === 'string'
@@ -76,6 +77,6 @@ export function useSessionTimeseries(
       ),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
-    enabled: Boolean(appId),
+    enabled: Boolean(appId) && enabled,
   });
 }

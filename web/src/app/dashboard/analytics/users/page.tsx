@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { DataTableServer } from '@/components/ui/data-table-server';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Device, DeviceMetric, TimeRange } from '@/lib/api/types';
+import type { Device, TimeRange } from '@/lib/api/types';
 import {
   useDeviceLive,
   useDeviceOverview,
@@ -146,12 +146,22 @@ export default function UsersPage() {
       platform: filter || undefined,
     }
   );
-  const { data: timeseriesData, isPending: timeseriesPending } =
-    useDeviceTimeseries(
-      appId || '',
-      timeRange as TimeRange,
-      metric as DeviceMetric
-    );
+
+  const { data: dauData, isPending: dauPending } = useDeviceTimeseries(
+    appId || '',
+    timeRange as TimeRange,
+    'dau',
+    metric === 'dau'
+  );
+  const { data: totalData, isPending: totalPending } = useDeviceTimeseries(
+    appId || '',
+    timeRange as TimeRange,
+    'total',
+    metric === 'total'
+  );
+
+  const timeseriesData = metric === 'dau' ? dauData : totalData;
+  const timeseriesPending = metric === 'dau' ? dauPending : totalPending;
 
   const getChangeColor = (change: number) => {
     if (change === 0) {

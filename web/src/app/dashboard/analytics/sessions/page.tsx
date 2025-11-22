@@ -9,7 +9,7 @@ import { TimescaleChart } from '@/components/timescale-chart';
 import { Card, CardContent } from '@/components/ui/card';
 import { DataTableServer } from '@/components/ui/data-table-server';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Session, SessionMetric, TimeRange } from '@/lib/api/types';
+import type { Session, TimeRange } from '@/lib/api/types';
 import {
   useSessionOverview,
   useSessions,
@@ -101,12 +101,26 @@ export default function SessionsPage() {
       deviceId: search || undefined,
     }
   );
-  const { data: timeseriesData, isPending: timeseriesPending } =
+
+  const { data: dailySessionsData, isPending: dailySessionsPending } =
     useSessionTimeseries(
       appId || '',
       timeRange as TimeRange,
-      metric as SessionMetric
+      'daily_sessions',
+      metric === 'daily_sessions'
     );
+  const { data: avgDurationData, isPending: avgDurationPending } =
+    useSessionTimeseries(
+      appId || '',
+      timeRange as TimeRange,
+      'avg_duration',
+      metric === 'avg_duration'
+    );
+
+  const timeseriesData =
+    metric === 'daily_sessions' ? dailySessionsData : avgDurationData;
+  const timeseriesPending =
+    metric === 'daily_sessions' ? dailySessionsPending : avgDurationPending;
 
   const getChangeColor = (change: number) => {
     if (change === 0) {

@@ -76,7 +76,8 @@ export function useDeviceLive(appId: string) {
 export function useDeviceTimeseries(
   appId: string,
   range?: TimeRange | DateRangeParams,
-  metric?: DeviceMetric
+  metric?: DeviceMetric,
+  enabled = true
 ) {
   const dateParams =
     range && typeof range === 'string'
@@ -96,6 +97,6 @@ export function useDeviceTimeseries(
       ),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
-    enabled: Boolean(appId),
+    enabled: Boolean(appId) && enabled,
   });
 }
