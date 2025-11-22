@@ -39,6 +39,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { PaginationResponse } from '@/lib/api/types';
+import { cn } from '@/lib/utils';
 import { usePaginationStore } from '@/stores/pagination-store';
 
 type FilterOption = {
@@ -211,8 +212,14 @@ export function DataTableServer<TData, TValue>({
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
+                {headerGroup.headers.map((header, index) => (
                   <TableHead
+                    className={cn(
+                      'bg-muted/50 font-semibold',
+                      index < headerGroup.headers.length - 1
+                        ? 'border-border border-r'
+                        : ''
+                    )}
                     key={header.id}
                     style={{ width: header.getSize() }}
                   >
@@ -229,36 +236,52 @@ export function DataTableServer<TData, TValue>({
           </TableHeader>
           <TableBody>
             {isLoading
-              ? Array.from({ length: 10 }, (_, i) => i).map((rowIndex) => (
-                  <TableRow key={`loading-row-${rowIndex}`}>
-                    {table.getHeaderGroups()[0]?.headers.map((header) => (
-                      <TableCell
-                        key={`loading-${rowIndex}-${header.id}`}
-                        style={{ width: header.getSize() }}
-                      >
-                        <Skeleton className="h-6 w-full" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
+              ? Array.from({ length: 10 }, (_, i) => i).map((rowIndex) => {
+                  const headers = table.getHeaderGroups()[0]?.headers || [];
+                  return (
+                    <TableRow key={`loading-row-${rowIndex}`}>
+                      {headers.map((header, index) => (
+                        <TableCell
+                          className={
+                            index < headers.length - 1
+                              ? 'border-border border-r'
+                              : ''
+                          }
+                          key={`loading-${rowIndex}-${header.id}`}
+                          style={{ width: header.getSize() }}
+                        >
+                          <Skeleton className="h-6 w-full" />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  );
+                })
               : null}
 
             {!isLoading && table.getRowModel().rows?.length
-              ? table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id}>
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        style={{ width: cell.column.getSize() }}
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
+              ? table.getRowModel().rows.map((row) => {
+                  const cells = row.getVisibleCells();
+                  return (
+                    <TableRow key={row.id}>
+                      {cells.map((cell, index) => (
+                        <TableCell
+                          className={
+                            index < cells.length - 1
+                              ? 'border-border border-r'
+                              : ''
+                          }
+                          key={cell.id}
+                          style={{ width: cell.column.getSize() }}
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  );
+                })
               : null}
 
             {isLoading || table.getRowModel().rows?.length ? null : (

@@ -30,7 +30,7 @@ import { cn } from '@/lib/utils';
 const columns: ColumnDef<Device>[] = [
   {
     accessorKey: 'deviceId',
-    header: 'ID',
+    header: 'User ID',
     size: 400,
     cell: ({ row }) => (
       <div
