@@ -105,6 +105,7 @@ services:
       - NODE_ENV=development
       - PORT=3001
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - BETTER_AUTH_TELEMETRY=0
       - SERVER_URL=${SERVER_URL}
       - WEB_URL=${WEB_URL}
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/telemetra
@@ -138,11 +139,13 @@ services:
       args:
         - NODE_ENV=production
         - NEXT_TELEMETRY_DISABLED=1
+        - BETTER_AUTH_TELEMETRY=0
         - NEXT_PUBLIC_SERVER_URL=${SERVER_URL}
     container_name: telemetra-web
     environment:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
+      - BETTER_AUTH_TELEMETRY=0
       - NEXT_PUBLIC_SERVER_URL=${SERVER_URL}
     expose:
       - "3002"

@@ -34,4 +34,7 @@ export const auth = betterAuth({
         process.env.NODE_ENV === 'production' ? '.telemetra.dev' : undefined,
     },
   },
+  experimental: {
+    joins: true,
+  },
 });

@@ -64,8 +64,16 @@ export const appTeamResponseSchema = z
       }),
     members: z.array(appTeamMemberSchema).openapi({
       example: [
-        { userId: 'user_456', email: 'member1@example.com', name: 'Jane Smith' },
-        { userId: 'user_789', email: 'member2@example.com', name: 'Bob Wilson' },
+        {
+          userId: 'user_456',
+          email: 'member1@example.com',
+          name: 'Jane Smith',
+        },
+        {
+          userId: 'user_789',
+          email: 'member2@example.com',
+          name: 'Bob Wilson',
+        },
       ],
     }),
   })

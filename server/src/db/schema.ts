@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import { boolean, index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 
 export const user = pgTable('user', {
@@ -151,6 +151,49 @@ export const sessions = pgTable(
     ),
   })
 );
+
+export const userRelations = relations(user, ({ many }) => ({
+  sessions: many(session),
+  accounts: many(account),
+  apps: many(apps),
+}));
+
+export const sessionRelations = relations(session, ({ one }) => ({
+  users: one(user, {
+    fields: [session.userId],
+    references: [user.id],
+  }),
+}));
+
+export const accountRelations = relations(account, ({ one }) => ({
+  users: one(user, {
+    fields: [account.userId],
+    references: [user.id],
+  }),
+}));
+
+export const appRelations = relations(apps, ({ one, many }) => ({
+  user: one(user, {
+    fields: [apps.userId],
+    references: [user.id],
+  }),
+  devices: many(devices),
+}));
+
+export const deviceRelations = relations(devices, ({ one, many }) => ({
+  app: one(apps, {
+    fields: [devices.appId],
+    references: [apps.id],
+  }),
+  sessions: many(sessions),
+}));
+
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  device: one(devices, {
+    fields: [sessions.deviceId],
+    references: [devices.deviceId],
+  }),
+}));
 
 export type User = typeof user.$inferSelect;
 export type NewUser = typeof user.$inferInsert;
