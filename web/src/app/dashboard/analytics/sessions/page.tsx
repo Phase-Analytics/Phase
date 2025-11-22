@@ -335,6 +335,9 @@ export default function SessionsPage() {
               metric === 'avg_duration'
                 ? (value) => {
                     const seconds = Math.floor(value);
+                    if (seconds === 0) {
+                      return '0s';
+                    }
                     if (seconds < 60) {
                       return `${seconds}s`;
                     }

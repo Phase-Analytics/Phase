@@ -91,12 +91,7 @@ export function TimescaleChart({
   const currentOption = timeRangeOptions.find((opt) => opt.value === timeRange);
   const currentLabel = currentOption?.label || timeRangeOptions[0]?.label;
 
-  const defaultFormatter = (value: number) => {
-    if (value === 0) {
-      return 'No Data';
-    }
-    return value;
-  };
+  const defaultFormatter = (value: number) => value;
 
   if (!isMounted) {
     return (
@@ -251,18 +246,14 @@ export function TimescaleChart({
                       const formattedValue = valueFormatter
                         ? valueFormatter(value as number)
                         : defaultFormatter(value as number);
-                      const isNoData =
-                        value === 0 || formattedValue === 'No Data';
                       return (
                         <div className="flex flex-col gap-0.5">
                           <div className="font-semibold text-base tabular-nums">
                             {formattedValue}
                           </div>
-                          {!isNoData && (
-                            <div className="text-muted-foreground text-xs">
-                              {dataLabel}
-                            </div>
-                          )}
+                          <div className="text-muted-foreground text-xs">
+                            {dataLabel}
+                          </div>
                         </div>
                       );
                     }}
