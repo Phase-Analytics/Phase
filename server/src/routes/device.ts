@@ -1,5 +1,17 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { and, count, desc, eq, or, type SQL, sql } from 'drizzle-orm';
+import {
+  and,
+  count,
+  countDistinct,
+  desc,
+  eq,
+  gte,
+  lt,
+  lte,
+  or,
+  type SQL,
+  sql,
+} from 'drizzle-orm';
 import { db, devices, sessions } from '@/db';
 import type { App, Session, User } from '@/db/schema';
 import { requireAppKey, requireAuth, verifyAppAccess } from '@/lib/middleware';
@@ -304,8 +316,8 @@ deviceWebRouter.openapi(getDeviceOverviewRoute, async (c: any) => {
     const [
       [{ count: totalDevices }],
       [{ count: totalDevicesYesterday }],
-      activeDevices24hResult,
-      activeDevicesYesterdayResult,
+      [{ count: activeDevices24h }],
+      [{ count: activeDevicesYesterday }],
       platformStatsResult,
     ] = await Promise.all([
       db
@@ -319,31 +331,31 @@ deviceWebRouter.openapi(getDeviceOverviewRoute, async (c: any) => {
         .where(
           and(
             eq(devices.appId, appId),
-            sql`${devices.firstSeen} < ${twentyFourHoursAgo}`
+            lt(devices.firstSeen, twentyFourHoursAgo)
           )
         ),
 
       db
-        .selectDistinct({ deviceId: sessions.deviceId })
+        .select({ count: countDistinct(sessions.deviceId) })
         .from(sessions)
         .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
         .where(
           and(
             eq(devices.appId, appId),
-            sql`${sessions.lastActivityAt} >= ${twentyFourHoursAgo}`,
-            sql`${sessions.lastActivityAt} <= ${now}`
+            gte(sessions.lastActivityAt, twentyFourHoursAgo),
+            lte(sessions.lastActivityAt, now)
           )
         ),
 
       db
-        .selectDistinct({ deviceId: sessions.deviceId })
+        .select({ count: countDistinct(sessions.deviceId) })
         .from(sessions)
         .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
         .where(
           and(
             eq(devices.appId, appId),
-            sql`${sessions.lastActivityAt} >= ${fortyEightHoursAgo}`,
-            sql`${sessions.lastActivityAt} < ${twentyFourHoursAgo}`
+            gte(sessions.lastActivityAt, fortyEightHoursAgo),
+            lt(sessions.lastActivityAt, twentyFourHoursAgo)
           )
         ),
 
@@ -357,11 +369,10 @@ deviceWebRouter.openapi(getDeviceOverviewRoute, async (c: any) => {
         .groupBy(devices.platform),
     ]);
 
-    const activeDevices24h = activeDevices24hResult.length;
-    const activeDevicesYesterday = activeDevicesYesterdayResult.length;
-
     const totalDevicesNum = Number(totalDevices);
     const totalDevicesYesterdayNum = Number(totalDevicesYesterday);
+    const activeDevices24hNum = Number(activeDevices24h);
+    const activeDevicesYesterdayNum = Number(activeDevicesYesterday);
 
     const totalDevicesYesterdayForCalc = Math.max(totalDevicesYesterdayNum, 1);
     const totalDevicesChange24h =
@@ -369,9 +380,12 @@ deviceWebRouter.openapi(getDeviceOverviewRoute, async (c: any) => {
         totalDevicesYesterdayForCalc) *
       100;
 
-    const activeDevicesYesterdayForCalc = Math.max(activeDevicesYesterday, 1);
+    const activeDevicesYesterdayForCalc = Math.max(
+      activeDevicesYesterdayNum,
+      1
+    );
     const activeDevicesChange24h =
-      ((activeDevices24h - activeDevicesYesterday) /
+      ((activeDevices24hNum - activeDevicesYesterdayNum) /
         activeDevicesYesterdayForCalc) *
       100;
 
@@ -394,7 +408,7 @@ deviceWebRouter.openapi(getDeviceOverviewRoute, async (c: any) => {
     return c.json(
       {
         totalDevices: totalDevicesNum,
-        activeDevices24h,
+        activeDevices24h: activeDevices24hNum,
         platformStats,
         totalDevicesChange24h: Number(totalDevicesChange24h.toFixed(2)),
         activeDevicesChange24h: Number(activeDevicesChange24h.toFixed(2)),
@@ -422,21 +436,21 @@ deviceWebRouter.openapi(getDeviceLiveRoute, async (c: any) => {
     const now = new Date();
     const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
 
-    const activeDevicesResult = await db
-      .selectDistinct({ deviceId: sessions.deviceId })
+    const [{ count: activeNow }] = await db
+      .select({ count: countDistinct(sessions.deviceId) })
       .from(sessions)
       .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
       .where(
         and(
           eq(devices.appId, appId),
-          sql`${sessions.lastActivityAt} >= ${oneMinuteAgo}`,
-          sql`${sessions.lastActivityAt} <= ${now}`
+          gte(sessions.lastActivityAt, oneMinuteAgo),
+          lte(sessions.lastActivityAt, now)
         )
       );
 
     return c.json(
       {
-        activeNow: activeDevicesResult.length,
+        activeNow: Number(activeNow),
       },
       HttpStatus.OK
     );

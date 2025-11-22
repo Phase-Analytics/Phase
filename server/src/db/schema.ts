@@ -95,8 +95,10 @@ export const apps = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => ({
-    userIdIdx: index('apps_user_id_idx').on(table.userId),
-    keyIdx: index('apps_key_idx').on(table.key),
+    userIdCreatedAtIdx: index('apps_user_id_created_at_idx').on(
+      table.userId,
+      table.createdAt.desc()
+    ),
     memberIdsIdx: index('apps_member_ids_idx').using('gin', table.memberIds),
   })
 );
@@ -117,7 +119,10 @@ export const devices = pgTable(
   },
   (table) => ({
     appIdIdx: index('devices_app_id_idx').on(table.appId),
-    platformIdx: index('devices_platform_idx').on(table.platform),
+    appIdFirstSeenIdx: index('devices_app_id_first_seen_idx').on(
+      table.appId,
+      table.firstSeen.desc()
+    ),
   })
 );
 
@@ -136,8 +141,13 @@ export const sessions = pgTable(
       table.deviceId,
       table.startedAt.desc()
     ),
+    startedAtIdx: index('sessions_started_at_idx').on(table.startedAt.desc()),
     lastActivityAtIdx: index('sessions_analytics_last_activity_at_idx').on(
-      table.lastActivityAt
+      table.lastActivityAt.desc()
+    ),
+    deviceLastActivityIdx: index('sessions_device_last_activity_idx').on(
+      table.deviceId,
+      table.lastActivityAt.desc()
     ),
   })
 );

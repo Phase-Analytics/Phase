@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { and, count, desc, eq, type SQL, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gte, lt, lte, type SQL, sql } from 'drizzle-orm';
 import { db, devices, sessions } from '@/db';
 import type { App, Session, User } from '@/db/schema';
 import { requireAppKey, requireAuth, verifyAppAccess } from '@/lib/middleware';
@@ -268,7 +268,7 @@ sessionWebRouter.openapi(getSessionOverviewRoute, async (c: any) => {
         .where(
           and(
             eq(devices.appId, appId),
-            sql`${sessions.startedAt} < ${twentyFourHoursAgo}`
+            lt(sessions.startedAt, twentyFourHoursAgo)
           )
         ),
 
@@ -279,8 +279,8 @@ sessionWebRouter.openapi(getSessionOverviewRoute, async (c: any) => {
         .where(
           and(
             eq(devices.appId, appId),
-            sql`${sessions.startedAt} >= ${twentyFourHoursAgo}`,
-            sql`${sessions.startedAt} <= ${now}`
+            gte(sessions.startedAt, twentyFourHoursAgo),
+            lte(sessions.startedAt, now)
           )
         ),
 
@@ -291,8 +291,8 @@ sessionWebRouter.openapi(getSessionOverviewRoute, async (c: any) => {
         .where(
           and(
             eq(devices.appId, appId),
-            sql`${sessions.startedAt} >= ${fortyEightHoursAgo}`,
-            sql`${sessions.startedAt} < ${twentyFourHoursAgo}`
+            gte(sessions.startedAt, fortyEightHoursAgo),
+            lt(sessions.startedAt, twentyFourHoursAgo)
           )
         ),
 
