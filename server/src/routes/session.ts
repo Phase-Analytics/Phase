@@ -466,24 +466,29 @@ sessionWebRouter.openapi(getSessionTimeseriesRoute, async (c: any) => {
     const end = endDate ? new Date(endDate) : now;
 
     if (metric === 'daily_sessions') {
-      const result = await db
-        .select({
-          date: sql<string>`DATE(${sessions.startedAt})`,
-          dailySessions: sql<number>`COUNT(*)`,
-        })
-        .from(sessions)
-        .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
-        .where(
-          and(
-            eq(devices.appId, appId),
-            sql`${sessions.startedAt} >= ${start}`,
-            sql`${sessions.startedAt} < ${end}`
-          )
+      const result = await db.execute<{
+        date: string;
+        dailySessions: number;
+      }>(sql`
+        WITH date_series AS (
+          SELECT DATE(generate_series(
+            ${start}::timestamp,
+            ${end}::timestamp,
+            '1 day'::interval
+          )) as date
         )
-        .groupBy(sql`DATE(${sessions.startedAt})`)
-        .orderBy(sql`DATE(${sessions.startedAt})`);
+        SELECT
+          ds.date::text,
+          COALESCE(COUNT(s.session_id), 0)::int as "dailySessions"
+        FROM date_series ds
+        LEFT JOIN sessions s ON DATE(s.started_at) = ds.date
+        LEFT JOIN devices d ON s.device_id = d.device_id AND d.app_id = ${appId}
+        WHERE ds.date <= CURRENT_DATE
+        GROUP BY ds.date
+        ORDER BY ds.date
+      `);
 
-      const data = result.map((row) => ({
+      const data = result.rows.map((row) => ({
         date: row.date,
         dailySessions: Number(row.dailySessions),
       }));
@@ -500,28 +505,34 @@ sessionWebRouter.openapi(getSessionTimeseriesRoute, async (c: any) => {
       );
     }
 
-    const result = await db
-      .select({
-        date: sql<string>`DATE(${sessions.startedAt})`,
-        avgDuration: sql<number | null>`AVG(
-          EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt}))
-        )`,
-      })
-      .from(sessions)
-      .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
-      .where(
-        and(
-          eq(devices.appId, appId),
-          sql`${sessions.startedAt} >= ${start}`,
-          sql`${sessions.startedAt} < ${end}`
-        )
+    const result = await db.execute<{
+      date: string;
+      avgDuration: number;
+    }>(sql`
+      WITH date_series AS (
+        SELECT DATE(generate_series(
+          ${start}::timestamp,
+          ${end}::timestamp,
+          '1 day'::interval
+        )) as date
       )
-      .groupBy(sql`DATE(${sessions.startedAt})`)
-      .orderBy(sql`DATE(${sessions.startedAt})`);
+      SELECT
+        ds.date::text,
+        COALESCE(
+          AVG(EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at))),
+          0
+        )::float as "avgDuration"
+      FROM date_series ds
+      LEFT JOIN sessions s ON DATE(s.started_at) = ds.date
+      LEFT JOIN devices d ON s.device_id = d.device_id AND d.app_id = ${appId}
+      WHERE ds.date <= CURRENT_DATE
+      GROUP BY ds.date
+      ORDER BY ds.date
+    `);
 
-    const data = result.map((row) => ({
+    const data = result.rows.map((row) => ({
       date: row.date,
-      avgDuration: row.avgDuration ? Number(row.avgDuration) : 0,
+      avgDuration: Number(row.avgDuration),
     }));
 
     return c.json(

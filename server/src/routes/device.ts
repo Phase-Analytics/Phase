@@ -586,25 +586,29 @@ deviceWebRouter.openapi(getDeviceTimeseriesRoute, async (c: any) => {
     const end = endDate ? new Date(endDate) : now;
 
     if (metric === 'dau') {
-      // Daily Active Users: count distinct devices per day based on session activity
-      const result = await db
-        .select({
-          date: sql<string>`DATE(${sessions.lastActivityAt})`,
-          activeUsers: sql<number>`COUNT(DISTINCT ${sessions.deviceId})`,
-        })
-        .from(sessions)
-        .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
-        .where(
-          and(
-            eq(devices.appId, appId),
-            sql`${sessions.lastActivityAt} >= ${start}`,
-            sql`${sessions.lastActivityAt} < ${end}`
-          )
+      const result = await db.execute<{
+        date: string;
+        activeUsers: number;
+      }>(sql`
+        WITH date_series AS (
+          SELECT DATE(generate_series(
+            ${start}::timestamp,
+            ${end}::timestamp,
+            '1 day'::interval
+          )) as date
         )
-        .groupBy(sql`DATE(${sessions.lastActivityAt})`)
-        .orderBy(sql`DATE(${sessions.lastActivityAt})`);
+        SELECT
+          ds.date::text,
+          COALESCE(COUNT(DISTINCT s.device_id), 0)::int as "activeUsers"
+        FROM date_series ds
+        LEFT JOIN sessions s ON DATE(s.last_activity_at) = ds.date
+        LEFT JOIN devices d ON s.device_id = d.device_id AND d.app_id = ${appId}
+        WHERE ds.date <= CURRENT_DATE
+        GROUP BY ds.date
+        ORDER BY ds.date
+      `);
 
-      const data = result.map((row) => ({
+      const data = result.rows.map((row) => ({
         date: row.date,
         activeUsers: Number(row.activeUsers),
       }));
@@ -621,30 +625,35 @@ deviceWebRouter.openapi(getDeviceTimeseriesRoute, async (c: any) => {
       );
     }
 
-    const result = await db
-      .select({
-        date: sql<string>`DATE(${devices.firstSeen})`,
-        totalUsers: sql<number>`COUNT(DISTINCT ${devices.deviceId})`,
-      })
-      .from(devices)
-      .where(
-        and(
-          eq(devices.appId, appId),
-          sql`${devices.firstSeen} >= ${start}`,
-          sql`${devices.firstSeen} < ${end}`
-        )
+    const result = await db.execute<{
+      date: string;
+      totalUsers: number;
+    }>(sql`
+      WITH date_series AS (
+        SELECT DATE(generate_series(
+          ${start}::timestamp,
+          ${end}::timestamp,
+          '1 day'::interval
+        )) as date
       )
-      .groupBy(sql`DATE(${devices.firstSeen})`)
-      .orderBy(sql`DATE(${devices.firstSeen})`);
+      SELECT
+        ds.date::text,
+        COALESCE(
+          (SELECT COUNT(DISTINCT d.device_id)::int
+           FROM devices d
+           WHERE d.app_id = ${appId}
+             AND DATE(d.first_seen) <= ds.date),
+          0
+        ) as "totalUsers"
+      FROM date_series ds
+      WHERE ds.date <= CURRENT_DATE
+      ORDER BY ds.date
+    `);
 
-    let cumulativeTotal = 0;
-    const data = result.map((row) => {
-      cumulativeTotal += Number(row.totalUsers);
-      return {
-        date: row.date,
-        totalUsers: cumulativeTotal,
-      };
-    });
+    const data = result.rows.map((row) => ({
+      date: row.date,
+      totalUsers: Number(row.totalUsers),
+    }));
 
     return c.json(
       {
