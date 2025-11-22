@@ -22,6 +22,9 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
             if (Array.isArray(queryKey) && queryKey.includes('live')) {
               return false;
             }
+            if (Array.isArray(queryKey) && queryKey[0] === 'apps') {
+              return false;
+            }
             return query.state.status === 'success';
           },
         },
