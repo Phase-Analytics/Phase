@@ -102,39 +102,13 @@ export function TimescaleChart({
     return (
       <Card className="py-0">
         <CardHeader className="space-y-0 border-b py-5">
-          {metricOptions && onMetricChange && metric ? (
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <Tabs value={metric}>
-                  <TabsList>
-                    {metricOptions.map((option) => (
-                      <TabsTrigger key={option.value} value={option.value}>
-                        {option.label}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </Tabs>
-                <Button disabled size="sm" variant="outline">
-                  <HugeiconsIcon icon={Calendar03Icon} />
-                  {currentLabel}
-                </Button>
-              </div>
-              <CardDescription>{description}</CardDescription>
-            </div>
-          ) : (
+          <div className="space-y-3">
             <div className="flex items-center justify-between gap-4">
-              <div>
-                <CardTitle>{title}</CardTitle>
-                <CardDescription className="pt-1">
-                  {description}
-                </CardDescription>
-              </div>
-              <Button disabled size="sm" variant="outline">
-                <HugeiconsIcon icon={Calendar03Icon} />
-                {currentLabel}
-              </Button>
+              <Skeleton className="h-10 w-64" />
+              <Skeleton className="h-9 w-24" />
             </div>
-          )}
+            <Skeleton className="h-4 w-96" />
+          </div>
         </CardHeader>
         <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
           <Skeleton className="h-[250px] w-full" />

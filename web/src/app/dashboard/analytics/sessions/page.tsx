@@ -57,7 +57,11 @@ const columns: ColumnDef<Session>[] = [
       const date = new Date(row.getValue('startedAt'));
       return (
         <div className="text-sm">
-          {date.toLocaleDateString()} {date.toLocaleTimeString()}
+          {date.toLocaleDateString()}{' '}
+          {date.toLocaleTimeString(undefined, {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
         </div>
       );
     },
