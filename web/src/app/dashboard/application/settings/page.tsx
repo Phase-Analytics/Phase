@@ -184,7 +184,7 @@ export default function SettingsPage() {
               </Button>
             </span>
           </TooltipTrigger>
-          {!isOwner && <TooltipContent>Owner only</TooltipContent>}
+          <TooltipContent>Owner only</TooltipContent>
         </Tooltip>
       </div>
     );
@@ -329,7 +329,7 @@ export default function SettingsPage() {
                         </DeleteAppDialog>
                       </span>
                     </TooltipTrigger>
-                    {!isOwner && <TooltipContent>Owner only</TooltipContent>}
+                    <TooltipContent>Owner only</TooltipContent>
                   </Tooltip>
                 </div>
               )}

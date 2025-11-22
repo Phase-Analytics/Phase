@@ -96,20 +96,31 @@ export default function TeamPage() {
                     settings
                   </p>
                 </div>
-                {!showLoading && isOwner && (
-                  <AddMemberDialog appId={appId || ''}>
-                    <Button
-                      className="w-full sm:w-auto"
-                      size="sm"
-                      type="button"
-                    >
-                      <HugeiconsIcon
-                        className="mr-1.5 size-3"
-                        icon={AddSquareIcon}
-                      />
-                      Add Member
-                    </Button>
-                  </AddMemberDialog>
+                {!showLoading && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span
+                        className="w-full sm:w-auto"
+                        tabIndex={isOwner ? undefined : 0}
+                      >
+                        <AddMemberDialog appId={appId || ''}>
+                          <Button
+                            className="w-full sm:w-auto"
+                            disabled={!isOwner}
+                            size="sm"
+                            type="button"
+                          >
+                            <HugeiconsIcon
+                              className="mr-1.5 size-3"
+                              icon={AddSquareIcon}
+                            />
+                            Add Member
+                          </Button>
+                        </AddMemberDialog>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>Owner only</TooltipContent>
+                  </Tooltip>
                 )}
               </div>
 
