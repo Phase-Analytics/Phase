@@ -1,6 +1,6 @@
-import { compress } from '@hono/bun-compress';
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { Hono } from 'hono';
+import { compress } from 'hono/compress';
 import { cors } from 'hono/cors';
 import { pool } from '@/db';
 import { auth } from '@/lib/auth';
