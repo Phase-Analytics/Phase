@@ -315,7 +315,9 @@ export default function UsersPage() {
                       <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-400 opacity-75" />
                       <span className="relative inline-flex size-2 rounded-full bg-green-500" />
                     </div>
-                    <p className="text-muted-foreground text-sm">Online Users</p>
+                    <p className="text-muted-foreground text-sm">
+                      Online Users
+                    </p>
                   </div>
                   <p className="font-bold text-3xl">
                     {liveData?.activeNow.toLocaleString() || 0}
