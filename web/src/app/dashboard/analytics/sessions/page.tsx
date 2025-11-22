@@ -134,8 +134,8 @@ export default function SessionsPage() {
   };
 
   const formatDuration = (seconds: number | null) => {
-    if (seconds === null) {
-      return 'N/A';
+    if (seconds === null || seconds === 0) {
+      return '0s';
     }
     const minutes = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
