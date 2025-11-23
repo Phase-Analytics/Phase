@@ -5,15 +5,19 @@ import {
   AnonymousIcon,
   AppleIcon,
   BrowserIcon,
-  UserIcon,
+  Calendar03Icon,
+  ComputerPhoneSyncIcon,
+  Flag02Icon,
+  InformationCircleIcon,
+  UserSquareIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { parseAsInteger, parseAsString, useQueryState } from 'nuqs';
 import { use } from 'react';
 import { RequireApp } from '@/components/require-app';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { CopyButton } from '@/components/ui/copy-button';
 import { DataTableServer } from '@/components/ui/data-table-server';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Session } from '@/lib/api/types';
@@ -132,13 +136,13 @@ export default function UserPage({ params }: UserPageProps) {
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) {
-      return 'N/A';
+      return null;
     }
     const date = new Date(dateStr);
     return `${date.toLocaleDateString()} ${date.toLocaleTimeString(undefined, {
       hour: '2-digit',
       minute: '2-digit',
-    })}`;
+    })} UTC`;
   };
 
   return (
@@ -151,121 +155,190 @@ export default function UserPage({ params }: UserPageProps) {
           </p>
         </div>
 
-        <Card className="py-0">
-          <CardContent className="space-y-4 p-4">
-            <div>
-              <h2 className="font-semibold text-lg">User Information</h2>
-              <p className="text-muted-foreground text-sm">
-                Basic information about this user
-              </p>
-            </div>
-
-            {deviceLoading && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-24" />
+        {deviceLoading && (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <Card className="py-0 md:col-span-2 lg:col-span-3">
+              <CardContent className="flex items-center gap-4 p-4">
+                <Skeleton className="size-12" />
+                <div className="flex-1 space-y-3">
+                  <Skeleton className="h-4 w-32" />
                   <Skeleton className="h-6 w-64" />
                 </div>
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-6 w-32" />
-                </div>
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-6 w-40" />
-                </div>
-              </div>
-            )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
-            {!deviceLoading && device && (
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-sm">User ID</p>
-                  <p className="break-all font-mono text-sm">
-                    {device.deviceId}
-                  </p>
+        {!deviceLoading && device && (
+          <>
+            {/* User Information Card */}
+            <Card className="py-0">
+              <CardContent className="space-y-4 p-4">
+                <div className="flex items-center gap-2">
+                  <HugeiconsIcon
+                    className="size-5 text-primary"
+                    icon={UserSquareIcon}
+                  />
+                  <h2 className="font-semibold text-lg">User Information</h2>
                 </div>
 
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-sm">Identifier</p>
-                  {device.identifier ? (
-                    <p className="text-sm">{device.identifier}</p>
-                  ) : (
-                    <p className="text-muted-foreground text-sm">Anonymous</p>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-muted-foreground text-sm">User ID</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <CopyButton
+                        className="size-4 [&_svg]:size-4"
+                        content={device.deviceId}
+                        variant="ghost"
+                      />
+                      <p
+                        className="truncate font-mono font-semibold text-sm"
+                        title={device.deviceId}
+                      >
+                        {device.deviceId}
+                      </p>
+                    </div>
+                  </div>
+                  {device.identifier && (
+                    <div>
+                      <p className="text-muted-foreground text-sm">
+                        Identifier
+                      </p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <CopyButton
+                          className="size-4 [&_svg]:size-4"
+                          content={device.identifier}
+                          variant="ghost"
+                        />
+                        <p
+                          className="truncate font-mono font-semibold text-sm"
+                          title={device.identifier}
+                        >
+                          {device.identifier}
+                        </p>
+                      </div>
+                    </div>
                   )}
                 </div>
 
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-sm">Platform</p>
-                  <Badge
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs"
-                    variant="outline"
-                  >
-                    <HugeiconsIcon
-                      className="size-3.5"
-                      icon={getPlatformIcon(device.platform)}
-                    />
-                    {getPlatformLabel(device.platform)}
-                  </Badge>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <p className="text-muted-foreground text-sm">First Seen</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <HugeiconsIcon className="size-4" icon={Calendar03Icon} />
+                      <p className="font-medium text-sm">
+                        {formatDate(device.firstSeen)}
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-sm">
+                      Last Activity
+                    </p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <HugeiconsIcon className="size-4" icon={Calendar03Icon} />
+                      <p className="font-medium text-sm">
+                        {formatDate(device.lastActivityAt) ||
+                          formatDate(device.firstSeen)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Device Information Card */}
+            <Card className="py-0">
+              <CardContent className="space-y-4 p-4">
+                <div className="flex items-center gap-2">
+                  <HugeiconsIcon
+                    className="size-5 text-primary"
+                    icon={ComputerPhoneSyncIcon}
+                  />
+                  <h2 className="font-semibold text-lg">Device Information</h2>
                 </div>
 
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-sm">Country</p>
-                  <p className="text-sm">{device.country || 'Unknown'}</p>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <p className="text-muted-foreground text-sm">Model</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <HugeiconsIcon
+                        className="size-4"
+                        icon={ComputerPhoneSyncIcon}
+                      />
+                      <p className="font-medium text-sm">
+                        {device.model || 'Unknown'}
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-sm">Platform</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <HugeiconsIcon
+                        className="size-4"
+                        icon={getPlatformIcon(device.platform)}
+                      />
+                      <p className="font-medium text-sm">
+                        {getPlatformLabel(device.platform)}
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-sm">OS Version</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <HugeiconsIcon
+                        className="size-4"
+                        icon={InformationCircleIcon}
+                      />
+                      <p className="font-medium text-sm">
+                        {device.osVersion || 'Unknown'}
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-sm">App Version</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <HugeiconsIcon
+                        className="size-4"
+                        icon={InformationCircleIcon}
+                      />
+                      <p className="font-medium text-sm">
+                        {device.appVersion || 'Unknown'}
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-sm">Country</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <HugeiconsIcon className="size-4" icon={Flag02Icon} />
+                      <p className="font-medium text-sm">
+                        {device.country || 'Unknown'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
 
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-sm">Device Model</p>
-                  <p className="text-sm">{device.model || 'Unknown'}</p>
-                </div>
+        {!(deviceLoading || device) && (
+          <Card className="py-0">
+            <CardContent className="p-12 text-center">
+              <HugeiconsIcon
+                className="mx-auto mb-4 size-16 text-muted-foreground"
+                icon={UserSquareIcon}
+              />
+              <p className="text-muted-foreground">User not found</p>
+            </CardContent>
+          </Card>
+        )}
 
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-sm">OS Version</p>
-                  <p className="text-sm">{device.osVersion || 'Unknown'}</p>
-                </div>
-
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-sm">App Version</p>
-                  <p className="text-sm">{device.appVersion || 'Unknown'}</p>
-                </div>
-
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-sm">
-                    Total Sessions
-                  </p>
-                  <p className="font-semibold text-lg">
-                    {device.totalSessions.toLocaleString()}
-                  </p>
-                </div>
-
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-sm">First Seen</p>
-                  <p className="text-sm">{formatDate(device.firstSeen)}</p>
-                </div>
-
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-sm">Last Activity</p>
-                  <p className="text-sm">{formatDate(device.lastActivityAt)}</p>
-                </div>
-              </div>
-            )}
-
-            {!(deviceLoading || device) && (
-              <div className="rounded-lg border border-dashed p-8 text-center">
-                <HugeiconsIcon
-                  className="mx-auto mb-2 size-12 text-muted-foreground"
-                  icon={UserIcon}
-                />
-                <p className="text-muted-foreground">User not found</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
+        {/* Sessions Table */}
         <Card className="py-0">
           <CardContent className="space-y-4 p-4">
             <div>
-              <h2 className="font-semibold text-lg">User Sessions</h2>
+              <h2 className="font-semibold text-lg">Sessions</h2>
               <p className="text-muted-foreground text-sm">
                 All sessions for this user
               </p>
