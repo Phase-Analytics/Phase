@@ -10,6 +10,7 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { parseAsInteger, parseAsString, useQueryState } from 'nuqs';
+import { use } from 'react';
 import { RequireApp } from '@/components/require-app';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -82,26 +83,24 @@ const columns: ColumnDef<Session>[] = [
 ];
 
 type UserPageProps = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
 
 export default function UserPage({ params }: UserPageProps) {
+  const { id } = use(params);
   const [appId] = useQueryState('app', parseAsString);
   const [page] = useQueryState('page', parseAsInteger.withDefault(1));
   const [pageSize] = useQueryState('pageSize', parseAsInteger.withDefault(10));
 
-  const { data: device, isPending: deviceLoading } = useDevice(
-    params.id,
-    appId || ''
-  );
+  const { data: device, isPending: deviceLoading } = useDevice(id, appId || '');
   const { data: sessionsData, isPending: sessionsLoading } = useSessions(
     appId || '',
     {
       page: page.toString(),
       pageSize: pageSize.toString(),
-      deviceId: params.id,
+      deviceId: id,
     }
   );
 
