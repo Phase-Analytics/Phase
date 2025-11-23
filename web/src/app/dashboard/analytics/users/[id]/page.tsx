@@ -176,9 +176,9 @@ export default function UserPage({ params }: UserPageProps) {
         {!deviceLoading && device && (
           <>
             <Button
-              className="w-fit"
+              className="w-fit font-normal"
               onClick={() => router.back()}
-              variant="default"
+              variant="outline"
             >
               <HugeiconsIcon icon={ArrowTurnBackwardIcon} />
               Back
@@ -192,64 +192,66 @@ export default function UserPage({ params }: UserPageProps) {
 
                 <div className="space-y-3">
                   <div>
-                    <p className="text-muted-foreground text-sm">User ID</p>
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="flex items-center gap-2">
                       <CopyButton
                         className="size-4 [&_svg]:size-4"
                         content={device.deviceId}
                         variant="ghost"
                       />
-                      <p
-                        className="truncate font-mono font-semibold text-sm"
-                        title={device.deviceId}
-                      >
-                        {device.deviceId}
-                      </p>
+                      <p className="text-muted-foreground text-sm">User ID</p>
                     </div>
+                    <p
+                      className="mt-1 truncate font-mono font-semibold text-sm"
+                      title={device.deviceId}
+                    >
+                      {device.deviceId}
+                    </p>
                   </div>
                   {device.identifier && (
                     <div>
-                      <p className="text-muted-foreground text-sm">
-                        Identifier
-                      </p>
-                      <div className="mt-1 flex items-center gap-2">
+                      <div className="flex items-center gap-2">
                         <CopyButton
                           className="size-4 [&_svg]:size-4"
                           content={device.identifier}
                           variant="ghost"
                         />
-                        <p
-                          className="truncate font-mono font-semibold text-sm"
-                          title={device.identifier}
-                        >
-                          {device.identifier}
+                        <p className="text-muted-foreground text-sm">
+                          Identifier
                         </p>
                       </div>
+                      <p
+                        className="mt-1 truncate font-mono font-semibold text-sm"
+                        title={device.identifier}
+                      >
+                        {device.identifier}
+                      </p>
                     </div>
                   )}
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <p className="text-muted-foreground text-sm">First Seen</p>
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="flex items-center gap-2">
                       <HugeiconsIcon className="size-4" icon={Calendar03Icon} />
-                      <p className="font-medium text-sm">
-                        {formatDate(device.firstSeen)}
+                      <p className="text-muted-foreground text-sm">
+                        First Seen
                       </p>
                     </div>
+                    <p className="mt-1 font-medium text-sm">
+                      {formatDate(device.firstSeen)}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-sm">
-                      Last Activity
-                    </p>
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="flex items-center gap-2">
                       <HugeiconsIcon className="size-4" icon={Calendar03Icon} />
-                      <p className="font-medium text-sm">
-                        {formatDate(device.lastActivityAt) ||
-                          formatDate(device.firstSeen)}
+                      <p className="text-muted-foreground text-sm">
+                        Last Activity
                       </p>
                     </div>
+                    <p className="mt-1 font-medium text-sm">
+                      {formatDate(device.lastActivityAt) ||
+                        formatDate(device.firstSeen)}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -263,61 +265,65 @@ export default function UserPage({ params }: UserPageProps) {
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <p className="text-muted-foreground text-sm">Platform</p>
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="flex items-center gap-2">
                       <HugeiconsIcon
                         className="size-4"
                         icon={getPlatformIcon(device.platform)}
                       />
-                      <p className="font-medium text-sm">
-                        {getPlatformLabel(device.platform)}
-                      </p>
+                      <p className="text-muted-foreground text-sm">Platform</p>
                     </div>
+                    <p className="mt-1 font-medium text-sm">
+                      {getPlatformLabel(device.platform)}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-sm">OS Version</p>
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="flex items-center gap-2">
                       <HugeiconsIcon
                         className="size-4"
                         icon={InformationCircleIcon}
                       />
-                      <p className="font-medium text-sm">
-                        {device.osVersion || 'Unknown'}
+                      <p className="text-muted-foreground text-sm">
+                        OS Version
                       </p>
                     </div>
+                    <p className="mt-1 font-medium text-sm">
+                      {device.osVersion || 'Unknown'}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-sm">Model</p>
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="flex items-center gap-2">
                       <HugeiconsIcon
                         className="size-4"
                         icon={ComputerPhoneSyncIcon}
                       />
-                      <p className="font-medium text-sm">
-                        {device.model || 'Unknown'}
-                      </p>
+                      <p className="text-muted-foreground text-sm">Model</p>
                     </div>
+                    <p className="mt-1 font-medium text-sm">
+                      {device.model || 'Unknown'}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-sm">App Version</p>
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="flex items-center gap-2">
                       <HugeiconsIcon
                         className="size-4"
                         icon={InformationCircleIcon}
                       />
-                      <p className="font-medium text-sm">
-                        {device.appVersion || 'Unknown'}
+                      <p className="text-muted-foreground text-sm">
+                        App Version
                       </p>
                     </div>
+                    <p className="mt-1 font-medium text-sm">
+                      {device.appVersion || 'Unknown'}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-sm">Country</p>
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="flex items-center gap-2">
                       <HugeiconsIcon className="size-4" icon={Flag02Icon} />
-                      <p className="font-medium text-sm">
-                        {device.country || 'Unknown'}
-                      </p>
+                      <p className="text-muted-foreground text-sm">Country</p>
                     </div>
+                    <p className="mt-1 font-medium text-sm">
+                      {device.country || 'Unknown'}
+                    </p>
                   </div>
                 </div>
               </CardContent>
