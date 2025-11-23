@@ -172,6 +172,8 @@
 @theme inline {
   --breakpoint-xs: 30rem;
 
+  --font-mono: var(--font-menlo);
+
   --color-background: var(--background);
 
   --color-foreground: var(--foreground);

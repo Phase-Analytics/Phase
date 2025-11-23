@@ -1,4 +1,3 @@
-import { GeistMono } from 'geist/font/mono';
 import { GeistSans } from 'geist/font/sans';
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
@@ -23,7 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${GeistSans.variable} ${GeistMono.variable} ${menlo.variable} font-sans antialiased`}
+        className={`${GeistSans.variable} ${menlo.variable} font-sans antialiased`}
       >
         {children}
       </body>
