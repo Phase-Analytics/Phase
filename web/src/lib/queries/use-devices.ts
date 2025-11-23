@@ -58,7 +58,7 @@ export function useDeviceOverview(appId: string) {
   return useQuery({
     queryKey: queryKeys.devices.overview(appId),
     queryFn: () =>
-      fetchApi<DeviceOverview>(`/web/devices/users?appId=${appId}`),
+      fetchApi<DeviceOverview>(`/web/devices/overview?appId=${appId}`),
     ...cacheConfig.overview,
     enabled: Boolean(appId),
   });
