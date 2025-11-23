@@ -312,28 +312,26 @@ export function DashboardSidebar() {
 
       <SidebarFooter>
         <SidebarMenu>
-          {footerNavItems.map((item) => {
-            const isExternal = item.path.startsWith('http');
-            return (
-              <SidebarMenuItem key={item.label}>
-                <SidebarMenuButton asChild size="sm" tooltip={item.tooltip}>
-                  <Link
-                    href={item.path}
-                    onClick={() => {
-                      if (isMobile) {
-                        setOpenMobile(false);
-                      }
-                    }}
-                    rel={isExternal ? 'noopener noreferrer' : undefined}
-                    target={isExternal ? '_blank' : undefined}
-                  >
-                    <HugeiconsIcon icon={item.icon} />
-                    <span>{item.label}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            );
-          })}
+          {footerNavItems.map((item) => (
+            <SidebarMenuItem key={item.label}>
+              <SidebarMenuButton asChild size="sm" tooltip={item.tooltip}>
+                <Link
+                  href={item.path}
+                  onClick={() => {
+                    if (isMobile) {
+                      setOpenMobile(false);
+                    }
+                  }}
+                  prefetch={false}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  <HugeiconsIcon icon={item.icon} />
+                  <span>{item.label}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
         </SidebarMenu>
         <SidebarMenu>
           <SidebarMenuItem>
