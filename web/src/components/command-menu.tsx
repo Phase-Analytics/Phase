@@ -26,6 +26,7 @@ type CommandItem = {
   icon: typeof Search01Icon;
   keywords: string[];
   path: string;
+  external?: boolean;
 };
 
 type CommandMenuProps = {
@@ -132,7 +133,11 @@ export function CommandMenu({ open, onOpenChange, items }: CommandMenuProps) {
 
   const handleSelect = useCallback(
     (item: CommandItem) => {
-      router.push(item.path);
+      if (item.external) {
+        window.open(item.path, '_blank', 'noopener,noreferrer');
+      } else {
+        router.push(item.path);
+      }
       onOpenChange(false);
     },
     [router, onOpenChange]

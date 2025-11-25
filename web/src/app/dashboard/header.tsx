@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  Activity03Icon,
   Blockchain05Icon,
   ChatEditIcon,
   ComputerPhoneSyncIcon,
@@ -39,6 +40,7 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
           icon: File02Icon,
           keywords: ['docs', 'documentation', 'help', 'guide'],
           path: '/docs',
+          external: true,
         },
         {
           id: 'support',
@@ -48,6 +50,17 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
           icon: QuestionIcon,
           keywords: ['support', 'help', 'contact'],
           path: '/support',
+          external: true,
+        },
+        {
+          id: 'status',
+          name: 'Status',
+          description: 'Check service status and uptime',
+          category: 'Resources',
+          icon: Activity03Icon,
+          keywords: ['status', 'uptime', 'health', 'availability'],
+          path: 'https://status.telemetra.dev',
+          external: true,
         },
         {
           id: 'github',
@@ -57,6 +70,7 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
           icon: GithubIcon,
           keywords: ['github', 'source', 'code', 'repository'],
           path: 'https://github.com',
+          external: true,
         },
         {
           id: 'billing',
@@ -142,6 +156,7 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
         icon: File02Icon,
         keywords: ['docs', 'documentation', 'help', 'guide'],
         path: '/docs',
+        external: true,
       },
       {
         id: 'support',
@@ -151,6 +166,17 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
         icon: QuestionIcon,
         keywords: ['support', 'help', 'contact'],
         path: '/support',
+        external: true,
+      },
+      {
+        id: 'status',
+        name: 'Status',
+        description: 'Check service status and uptime',
+        category: 'Resources',
+        icon: Activity03Icon,
+        keywords: ['status', 'uptime', 'health', 'availability'],
+        path: 'https://status.telemetra.dev',
+        external: true,
       },
       {
         id: 'github',
@@ -160,6 +186,7 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
         icon: GithubIcon,
         keywords: ['github', 'source', 'code', 'repository'],
         path: 'https://github.com',
+        external: true,
       },
       {
         id: 'billing',
