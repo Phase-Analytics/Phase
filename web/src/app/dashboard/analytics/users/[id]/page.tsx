@@ -10,6 +10,8 @@ import {
   ComputerPhoneSyncIcon,
   Flag02Icon,
   InformationCircleIcon,
+  PlaySquareIcon,
+  Time03Icon,
   UserSquareIcon,
   ViewIcon,
 } from '@hugeicons/core-free-icons';
@@ -43,6 +45,26 @@ const formatDurationTable = (startedAt: string, lastActivityAt: string) => {
   }
   const hours = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
+  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+};
+
+const formatDuration = (seconds: number | null) => {
+  if (seconds === null || seconds === 0) {
+    return '0s';
+  }
+
+  const totalSeconds = Math.floor(seconds);
+
+  if (totalSeconds < 60) {
+    return `${totalSeconds}s`;
+  }
+  if (totalSeconds < 3600) {
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+  }
+  const hours = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
   return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
 };
 
@@ -193,7 +215,7 @@ export default function UserPage({ params }: UserPageProps) {
                   <h2 className="font-semibold text-lg">User Information</h2>
                 </div>
 
-                <div className="space-y-3">
+                <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <div className="flex items-center gap-2">
                       <div className="size-4" />
@@ -230,6 +252,24 @@ export default function UserPage({ params }: UserPageProps) {
                       </p>
                     </div>
                     <Skeleton className="mt-1 h-5 w-40" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <HugeiconsIcon className="size-4" icon={PlaySquareIcon} />
+                      <p className="text-muted-foreground text-sm">
+                        Total Sessions
+                      </p>
+                    </div>
+                    <Skeleton className="mt-1 h-5 w-20" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <HugeiconsIcon className="size-4" icon={Time03Icon} />
+                      <p className="text-muted-foreground text-sm">
+                        Avg Session Duration
+                      </p>
+                    </div>
+                    <Skeleton className="mt-1 h-5 w-24" />
                   </div>
                 </div>
               </CardContent>
@@ -306,7 +346,7 @@ export default function UserPage({ params }: UserPageProps) {
                   <h2 className="font-semibold text-lg">User Information</h2>
                 </div>
 
-                <div className="space-y-3">
+                <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <div className="flex items-center gap-2">
                       <CopyButton
@@ -367,6 +407,28 @@ export default function UserPage({ params }: UserPageProps) {
                     <p className="mt-1 font-medium text-sm">
                       {formatDate(device.lastActivityAt) ||
                         formatDate(device.firstSeen)}
+                    </p>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <HugeiconsIcon className="size-4" icon={PlaySquareIcon} />
+                      <p className="text-muted-foreground text-sm">
+                        Total Sessions
+                      </p>
+                    </div>
+                    <p className="mt-1 font-medium text-sm">
+                      {device.totalSessions}
+                    </p>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <HugeiconsIcon className="size-4" icon={Time03Icon} />
+                      <p className="text-muted-foreground text-sm">
+                        Avg Session Duration
+                      </p>
+                    </div>
+                    <p className="mt-1 font-medium text-sm">
+                      {formatDuration(device.avgSessionDuration)}
                     </p>
                   </div>
                 </div>

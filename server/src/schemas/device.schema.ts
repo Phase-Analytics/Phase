@@ -74,6 +74,10 @@ export const deviceDetailSchema = z
       .nullable()
       .openapi({ example: '2024-01-01T12:30:00Z' }),
     totalSessions: z.number().int().min(0).openapi({ example: 42 }),
+    avgSessionDuration: z.number().nullable().openapi({
+      example: 1250.5,
+      description: 'Average session duration in seconds',
+    }),
   })
   .openapi('DeviceDetail');
 

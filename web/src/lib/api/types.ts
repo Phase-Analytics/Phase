@@ -86,6 +86,7 @@ export interface DeviceDetail extends Device {
   firstSeen: string;
   lastActivityAt: string | null;
   totalSessions: number;
+  avgSessionDuration: number | null;
 }
 
 export type DeviceOverview = {

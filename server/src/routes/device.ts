@@ -745,8 +745,13 @@ deviceWebRouter.openapi(getDeviceRoute, async (c: any) => {
       );
     }
 
-    const [{ count: totalSessions }] = await db
-      .select({ count: count() })
+    const [{ count: totalSessions, avgDuration }] = await db
+      .select({
+        count: count(),
+        avgDuration: sql<number | null>`
+          AVG(EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt})))
+        `,
+      })
       .from(sessions)
       .where(eq(sessions.deviceId, deviceId));
 
@@ -764,6 +769,7 @@ deviceWebRouter.openapi(getDeviceRoute, async (c: any) => {
           ? deviceWithSession.lastActivityAt.toISOString()
           : null,
         totalSessions: Number(totalSessions),
+        avgSessionDuration: avgDuration ? Number(avgDuration) : null,
       },
       HttpStatus.OK
     );
