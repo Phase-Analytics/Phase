@@ -25,6 +25,8 @@ export const auth = betterAuth({
     'https://telemetra.dev',
   ],
   session: {
+    expiresIn: 60 * 60 * 24 * 7,
+    updateAge: 60 * 60 * 24,
     cookieCache: {
       enabled: true,
       maxAge: 5 * 60,
