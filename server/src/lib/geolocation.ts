@@ -10,22 +10,15 @@ export async function getCountryFromIP(ip: string): Promise<string | null> {
       return null;
     }
 
-    const token = process.env.IPINFO_TOKEN;
-    if (!token) {
-      return null;
-    }
-
-    const response = await fetch(
-      `https://api.ipinfo.io/lite/${ip}/country?token=${token}`
-    );
+    const response = await fetch(`https://ipwho.is/${ip}?fields=country_code`);
 
     if (!response.ok) {
       return null;
     }
 
-    const country = (await response.text()).trim();
+    const data = (await response.json()) as { country_code?: string };
 
-    return country || null;
+    return data.country_code || null;
   } catch {
     return null;
   }

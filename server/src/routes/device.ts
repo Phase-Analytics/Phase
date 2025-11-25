@@ -334,6 +334,7 @@ deviceWebRouter.openapi(getDeviceOverviewRoute, async (c: any) => {
       [{ count: activeDevices24h }],
       [{ count: activeDevicesYesterday }],
       platformStatsResult,
+      countryStatsResult,
     ] = await Promise.all([
       db
         .select({ count: count() })
@@ -382,6 +383,15 @@ deviceWebRouter.openapi(getDeviceOverviewRoute, async (c: any) => {
         .from(devices)
         .where(eq(devices.appId, appId))
         .groupBy(devices.platform),
+
+      db
+        .select({
+          country: devices.country,
+          count: count(),
+        })
+        .from(devices)
+        .where(eq(devices.appId, appId))
+        .groupBy(devices.country),
     ]);
 
     const totalDevicesNum = Number(totalDevices);
@@ -420,11 +430,20 @@ deviceWebRouter.openapi(getDeviceOverviewRoute, async (c: any) => {
       }
     }
 
+    const countryStats: Record<string, number> = {};
+
+    for (const row of countryStatsResult) {
+      if (row.country !== null) {
+        countryStats[row.country] = Number(row.count);
+      }
+    }
+
     return c.json(
       {
         totalDevices: totalDevicesNum,
         activeDevices24h: activeDevices24hNum,
         platformStats,
+        countryStats,
         totalDevicesChange24h: Number(totalDevicesChange24h.toFixed(2)),
         activeDevicesChange24h: Number(activeDevicesChange24h.toFixed(2)),
       },

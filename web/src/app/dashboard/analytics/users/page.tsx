@@ -343,121 +343,204 @@ export default function UsersPage() {
           </Card>
         </div>
 
-        <Card className="py-0">
-          <CardContent className="space-y-4 p-4">
-            <div>
-              <h2 className="font-semibold text-lg">Platform Distribution</h2>
-              <p className="text-muted-foreground text-sm">
-                User distribution across platforms
-              </p>
-            </div>
-
-            {overviewLoading && (
-              <div className="space-y-3">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card className="py-0">
+            <CardContent className="space-y-4 p-4">
+              <div>
+                <h2 className="font-semibold text-lg">Platform Distribution</h2>
+                <p className="text-muted-foreground text-sm">
+                  User distribution across platforms
+                </p>
               </div>
-            )}
 
-            {!overviewLoading &&
-              overview?.platformStats &&
-              Object.keys(overview.platformStats).length > 0 && (
+              {overviewLoading && (
                 <div className="space-y-3">
-                  {Object.entries(overview.platformStats)
-                    .filter(([, count]) => count > 0)
-                    .sort(([, a], [, b]) => b - a)
-                    .map(([platform, count]) => {
-                      const percentage = overview.totalDevices
-                        ? (count / overview.totalDevices) * 100
-                        : 0;
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              )}
 
-                      const getPlatformIcon = (p: string) => {
-                        switch (p) {
-                          case 'android':
-                            return AndroidIcon;
-                          case 'ios':
-                            return AppleIcon;
-                          case 'web':
-                            return BrowserIcon;
-                          default:
-                            return AnonymousIcon;
-                        }
-                      };
+              {!overviewLoading &&
+                overview?.platformStats &&
+                Object.keys(overview.platformStats).length > 0 && (
+                  <div className="space-y-3">
+                    {Object.entries(overview.platformStats)
+                      .filter(([, count]) => count > 0)
+                      .sort(([, a], [, b]) => b - a)
+                      .map(([platform, count]) => {
+                        const percentage = overview.totalDevices
+                          ? (count / overview.totalDevices) * 100
+                          : 0;
 
-                      const getPlatformLabel = (p: string) => {
-                        switch (p) {
-                          case 'android':
-                            return 'Android';
-                          case 'ios':
-                            return 'iOS';
-                          case 'web':
-                            return 'Web';
-                          default:
-                            return 'Unknown';
-                        }
-                      };
+                        const getPlatformIcon = (p: string) => {
+                          switch (p) {
+                            case 'android':
+                              return AndroidIcon;
+                            case 'ios':
+                              return AppleIcon;
+                            case 'web':
+                              return BrowserIcon;
+                            default:
+                              return AnonymousIcon;
+                          }
+                        };
 
-                      const getPlatformColor = (p: string) => {
-                        switch (p) {
-                          case 'android':
-                            return 'bg-green-500';
-                          case 'ios':
-                            return 'bg-blue-500';
-                          case 'web':
-                            return 'bg-purple-500';
-                          default:
-                            return 'bg-gray-500';
-                        }
-                      };
+                        const getPlatformLabel = (p: string) => {
+                          switch (p) {
+                            case 'android':
+                              return 'Android';
+                            case 'ios':
+                              return 'iOS';
+                            case 'web':
+                              return 'Web';
+                            default:
+                              return 'Unknown';
+                          }
+                        };
 
-                      return (
-                        <div className="space-y-1.5" key={platform}>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <HugeiconsIcon
-                                className="size-4 text-muted-foreground"
-                                icon={getPlatformIcon(platform)}
+                        const getPlatformColor = (p: string) => {
+                          switch (p) {
+                            case 'android':
+                              return 'bg-green-500';
+                            case 'ios':
+                              return 'bg-blue-500';
+                            case 'web':
+                              return 'bg-purple-500';
+                            default:
+                              return 'bg-gray-500';
+                          }
+                        };
+
+                        return (
+                          <div className="space-y-1.5" key={platform}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <HugeiconsIcon
+                                  className="size-4 text-muted-foreground"
+                                  icon={getPlatformIcon(platform)}
+                                />
+                                <span className="font-medium text-sm">
+                                  {getPlatformLabel(platform)}
+                                </span>
+                              </div>
+                              <div className="flex items-baseline gap-2">
+                                <span className="font-semibold text-sm">
+                                  {count.toLocaleString()}
+                                </span>
+                                <span className="text-muted-foreground text-xs">
+                                  ({percentage.toFixed(1)}%)
+                                </span>
+                              </div>
+                            </div>
+                            <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                              <div
+                                className={`h-full transition-all ${getPlatformColor(platform)}`}
+                                style={{ width: `${percentage}%` }}
                               />
-                              <span className="font-medium text-sm">
-                                {getPlatformLabel(platform)}
-                              </span>
-                            </div>
-                            <div className="flex items-baseline gap-2">
-                              <span className="font-semibold text-sm">
-                                {count.toLocaleString()}
-                              </span>
-                              <span className="text-muted-foreground text-xs">
-                                ({percentage.toFixed(1)}%)
-                              </span>
                             </div>
                           </div>
-                          <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                            <div
-                              className={`h-full transition-all ${getPlatformColor(platform)}`}
-                              style={{ width: `${percentage}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                  </div>
+                )}
+
+              {!overviewLoading &&
+                (!overview?.platformStats ||
+                  Object.keys(overview.platformStats).length === 0 ||
+                  Object.values(overview.platformStats).every(
+                    (v) => v === 0
+                  )) && (
+                  <div className="rounded-lg border border-dashed p-8 text-center">
+                    <p className="text-muted-foreground">
+                      No platform data available yet.
+                    </p>
+                  </div>
+                )}
+            </CardContent>
+          </Card>
+
+          <Card className="py-0">
+            <CardContent className="space-y-4 p-4">
+              <div>
+                <h2 className="font-semibold text-lg">Country Distribution</h2>
+                <p className="text-muted-foreground text-sm">
+                  User distribution by country
+                </p>
+              </div>
+
+              {overviewLoading && (
+                <div className="space-y-3">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
                 </div>
               )}
 
-            {!overviewLoading &&
-              (!overview?.platformStats ||
-                Object.keys(overview.platformStats).length === 0 ||
-                Object.values(overview.platformStats).every(
-                  (v) => v === 0
-                )) && (
-                <div className="rounded-lg border border-dashed p-8 text-center">
-                  <p className="text-muted-foreground">
-                    No platform data available yet. Data will appear here once
-                    users start using your application.
-                  </p>
-                </div>
-              )}
-          </CardContent>
-        </Card>
+              {!overviewLoading &&
+                overview?.countryStats &&
+                Object.keys(overview.countryStats).length > 0 && (
+                  <div className="space-y-3">
+                    {Object.entries(overview.countryStats)
+                      .filter(([, count]) => count > 0)
+                      .sort(([, a], [, b]) => b - a)
+                      .slice(0, 10)
+                      .map(([country, count]) => {
+                        const percentage = overview.totalDevices
+                          ? (count / overview.totalDevices) * 100
+                          : 0;
+
+                        const getCountryFlag = (countryCode: string) =>
+                          String.fromCodePoint(
+                            ...[...countryCode.toUpperCase()].map(
+                              (char) => 0x1_f1_e6 - 65 + char.charCodeAt(0)
+                            )
+                          );
+
+                        return (
+                          <div className="space-y-1.5" key={country}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg">
+                                  {getCountryFlag(country)}
+                                </span>
+                                <span className="font-medium text-sm">
+                                  {new Intl.DisplayNames(['en'], {
+                                    type: 'region',
+                                  }).of(country) || country}
+                                </span>
+                              </div>
+                              <div className="flex items-baseline gap-2">
+                                <span className="font-semibold text-sm">
+                                  {count.toLocaleString()}
+                                </span>
+                                <span className="text-muted-foreground text-xs">
+                                  ({percentage.toFixed(1)}%)
+                                </span>
+                              </div>
+                            </div>
+                            <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                              <div
+                                className="h-full bg-primary transition-all"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+
+              {!overviewLoading &&
+                (!overview?.countryStats ||
+                  Object.keys(overview.countryStats).length === 0) && (
+                  <div className="rounded-lg border border-dashed p-8 text-center">
+                    <p className="text-muted-foreground">
+                      No country data available yet.
+                    </p>
+                  </div>
+                )}
+            </CardContent>
+          </Card>
+        </div>
 
         {appId && (
           <TimescaleChart

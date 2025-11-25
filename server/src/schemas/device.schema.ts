@@ -103,6 +103,9 @@ export const deviceOverviewResponseSchema = z
     platformStats: z.record(z.string(), z.number()).openapi({
       example: { ios: 650, android: 480, web: 120 },
     }),
+    countryStats: z.record(z.string(), z.number()).openapi({
+      example: { US: 450, GB: 320, TR: 280, DE: 200 },
+    }),
     totalDevicesChange24h: z
       .number()
       .openapi({ example: 0.4, description: 'Percentage change in last 24h' }),

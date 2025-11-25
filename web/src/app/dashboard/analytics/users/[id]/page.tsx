@@ -434,11 +434,25 @@ export default function UserPage({ params }: UserPageProps) {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <HugeiconsIcon className="size-4" icon={Flag02Icon} />
+                      {device.country ? (
+                        <span className="text-base">
+                          {String.fromCodePoint(
+                            ...[...device.country.toUpperCase()].map(
+                              (char) => 0x1_f1_e6 - 65 + char.charCodeAt(0)
+                            )
+                          )}
+                        </span>
+                      ) : (
+                        <HugeiconsIcon className="size-4" icon={Flag02Icon} />
+                      )}
                       <p className="text-muted-foreground text-sm">Country</p>
                     </div>
                     <p className="mt-1 font-medium text-sm">
-                      {device.country || 'Unknown'}
+                      {device.country
+                        ? new Intl.DisplayNames(['en'], {
+                            type: 'region',
+                          }).of(device.country) || device.country
+                        : 'Unknown'}
                     </p>
                   </div>
                 </div>

@@ -108,7 +108,6 @@ services:
       - BETTER_AUTH_TELEMETRY=0
       - SERVER_URL=${SERVER_URL}
       - WEB_URL=${WEB_URL}
-      - IPINFO_TOKEN=${IPINFO_TOKEN}
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/telemetra
       - REDIS_URL=redis://redis:6379
       - QUESTDB_HOST=questdb
