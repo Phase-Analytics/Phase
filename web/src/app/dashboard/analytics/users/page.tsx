@@ -210,15 +210,14 @@ export default function UsersPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="py-0">
             <CardContent className="p-4">
+              <p className="text-muted-foreground text-sm">Total Users</p>
               {overviewLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-24" />
+                <>
                   <Skeleton className="h-8 w-20" />
-                  <Skeleton className="h-3 w-16" />
-                </div>
+                  <Skeleton className="mt-1 h-3 w-16" />
+                </>
               ) : (
                 <>
-                  <p className="text-muted-foreground text-sm">Total Users</p>
                   <p className="font-bold text-3xl">
                     {overview?.totalDevices.toLocaleString() || 0}
                   </p>
@@ -255,17 +254,16 @@ export default function UsersPage() {
 
           <Card className="py-0">
             <CardContent className="p-4">
+              <p className="text-muted-foreground text-sm">
+                Daily Active Users
+              </p>
               {overviewLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-24" />
+                <>
                   <Skeleton className="h-8 w-20" />
-                  <Skeleton className="h-3 w-16" />
-                </div>
+                  <Skeleton className="mt-1 h-3 w-16" />
+                </>
               ) : (
                 <>
-                  <p className="text-muted-foreground text-sm">
-                    Daily Active Users
-                  </p>
                   <p className="font-bold text-3xl">
                     {overview?.activeDevices24h.toLocaleString() || 0}
                   </p>
@@ -302,23 +300,20 @@ export default function UsersPage() {
 
           <Card className="py-0">
             <CardContent className="p-4">
-              {liveLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-8 w-20" />
-                  <Skeleton className="h-3 w-16" />
+              <div className="flex items-center gap-2">
+                <div className="relative flex size-2">
+                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-400 opacity-75" />
+                  <span className="relative inline-flex size-2 rounded-full bg-green-500" />
                 </div>
+                <p className="text-muted-foreground text-sm">Online Users</p>
+              </div>
+              {liveLoading ? (
+                <>
+                  <Skeleton className="h-8 w-20" />
+                  <Skeleton className="mt-1 h-3 w-32" />
+                </>
               ) : (
                 <>
-                  <div className="flex items-center gap-2">
-                    <div className="relative flex size-2">
-                      <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-400 opacity-75" />
-                      <span className="relative inline-flex size-2 rounded-full bg-green-500" />
-                    </div>
-                    <p className="text-muted-foreground text-sm">
-                      Online Users
-                    </p>
-                  </div>
                   <p className="font-bold text-3xl">
                     {liveData?.activeNow.toLocaleString() || 0}
                   </p>
@@ -342,7 +337,6 @@ export default function UsersPage() {
 
             {overviewLoading && (
               <div className="space-y-3">
-                <Skeleton className="h-12 w-full" />
                 <Skeleton className="h-12 w-full" />
                 <Skeleton className="h-12 w-full" />
               </div>

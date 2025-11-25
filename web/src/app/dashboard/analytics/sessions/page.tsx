@@ -183,17 +183,14 @@ export default function SessionsPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="py-0">
             <CardContent className="p-4">
+              <p className="text-muted-foreground text-sm">Total Sessions</p>
               {overviewLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-24" />
+                <>
                   <Skeleton className="h-8 w-20" />
-                  <Skeleton className="h-3 w-16" />
-                </div>
+                  <Skeleton className="mt-1 h-3 w-16" />
+                </>
               ) : (
                 <>
-                  <p className="text-muted-foreground text-sm">
-                    Total Sessions
-                  </p>
                   <p className="font-bold text-3xl">
                     {overview?.totalSessions.toLocaleString() || 0}
                   </p>
@@ -230,17 +227,14 @@ export default function SessionsPage() {
 
           <Card className="py-0">
             <CardContent className="p-4">
+              <p className="text-muted-foreground text-sm">Daily Sessions</p>
               {overviewLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-24" />
+                <>
                   <Skeleton className="h-8 w-20" />
-                  <Skeleton className="h-3 w-16" />
-                </div>
+                  <Skeleton className="mt-1 h-3 w-16" />
+                </>
               ) : (
                 <>
-                  <p className="text-muted-foreground text-sm">
-                    Daily Sessions
-                  </p>
                   <p className="font-bold text-3xl">
                     {overview?.activeSessions24h.toLocaleString() || 0}
                   </p>
@@ -277,17 +271,16 @@ export default function SessionsPage() {
 
           <Card className="py-0">
             <CardContent className="p-4">
+              <p className="text-muted-foreground text-sm">
+                Average Session Duration
+              </p>
               {overviewLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-24" />
+                <>
                   <Skeleton className="h-8 w-20" />
-                  <Skeleton className="h-3 w-16" />
-                </div>
+                  <Skeleton className="mt-1 h-3 w-32" />
+                </>
               ) : (
                 <>
-                  <p className="text-muted-foreground text-sm">
-                    Average Session Duration
-                  </p>
                   <p className="font-bold text-3xl">
                     {formatDuration(overview?.averageSessionDuration || null)}
                   </p>
