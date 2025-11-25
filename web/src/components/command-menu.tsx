@@ -122,8 +122,13 @@ export function CommandMenu({ open, onOpenChange, items }: CommandMenuProps) {
   }, [open]);
 
   useEffect(() => {
-    setSelectedIndex(0);
-  }, []);
+    setSelectedIndex((prev) => {
+      if (prev >= filteredItems.length) {
+        return 0;
+      }
+      return prev;
+    });
+  }, [filteredItems.length]);
 
   const handleSelect = useCallback(
     (item: CommandItem) => {
@@ -232,9 +237,11 @@ export function CommandMenu({ open, onOpenChange, items }: CommandMenuProps) {
 export type { CommandItem };
 
 export function CommandMenuTrigger({ onClick }: { onClick: () => void }) {
-  const [modKey, setModKey] = useState<string | null>('⌘');
+  const [modKey, setModKey] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     setModKey(getModifierKey());
   }, []);
 
@@ -246,7 +253,7 @@ export function CommandMenuTrigger({ onClick }: { onClick: () => void }) {
     >
       <HugeiconsIcon className="size-4 shrink-0" icon={Search01Icon} />
       <span className="flex-1 text-left">Search...</span>
-      {modKey && (
+      {mounted && modKey && (
         <KbdGroup>
           <Kbd>{modKey}</Kbd>
           <Kbd>K</Kbd>
