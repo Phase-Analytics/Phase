@@ -68,7 +68,14 @@ rootApp.use(
   '/api/auth/*',
   cors({
     origin: corsOrigins,
-    allowHeaders: ['Content-Type', 'Authorization'],
+    allowHeaders: [
+      'Content-Type',
+      'Authorization',
+      'User-Agent',
+      'Accept',
+      'Accept-Language',
+      'Content-Language',
+    ],
     allowMethods: ['POST', 'GET', 'OPTIONS'],
     exposeHeaders: ['Content-Length'],
     maxAge: 600,

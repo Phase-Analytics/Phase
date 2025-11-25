@@ -22,6 +22,7 @@ export const auth = betterAuth({
   trustedOrigins: [
     process.env.WEB_URL || 'http://localhost:3002',
     'http://localhost:3002',
+    'https://telemetra.dev',
   ],
   session: {
     cookieCache: {
@@ -30,13 +31,12 @@ export const auth = betterAuth({
     },
   },
   advanced: {
+    useSecureCookies: true,
     crossSubDomainCookies: {
       enabled: true,
     },
     defaultCookieAttributes: {
-      sameSite: 'none',
-      secure: true,
-      partitioned: true,
+      sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'none',
       domain:
         process.env.NODE_ENV === 'production' ? '.telemetra.dev' : undefined,
     },
