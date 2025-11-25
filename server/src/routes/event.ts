@@ -89,14 +89,14 @@ const getTopEventsRoute = createRoute({
   method: 'get',
   path: '/top',
   tags: ['event'],
-  description: 'Get top 10 most frequent events by count for an app',
+  description: 'Get top 6 most frequent events by count for an app',
   security: [{ CookieAuth: [] }],
   request: {
     query: topEventsQuerySchema,
   },
   responses: {
     200: {
-      description: 'Top events (max 10)',
+      description: 'Top events (max 6)',
       content: {
         'application/json': {
           schema: topEventsResponseSchema,
@@ -398,7 +398,7 @@ eventWebRouter.openapi(getTopEventsRoute, async (c) => {
       appId,
       startDate: startDate || undefined,
       endDate: endDate || undefined,
-      limit: 10,
+      limit: 6,
     });
 
     return c.json(

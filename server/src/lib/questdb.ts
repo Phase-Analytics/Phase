@@ -60,7 +60,8 @@ export async function writeEvent(event: EventRecord): Promise<void> {
     client.stringColumn('params', paramsJson);
   }
 
-  client.at(BigInt(event.timestamp.getTime() * 1_000_000), 'ns');
+  await client.at(BigInt(event.timestamp.getTime() * 1_000_000), 'ns');
+  await client.flush();
 }
 
 type QueryResponse<T> = {
@@ -272,7 +273,7 @@ export async function getTopEvents(
   }
 
   const whereClause = `WHERE ${conditions.join(' AND ')}`;
-  const limit = sanitizeNumeric(options.limit, 10, 1, 10);
+  const limit = sanitizeNumeric(options.limit, 6, 1, 6);
 
   const topEventsQuery = `
     SELECT name, COUNT(*) as count
