@@ -633,8 +633,12 @@ deviceWebRouter.openapi(getDeviceTimeseriesRoute, async (c: any) => {
           ds.date::text,
           COALESCE(COUNT(DISTINCT s.device_id), 0)::int as "activeUsers"
         FROM date_series ds
-        LEFT JOIN sessions_analytics s ON DATE(s.last_activity_at) = ds.date
-        LEFT JOIN devices d ON s.device_id = d.device_id AND d.app_id = ${appId}
+        LEFT JOIN (
+          SELECT s.device_id, s.last_activity_at
+          FROM sessions_analytics s
+          INNER JOIN devices d ON s.device_id = d.device_id
+          WHERE d.app_id = ${appId}
+        ) s ON DATE(s.last_activity_at) = ds.date
         WHERE ds.date <= CURRENT_DATE
         GROUP BY ds.date
         ORDER BY ds.date

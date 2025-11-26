@@ -481,8 +481,12 @@ sessionWebRouter.openapi(getSessionTimeseriesRoute, async (c: any) => {
           ds.date::text,
           COALESCE(COUNT(s.session_id), 0)::int as "dailySessions"
         FROM date_series ds
-        LEFT JOIN sessions_analytics s ON DATE(s.started_at) = ds.date
-        LEFT JOIN devices d ON s.device_id = d.device_id AND d.app_id = ${appId}
+        LEFT JOIN (
+          SELECT s.session_id, s.started_at
+          FROM sessions_analytics s
+          INNER JOIN devices d ON s.device_id = d.device_id
+          WHERE d.app_id = ${appId}
+        ) s ON DATE(s.started_at) = ds.date
         WHERE ds.date <= CURRENT_DATE
         GROUP BY ds.date
         ORDER BY ds.date
@@ -523,8 +527,12 @@ sessionWebRouter.openapi(getSessionTimeseriesRoute, async (c: any) => {
           0
         )::float as "avgDuration"
       FROM date_series ds
-      LEFT JOIN sessions_analytics s ON DATE(s.started_at) = ds.date
-      LEFT JOIN devices d ON s.device_id = d.device_id AND d.app_id = ${appId}
+      LEFT JOIN (
+        SELECT s.started_at, s.last_activity_at
+        FROM sessions_analytics s
+        INNER JOIN devices d ON s.device_id = d.device_id
+        WHERE d.app_id = ${appId}
+      ) s ON DATE(s.started_at) = ds.date
       WHERE ds.date <= CURRENT_DATE
       GROUP BY ds.date
       ORDER BY ds.date
