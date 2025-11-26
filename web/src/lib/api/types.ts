@@ -152,6 +152,7 @@ export type SessionTimeseriesResponse = {
 export type EventListItem = {
   eventId: string;
   name: string;
+  deviceId: string;
   timestamp: string;
 };
 
@@ -180,6 +181,19 @@ export type TopEventsResponse = {
   appId: string;
   startDate: string | null;
   endDate: string | null;
+};
+
+export type EventTimeseriesDataPoint = {
+  date: string;
+  dailyEvents: number;
+};
+
+export type EventTimeseriesResponse = {
+  data: EventTimeseriesDataPoint[];
+  period: {
+    startDate: string;
+    endDate: string;
+  };
 };
 
 export type App = {

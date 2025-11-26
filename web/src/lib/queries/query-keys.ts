@@ -61,5 +61,7 @@ export const queryKeys = {
       [...queryKeys.events.all, 'overview', appId] as const,
     top: (appId: string, filters?: DateRangeParams) =>
       [...queryKeys.events.all, 'top', appId, filters] as const,
+    timeseries: (appId: string, timeRange: string) =>
+      [...queryKeys.events.all, 'timeseries', appId, timeRange] as const,
   },
 } as const;
