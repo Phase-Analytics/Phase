@@ -14,6 +14,7 @@ export const eventListItemSchema = z
   .object({
     eventId: z.string().openapi({ example: '01JCXYZ5K3QWERTYUIOP01234' }),
     name: z.string().openapi({ example: 'button_clicked' }),
+    deviceId: z.string().openapi({ example: 'device_abc123' }),
     timestamp: z
       .string()
       .datetime()
@@ -134,6 +135,35 @@ export const topEventsResponseSchema = z
   })
   .openapi('TopEventsResponse');
 
+export const eventTimeseriesQuerySchema = dateFilterQuerySchema
+  .extend({
+    appId: z.string().openapi({ example: '123456789012345' }),
+  })
+  .openapi('EventTimeseriesQuery');
+
+export const eventTimeseriesDataPointSchema = z
+  .object({
+    date: z.string().openapi({ example: '2024-01-15' }),
+    dailyEvents: z.number().int().min(0).openapi({ example: 1234 }),
+  })
+  .openapi('EventTimeseriesDataPoint');
+
+export const eventTimeseriesResponseSchema = z
+  .object({
+    data: z.array(eventTimeseriesDataPointSchema),
+    period: z.object({
+      startDate: z
+        .string()
+        .datetime()
+        .openapi({ example: '2024-01-01T00:00:00Z' }),
+      endDate: z
+        .string()
+        .datetime()
+        .openapi({ example: '2024-01-31T23:59:59Z' }),
+    }),
+  })
+  .openapi('EventTimeseriesResponse');
+
 export type EventListItemSchema = z.infer<typeof eventListItemSchema>;
 export type EventSchema = z.infer<typeof eventSchema>;
 export type CreateEventRequest = z.infer<typeof createEventRequestSchema>;
@@ -146,3 +176,10 @@ export type EventOverviewResponse = z.infer<typeof eventOverviewResponseSchema>;
 export type TopEventsQuery = z.infer<typeof topEventsQuerySchema>;
 export type TopEvent = z.infer<typeof topEventSchema>;
 export type TopEventsResponse = z.infer<typeof topEventsResponseSchema>;
+export type EventTimeseriesQuery = z.infer<typeof eventTimeseriesQuerySchema>;
+export type EventTimeseriesDataPoint = z.infer<
+  typeof eventTimeseriesDataPointSchema
+>;
+export type EventTimeseriesResponse = z.infer<
+  typeof eventTimeseriesResponseSchema
+>;

@@ -8,6 +8,7 @@ import {
   getEventById,
   getEventStats,
   getEvents,
+  getEventTimeseries,
   getTopEvents,
   writeEvent,
 } from '@/lib/questdb';
@@ -28,6 +29,8 @@ import {
   eventOverviewResponseSchema,
   eventSchema,
   eventsListResponseSchema,
+  eventTimeseriesQuerySchema,
+  eventTimeseriesResponseSchema,
   getEventQuerySchema,
   HttpStatus,
   listEventsQuerySchema,
@@ -122,6 +125,28 @@ const getEventOverviewRoute = createRoute({
       content: {
         'application/json': {
           schema: eventOverviewResponseSchema,
+        },
+      },
+    },
+    ...errorResponses,
+  },
+});
+
+const getEventTimeseriesRoute = createRoute({
+  method: 'get',
+  path: '/timeseries',
+  tags: ['event'],
+  description: 'Get event timeseries data (daily event count)',
+  security: [{ CookieAuth: [] }],
+  request: {
+    query: eventTimeseriesQuerySchema,
+  },
+  responses: {
+    200: {
+      description: 'Event timeseries data',
+      content: {
+        'application/json': {
+          schema: eventTimeseriesResponseSchema,
         },
       },
     },
@@ -352,6 +377,7 @@ eventWebRouter.openapi(getEventsRoute, async (c) => {
       return {
         eventId: event.event_id,
         name: event.name,
+        deviceId: event.device_id,
         timestamp,
       };
     });
@@ -428,6 +454,36 @@ eventWebRouter.openapi(getTopEventsRoute, async (c) => {
       {
         code: ErrorCode.INTERNAL_SERVER_ERROR,
         detail: 'Failed to fetch top events',
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
+});
+
+// biome-ignore lint/suspicious/noExplicitAny: OpenAPI handler type inference issue with union response types
+eventWebRouter.openapi(getEventTimeseriesRoute, async (c: any) => {
+  try {
+    const query = c.req.valid('query');
+    const { appId, startDate, endDate } = query;
+
+    const dateRangeValidation = validateDateRange(c, startDate, endDate);
+    if (!dateRangeValidation.success) {
+      return dateRangeValidation.response;
+    }
+
+    const result = await getEventTimeseries({
+      appId,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+    });
+
+    return c.json(result, HttpStatus.OK);
+  } catch (error) {
+    console.error('[Event.Timeseries] Error:', error);
+    return c.json(
+      {
+        code: ErrorCode.INTERNAL_SERVER_ERROR,
+        detail: 'Failed to fetch event timeseries',
       },
       HttpStatus.INTERNAL_SERVER_ERROR
     );

@@ -151,6 +151,7 @@ async function executeQuery<T>(query: string): Promise<T[]> {
 export type EventQueryResult = {
   event_id: string;
   session_id: string;
+  device_id: string;
   name: string;
   params: string | null;
   timestamp: string;
@@ -217,7 +218,7 @@ export async function getEvents(
     offset > 0 ? `LIMIT ${offset}, ${limit}` : `LIMIT ${limit}`;
 
   const eventsQuery = `
-    SELECT event_id, session_id, name, params, to_str(timestamp, 'yyyy-MM-ddTHH:mm:ss.SSSUUUZ') as timestamp
+    SELECT event_id, session_id, device_id, name, params, to_str(timestamp, 'yyyy-MM-ddTHH:mm:ss.SSSUUUZ') as timestamp
     FROM events
     ${whereClause}
     ORDER BY timestamp DESC
@@ -429,6 +430,72 @@ export async function initQuestDB(): Promise<void> {
   })();
 
   return await initPromise;
+}
+
+export type EventTimeseriesDataPoint = {
+  date: string;
+  dailyEvents: number;
+};
+
+export type GetEventTimeseriesOptions = {
+  appId: string;
+  startDate?: string;
+  endDate?: string;
+};
+
+export async function getEventTimeseries(
+  options: GetEventTimeseriesOptions
+): Promise<{
+  data: EventTimeseriesDataPoint[];
+  period: { startDate: string; endDate: string };
+}> {
+  validateIdentifier(options.appId, 'appId');
+
+  const now = new Date();
+  const defaultStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const start = options.startDate ? new Date(options.startDate) : defaultStart;
+  const end = options.endDate ? new Date(options.endDate) : now;
+
+  const startTimestamp = start.getTime() * 1000;
+  const endTimestamp = end.getTime() * 1000;
+
+  const query = `
+    SELECT
+      to_str(timestamp, 'yyyy-MM-dd') as date,
+      COUNT(*) as count
+    FROM events
+    WHERE app_id = '${escapeSqlString(options.appId)}'
+    AND timestamp >= ${startTimestamp}
+    AND timestamp < ${endTimestamp}
+    GROUP BY to_str(timestamp, 'yyyy-MM-dd')
+    ORDER BY date
+  `;
+
+  const results = await executeQuery<{ date: string; count: number }>(query);
+
+  const dataMap = new Map<string, number>();
+  for (const row of results) {
+    dataMap.set(row.date, Number(row.count));
+  }
+
+  const data: EventTimeseriesDataPoint[] = [];
+  const currentDate = new Date(start);
+  while (currentDate <= end) {
+    const dateStr = currentDate.toISOString().split('T')[0];
+    data.push({
+      date: dateStr,
+      dailyEvents: dataMap.get(dateStr) || 0,
+    });
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return {
+    data,
+    period: {
+      startDate: start.toISOString(),
+      endDate: end.toISOString(),
+    },
+  };
 }
 
 export async function closeQuestDB(): Promise<void> {
