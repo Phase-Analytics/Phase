@@ -200,7 +200,7 @@ export default function ApiKeysPage() {
 
           <div>
             <h2 className="mb-3 font-semibold text-lg">Documentation</h2>
-            <Link className="block" href="/docs">
+            <Link className="block" href="/docs" prefetch={false}>
               <Card className="cursor-pointer py-0 transition-colors hover:bg-accent">
                 <CardContent className="flex items-center justify-between p-4">
                   <div className="flex items-center gap-3">
