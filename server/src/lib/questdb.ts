@@ -54,10 +54,10 @@ export async function writeEvent(event: EventRecord): Promise<void> {
   }
 }
 
-type QueryResponse<T> = {
+type QueryResponse = {
   query: string;
   columns: Array<{ name: string; type: string }>;
-  dataset: T[];
+  dataset: unknown[][];
   count: number;
   timings: {
     compiler: number;
@@ -136,8 +136,16 @@ async function executeQuery<T>(query: string): Promise<T[]> {
     );
   }
 
-  const result = (await response.json()) as QueryResponse<T>;
-  return result.dataset;
+  const result = (await response.json()) as QueryResponse;
+
+  const { columns, dataset } = result;
+  return dataset.map((row) => {
+    const obj: Record<string, unknown> = {};
+    for (let i = 0; i < columns.length; i++) {
+      obj[columns[i].name] = row[i];
+    }
+    return obj as T;
+  });
 }
 
 export type EventQueryResult = {
@@ -313,14 +321,8 @@ export async function getEventStats(options: GetEventStatsOptions): Promise<{
   validateIdentifier(options.appId, 'appId');
 
   const now = new Date();
-  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
-    .toISOString()
-    .replace('T', ' ')
-    .replace('Z', '');
-  const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000)
-    .toISOString()
-    .replace('T', ' ')
-    .replace('Z', '');
+  const twentyFourHoursAgo = (now.getTime() - 24 * 60 * 60 * 1000) * 1000;
+  const fortyEightHoursAgo = (now.getTime() - 48 * 60 * 60 * 1000) * 1000;
 
   const [
     totalResult,
@@ -337,20 +339,20 @@ export async function getEventStats(options: GetEventStatsOptions): Promise<{
       SELECT COUNT(*) as count
       FROM events
       WHERE app_id = '${escapeSqlString(options.appId)}'
-      AND timestamp < '${twentyFourHoursAgo}'
+      AND timestamp < ${twentyFourHoursAgo}
     `),
     executeQuery<{ count: number }>(`
       SELECT COUNT(*) as count
       FROM events
       WHERE app_id = '${escapeSqlString(options.appId)}'
-      AND timestamp >= '${twentyFourHoursAgo}'
+      AND timestamp >= ${twentyFourHoursAgo}
     `),
     executeQuery<{ count: number }>(`
       SELECT COUNT(*) as count
       FROM events
       WHERE app_id = '${escapeSqlString(options.appId)}'
-      AND timestamp >= '${fortyEightHoursAgo}'
-      AND timestamp < '${twentyFourHoursAgo}'
+      AND timestamp >= ${fortyEightHoursAgo}
+      AND timestamp < ${twentyFourHoursAgo}
     `),
   ]);
 
