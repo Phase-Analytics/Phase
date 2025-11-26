@@ -36,36 +36,94 @@ const formatDurationTable = (startedAt: string, lastActivityAt: string) => {
   const seconds = Math.floor((end - start) / 1000);
 
   if (seconds < 60) {
-    return `${seconds}s`;
+    return (
+      <>
+        {seconds}
+        <span className="text-muted-foreground">s</span>
+      </>
+    );
   }
   if (seconds < 3600) {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+    return secs > 0 ? (
+      <>
+        {mins}
+        <span className="text-muted-foreground">m</span> {secs}
+        <span className="text-muted-foreground">s</span>
+      </>
+    ) : (
+      <>
+        {mins}
+        <span className="text-muted-foreground">m</span>
+      </>
+    );
   }
   const hours = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
-  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  return mins > 0 ? (
+    <>
+      {hours}
+      <span className="text-muted-foreground">h</span> {mins}
+      <span className="text-muted-foreground">m</span>
+    </>
+  ) : (
+    <>
+      {hours}
+      <span className="text-muted-foreground">h</span>
+    </>
+  );
 };
 
 const formatDuration = (seconds: number | null) => {
   if (seconds === null || seconds === 0) {
-    return '0s';
+    return (
+      <>
+        0<span className="text-muted-foreground">s</span>
+      </>
+    );
   }
 
   const totalSeconds = Math.floor(seconds);
 
   if (totalSeconds < 60) {
-    return `${totalSeconds}s`;
+    return (
+      <>
+        {totalSeconds}
+        <span className="text-muted-foreground">s</span>
+      </>
+    );
   }
   if (totalSeconds < 3600) {
     const mins = Math.floor(totalSeconds / 60);
     const secs = totalSeconds % 60;
-    return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+    return secs > 0 ? (
+      <>
+        {mins}
+        <span className="text-muted-foreground">m</span> {secs}
+        <span className="text-muted-foreground">s</span>
+      </>
+    ) : (
+      <>
+        {mins}
+        <span className="text-muted-foreground">m</span>
+      </>
+    );
   }
   const hours = Math.floor(totalSeconds / 3600);
   const mins = Math.floor((totalSeconds % 3600) / 60);
-  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  return mins > 0 ? (
+    <>
+      {hours}
+      <span className="text-muted-foreground">h</span> {mins}
+      <span className="text-muted-foreground">m</span>
+    </>
+  ) : (
+    <>
+      {hours}
+      <span className="text-muted-foreground">h</span>
+    </>
+  );
 };
 
 const getColumns = (deviceId: string, appId: string): ColumnDef<Session>[] => [

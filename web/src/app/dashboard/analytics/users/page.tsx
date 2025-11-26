@@ -8,6 +8,7 @@ import {
   ChartDownIcon,
   ChartUpIcon,
   ComputerPhoneSyncIcon,
+  Flag02Icon,
   ViewIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -33,7 +34,7 @@ const getColumns = (appId: string): ColumnDef<Device>[] => [
   {
     accessorKey: 'deviceId',
     header: 'User ID',
-    size: 400,
+    size: 300,
     cell: ({ row }) => (
       <div
         className="max-w-xs truncate font-mono text-xs lg:max-w-sm"
@@ -46,7 +47,7 @@ const getColumns = (appId: string): ColumnDef<Device>[] => [
   {
     accessorKey: 'identifier',
     header: 'Identifier',
-    size: 400,
+    size: 250,
     cell: ({ row }) => {
       const identifier = row.getValue('identifier') as string | null;
       return (
@@ -79,7 +80,7 @@ const getColumns = (appId: string): ColumnDef<Device>[] => [
           case 'web':
             return BrowserIcon;
           default:
-            return AnonymousIcon;
+            return Flag02Icon;
         }
       };
 
@@ -112,9 +113,63 @@ const getColumns = (appId: string): ColumnDef<Device>[] => [
           className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs"
           variant="outline"
         >
-          <HugeiconsIcon className="size-3.5" icon={AnonymousIcon} />
+          <HugeiconsIcon className="size-3.5" icon={Flag02Icon} />
           Unknown
         </Badge>
+      );
+    },
+  },
+  {
+    accessorKey: 'country',
+    header: 'Country',
+    size: 150,
+    cell: ({ row }) => {
+      const country = row.getValue('country') as string | null;
+
+      if (!country) {
+        return (
+          <div className="flex items-center gap-2">
+            <HugeiconsIcon
+              className="size-3.5 text-muted-foreground"
+              icon={Flag02Icon}
+            />
+            <span className="text-muted-foreground text-xs">Unknown</span>
+          </div>
+        );
+      }
+
+      const getCountryFlag = (countryCode: string) =>
+        String.fromCodePoint(
+          ...[...countryCode.toUpperCase()].map(
+            (char) => 0x1_f1_e6 - 65 + char.charCodeAt(0)
+          )
+        );
+
+      const getCountryLabel = (countryCode: string) =>
+        new Intl.DisplayNames(['en'], {
+          type: 'region',
+        }).of(countryCode) || countryCode;
+
+      return (
+        <div className="flex items-center gap-2">
+          <span className="text-base leading-none">
+            {getCountryFlag(country)}
+          </span>
+          <span className="text-xs">{getCountryLabel(country)}</span>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: 'firstSeen',
+    header: 'First Seen',
+    size: 200,
+    cell: ({ row }) => {
+      const timestamp = row.getValue('firstSeen') as string;
+      return (
+        <span className="text-muted-foreground text-xs">
+          {new Date(timestamp).toLocaleString()}
+        </span>
       );
     },
   },

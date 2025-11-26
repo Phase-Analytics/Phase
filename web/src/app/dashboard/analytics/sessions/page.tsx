@@ -28,16 +28,43 @@ const formatDurationTable = (startedAt: string, lastActivityAt: string) => {
   const seconds = Math.floor((end - start) / 1000);
 
   if (seconds < 60) {
-    return `${seconds}s`;
+    return (
+      <>
+        {seconds}
+        <span className="text-muted-foreground">s</span>
+      </>
+    );
   }
   if (seconds < 3600) {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+    return secs > 0 ? (
+      <>
+        {mins}
+        <span className="text-muted-foreground">m</span> {secs}
+        <span className="text-muted-foreground">s</span>
+      </>
+    ) : (
+      <>
+        {mins}
+        <span className="text-muted-foreground">m</span>
+      </>
+    );
   }
   const hours = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
-  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  return mins > 0 ? (
+    <>
+      {hours}
+      <span className="text-muted-foreground">h</span> {mins}
+      <span className="text-muted-foreground">m</span>
+    </>
+  ) : (
+    <>
+      {hours}
+      <span className="text-muted-foreground">h</span>
+    </>
+  );
 };
 
 const getColumns = (appId: string): ColumnDef<Session>[] => [
@@ -55,23 +82,6 @@ const getColumns = (appId: string): ColumnDef<Session>[] => [
     ),
   },
   {
-    accessorKey: 'startedAt',
-    header: 'Date',
-    size: 250,
-    cell: ({ row }) => {
-      const date = new Date(row.getValue('startedAt'));
-      return (
-        <div className="text-sm">
-          {date.toLocaleDateString()}{' '}
-          {date.toLocaleTimeString(undefined, {
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-        </div>
-      );
-    },
-  },
-  {
     accessorKey: 'lastActivityAt',
     header: 'Duration',
     size: 150,
@@ -81,6 +91,19 @@ const getColumns = (appId: string): ColumnDef<Session>[] => [
         row.original.lastActivityAt
       );
       return <div className="text-sm">{duration}</div>;
+    },
+  },
+  {
+    accessorKey: 'startedAt',
+    header: 'Time',
+    size: 200,
+    cell: ({ row }) => {
+      const timestamp = row.getValue('startedAt') as string;
+      return (
+        <span className="text-muted-foreground text-xs">
+          {new Date(timestamp).toLocaleString()}
+        </span>
+      );
     },
   },
   {
@@ -155,11 +178,21 @@ export default function SessionsPage() {
 
   const formatDuration = (seconds: number | null) => {
     if (seconds === null || seconds === 0) {
-      return '0s';
+      return (
+        <>
+          0<span className="text-muted-foreground">s</span>
+        </>
+      );
     }
     const minutes = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
-    return `${minutes}m ${secs}s`;
+    return (
+      <>
+        {minutes}
+        <span className="text-muted-foreground">m</span> {secs}
+        <span className="text-muted-foreground">s</span>
+      </>
+    );
   };
 
   const chartData = (() => {
