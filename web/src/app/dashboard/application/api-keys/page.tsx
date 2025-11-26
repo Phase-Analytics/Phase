@@ -24,6 +24,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { formatDateTimeLong } from '@/lib/date-utils';
 import { useApp, useAppKeys } from '@/lib/queries';
 
 export default function ApiKeysPage() {
@@ -165,17 +166,7 @@ export default function ApiKeysPage() {
                   <p className="text-muted-foreground text-sm">
                     Last rotated:{' '}
                     {keysData?.keyRotatedAt
-                      ? `${new Date(keysData.keyRotatedAt).toLocaleDateString(
-                          'en-US',
-                          {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            timeZone: 'UTC',
-                          }
-                        )} UTC`
+                      ? formatDateTimeLong(keysData.keyRotatedAt)
                       : 'Never'}
                   </p>
 

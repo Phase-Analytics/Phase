@@ -222,7 +222,7 @@ export function DataTableServer<TData, TValue>({
                     key={header.id}
                     style={{
                       width: header.getSize(),
-                      minWidth: header.column.columnDef.minSize
+                      minWidth: header.column.columnDef.minSize,
                     }}
                   >
                     {header.isPlaceholder
@@ -252,7 +252,7 @@ export function DataTableServer<TData, TValue>({
                           key={`loading-${rowIndex}-${header.id}`}
                           style={{
                             width: header.getSize(),
-                            minWidth: header.column.columnDef.minSize
+                            minWidth: header.column.columnDef.minSize,
                           }}
                         >
                           <Skeleton className="h-5 w-full" />
@@ -278,7 +278,7 @@ export function DataTableServer<TData, TValue>({
                           key={cell.id}
                           style={{
                             width: cell.column.getSize(),
-                            minWidth: cell.column.columnDef.minSize
+                            minWidth: cell.column.columnDef.minSize,
                           }}
                         >
                           {flexRender(

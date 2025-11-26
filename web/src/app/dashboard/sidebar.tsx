@@ -45,6 +45,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { UserSettings } from '@/components/user-settings';
 import { authClient, useSession } from '@/lib/auth';
 import { queryClient } from '@/lib/queries/query-client';
 
@@ -363,6 +364,15 @@ export function DashboardSidebar() {
               <DropdownMenuContent align="start" className="w-56" side="top">
                 <DropdownMenuLabel>Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <UserSettings>
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                    <HugeiconsIcon
+                      className="mr-2 size-4"
+                      icon={Setting07Icon}
+                    />
+                    User Settings
+                  </DropdownMenuItem>
+                </UserSettings>
                 <DropdownMenuItem>
                   <HugeiconsIcon
                     className="mr-2 size-4"

@@ -28,6 +28,7 @@ import { CopyButton } from '@/components/ui/copy-button';
 import { DataTableServer } from '@/components/ui/data-table-server';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Session } from '@/lib/api/types';
+import { formatDateTime } from '@/lib/date-utils';
 import { useDevice, useSessions } from '@/lib/queries';
 import { usePaginationStore } from '@/stores/pagination-store';
 
@@ -146,16 +147,8 @@ const getColumns = (deviceId: string, appId: string): ColumnDef<Session>[] => [
     header: 'Date',
     size: 250,
     cell: ({ row }) => {
-      const date = new Date(row.getValue('startedAt'));
-      return (
-        <div className="text-sm">
-          {date.toLocaleDateString()}{' '}
-          {date.toLocaleTimeString(undefined, {
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-        </div>
-      );
+      const timestamp = row.getValue('startedAt') as string;
+      return <div className="text-sm">{formatDateTime(timestamp)}</div>;
     },
   },
   {
@@ -242,11 +235,7 @@ export default function UserPage({ params }: UserPageProps) {
     if (!dateStr) {
       return null;
     }
-    const date = new Date(dateStr);
-    return `${date.toLocaleDateString()} ${date.toLocaleTimeString(undefined, {
-      hour: '2-digit',
-      minute: '2-digit',
-    })} UTC`;
+    return formatDateTime(dateStr);
   };
 
   return (

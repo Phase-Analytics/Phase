@@ -15,6 +15,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { DataTableServer } from '@/components/ui/data-table-server';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { TimeRange } from '@/lib/api/types';
+import { formatDateTime } from '@/lib/date-utils';
 import {
   useEventOverview,
   useEvents,
@@ -66,7 +67,7 @@ const getColumns = (appId: string): ColumnDef<Event>[] => [
       const timestamp = row.getValue('timestamp') as string;
       return (
         <span className="text-muted-foreground text-xs">
-          {new Date(timestamp).toLocaleString()}
+          {formatDateTime(timestamp)}
         </span>
       );
     },

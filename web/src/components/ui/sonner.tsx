@@ -2,7 +2,7 @@
 
 import {
   Alert01Icon,
-  CancelSquareIcon,
+  Cancel01Icon,
   CheckmarkSquare01Icon,
   InformationSquareIcon,
 } from '@hugeicons/core-free-icons';
@@ -23,7 +23,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
         ),
         info: <HugeiconsIcon className="size-4" icon={InformationSquareIcon} />,
         warning: <HugeiconsIcon className="size-4" icon={Alert01Icon} />,
-        error: <HugeiconsIcon className="size-4" icon={CancelSquareIcon} />,
+        error: <HugeiconsIcon className="size-4" icon={Cancel01Icon} />,
         loading: <Spinner className="size-4" />,
       }}
       style={

@@ -15,6 +15,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { DataTableServer } from '@/components/ui/data-table-server';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Session, TimeRange } from '@/lib/api/types';
+import { formatDateTime } from '@/lib/date-utils';
 import {
   useSessionOverview,
   useSessions,
@@ -102,7 +103,7 @@ const getColumns = (appId: string): ColumnDef<Session>[] => [
       const timestamp = row.getValue('startedAt') as string;
       return (
         <span className="text-muted-foreground text-xs">
-          {new Date(timestamp).toLocaleString()}
+          {formatDateTime(timestamp)}
         </span>
       );
     },

@@ -22,6 +22,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { DataTableServer } from '@/components/ui/data-table-server';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Device, TimeRange } from '@/lib/api/types';
+import { formatDateTime } from '@/lib/date-utils';
 import {
   useDeviceLive,
   useDeviceOverview,
@@ -169,7 +170,7 @@ const getColumns = (appId: string): ColumnDef<Device>[] => [
       const timestamp = row.getValue('firstSeen') as string;
       return (
         <span className="text-muted-foreground text-xs">
-          {new Date(timestamp).toLocaleString()}
+          {formatDateTime(timestamp)}
         </span>
       );
     },
