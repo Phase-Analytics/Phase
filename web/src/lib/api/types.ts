@@ -77,6 +77,7 @@ export type Device = {
   identifier: string | null;
   platform: Platform | null;
   country: string | null;
+  firstSeen: string;
 };
 
 export interface DeviceDetail extends Device {

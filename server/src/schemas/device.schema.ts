@@ -52,6 +52,10 @@ export const deviceListItemSchema = z
     identifier: z.string().nullable().openapi({ example: 'user@example.com' }),
     platform: platformEnum.nullable().openapi({ example: 'ios' }),
     country: z.string().nullable().openapi({ example: 'US' }),
+    firstSeen: z
+      .string()
+      .datetime()
+      .openapi({ example: '2024-01-01T00:00:00Z' }),
   })
   .openapi('DeviceListItem');
 

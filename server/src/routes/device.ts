@@ -572,6 +572,7 @@ deviceWebRouter.openapi(getDevicesRoute, async (c) => {
           identifier: devices.identifier,
           platform: devices.platform,
           country: devices.country,
+          firstSeen: devices.firstSeen,
         })
         .from(devices)
         .where(whereClause)
@@ -583,7 +584,10 @@ deviceWebRouter.openapi(getDevicesRoute, async (c) => {
 
     return c.json(
       {
-        devices: devicesList,
+        devices: devicesList.map((device) => ({
+          ...device,
+          firstSeen: device.firstSeen.toISOString(),
+        })),
         pagination: formatPaginationResponse(totalCount, page, pageSize),
       },
       HttpStatus.OK
