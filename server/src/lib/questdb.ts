@@ -1,31 +1,4 @@
-import { Sender } from '@questdb/nodejs-client';
-
 const QUESTDB_HTTP = 'http://questdb:9000';
-const QUESTDB_ILP_HOST = 'questdb';
-const QUESTDB_ILP_PORT = 9009;
-
-let sender: Sender | null = null;
-
-async function getSender(): Promise<Sender> {
-  if (!sender) {
-    try {
-      sender = await Sender.fromConfig(
-        `tcp::addr=${QUESTDB_ILP_HOST}:${QUESTDB_ILP_PORT};auto_flush=on;auto_flush_rows=1000;`
-      );
-    } catch (error) {
-      console.error('[QuestDB] Failed to connect to ILP:', error);
-      throw new Error(
-        `Failed to connect to QuestDB ILP: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
-  }
-
-  if (!sender) {
-    throw new Error('[QuestDB] Sender is null after initialization');
-  }
-
-  return sender;
-}
 
 let tablesInitialized = false;
 let initPromise: Promise<void> | null = null;
@@ -45,23 +18,40 @@ export type EventRecord = {
 };
 
 export async function writeEvent(event: EventRecord): Promise<void> {
-  const client = await getSender();
+  const url = `${QUESTDB_HTTP}/exec`;
 
-  client
-    .table('events')
-    .symbol('event_id', event.eventId)
-    .symbol('session_id', event.sessionId)
-    .symbol('device_id', event.deviceId)
-    .symbol('app_id', event.appId)
-    .symbol('name', event.name);
+  const paramsValue =
+    event.params !== null
+      ? `'${escapeSqlString(JSON.stringify(event.params))}'`
+      : 'null';
+  const timestampMicros = event.timestamp.getTime() * 1000;
 
-  if (event.params !== null) {
-    const paramsJson = JSON.stringify(event.params);
-    client.stringColumn('params', paramsJson);
+  const query = `
+    INSERT INTO events (event_id, session_id, device_id, app_id, name, params, timestamp)
+    VALUES (
+      '${escapeSqlString(event.eventId)}',
+      '${escapeSqlString(event.sessionId)}',
+      '${escapeSqlString(event.deviceId)}',
+      '${escapeSqlString(event.appId)}',
+      '${escapeSqlString(event.name)}',
+      ${paramsValue},
+      to_timestamp(${timestampMicros}, 'us')
+    )
+  `;
+
+  const response = await fetch(`${url}?query=${encodeURIComponent(query)}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `QuestDB insert failed: ${response.status} ${response.statusText} - ${errorText}`
+    );
   }
-
-  await client.at(BigInt(event.timestamp.getTime() * 1_000_000), 'ns');
-  await client.flush();
 }
 
 type QueryResponse<T> = {
@@ -400,14 +390,14 @@ export async function initQuestDB(): Promise<void> {
     try {
       const eventsTableQuery = `
         CREATE TABLE IF NOT EXISTS events (
-          event_id SYMBOL,
-          session_id SYMBOL,
-          device_id SYMBOL,
-          app_id SYMBOL,
-          name SYMBOL,
+          event_id SYMBOL CAPACITY 256 CACHE,
+          session_id SYMBOL CAPACITY 256 CACHE INDEX CAPACITY 1048576,
+          device_id SYMBOL CAPACITY 256 CACHE,
+          app_id SYMBOL CAPACITY 64 CACHE INDEX CAPACITY 262144,
+          name SYMBOL CAPACITY 256 CACHE,
           params STRING,
           timestamp TIMESTAMP
-        ) TIMESTAMP(timestamp) PARTITION BY WEEK
+        ) TIMESTAMP(timestamp) PARTITION BY WEEK WAL DEDUP UPSERT KEYS(timestamp, event_id)
       `;
 
       const eventsResponse = await fetch(
@@ -428,6 +418,7 @@ export async function initQuestDB(): Promise<void> {
       }
 
       tablesInitialized = true;
+      console.log('[QuestDB] Events table initialized with WAL and indexes');
     } catch (error) {
       console.error('[QuestDB] Initialization failed:', error);
       initPromise = null;
@@ -439,9 +430,5 @@ export async function initQuestDB(): Promise<void> {
 }
 
 export async function closeQuestDB(): Promise<void> {
-  if (sender) {
-    await sender.flush();
-    await sender.close();
-    sender = null;
-  }
+  // No-op: HTTP doesn't need cleanup
 }

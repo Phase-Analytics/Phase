@@ -14,7 +14,6 @@
   },
   "dependencies": {
     "@hono/zod-openapi": "^1.1.4",
-    "@questdb/nodejs-client": "^4.1.0",
     "@scalar/hono-api-reference": "^0.9.22",
     "better-auth": "1.4.1",
     "drizzle-orm": "^0.44.7",
