@@ -19,6 +19,7 @@ import { RequireApp } from '@/components/require-app';
 import { TimescaleChart } from '@/components/timescale-chart';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { CountingNumber } from '@/components/ui/counting-number';
 import { DataTableServer } from '@/components/ui/data-table-server';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Device, TimeRange } from '@/lib/api/types';
@@ -295,7 +296,7 @@ export default function UsersPage() {
               ) : (
                 <>
                   <p className="font-bold text-3xl">
-                    {overview?.totalDevices.toLocaleString() || 0}
+                    <CountingNumber number={overview?.totalDevices || 0} />
                   </p>
                   <div className="mt-1 flex items-center gap-1 text-xs">
                     {(overview?.totalDevicesChange24h || 0) !== 0 && (
@@ -341,7 +342,7 @@ export default function UsersPage() {
               ) : (
                 <>
                   <p className="font-bold text-3xl">
-                    {overview?.activeDevices24h.toLocaleString() || 0}
+                    <CountingNumber number={overview?.activeDevices24h || 0} />
                   </p>
                   <div className="mt-1 flex items-center gap-1 text-xs">
                     {(overview?.activeDevicesChange24h || 0) !== 0 && (
@@ -391,7 +392,7 @@ export default function UsersPage() {
               ) : (
                 <>
                   <p className="font-bold text-3xl">
-                    {liveData?.activeNow.toLocaleString() || 0}
+                    <CountingNumber number={liveData?.activeNow || 0} />
                   </p>
                   <p className="mt-1 text-muted-foreground text-xs">
                     Users currently online

@@ -12,6 +12,7 @@ import { parseAsInteger, parseAsString, useQueryState } from 'nuqs';
 import { RequireApp } from '@/components/require-app';
 import { TimescaleChart } from '@/components/timescale-chart';
 import { Card, CardContent } from '@/components/ui/card';
+import { CountingNumber } from '@/components/ui/counting-number';
 import { DataTableServer } from '@/components/ui/data-table-server';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Session, TimeRange } from '@/lib/api/types';
@@ -249,7 +250,7 @@ export default function SessionsPage() {
               ) : (
                 <>
                   <p className="font-bold text-3xl">
-                    {overview?.totalSessions.toLocaleString() || 0}
+                    <CountingNumber number={overview?.totalSessions || 0} />
                   </p>
                   <div className="mt-1 flex items-center gap-1 text-xs">
                     {(overview?.totalSessionsChange24h || 0) !== 0 && (
@@ -293,7 +294,7 @@ export default function SessionsPage() {
               ) : (
                 <>
                   <p className="font-bold text-3xl">
-                    {overview?.activeSessions24h.toLocaleString() || 0}
+                    <CountingNumber number={overview?.activeSessions24h || 0} />
                   </p>
                   <div className="mt-1 flex items-center gap-1 text-xs">
                     {(overview?.activeSessions24hChange || 0) !== 0 && (
