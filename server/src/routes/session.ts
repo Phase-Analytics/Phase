@@ -248,6 +248,11 @@ sessionWebRouter.openapi(getSessionOverviewRoute, async (c: any) => {
     const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
 
+    const deviceIdsSubquery = db
+      .select({ deviceId: devices.deviceId })
+      .from(devices)
+      .where(eq(devices.appId, appId));
+
     const [
       [{ count: totalSessions }],
       [{ count: totalSessionsYesterday }],
@@ -258,16 +263,16 @@ sessionWebRouter.openapi(getSessionOverviewRoute, async (c: any) => {
       db
         .select({ count: count() })
         .from(sessions)
-        .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
-        .where(eq(devices.appId, appId)),
+        .where(
+          sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`
+        ),
 
       db
         .select({ count: count() })
         .from(sessions)
-        .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
         .where(
           and(
-            eq(devices.appId, appId),
+            sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
             lt(sessions.startedAt, twentyFourHoursAgo)
           )
         ),
@@ -275,10 +280,9 @@ sessionWebRouter.openapi(getSessionOverviewRoute, async (c: any) => {
       db
         .select({ count: count() })
         .from(sessions)
-        .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
         .where(
           and(
-            eq(devices.appId, appId),
+            sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
             gte(sessions.startedAt, twentyFourHoursAgo),
             lte(sessions.startedAt, now)
           )
@@ -287,10 +291,9 @@ sessionWebRouter.openapi(getSessionOverviewRoute, async (c: any) => {
       db
         .select({ count: count() })
         .from(sessions)
-        .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
         .where(
           and(
-            eq(devices.appId, appId),
+            sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
             gte(sessions.startedAt, fortyEightHoursAgo),
             lt(sessions.startedAt, twentyFourHoursAgo)
           )
@@ -303,8 +306,9 @@ sessionWebRouter.openapi(getSessionOverviewRoute, async (c: any) => {
           )`,
         })
         .from(sessions)
-        .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
-        .where(eq(devices.appId, appId)),
+        .where(
+          sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`
+        ),
     ]);
 
     const totalSessionsNum = Number(totalSessions);

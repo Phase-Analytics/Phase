@@ -328,6 +328,11 @@ deviceWebRouter.openapi(getDeviceOverviewRoute, async (c: any) => {
     const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
 
+    const deviceIdsSubquery = db
+      .select({ deviceId: devices.deviceId })
+      .from(devices)
+      .where(eq(devices.appId, appId));
+
     const [
       [{ count: totalDevices }],
       [{ count: totalDevicesYesterday }],
@@ -354,10 +359,9 @@ deviceWebRouter.openapi(getDeviceOverviewRoute, async (c: any) => {
       db
         .select({ count: countDistinct(sessions.deviceId) })
         .from(sessions)
-        .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
         .where(
           and(
-            eq(devices.appId, appId),
+            sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
             gte(sessions.lastActivityAt, twentyFourHoursAgo),
             lte(sessions.lastActivityAt, now)
           )
@@ -366,10 +370,9 @@ deviceWebRouter.openapi(getDeviceOverviewRoute, async (c: any) => {
       db
         .select({ count: countDistinct(sessions.deviceId) })
         .from(sessions)
-        .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
         .where(
           and(
-            eq(devices.appId, appId),
+            sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
             gte(sessions.lastActivityAt, fortyEightHoursAgo),
             lt(sessions.lastActivityAt, twentyFourHoursAgo)
           )
@@ -487,13 +490,17 @@ deviceWebRouter.openapi(getDeviceLiveRoute, async (c: any) => {
     const now = new Date();
     const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
 
+    const deviceIdsSubquery = db
+      .select({ deviceId: devices.deviceId })
+      .from(devices)
+      .where(eq(devices.appId, appId));
+
     const [{ count: activeNow }] = await db
       .select({ count: countDistinct(sessions.deviceId) })
       .from(sessions)
-      .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
       .where(
         and(
-          eq(devices.appId, appId),
+          sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
           gte(sessions.lastActivityAt, oneMinuteAgo),
           lte(sessions.lastActivityAt, now)
         )
