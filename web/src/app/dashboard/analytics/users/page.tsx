@@ -459,19 +459,6 @@ export default function UsersPage() {
                           }
                         };
 
-                        const getPlatformColor = (p: string) => {
-                          switch (p) {
-                            case 'android':
-                              return 'bg-green-500';
-                            case 'ios':
-                              return 'bg-blue-500';
-                            case 'web':
-                              return 'bg-purple-500';
-                            default:
-                              return 'bg-gray-500';
-                          }
-                        };
-
                         return (
                           <div className="space-y-1.5" key={platform}>
                             <div className="flex items-center justify-between">
@@ -495,7 +482,7 @@ export default function UsersPage() {
                             </div>
                             <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
                               <div
-                                className={`h-full transition-all ${getPlatformColor(platform)}`}
+                                className="h-full bg-primary transition-all"
                                 style={{ width: `${percentage}%` }}
                               />
                             </div>
