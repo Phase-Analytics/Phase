@@ -37,7 +37,10 @@ export function useDevices(appId: string, filters?: DeviceFilters) {
     queryKey: queryKeys.devices.list(appId, filters),
     queryFn: () => {
       if (!appId) {
-        throw new Error('App ID is required');
+        return Promise.resolve({
+          devices: [],
+          pagination: { total: 0, page: 1, pageSize: 10, totalPages: 0 },
+        });
       }
       return fetchApi<DevicesListResponse>(
         `/web/devices${buildQueryString({ ...filters, appId })}`
@@ -65,7 +68,14 @@ export function useDeviceOverview(appId: string) {
     queryKey: queryKeys.devices.overview(appId),
     queryFn: () => {
       if (!appId) {
-        throw new Error('App ID is required');
+        return Promise.resolve({
+          totalDevices: 0,
+          totalDevicesChange24h: 0,
+          activeDevices24h: 0,
+          activeDevicesChange24h: 0,
+          platformStats: {},
+          countryStats: {},
+        });
       }
       return fetchApi<DeviceOverview>(`/web/devices/overview?appId=${appId}`);
     },
@@ -78,7 +88,9 @@ export function useDeviceLive(appId: string) {
     queryKey: queryKeys.devices.live(appId),
     queryFn: () => {
       if (!appId) {
-        throw new Error('App ID is required');
+        return Promise.resolve({
+          activeNow: 0,
+        });
       }
       return fetchApi<DeviceLive>(`/web/devices/live?appId=${appId}`);
     },
@@ -100,7 +112,13 @@ export function useDeviceTimeseries(
     queryKey: queryKeys.devices.timeseries(appId, queryKeyParams),
     queryFn: () => {
       if (!appId) {
-        throw new Error('App ID is required');
+        return Promise.resolve({
+          data: [],
+          period: {
+            startDate: new Date().toISOString(),
+            endDate: new Date().toISOString(),
+          },
+        });
       }
 
       const dateParams =

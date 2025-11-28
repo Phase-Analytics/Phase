@@ -331,7 +331,7 @@ export default function EventsPage() {
 
         {appId && (
           <TimescaleChart
-            chartColor="var(--color-chart-2)"
+            chartColor="var(--color-chart-1)"
             data={chartData}
             dataKey="dailyEvents"
             dataLabel="Daily Events"

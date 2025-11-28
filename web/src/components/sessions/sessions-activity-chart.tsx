@@ -6,9 +6,9 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { TimeRange } from '@/lib/api/types';
-import { useDeviceTimeseries } from '@/lib/queries';
+import { useSessionTimeseries } from '@/lib/queries';
 
-export function UsersActivityChart() {
+export function SessionsActivityChart() {
   const [appId] = useQueryState('app', parseAsString);
   const [timeRange, setTimeRange] = useQueryState(
     'range',
@@ -16,13 +16,13 @@ export function UsersActivityChart() {
   );
   const [metric, setMetric] = useQueryState(
     'metric',
-    parseAsString.withDefault('total')
+    parseAsString.withDefault('daily_sessions')
   );
 
-  const { data: timeseriesData, isLoading } = useDeviceTimeseries(
+  const { data: timeseriesData, isLoading } = useSessionTimeseries(
     appId || '',
     (timeRange || '7d') as TimeRange,
-    metric === 'dau' ? 'dau' : 'total'
+    metric === 'daily_sessions' ? 'daily_sessions' : 'avg_duration'
   );
 
   if (!appId) {
@@ -34,7 +34,8 @@ export function UsersActivityChart() {
       return [];
     }
 
-    const valueKey = metric === 'dau' ? 'activeUsers' : 'totalUsers';
+    const valueKey =
+      metric === 'daily_sessions' ? 'dailySessions' : 'avgDuration';
     const dataMap = new Map(
       timeseriesData.data.map((item) => [item.date, item[valueKey] || 0])
     );
@@ -60,18 +61,18 @@ export function UsersActivityChart() {
     <TimescaleChart
       chartColor="var(--color-chart-1)"
       data={chartData}
-      dataKey="activeUsers"
-      dataLabel={metric === 'dau' ? 'Active Users' : 'Total Users'}
+      dataKey="value"
+      dataLabel={metric === 'daily_sessions' ? 'Sessions' : 'Avg Duration'}
       description={
-        metric === 'dau'
-          ? 'Daily active users over selected period'
-          : 'Cumulative total users over selected period'
+        metric === 'daily_sessions'
+          ? 'Number of sessions started each day'
+          : 'Average session duration in seconds per day'
       }
       isPending={isLoading}
       metric={metric}
       metricOptions={[
-        { value: 'total', label: 'Total Users' },
-        { value: 'dau', label: 'Daily Active Users' },
+        { value: 'daily_sessions', label: 'Daily Sessions' },
+        { value: 'avg_duration', label: 'Average Duration' },
       ]}
       onMetricChange={setMetric}
       onTimeRangeChange={setTimeRange}
@@ -82,27 +83,48 @@ export function UsersActivityChart() {
         { value: '180d', label: '6 Months' },
         { value: '360d', label: '1 Year' },
       ]}
-      title="User Activity"
+      title="Session Activity"
+      valueFormatter={
+        metric === 'avg_duration'
+          ? (value) => {
+              const seconds = Math.floor(value);
+              if (seconds === 0) {
+                return '0s';
+              }
+              if (seconds < 60) {
+                return `${seconds}s`;
+              }
+              if (seconds < 3600) {
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+              }
+              const hours = Math.floor(seconds / 3600);
+              const mins = Math.floor((seconds % 3600) / 60);
+              return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+            }
+          : undefined
+      }
     />
   );
 }
 
-export function UsersActivityChartSkeleton() {
+export function SessionsActivityChartSkeleton() {
   return (
     <Card className="py-0">
       <CardHeader className="space-y-0 border-b py-5">
         <div className="flex flex-col gap-3">
           <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <Tabs value="total">
+            <Tabs value="daily_sessions">
               <TabsList>
-                <TabsTrigger value="total">Total Users</TabsTrigger>
-                <TabsTrigger value="dau">Daily Active Users</TabsTrigger>
+                <TabsTrigger value="daily_sessions">Daily Sessions</TabsTrigger>
+                <TabsTrigger value="avg_duration">Average Duration</TabsTrigger>
               </TabsList>
             </Tabs>
             <Skeleton className="h-9 w-24" />
           </div>
           <p className="text-muted-foreground text-sm">
-            Cumulative total users over selected period
+            Number of sessions started each day
           </p>
         </div>
       </CardHeader>

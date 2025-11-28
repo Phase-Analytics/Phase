@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import { buildQueryString, fetchApi } from '@/lib/api/client';
 import type {
   DateRangeParams,
@@ -32,41 +32,65 @@ export function useSessions(
   appId: string,
   filters?: SessionFilters & { deviceId?: string }
 ) {
-  return useQuery({
+  return useSuspenseQuery({
     queryKey: queryKeys.sessions.list(appId, filters?.deviceId || '', filters),
-    queryFn: () =>
-      fetchApi<SessionsListResponse>(
+    queryFn: () => {
+      if (!appId) {
+        return Promise.resolve({
+          sessions: [],
+          pagination: { total: 0, page: 1, pageSize: 10, totalPages: 0 },
+        });
+      }
+      return fetchApi<SessionsListResponse>(
         `/web/sessions${buildQueryString({ ...filters, appId })}`
-      ),
+      );
+    },
     ...cacheConfig.list,
-    enabled: Boolean(appId),
   });
 }
 
 export function useSessionOverview(appId: string) {
-  return useQuery({
+  return useSuspenseQuery({
     queryKey: queryKeys.sessions.overview(appId),
-    queryFn: () =>
-      fetchApi<SessionOverview>(`/web/sessions/overview?appId=${appId}`),
+    queryFn: () => {
+      if (!appId) {
+        return Promise.resolve({
+          totalSessions: 0,
+          totalSessionsChange24h: 0,
+          activeSessions24h: 0,
+          activeSessions24hChange: 0,
+          averageSessionDuration: 0,
+        });
+      }
+      return fetchApi<SessionOverview>(`/web/sessions/overview?appId=${appId}`);
+    },
     ...cacheConfig.overview,
-    enabled: Boolean(appId),
   });
 }
 
 export function useSessionTimeseries(
   appId: string,
   range?: TimeRange | DateRangeParams,
-  metric?: SessionMetric,
-  enabled = true
+  metric?: SessionMetric
 ) {
   const queryKeyParams = {
     range,
     ...(metric && { metric }),
   };
 
-  return useQuery({
+  return useSuspenseQuery({
     queryKey: queryKeys.sessions.timeseries(appId, queryKeyParams),
     queryFn: () => {
+      if (!appId) {
+        return Promise.resolve({
+          data: [],
+          period: {
+            startDate: new Date().toISOString(),
+            endDate: new Date().toISOString(),
+          },
+        });
+      }
+
       const dateParams =
         range && typeof range === 'string'
           ? getTimeRangeDates(range)
@@ -82,6 +106,5 @@ export function useSessionTimeseries(
       );
     },
     ...cacheConfig.timeseries,
-    enabled: Boolean(appId) && enabled,
   });
 }
