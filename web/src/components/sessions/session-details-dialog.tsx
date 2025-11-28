@@ -1,15 +1,17 @@
 'use client';
 
-import { FolderSearchIcon } from '@hugeicons/core-free-icons';
+import {
+  Activity02Icon,
+  Calendar03Icon,
+  FolderSearchIcon,
+  PresentationLineChart02Icon,
+  Time03Icon,
+} from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useQuery } from '@tanstack/react-query';
-import type { ColumnDef } from '@tanstack/react-table';
-import {
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
+import { AnimatePresence, motion } from 'motion/react';
 import { useRouter } from 'next/navigation';
+import { CopyButton } from '@/components/ui/copy-button';
 import {
   Dialog,
   DialogContent,
@@ -17,23 +19,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { buildQueryString, fetchApi } from '@/lib/api/client';
 import type {
   EventListItem,
   EventsListResponse,
   Session,
 } from '@/lib/api/types';
-import { formatDateTime } from '@/lib/date-utils';
+import { formatDateTime, formatTime } from '@/lib/date-utils';
 import { cacheConfig } from '@/lib/queries/query-client';
 import { queryKeys } from '@/lib/queries/query-keys';
+import { cn } from '@/lib/utils';
 
 function formatDuration(startedAt: string, lastActivityAt: string) {
   const start = new Date(startedAt).getTime();
@@ -62,34 +57,36 @@ function formatDuration(startedAt: string, lastActivityAt: string) {
   return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
 }
 
-const columns: ColumnDef<EventListItem>[] = [
-  {
-    accessorKey: 'name',
-    header: 'Event Name',
-    size: 400,
-    cell: ({ row }) => (
-      <div
-        className="max-w-xs truncate font-medium text-sm lg:max-w-sm"
-        title={row.getValue('name')}
-      >
-        {row.getValue('name')}
-      </div>
-    ),
-  },
-  {
-    accessorKey: 'timestamp',
-    header: 'Date',
-    size: 250,
-    cell: ({ row }) => {
-      const timestamp = row.getValue('timestamp') as string;
-      return (
-        <span className="text-muted-foreground text-sm">
-          {formatDateTime(timestamp)}
-        </span>
-      );
-    },
-  },
-];
+function EventRow({
+  event,
+  onClick,
+}: {
+  event: EventListItem;
+  onClick: () => void;
+}) {
+  return (
+    <motion.button
+      animate={{ opacity: 1, scale: 1 }}
+      className={cn(
+        'flex w-full items-center gap-3 rounded-md bg-muted/30 px-3 py-3 text-left transition-colors duration-100',
+        'cursor-pointer hover:bg-accent hover:text-accent-foreground'
+      )}
+      exit={{ opacity: 0, scale: 0.95 }}
+      initial={{ opacity: 0, scale: 0.95 }}
+      onClick={onClick}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
+      type="button"
+    >
+      <HugeiconsIcon className="size-4 shrink-0" icon={Activity02Icon} />
+      <span className="flex-1 truncate font-medium text-sm" title={event.name}>
+        {event.name}
+      </span>
+      <span className="shrink-0 text-muted-foreground text-xs">
+        {formatTime(event.timestamp)}
+      </span>
+    </motion.button>
+  );
+}
 
 type SessionDetailsDialogProps = {
   session: Session | null;
@@ -123,13 +120,7 @@ export function SessionDetailsDialog({
     ...cacheConfig.list,
   });
 
-  const table = useReactTable({
-    data: eventsData?.events || [],
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-  });
-
-  if (!session) {
+  if (!(session && appId)) {
     return null;
   }
 
@@ -140,131 +131,94 @@ export function SessionDetailsDialog({
       <DialogContent className="flex max-h-[85vh] max-w-3xl flex-col p-0">
         <DialogHeader className="border-b px-6 pt-6 pb-4">
           <DialogTitle>Session Details</DialogTitle>
-          <div className="grid grid-cols-1 gap-3 pt-4 sm:grid-cols-3">
+          <div className="space-y-3 pt-4">
             <div className="space-y-1">
-              <p className="text-muted-foreground text-xs">User ID</p>
+              <div className="flex items-center gap-2">
+                <CopyButton
+                  className="size-4 [&_svg]:size-4"
+                  content={session.deviceId}
+                  variant="ghost"
+                />
+                <p className="text-muted-foreground text-xs">User ID</p>
+              </div>
               <p className="break-all font-mono text-sm">{session.deviceId}</p>
             </div>
-            <div className="space-y-1">
-              <p className="text-muted-foreground text-xs">Started At</p>
-              <p className="text-sm">{formatDateTime(session.startedAt)}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-muted-foreground text-xs">Duration</p>
-              <p className="text-sm">{duration}</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <HugeiconsIcon className="size-4" icon={Calendar03Icon} />
+                  <p className="text-muted-foreground text-xs">Started At</p>
+                </div>
+                <p className="text-sm">{formatDateTime(session.startedAt)}</p>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <HugeiconsIcon className="size-4" icon={Time03Icon} />
+                  <p className="text-muted-foreground text-xs">Duration</p>
+                </div>
+                <p className="text-sm">{duration}</p>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <HugeiconsIcon
+                    className="size-4"
+                    icon={PresentationLineChart02Icon}
+                  />
+                  <p className="text-muted-foreground text-xs">Events</p>
+                </div>
+                <p className="text-sm">{eventsData?.events.length || 0}</p>
+              </div>
             </div>
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          <div className="space-y-2">
-            <h3 className="font-semibold text-sm">
-              Events ({eventsData?.events.length || 0})
-            </h3>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id}>
-                      {headerGroup.headers.map((header, index) => (
-                        <TableHead
-                          className={`bg-muted/50 font-semibold ${
-                            index < headerGroup.headers.length - 1
-                              ? 'border-border border-r'
-                              : ''
-                          }`}
-                          key={header.id}
-                        >
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableHeader>
-                <TableBody>
-                  {isLoading &&
-                    Array.from({ length: 5 }).map((__, rowIndex) => (
-                      // biome-ignore lint/suspicious/noArrayIndexKey: Loading skeleton rows are static and don't reorder
-                      <TableRow key={`loading-row-${rowIndex}`}>
-                        {columns.map((column, colIndex) => (
-                          <TableCell
-                            className={
-                              colIndex < columns.length - 1
-                                ? 'border-border border-r'
-                                : ''
-                            }
-                            key={`loading-${rowIndex}-${column.id || colIndex}`}
-                          >
-                            <Skeleton className="h-5 w-full" />
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-
-                  {!isLoading &&
-                    table.getRowModel().rows?.length > 0 &&
-                    table.getRowModel().rows.map((row) => (
-                      <TableRow
-                        className="cursor-pointer"
-                        key={row.id}
-                        onClick={() => {
-                          router.push(
-                            `/dashboard/analytics/events/${row.original.eventId}?app=${appId}`
-                          );
-                        }}
-                      >
-                        {row.getVisibleCells().map((cell, index) => (
-                          <TableCell
-                            className={
-                              index < row.getVisibleCells().length - 1
-                                ? 'border-border border-r'
-                                : ''
-                            }
-                            key={cell.id}
-                          >
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-
-                  {!isLoading &&
-                    (!table.getRowModel().rows ||
-                      table.getRowModel().rows.length === 0) && (
-                      <TableRow>
-                        <TableCell
-                          className="h-32 text-center"
-                          colSpan={columns.length}
-                        >
-                          <div className="flex flex-col items-center justify-center gap-2 py-4">
-                            <HugeiconsIcon
-                              className="size-10 text-muted-foreground opacity-40"
-                              icon={FolderSearchIcon}
-                            />
-                            <div className="flex flex-col gap-1">
-                              <p className="font-medium text-muted-foreground text-sm">
-                                No events found
-                              </p>
-                              <p className="text-muted-foreground text-xs">
-                                This session has no recorded events
-                              </p>
-                            </div>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                </TableBody>
-              </Table>
+        <div className="flex-1 overflow-y-auto px-4 pb-4">
+          {isLoading && (
+            <div className="flex flex-col gap-1">
+              {Array.from({ length: 5 }).map((__, index) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: Loading skeleton rows are static and don't reorder
+                <div className="rounded-md px-3 py-3" key={`loading-${index}`}>
+                  <Skeleton className="h-5 w-full" />
+                </div>
+              ))}
             </div>
-          </div>
+          )}
+
+          {!isLoading && eventsData?.events && eventsData.events.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <AnimatePresence mode="popLayout">
+                {eventsData.events.map((event) => (
+                  <EventRow
+                    event={event}
+                    key={event.eventId}
+                    onClick={() => {
+                      router.push(
+                        `/dashboard/analytics/events/${event.eventId}?app=${appId}`
+                      );
+                    }}
+                  />
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+
+          {!isLoading &&
+            (!eventsData?.events || eventsData.events.length === 0) && (
+              <div className="flex min-h-[200px] flex-col items-center justify-center gap-2">
+                <HugeiconsIcon
+                  className="size-10 text-muted-foreground opacity-40"
+                  icon={FolderSearchIcon}
+                />
+                <div className="flex flex-col gap-1 text-center">
+                  <p className="font-medium text-muted-foreground text-sm">
+                    No events found
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    This session has no recorded events
+                  </p>
+                </div>
+              </div>
+            )}
         </div>
       </DialogContent>
     </Dialog>

@@ -2,7 +2,6 @@
 
 import type { ColumnDef } from '@tanstack/react-table';
 import { parseAsInteger, parseAsString, useQueryState } from 'nuqs';
-import { useState } from 'react';
 import { SessionDetailsDialog } from '@/components/sessions/session-details-dialog';
 import { DataTableServer } from '@/components/ui/data-table-server';
 import type { Session } from '@/lib/api/types';
@@ -108,9 +107,8 @@ type UserSessionsTableProps = {
 export function UserSessionsTable({ deviceId }: UserSessionsTableProps) {
   const [appId] = useQueryState('app', parseAsString);
   const [page] = useQueryState('page', parseAsInteger.withDefault(1));
+  const [sessionId, setSessionId] = useQueryState('session', parseAsString);
   const { pageSize } = usePaginationStore();
-  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
 
   const { data: sessionsData } = useSessions(appId || '', {
     page: page.toString(),
@@ -118,9 +116,11 @@ export function UserSessionsTable({ deviceId }: UserSessionsTableProps) {
     deviceId,
   });
 
+  const selectedSession =
+    sessionsData?.sessions.find((s) => s.sessionId === sessionId) || null;
+
   const handleViewSession = (session: Session) => {
-    setSelectedSession(session);
-    setDialogOpen(true);
+    setSessionId(session.sessionId);
   };
 
   if (!appId) {
@@ -145,8 +145,12 @@ export function UserSessionsTable({ deviceId }: UserSessionsTableProps) {
       />
       <SessionDetailsDialog
         appId={appId}
-        onOpenChange={setDialogOpen}
-        open={dialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSessionId(null);
+          }
+        }}
+        open={Boolean(sessionId)}
         session={selectedSession}
       />
     </>
