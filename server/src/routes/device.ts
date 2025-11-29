@@ -32,8 +32,8 @@ import {
   deviceLocationOverviewResponseSchema,
   deviceOverviewQuerySchema,
   deviceOverviewResponseSchema,
-  devicePlatformModelOverviewQuerySchema,
-  devicePlatformModelOverviewResponseSchema,
+  devicePlatformOverviewQuerySchema,
+  devicePlatformOverviewResponseSchema,
   deviceSchema,
   devicesListResponseSchema,
   deviceTimeseriesQuerySchema,
@@ -140,22 +140,22 @@ const getDeviceOverviewRoute = createRoute({
   },
 });
 
-const getDevicePlatformModelOverviewRoute = createRoute({
+const getDevicePlatformOverviewRoute = createRoute({
   method: 'get',
-  path: '/overview/platform-model',
+  path: '/overview/platform',
   tags: ['device'],
   description:
-    'Get device platform and model overview metrics (platform stats, model stats, total devices, 24h active devices)',
+    'Get device platform overview metrics (platform stats, total devices, 24h active devices)',
   security: [{ CookieAuth: [] }],
   request: {
-    query: devicePlatformModelOverviewQuerySchema,
+    query: devicePlatformOverviewQuerySchema,
   },
   responses: {
     200: {
-      description: 'Device platform and model overview metrics',
+      description: 'Device platform overview metrics',
       content: {
         'application/json': {
-          schema: devicePlatformModelOverviewResponseSchema,
+          schema: devicePlatformOverviewResponseSchema,
         },
       },
     },
@@ -537,12 +537,12 @@ deviceWebRouter.openapi(getDeviceOverviewRoute, async (c: any) => {
 });
 
 deviceWebRouter.openapi(
-  getDevicePlatformModelOverviewRoute,
+  getDevicePlatformOverviewRoute,
   // biome-ignore lint/suspicious/noExplicitAny: OpenAPI handler type inference issue with union response types
   async (c: any) => {
     try {
       const query = c.req.valid('query');
-      const { appId, limit = 'top3' } = query;
+      const { appId } = query;
 
       const now = new Date();
       const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -559,7 +559,6 @@ deviceWebRouter.openapi(
         [{ count: activeDevices24h }],
         [{ count: activeDevicesYesterday }],
         platformStatsResult,
-        modelStatsResult,
       ] = await Promise.all([
         db
           .select({ count: count() })
@@ -606,15 +605,6 @@ deviceWebRouter.openapi(
           .from(devices)
           .where(eq(devices.appId, appId))
           .groupBy(devices.platform),
-
-        db
-          .select({
-            model: devices.model,
-            count: count(),
-          })
-          .from(devices)
-          .where(eq(devices.appId, appId))
-          .groupBy(devices.model),
       ]);
 
       const totalDevicesNum = Number(totalDevices);
@@ -645,22 +635,10 @@ deviceWebRouter.openapi(
       for (const row of platformStatsResult) {
         const platform = row.platform?.toLowerCase();
 
-        if (limit === 'top3') {
-          if (
-            platform === 'ios' ||
-            platform === 'android' ||
-            platform === 'web'
-          ) {
-            allPlatformStats.push({
-              platform,
-              count: Number(row.count),
-            });
-          }
-        } else if (
+        if (
           platform === 'ios' ||
           platform === 'android' ||
-          platform === 'web' ||
-          platform === 'unknown'
+          platform === 'web'
         ) {
           allPlatformStats.push({
             platform,
@@ -678,43 +656,22 @@ deviceWebRouter.openapi(
         platformStats[platform] = countValue;
       }
 
-      const allModelStats: Array<{ model: string; count: number }> = [];
-
-      for (const row of modelStatsResult) {
-        if (row.model !== null) {
-          allModelStats.push({
-            model: row.model,
-            count: Number(row.count),
-          });
-        }
-      }
-
-      const sortedModels = allModelStats.sort((a, b) => b.count - a.count);
-      const finalModels =
-        limit === 'top3' ? sortedModels.slice(0, 3) : sortedModels;
-
-      const modelStats: Record<string, number> = {};
-      for (const { model, count: countValue } of finalModels) {
-        modelStats[model] = countValue;
-      }
-
       return c.json(
         {
           totalDevices: totalDevicesNum,
           activeDevices24h: activeDevices24hNum,
           platformStats,
-          modelStats,
           totalDevicesChange24h: Number(totalDevicesChange24h.toFixed(2)),
           activeDevicesChange24h: Number(activeDevicesChange24h.toFixed(2)),
         },
         HttpStatus.OK
       );
     } catch (error) {
-      console.error('[Device.PlatformModelOverview] Error:', error);
+      console.error('[Device.PlatformOverview] Error:', error);
       return c.json(
         {
           code: ErrorCode.INTERNAL_SERVER_ERROR,
-          detail: 'Failed to fetch device platform-model overview',
+          detail: 'Failed to fetch device platform overview',
         },
         HttpStatus.INTERNAL_SERVER_ERROR
       );

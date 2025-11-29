@@ -109,24 +109,19 @@ export const deviceOverviewQuerySchema = z
   })
   .openapi('DeviceOverviewQuery');
 
-export const devicePlatformModelOverviewQuerySchema = z
+export const devicePlatformOverviewQuerySchema = z
   .object({
     appId: z.string().openapi({ example: '123456789012345' }),
-    limit: overviewLimitEnum.optional().default('top3').openapi({
-      example: 'top3',
-      description:
-        'Limit results: "top3" shows top 3 items (default), "all" shows all items',
-    }),
   })
-  .openapi('DevicePlatformModelOverviewQuery');
+  .openapi('DevicePlatformOverviewQuery');
 
 export const deviceLocationOverviewQuerySchema = z
   .object({
     appId: z.string().openapi({ example: '123456789012345' }),
-    limit: overviewLimitEnum.optional().default('top3').openapi({
-      example: 'top3',
+    limit: overviewLimitEnum.optional().default('all').openapi({
+      example: 'all',
       description:
-        'Limit results: "top3" shows top 3 items (default), "all" shows all items',
+        'Limit results: "top3" shows top 3 items, "all" shows all items (default)',
     }),
   })
   .openapi('DeviceLocationOverviewQuery');
@@ -154,7 +149,7 @@ export const deviceOverviewResponseSchema = z
   })
   .openapi('DeviceOverviewResponse');
 
-export const devicePlatformModelOverviewResponseSchema = z
+export const devicePlatformOverviewResponseSchema = z
   .object({
     totalDevices: z.number().int().min(0).openapi({ example: 1250 }),
     activeDevices24h: z.number().int().min(0).openapi({ example: 342 }),
@@ -163,15 +158,6 @@ export const devicePlatformModelOverviewResponseSchema = z
       description:
         'Platform distribution - all 3 platforms (ios, android, web), sorted by count.',
     }),
-    modelStats: z.record(z.string(), z.number()).openapi({
-      example: {
-        'iPhone 15 Pro': 120,
-        'Samsung Galaxy S23': 95,
-        'Pixel 8': 87,
-      },
-      description:
-        'Device model distribution - top 3 models by count (null values excluded).',
-    }),
     totalDevicesChange24h: z
       .number()
       .openapi({ example: 0.4, description: 'Percentage change in last 24h' }),
@@ -179,7 +165,7 @@ export const devicePlatformModelOverviewResponseSchema = z
       .number()
       .openapi({ example: 4.2, description: 'Percentage change in last 24h' }),
   })
-  .openapi('DevicePlatformModelOverviewResponse');
+  .openapi('DevicePlatformOverviewResponse');
 
 export const deviceLocationOverviewResponseSchema = z
   .object({
@@ -259,11 +245,11 @@ export type DeviceOverviewQuery = z.infer<typeof deviceOverviewQuerySchema>;
 export type DeviceOverviewResponse = z.infer<
   typeof deviceOverviewResponseSchema
 >;
-export type DevicePlatformModelOverviewQuery = z.infer<
-  typeof devicePlatformModelOverviewQuerySchema
+export type DevicePlatformOverviewQuery = z.infer<
+  typeof devicePlatformOverviewQuerySchema
 >;
-export type DevicePlatformModelOverviewResponse = z.infer<
-  typeof devicePlatformModelOverviewResponseSchema
+export type DevicePlatformOverviewResponse = z.infer<
+  typeof devicePlatformOverviewResponseSchema
 >;
 export type DeviceLocationOverviewQuery = z.infer<
   typeof deviceLocationOverviewQuerySchema
