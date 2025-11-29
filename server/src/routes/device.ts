@@ -14,7 +14,7 @@ import {
 } from 'drizzle-orm';
 import { db, devices, sessions } from '@/db';
 import type { App, Session, User } from '@/db/schema';
-import { getCountryFromIP } from '@/lib/geolocation';
+import { getLocationFromIP } from '@/lib/geolocation';
 import { requireAppKey, requireAuth, verifyAppAccess } from '@/lib/middleware';
 import { methodNotAllowed } from '@/lib/response';
 import {
@@ -28,8 +28,12 @@ import {
   deviceDetailSchema,
   deviceLiveQuerySchema,
   deviceLiveResponseSchema,
+  deviceLocationOverviewQuerySchema,
+  deviceLocationOverviewResponseSchema,
   deviceOverviewQuerySchema,
   deviceOverviewResponseSchema,
+  devicePlatformModelOverviewQuerySchema,
+  devicePlatformModelOverviewResponseSchema,
   deviceSchema,
   devicesListResponseSchema,
   deviceTimeseriesQuerySchema,
@@ -129,6 +133,52 @@ const getDeviceOverviewRoute = createRoute({
       content: {
         'application/json': {
           schema: deviceOverviewResponseSchema,
+        },
+      },
+    },
+    ...errorResponses,
+  },
+});
+
+const getDevicePlatformModelOverviewRoute = createRoute({
+  method: 'get',
+  path: '/overview/platform-model',
+  tags: ['device'],
+  description:
+    'Get device platform and model overview metrics (platform stats, model stats, total devices, 24h active devices)',
+  security: [{ CookieAuth: [] }],
+  request: {
+    query: devicePlatformModelOverviewQuerySchema,
+  },
+  responses: {
+    200: {
+      description: 'Device platform and model overview metrics',
+      content: {
+        'application/json': {
+          schema: devicePlatformModelOverviewResponseSchema,
+        },
+      },
+    },
+    ...errorResponses,
+  },
+});
+
+const getDeviceLocationOverviewRoute = createRoute({
+  method: 'get',
+  path: '/overview/location',
+  tags: ['device'],
+  description:
+    'Get device location overview metrics (country stats, city stats, total devices)',
+  security: [{ CookieAuth: [] }],
+  request: {
+    query: deviceLocationOverviewQuerySchema,
+  },
+  responses: {
+    200: {
+      description: 'Device location overview metrics',
+      content: {
+        'application/json': {
+          schema: deviceLocationOverviewResponseSchema,
         },
       },
     },
@@ -244,6 +294,7 @@ deviceSdkRouter.openapi(createDeviceRoute, async (c: any) => {
       '';
 
     let country: string | null = null;
+    let city: string | null = null;
 
     const existingDevice = await db.query.devices.findFirst({
       where: (table, { eq: eqFn }) => eqFn(table.deviceId, body.deviceId),
@@ -275,7 +326,9 @@ deviceSdkRouter.openapi(createDeviceRoute, async (c: any) => {
         .returning();
     } else {
       if (ip) {
-        country = await getCountryFromIP(ip);
+        const location = await getLocationFromIP(ip);
+        country = location.countryCode;
+        city = location.city;
       }
 
       [device] = await db
@@ -289,6 +342,7 @@ deviceSdkRouter.openapi(createDeviceRoute, async (c: any) => {
           platform: body.platform ?? null,
           appVersion: body.appVersion ?? null,
           country: country ?? null,
+          city: city ?? null,
         })
         .returning();
     }
@@ -302,6 +356,7 @@ deviceSdkRouter.openapi(createDeviceRoute, async (c: any) => {
         platform: device.platform,
         appVersion: device.appVersion,
         country: device.country,
+        city: device.city,
         firstSeen: device.firstSeen.toISOString(),
       },
       HttpStatus.OK
@@ -481,6 +536,286 @@ deviceWebRouter.openapi(getDeviceOverviewRoute, async (c: any) => {
   }
 });
 
+deviceWebRouter.openapi(
+  getDevicePlatformModelOverviewRoute,
+  // biome-ignore lint/suspicious/noExplicitAny: OpenAPI handler type inference issue with union response types
+  async (c: any) => {
+    try {
+      const query = c.req.valid('query');
+      const { appId, limit = 'top3' } = query;
+
+      const now = new Date();
+      const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+
+      const deviceIdsSubquery = db
+        .select({ deviceId: devices.deviceId })
+        .from(devices)
+        .where(eq(devices.appId, appId));
+
+      const [
+        [{ count: totalDevices }],
+        [{ count: totalDevicesYesterday }],
+        [{ count: activeDevices24h }],
+        [{ count: activeDevicesYesterday }],
+        platformStatsResult,
+        modelStatsResult,
+      ] = await Promise.all([
+        db
+          .select({ count: count() })
+          .from(devices)
+          .where(eq(devices.appId, appId)),
+
+        db
+          .select({ count: count() })
+          .from(devices)
+          .where(
+            and(
+              eq(devices.appId, appId),
+              lt(devices.firstSeen, twentyFourHoursAgo)
+            )
+          ),
+
+        db
+          .select({ count: countDistinct(sessions.deviceId) })
+          .from(sessions)
+          .where(
+            and(
+              sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
+              gte(sessions.lastActivityAt, twentyFourHoursAgo),
+              lte(sessions.lastActivityAt, now)
+            )
+          ),
+
+        db
+          .select({ count: countDistinct(sessions.deviceId) })
+          .from(sessions)
+          .where(
+            and(
+              sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
+              gte(sessions.lastActivityAt, fortyEightHoursAgo),
+              lt(sessions.lastActivityAt, twentyFourHoursAgo)
+            )
+          ),
+
+        db
+          .select({
+            platform: sql<string>`COALESCE(${devices.platform}, 'unknown')`,
+            count: count(),
+          })
+          .from(devices)
+          .where(eq(devices.appId, appId))
+          .groupBy(devices.platform),
+
+        db
+          .select({
+            model: devices.model,
+            count: count(),
+          })
+          .from(devices)
+          .where(eq(devices.appId, appId))
+          .groupBy(devices.model),
+      ]);
+
+      const totalDevicesNum = Number(totalDevices);
+      const totalDevicesYesterdayNum = Number(totalDevicesYesterday);
+      const activeDevices24hNum = Number(activeDevices24h);
+      const activeDevicesYesterdayNum = Number(activeDevicesYesterday);
+
+      const totalDevicesYesterdayForCalc = Math.max(
+        totalDevicesYesterdayNum,
+        1
+      );
+      const totalDevicesChange24h =
+        ((totalDevicesNum - totalDevicesYesterdayNum) /
+          totalDevicesYesterdayForCalc) *
+        100;
+
+      const activeDevicesYesterdayForCalc = Math.max(
+        activeDevicesYesterdayNum,
+        1
+      );
+      const activeDevicesChange24h =
+        ((activeDevices24hNum - activeDevicesYesterdayNum) /
+          activeDevicesYesterdayForCalc) *
+        100;
+
+      const allPlatformStats: Array<{ platform: string; count: number }> = [];
+
+      for (const row of platformStatsResult) {
+        const platform = row.platform?.toLowerCase();
+
+        if (limit === 'top3') {
+          if (
+            platform === 'ios' ||
+            platform === 'android' ||
+            platform === 'web'
+          ) {
+            allPlatformStats.push({
+              platform,
+              count: Number(row.count),
+            });
+          }
+        } else if (
+          platform === 'ios' ||
+          platform === 'android' ||
+          platform === 'web' ||
+          platform === 'unknown'
+        ) {
+          allPlatformStats.push({
+            platform,
+            count: Number(row.count),
+          });
+        }
+      }
+
+      const sortedPlatforms = allPlatformStats.sort(
+        (a, b) => b.count - a.count
+      );
+
+      const platformStats: Record<string, number> = {};
+      for (const { platform, count: countValue } of sortedPlatforms) {
+        platformStats[platform] = countValue;
+      }
+
+      const allModelStats: Array<{ model: string; count: number }> = [];
+
+      for (const row of modelStatsResult) {
+        if (row.model !== null) {
+          allModelStats.push({
+            model: row.model,
+            count: Number(row.count),
+          });
+        }
+      }
+
+      const sortedModels = allModelStats.sort((a, b) => b.count - a.count);
+      const finalModels =
+        limit === 'top3' ? sortedModels.slice(0, 3) : sortedModels;
+
+      const modelStats: Record<string, number> = {};
+      for (const { model, count: countValue } of finalModels) {
+        modelStats[model] = countValue;
+      }
+
+      return c.json(
+        {
+          totalDevices: totalDevicesNum,
+          activeDevices24h: activeDevices24hNum,
+          platformStats,
+          modelStats,
+          totalDevicesChange24h: Number(totalDevicesChange24h.toFixed(2)),
+          activeDevicesChange24h: Number(activeDevicesChange24h.toFixed(2)),
+        },
+        HttpStatus.OK
+      );
+    } catch (error) {
+      console.error('[Device.PlatformModelOverview] Error:', error);
+      return c.json(
+        {
+          code: ErrorCode.INTERNAL_SERVER_ERROR,
+          detail: 'Failed to fetch device platform-model overview',
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+);
+
+// biome-ignore lint/suspicious/noExplicitAny: OpenAPI handler type inference issue with union response types
+deviceWebRouter.openapi(getDeviceLocationOverviewRoute, async (c: any) => {
+  try {
+    const query = c.req.valid('query');
+    const { appId, limit = 'top3' } = query;
+
+    const [[{ count: totalDevices }], countryStatsResult, cityStatsResult] =
+      await Promise.all([
+        db
+          .select({ count: count() })
+          .from(devices)
+          .where(eq(devices.appId, appId)),
+
+        db
+          .select({
+            country: devices.country,
+            count: count(),
+          })
+          .from(devices)
+          .where(eq(devices.appId, appId))
+          .groupBy(devices.country),
+
+        db
+          .select({
+            city: devices.city,
+            count: count(),
+          })
+          .from(devices)
+          .where(eq(devices.appId, appId))
+          .groupBy(devices.city),
+      ]);
+
+    const totalDevicesNum = Number(totalDevices);
+
+    const allCountryStats: Array<{ country: string; count: number }> = [];
+
+    for (const row of countryStatsResult) {
+      if (row.country !== null) {
+        allCountryStats.push({
+          country: row.country,
+          count: Number(row.count),
+        });
+      }
+    }
+
+    const sortedCountries = allCountryStats.sort((a, b) => b.count - a.count);
+    const finalCountries =
+      limit === 'top3' ? sortedCountries.slice(0, 3) : sortedCountries;
+
+    const countryStats: Record<string, number> = {};
+    for (const { country, count: countValue } of finalCountries) {
+      countryStats[country] = countValue;
+    }
+
+    const allCityStats: Array<{ city: string; count: number }> = [];
+
+    for (const row of cityStatsResult) {
+      if (row.city !== null) {
+        allCityStats.push({
+          city: row.city,
+          count: Number(row.count),
+        });
+      }
+    }
+
+    const sortedCities = allCityStats.sort((a, b) => b.count - a.count);
+    const finalCities =
+      limit === 'top3' ? sortedCities.slice(0, 3) : sortedCities;
+
+    const cityStats: Record<string, number> = {};
+    for (const { city, count: countValue } of finalCities) {
+      cityStats[city] = countValue;
+    }
+
+    return c.json(
+      {
+        totalDevices: totalDevicesNum,
+        countryStats,
+        cityStats,
+      },
+      HttpStatus.OK
+    );
+  } catch (error) {
+    console.error('[Device.LocationOverview] Error:', error);
+    return c.json(
+      {
+        code: ErrorCode.INTERNAL_SERVER_ERROR,
+        detail: 'Failed to fetch device location overview',
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
+});
+
 // biome-ignore lint/suspicious/noExplicitAny: OpenAPI handler type inference issue with union response types
 deviceWebRouter.openapi(getDeviceLiveRoute, async (c: any) => {
   try {
@@ -579,6 +914,7 @@ deviceWebRouter.openapi(getDevicesRoute, async (c) => {
           identifier: devices.identifier,
           platform: devices.platform,
           country: devices.country,
+          city: devices.city,
           firstSeen: devices.firstSeen,
         })
         .from(devices)
@@ -739,6 +1075,7 @@ deviceWebRouter.openapi(getDeviceRoute, async (c: any) => {
         platform: devices.platform,
         appVersion: devices.appVersion,
         country: devices.country,
+        city: devices.city,
         firstSeen: devices.firstSeen,
         lastActivityAt: sessions.lastActivityAt,
       })
@@ -779,6 +1116,7 @@ deviceWebRouter.openapi(getDeviceRoute, async (c: any) => {
         platform: deviceWithSession.platform,
         appVersion: deviceWithSession.appVersion,
         country: deviceWithSession.country,
+        city: deviceWithSession.city,
         firstSeen: deviceWithSession.firstSeen.toISOString(),
         lastActivityAt: deviceWithSession.lastActivityAt
           ? deviceWithSession.lastActivityAt.toISOString()

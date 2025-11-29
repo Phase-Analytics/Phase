@@ -1,4 +1,8 @@
-import type { DateRangeParams, PaginationParams } from '@/lib/api/types';
+import type {
+  DateRangeParams,
+  OverviewLimit,
+  PaginationParams,
+} from '@/lib/api/types';
 
 export const queryKeys = {
   apps: {
@@ -23,6 +27,15 @@ export const queryKeys = {
       [...queryKeys.devices.details(), deviceId, appId] as const,
     overview: (appId: string) =>
       [...queryKeys.devices.all, 'overview', appId] as const,
+    platformModelOverview: (appId: string, limit?: OverviewLimit) =>
+      [
+        ...queryKeys.devices.all,
+        'platform-model-overview',
+        appId,
+        limit,
+      ] as const,
+    locationOverview: (appId: string, limit?: OverviewLimit) =>
+      [...queryKeys.devices.all, 'location-overview', appId, limit] as const,
     live: (appId: string) => [...queryKeys.devices.all, 'live', appId] as const,
     timeseries: (appId: string, params?: Record<string, unknown>) =>
       [...queryKeys.devices.all, 'timeseries', appId, params] as const,

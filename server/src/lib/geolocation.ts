@@ -1,4 +1,9 @@
-export async function getCountryFromIP(ip: string): Promise<string | null> {
+type GeoLocationData = {
+  countryCode: string | null;
+  city: string | null;
+};
+
+export async function getLocationFromIP(ip: string): Promise<GeoLocationData> {
   try {
     if (
       ip === '127.0.0.1' ||
@@ -7,19 +12,27 @@ export async function getCountryFromIP(ip: string): Promise<string | null> {
       ip.startsWith('10.') ||
       ip.startsWith('172.')
     ) {
-      return null;
+      return { countryCode: null, city: null };
     }
 
-    const response = await fetch(`https://ipwho.is/${ip}?fields=country_code`);
+    const response = await fetch(
+      `https://ipwho.org/${ip}?fields=country_code,city`
+    );
 
     if (!response.ok) {
-      return null;
+      return { countryCode: null, city: null };
     }
 
-    const data = (await response.json()) as { country_code?: string };
+    const data = (await response.json()) as {
+      country_code?: string;
+      city?: string;
+    };
 
-    return data.country_code || null;
+    return {
+      countryCode: data.country_code || null,
+      city: data.city || null,
+    };
   } catch {
-    return null;
+    return { countryCode: null, city: null };
   }
 }

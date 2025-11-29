@@ -55,6 +55,7 @@ export function UsersTopCountries() {
             {Object.entries(overview.countryStats)
               .filter(([, count]) => (count as number) > 0)
               .sort(([, a], [, b]) => (b as number) - (a as number))
+              .slice(0, 3)
               .map(([country, count]) => {
                 const countNum = count as number;
                 const percentage = overview.totalDevices

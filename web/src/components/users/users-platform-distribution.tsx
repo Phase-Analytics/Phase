@@ -45,10 +45,17 @@ export function UsersPlatformDistribution() {
     return null;
   }
 
-  const hasPlatformData =
-    overview?.platformStats &&
-    Object.keys(overview.platformStats).length > 0 &&
-    !Object.values(overview.platformStats).every((v) => v === 0);
+  const platforms = ['android', 'ios', 'web'] as const;
+  const platformStats = (overview?.platformStats || {}) as Record<
+    string,
+    number
+  >;
+
+  const sortedPlatforms = [...platforms].sort((a, b) => {
+    const countA = platformStats[a] || 0;
+    const countB = platformStats[b] || 0;
+    return countB - countA;
+  });
 
   return (
     <Card className="py-0">
@@ -60,55 +67,44 @@ export function UsersPlatformDistribution() {
           </p>
         </div>
 
-        {hasPlatformData && overview ? (
-          <div className="space-y-3">
-            {Object.entries(overview.platformStats)
-              .filter(([, count]) => (count as number) > 0)
-              .sort(([, a], [, b]) => (b as number) - (a as number))
-              .map(([platform, count]) => {
-                const countNum = count as number;
-                const percentage = overview.totalDevices
-                  ? (countNum / overview.totalDevices) * 100
-                  : 0;
+        <div className="space-y-3">
+          {sortedPlatforms.map((platform) => {
+            const countNum = platformStats[platform] || 0;
+            const percentage = overview?.totalDevices
+              ? (countNum / overview.totalDevices) * 100
+              : 0;
 
-                return (
-                  <div className="space-y-1.5" key={platform}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <HugeiconsIcon
-                          className="size-4 text-muted-foreground"
-                          icon={getPlatformIcon(platform)}
-                        />
-                        <span className="font-medium text-sm">
-                          {getPlatformLabel(platform)}
-                        </span>
-                      </div>
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-semibold text-sm">
-                          {countNum.toLocaleString()}
-                        </span>
-                        <span className="text-muted-foreground text-xs">
-                          ({percentage.toFixed(1)}%)
-                        </span>
-                      </div>
-                    </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                      <div
-                        className="h-full bg-primary transition-all"
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
+            return (
+              <div className="space-y-1.5" key={platform}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <HugeiconsIcon
+                      className="size-4 text-muted-foreground"
+                      icon={getPlatformIcon(platform)}
+                    />
+                    <span className="font-medium text-sm">
+                      {getPlatformLabel(platform)}
+                    </span>
                   </div>
-                );
-              })}
-          </div>
-        ) : (
-          <div className="rounded-lg border border-dashed p-8 text-center">
-            <p className="text-muted-foreground">
-              No platform data available yet.
-            </p>
-          </div>
-        )}
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-semibold text-sm">
+                      {countNum.toLocaleString()}
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      ({percentage.toFixed(1)}%)
+                    </span>
+                  </div>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className="h-full bg-primary transition-all"
+                    style={{ width: `${percentage}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </CardContent>
     </Card>
   );

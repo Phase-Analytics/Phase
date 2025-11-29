@@ -99,6 +99,23 @@ export type DeviceOverview = {
   activeDevicesChange24h: number;
 };
 
+export type OverviewLimit = 'top3' | 'all';
+
+export type DevicePlatformModelOverview = {
+  totalDevices: number;
+  activeDevices24h: number;
+  platformStats: Record<string, number>;
+  modelStats: Record<string, number>;
+  totalDevicesChange24h: number;
+  activeDevicesChange24h: number;
+};
+
+export type DeviceLocationOverview = {
+  totalDevices: number;
+  countryStats: Record<string, number>;
+  cityStats: Record<string, number>;
+};
+
 export type DeviceMetric = 'dau' | 'total';
 
 export type DeviceTimeseriesDataPoint = {

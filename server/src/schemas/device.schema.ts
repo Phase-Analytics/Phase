@@ -17,6 +17,7 @@ export const deviceSchema = z
     platform: platformEnum.nullable().openapi({ example: 'ios' }),
     appVersion: z.string().nullable().openapi({ example: '1.2.3' }),
     country: z.string().nullable().openapi({ example: 'US' }),
+    city: z.string().nullable().openapi({ example: 'New York' }),
     firstSeen: z
       .string()
       .datetime()
@@ -52,6 +53,7 @@ export const deviceListItemSchema = z
     identifier: z.string().nullable().openapi({ example: 'user@example.com' }),
     platform: platformEnum.nullable().openapi({ example: 'ios' }),
     country: z.string().nullable().openapi({ example: 'US' }),
+    city: z.string().nullable().openapi({ example: 'New York' }),
     firstSeen: z
       .string()
       .datetime()
@@ -68,6 +70,7 @@ export const deviceDetailSchema = z
     platform: platformEnum.nullable().openapi({ example: 'ios' }),
     appVersion: z.string().nullable().openapi({ example: '1.2.3' }),
     country: z.string().nullable().openapi({ example: 'US' }),
+    city: z.string().nullable().openapi({ example: 'New York' }),
     firstSeen: z
       .string()
       .datetime()
@@ -98,11 +101,35 @@ export const devicesListResponseSchema = z
   })
   .openapi('DevicesListResponse');
 
+export const overviewLimitEnum = z.enum(['top3', 'all']);
+
 export const deviceOverviewQuerySchema = z
   .object({
     appId: z.string().openapi({ example: '123456789012345' }),
   })
   .openapi('DeviceOverviewQuery');
+
+export const devicePlatformModelOverviewQuerySchema = z
+  .object({
+    appId: z.string().openapi({ example: '123456789012345' }),
+    limit: overviewLimitEnum.optional().default('top3').openapi({
+      example: 'top3',
+      description:
+        'Limit results: "top3" shows top 3 items (default), "all" shows all items',
+    }),
+  })
+  .openapi('DevicePlatformModelOverviewQuery');
+
+export const deviceLocationOverviewQuerySchema = z
+  .object({
+    appId: z.string().openapi({ example: '123456789012345' }),
+    limit: overviewLimitEnum.optional().default('top3').openapi({
+      example: 'top3',
+      description:
+        'Limit results: "top3" shows top 3 items (default), "all" shows all items',
+    }),
+  })
+  .openapi('DeviceLocationOverviewQuery');
 
 export const deviceOverviewResponseSchema = z
   .object({
@@ -126,6 +153,49 @@ export const deviceOverviewResponseSchema = z
       .openapi({ example: 4.2, description: 'Percentage change in last 24h' }),
   })
   .openapi('DeviceOverviewResponse');
+
+export const devicePlatformModelOverviewResponseSchema = z
+  .object({
+    totalDevices: z.number().int().min(0).openapi({ example: 1250 }),
+    activeDevices24h: z.number().int().min(0).openapi({ example: 342 }),
+    platformStats: z.record(z.string(), z.number()).openapi({
+      example: { ios: 650, android: 480, web: 120 },
+      description:
+        'Platform distribution - all 3 platforms (ios, android, web), sorted by count.',
+    }),
+    modelStats: z.record(z.string(), z.number()).openapi({
+      example: {
+        'iPhone 15 Pro': 120,
+        'Samsung Galaxy S23': 95,
+        'Pixel 8': 87,
+      },
+      description:
+        'Device model distribution - top 3 models by count (null values excluded).',
+    }),
+    totalDevicesChange24h: z
+      .number()
+      .openapi({ example: 0.4, description: 'Percentage change in last 24h' }),
+    activeDevicesChange24h: z
+      .number()
+      .openapi({ example: 4.2, description: 'Percentage change in last 24h' }),
+  })
+  .openapi('DevicePlatformModelOverviewResponse');
+
+export const deviceLocationOverviewResponseSchema = z
+  .object({
+    totalDevices: z.number().int().min(0).openapi({ example: 1250 }),
+    countryStats: z.record(z.string(), z.number()).openapi({
+      example: { US: 450, GB: 320, TR: 280 },
+      description:
+        'Country distribution - top 3 countries by count (null values excluded).',
+    }),
+    cityStats: z.record(z.string(), z.number()).openapi({
+      example: { 'New York': 180, London: 150, Istanbul: 130 },
+      description:
+        'City distribution - top 3 cities by count (null values excluded).',
+    }),
+  })
+  .openapi('DeviceLocationOverviewResponse');
 
 export const deviceTimeseriesMetricEnum = z.enum(['dau', 'total']);
 
@@ -177,6 +247,7 @@ export const deviceLiveResponseSchema = z
   .openapi('DeviceLiveResponse');
 
 export type Platform = z.infer<typeof platformEnum>;
+export type OverviewLimit = z.infer<typeof overviewLimitEnum>;
 export type DeviceSchema = z.infer<typeof deviceSchema>;
 export type DeviceListItemSchema = z.infer<typeof deviceListItemSchema>;
 export type DeviceDetailSchema = z.infer<typeof deviceDetailSchema>;
@@ -187,6 +258,18 @@ export type DevicesListResponse = z.infer<typeof devicesListResponseSchema>;
 export type DeviceOverviewQuery = z.infer<typeof deviceOverviewQuerySchema>;
 export type DeviceOverviewResponse = z.infer<
   typeof deviceOverviewResponseSchema
+>;
+export type DevicePlatformModelOverviewQuery = z.infer<
+  typeof devicePlatformModelOverviewQuerySchema
+>;
+export type DevicePlatformModelOverviewResponse = z.infer<
+  typeof devicePlatformModelOverviewResponseSchema
+>;
+export type DeviceLocationOverviewQuery = z.infer<
+  typeof deviceLocationOverviewQuerySchema
+>;
+export type DeviceLocationOverviewResponse = z.infer<
+  typeof deviceLocationOverviewResponseSchema
 >;
 export type DeviceLiveQuery = z.infer<typeof deviceLiveQuerySchema>;
 export type DeviceLiveResponse = z.infer<typeof deviceLiveResponseSchema>;

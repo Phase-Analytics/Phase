@@ -4,10 +4,13 @@ import type {
   DateRangeParams,
   DeviceDetail,
   DeviceLive,
+  DeviceLocationOverview,
   DeviceMetric,
   DeviceOverview,
+  DevicePlatformModelOverview,
   DevicesListResponse,
   DeviceTimeseriesResponse,
+  OverviewLimit,
   PaginationParams,
   TimeRange,
 } from '../api/types';
@@ -78,6 +81,55 @@ export function useDeviceOverview(appId: string) {
         });
       }
       return fetchApi<DeviceOverview>(`/web/devices/overview?appId=${appId}`);
+    },
+    ...cacheConfig.overview,
+  });
+}
+
+export function useDevicePlatformModelOverview(
+  appId: string,
+  limit?: OverviewLimit
+) {
+  return useSuspenseQuery({
+    queryKey: queryKeys.devices.platformModelOverview(appId, limit),
+    queryFn: () => {
+      if (!appId) {
+        return Promise.resolve({
+          totalDevices: 0,
+          totalDevicesChange24h: 0,
+          activeDevices24h: 0,
+          activeDevicesChange24h: 0,
+          platformStats: {},
+          modelStats: {},
+        });
+      }
+      const queryParams = limit ? { appId, limit } : { appId };
+      return fetchApi<DevicePlatformModelOverview>(
+        `/web/devices/overview/platform-model${buildQueryString(queryParams)}`
+      );
+    },
+    ...cacheConfig.overview,
+  });
+}
+
+export function useDeviceLocationOverview(
+  appId: string,
+  limit?: OverviewLimit
+) {
+  return useSuspenseQuery({
+    queryKey: queryKeys.devices.locationOverview(appId, limit),
+    queryFn: () => {
+      if (!appId) {
+        return Promise.resolve({
+          totalDevices: 0,
+          countryStats: {},
+          cityStats: {},
+        });
+      }
+      const queryParams = limit ? { appId, limit } : { appId };
+      return fetchApi<DeviceLocationOverview>(
+        `/web/devices/overview/location${buildQueryString(queryParams)}`
+      );
     },
     ...cacheConfig.overview,
   });
