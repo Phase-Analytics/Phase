@@ -10,6 +10,7 @@ import {
   FilterIcon,
   FolderSearchIcon,
   Search01Icon,
+  ViewIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 
@@ -213,14 +214,9 @@ export function DataTableServer<TData, TValue>({
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header, index) => (
+                {headerGroup.headers.map((header) => (
                   <TableHead
-                    className={cn(
-                      'bg-muted/50 font-semibold',
-                      index < headerGroup.headers.length - 1
-                        ? 'border-border border-r'
-                        : ''
-                    )}
+                    className="bg-muted/50 font-semibold"
                     key={header.id}
                     style={{
                       width: header.getSize(),
@@ -235,6 +231,9 @@ export function DataTableServer<TData, TValue>({
                         )}
                   </TableHead>
                 ))}
+                {onRowClick && (
+                  <TableHead className="bg-muted/50 font-semibold w-12" />
+                )}
               </TableRow>
             ))}
           </TableHeader>
@@ -244,13 +243,8 @@ export function DataTableServer<TData, TValue>({
                   const headers = table.getHeaderGroups()[0]?.headers || [];
                   return (
                     <TableRow key={`loading-row-${rowIndex}`}>
-                      {headers.map((header, index) => (
+                      {headers.map((header) => (
                         <TableCell
-                          className={
-                            index < headers.length - 1
-                              ? 'border-border border-r'
-                              : ''
-                          }
                           key={`loading-${rowIndex}-${header.id}`}
                           style={{
                             width: header.getSize(),
@@ -260,6 +254,11 @@ export function DataTableServer<TData, TValue>({
                           <Skeleton className="h-5 w-full" />
                         </TableCell>
                       ))}
+                      {onRowClick && (
+                        <TableCell className="w-12 text-center">
+                          <Skeleton className="h-5 w-5 mx-auto" />
+                        </TableCell>
+                      )}
                     </TableRow>
                   );
                 })
@@ -274,13 +273,8 @@ export function DataTableServer<TData, TValue>({
                       key={row.id}
                       onClick={() => onRowClick?.(row.original)}
                     >
-                      {cells.map((cell, index) => (
+                      {cells.map((cell) => (
                         <TableCell
-                          className={
-                            index < cells.length - 1
-                              ? 'border-border border-r'
-                              : ''
-                          }
                           key={cell.id}
                           style={{
                             width: cell.column.getSize(),
@@ -293,6 +287,14 @@ export function DataTableServer<TData, TValue>({
                           )}
                         </TableCell>
                       ))}
+                      {onRowClick && (
+                        <TableCell className="w-12 text-center">
+                          <HugeiconsIcon
+                            className="size-4 text-muted-foreground"
+                            icon={ViewIcon}
+                          />
+                        </TableCell>
+                      )}
                     </TableRow>
                   );
                 })

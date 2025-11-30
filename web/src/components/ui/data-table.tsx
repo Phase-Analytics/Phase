@@ -8,6 +8,7 @@ import {
   ArrowUpDownIcon,
   FolderSearchIcon,
   Search01Icon,
+  ViewIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
@@ -112,14 +113,9 @@ export function DataTable<TData, TValue>({
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header, index) => (
+                {headerGroup.headers.map((header) => (
                   <TableHead
-                    className={cn(
-                      'bg-muted/50 font-semibold',
-                      index < headerGroup.headers.length - 1
-                        ? 'border-border border-r'
-                        : ''
-                    )}
+                    className="bg-muted/50 font-semibold"
                     key={header.id}
                   >
                     {header.isPlaceholder
@@ -130,6 +126,9 @@ export function DataTable<TData, TValue>({
                         )}
                   </TableHead>
                 ))}
+                {onRowClick && (
+                  <TableHead className="bg-muted/50 font-semibold w-12" />
+                )}
               </TableRow>
             ))}
           </TableHeader>
@@ -143,21 +142,22 @@ export function DataTable<TData, TValue>({
                     key={row.id}
                     onClick={() => onRowClick?.(row.original)}
                   >
-                    {cells.map((cell, index) => (
-                      <TableCell
-                        className={
-                          index < cells.length - 1
-                            ? 'border-border border-r'
-                            : ''
-                        }
-                        key={cell.id}
-                      >
+                    {cells.map((cell) => (
+                      <TableCell key={cell.id}>
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext()
                         )}
                       </TableCell>
                     ))}
+                    {onRowClick && (
+                      <TableCell className="w-12 text-center">
+                        <HugeiconsIcon
+                          className="size-4 text-muted-foreground"
+                          icon={ViewIcon}
+                        />
+                      </TableCell>
+                    )}
                   </TableRow>
                 );
               })
