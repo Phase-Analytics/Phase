@@ -159,7 +159,7 @@ export function UserInformationCard({ deviceId }: UserInformationCardProps) {
                 Avg Session Duration
               </p>
             </div>
-            <p className="mt-1 font-mono text-muted-foreground text-xs">
+            <p className="mt-1 font-mono text-xs">
               {formatDuration(device.avgSessionDuration)}
             </p>
           </div>
