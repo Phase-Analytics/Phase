@@ -7,15 +7,16 @@ import { Suspense, use } from 'react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { RequireApp } from '@/components/require-app';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { DeviceInformationCard } from '@/components/user-detail/device-information-card';
+import { UserActivityCalendar } from '@/components/user-detail/user-activity-calendar';
 import {
   DeviceInformationSkeleton,
+  UserActivityCalendarSkeleton,
   UserInformationSkeleton,
-  UserSessionsTableSkeleton,
+  UserSessionsWithEventsSkeleton,
 } from '@/components/user-detail/user-detail-skeletons';
 import { UserInformationCard } from '@/components/user-detail/user-information-card';
-import { UserSessionsTable } from '@/components/user-detail/user-sessions-table';
+import { UserSessionsWithEvents } from '@/components/user-detail/user-sessions-with-events';
 
 type UserPageProps = {
   params: Promise<{
@@ -58,22 +59,17 @@ export default function UserPage({ params }: UserPageProps) {
           </Suspense>
         </ErrorBoundary>
 
-        <Card className="py-0">
-          <CardContent className="space-y-4 p-4">
-            <div>
-              <h2 className="font-semibold text-lg">Sessions</h2>
-              <p className="text-muted-foreground text-sm">
-                All sessions for this user
-              </p>
-            </div>
+        <ErrorBoundary>
+          <Suspense fallback={<UserActivityCalendarSkeleton />}>
+            <UserActivityCalendar deviceId={id} />
+          </Suspense>
+        </ErrorBoundary>
 
-            <ErrorBoundary>
-              <Suspense fallback={<UserSessionsTableSkeleton />}>
-                <UserSessionsTable deviceId={id} />
-              </Suspense>
-            </ErrorBoundary>
-          </CardContent>
-        </Card>
+        <ErrorBoundary>
+          <Suspense fallback={<UserSessionsWithEventsSkeleton />}>
+            <UserSessionsWithEvents deviceId={id} />
+          </Suspense>
+        </ErrorBoundary>
       </div>
     </RequireApp>
   );

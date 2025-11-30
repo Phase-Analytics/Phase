@@ -188,24 +188,28 @@ export function useDeviceActivityTimeseries(
   appId: string,
   range?: TimeRange | DateRangeParams
 ) {
+  const dateParams =
+    range && typeof range === 'string'
+      ? getTimeRangeDates(range)
+      : (range as DateRangeParams | undefined);
+
   return useSuspenseQuery({
-    queryKey: queryKeys.devices.activityTimeseries(
-      deviceId,
-      appId,
-      range && typeof range === 'string' ? getTimeRangeDates(range) : range
-    ),
+    queryKey: queryKeys.devices.activityTimeseries(deviceId, appId, dateParams),
     queryFn: () => {
       if (!(deviceId && appId)) {
-        throw new Error('Device ID and App ID are required');
+        return Promise.resolve({
+          data: [],
+          period: {
+            startDate: new Date().toISOString(),
+            endDate: new Date().toISOString(),
+          },
+        });
       }
 
-      const dateParams =
-        range && typeof range === 'string'
-          ? getTimeRangeDates(range)
-          : (range as DateRangeParams | undefined);
+      const queryParams = dateParams ? { appId, ...dateParams } : { appId };
 
       return fetchApi<DeviceActivityTimeseriesResponse>(
-        `/web/devices/${deviceId}/activity${buildQueryString({ appId, ...dateParams })}`
+        `/web/devices/${deviceId}/activity${buildQueryString(queryParams)}`
       );
     },
     ...cacheConfig.timeseries,
@@ -221,7 +225,10 @@ export function useDeviceSessionsWithEvents(
     queryKey: queryKeys.devices.sessionsWithEvents(deviceId, appId, filters),
     queryFn: () => {
       if (!(deviceId && appId)) {
-        throw new Error('Device ID and App ID are required');
+        return Promise.resolve({
+          sessions: [],
+          pagination: { total: 0, page: 1, pageSize: 5, totalPages: 0 },
+        });
       }
 
       return fetchApi<DeviceSessionsWithEventsResponse>(

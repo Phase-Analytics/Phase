@@ -151,7 +151,6 @@ export type DeviceActivityTimeseriesResponse = {
 export type DeviceSessionEvent = {
   eventId: string;
   name: string;
-  params: Record<string, string | number | boolean | null> | null;
   timestamp: string;
 };
 

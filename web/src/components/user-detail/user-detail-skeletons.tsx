@@ -142,3 +142,53 @@ export function UserSessionsTableSkeleton() {
     </div>
   );
 }
+
+export function UserActivityCalendarSkeleton() {
+  return (
+    <Card className="py-0">
+      <CardContent className="space-y-4 p-4">
+        <div className="flex items-center gap-2">
+          <h2 className="font-semibold text-lg">Activity Calendar</h2>
+          <span className="text-muted-foreground text-sm">(Last 6 months)</span>
+        </div>
+
+        <div className="flex h-[200px] items-center justify-center">
+          <Skeleton className="h-full w-full" />
+        </div>
+
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-muted-foreground">Less</span>
+          <div className="flex gap-1">
+            <Skeleton className="size-3 rounded-sm" />
+            <Skeleton className="size-3 rounded-sm" />
+            <Skeleton className="size-3 rounded-sm" />
+            <Skeleton className="size-3 rounded-sm" />
+            <Skeleton className="size-3 rounded-sm" />
+          </div>
+          <span className="text-muted-foreground">More</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function UserSessionsWithEventsSkeleton() {
+  return (
+    <Card className="py-0">
+      <CardContent className="space-y-4 p-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-lg">Sessions & Events</h2>
+          <Skeleton className="h-5 w-32" />
+        </div>
+
+        <div className="space-y-3">
+          {Array.from({ length: 3 }, (_, i) => `skeleton-session-${i}`).map(
+            (key) => (
+              <Skeleton className="h-16 w-full rounded-lg" key={key} />
+            )
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
