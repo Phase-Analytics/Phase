@@ -232,6 +232,99 @@ export const deviceLiveResponseSchema = z
   })
   .openapi('DeviceLiveResponse');
 
+export const deviceActivityTimeseriesQuerySchema = z
+  .object({
+    deviceId: z.string().openapi({ example: 'device_abc123' }),
+    appId: z.string().openapi({ example: '123456789012345' }),
+    startDate: z
+      .string()
+      .datetime()
+      .optional()
+      .openapi({ example: '2024-01-01T00:00:00Z' }),
+    endDate: z
+      .string()
+      .datetime()
+      .optional()
+      .openapi({ example: '2024-01-31T23:59:59Z' }),
+  })
+  .openapi('DeviceActivityTimeseriesQuery');
+
+export const deviceActivityTimeseriesDataPointSchema = z
+  .object({
+    date: z.string().openapi({ example: '2024-01-15' }),
+    sessionCount: z.number().int().min(0).openapi({ example: 5 }),
+  })
+  .openapi('DeviceActivityTimeseriesDataPoint');
+
+export const deviceActivityTimeseriesResponseSchema = z
+  .object({
+    data: z.array(deviceActivityTimeseriesDataPointSchema),
+    period: z.object({
+      startDate: z
+        .string()
+        .datetime()
+        .openapi({ example: '2024-01-01T00:00:00Z' }),
+      endDate: z
+        .string()
+        .datetime()
+        .openapi({ example: '2024-01-31T23:59:59Z' }),
+    }),
+  })
+  .openapi('DeviceActivityTimeseriesResponse');
+
+export const deviceSessionEventSchema = z
+  .object({
+    eventId: z.string().openapi({ example: '01JCXYZ5K3QWERTYUIOP01234' }),
+    name: z.string().openapi({ example: 'button_clicked' }),
+    params: z
+      .record(
+        z.string(),
+        z.union([z.string(), z.number(), z.boolean(), z.null()])
+      )
+      .nullable()
+      .openapi({
+        example: { button_id: 'submit_btn', screen: 'checkout' },
+      }),
+    timestamp: z
+      .string()
+      .datetime()
+      .openapi({ example: '2024-01-01T00:00:00Z' }),
+  })
+  .openapi('DeviceSessionEvent');
+
+export const deviceSessionWithEventsSchema = z
+  .object({
+    sessionId: z.string().openapi({ example: 'session_xyz123' }),
+    startedAt: z
+      .string()
+      .datetime()
+      .openapi({ example: '2024-01-01T00:00:00Z' }),
+    lastActivityAt: z
+      .string()
+      .datetime()
+      .openapi({ example: '2024-01-01T01:30:00Z' }),
+    duration: z.number().openapi({
+      example: 5400,
+      description: 'Session duration in seconds',
+    }),
+    events: z.array(deviceSessionEventSchema),
+  })
+  .openapi('DeviceSessionWithEvents');
+
+export const deviceSessionsWithEventsQuerySchema = paginationQuerySchema.extend(
+  {
+    deviceId: z.string().openapi({ example: 'device_abc123' }),
+    appId: z.string().openapi({ example: '123456789012345' }),
+  }
+);
+
+export const deviceSessionsWithEventsResponseSchema = z
+  .object({
+    sessions: z.array(deviceSessionWithEventsSchema),
+    pagination: paginationSchema,
+  })
+  .openapi('DeviceSessionsWithEventsResponse');
+
 export type Platform = z.infer<typeof platformEnum>;
 export type OverviewLimit = z.infer<typeof overviewLimitEnum>;
 export type DeviceSchema = z.infer<typeof deviceSchema>;
@@ -265,4 +358,23 @@ export type DeviceTimeseriesDataPoint = z.infer<
 >;
 export type DeviceTimeseriesResponse = z.infer<
   typeof deviceTimeseriesResponseSchema
+>;
+export type DeviceActivityTimeseriesQuery = z.infer<
+  typeof deviceActivityTimeseriesQuerySchema
+>;
+export type DeviceActivityTimeseriesDataPoint = z.infer<
+  typeof deviceActivityTimeseriesDataPointSchema
+>;
+export type DeviceActivityTimeseriesResponse = z.infer<
+  typeof deviceActivityTimeseriesResponseSchema
+>;
+export type DeviceSessionEvent = z.infer<typeof deviceSessionEventSchema>;
+export type DeviceSessionWithEvents = z.infer<
+  typeof deviceSessionWithEventsSchema
+>;
+export type DeviceSessionsWithEventsQuery = z.infer<
+  typeof deviceSessionsWithEventsQuerySchema
+>;
+export type DeviceSessionsWithEventsResponse = z.infer<
+  typeof deviceSessionsWithEventsResponseSchema
 >;

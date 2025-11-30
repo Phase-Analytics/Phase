@@ -2,12 +2,14 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { buildQueryString, fetchApi } from '@/lib/api/client';
 import type {
   DateRangeParams,
+  DeviceActivityTimeseriesResponse,
   DeviceDetail,
   DeviceLive,
   DeviceLocationOverview,
   DeviceMetric,
   DeviceOverview,
   DevicePlatformOverview,
+  DeviceSessionsWithEventsResponse,
   DevicesListResponse,
   DeviceTimeseriesResponse,
   PaginationParams,
@@ -178,5 +180,54 @@ export function useDeviceTimeseries(
       );
     },
     ...cacheConfig.timeseries,
+  });
+}
+
+export function useDeviceActivityTimeseries(
+  deviceId: string,
+  appId: string,
+  range?: TimeRange | DateRangeParams
+) {
+  return useSuspenseQuery({
+    queryKey: queryKeys.devices.activityTimeseries(
+      deviceId,
+      appId,
+      range && typeof range === 'string' ? getTimeRangeDates(range) : range
+    ),
+    queryFn: () => {
+      if (!(deviceId && appId)) {
+        throw new Error('Device ID and App ID are required');
+      }
+
+      const dateParams =
+        range && typeof range === 'string'
+          ? getTimeRangeDates(range)
+          : (range as DateRangeParams | undefined);
+
+      return fetchApi<DeviceActivityTimeseriesResponse>(
+        `/web/devices/${deviceId}/activity${buildQueryString({ appId, ...dateParams })}`
+      );
+    },
+    ...cacheConfig.timeseries,
+  });
+}
+
+export function useDeviceSessionsWithEvents(
+  deviceId: string,
+  appId: string,
+  filters?: PaginationParams
+) {
+  return useSuspenseQuery({
+    queryKey: queryKeys.devices.sessionsWithEvents(deviceId, appId, filters),
+    queryFn: () => {
+      if (!(deviceId && appId)) {
+        throw new Error('Device ID and App ID are required');
+      }
+
+      return fetchApi<DeviceSessionsWithEventsResponse>(
+        `/web/devices/${deviceId}/sessions-with-events${buildQueryString({ appId, ...filters })}`
+      );
+    },
+    ...cacheConfig.list,
   });
 }

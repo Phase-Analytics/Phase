@@ -30,6 +30,30 @@ export const queryKeys = {
     live: (appId: string) => [...queryKeys.devices.all, 'live', appId] as const,
     timeseries: (appId: string, params?: Record<string, unknown>) =>
       [...queryKeys.devices.all, 'timeseries', appId, params] as const,
+    activityTimeseries: (
+      deviceId: string,
+      appId: string,
+      params?: DateRangeParams
+    ) =>
+      [
+        ...queryKeys.devices.all,
+        'activity-timeseries',
+        deviceId,
+        appId,
+        params,
+      ] as const,
+    sessionsWithEvents: (
+      deviceId: string,
+      appId: string,
+      filters?: PaginationParams
+    ) =>
+      [
+        ...queryKeys.devices.all,
+        'sessions-with-events',
+        deviceId,
+        appId,
+        filters,
+      ] as const,
   },
 
   sessions: {

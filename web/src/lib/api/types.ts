@@ -135,6 +135,39 @@ export type DeviceLive = {
   activeNow: number;
 };
 
+export type DeviceActivityTimeseriesDataPoint = {
+  date: string;
+  sessionCount: number;
+};
+
+export type DeviceActivityTimeseriesResponse = {
+  data: DeviceActivityTimeseriesDataPoint[];
+  period: {
+    startDate: string;
+    endDate: string;
+  };
+};
+
+export type DeviceSessionEvent = {
+  eventId: string;
+  name: string;
+  params: Record<string, string | number | boolean | null> | null;
+  timestamp: string;
+};
+
+export type DeviceSessionWithEvents = {
+  sessionId: string;
+  startedAt: string;
+  lastActivityAt: string;
+  duration: number;
+  events: DeviceSessionEvent[];
+};
+
+export type DeviceSessionsWithEventsResponse = {
+  sessions: DeviceSessionWithEvents[];
+  pagination: PaginationResponse;
+};
+
 export type Session = {
   sessionId: string;
   deviceId: string;

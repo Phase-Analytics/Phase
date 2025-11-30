@@ -16,6 +16,7 @@ import { db, devices, sessions } from '@/db';
 import type { App, Session, User } from '@/db/schema';
 import { getLocationFromIP } from '@/lib/geolocation';
 import { requireAppKey, requireAuth, verifyAppAccess } from '@/lib/middleware';
+import { getEvents } from '@/lib/questdb';
 import { methodNotAllowed } from '@/lib/response';
 import {
   buildFilters,
@@ -25,6 +26,8 @@ import {
 } from '@/lib/validators';
 import {
   createDeviceRequestSchema,
+  deviceActivityTimeseriesQuerySchema,
+  deviceActivityTimeseriesResponseSchema,
   deviceDetailSchema,
   deviceLiveQuerySchema,
   deviceLiveResponseSchema,
@@ -35,6 +38,8 @@ import {
   devicePlatformOverviewQuerySchema,
   devicePlatformOverviewResponseSchema,
   deviceSchema,
+  deviceSessionsWithEventsQuerySchema,
+  deviceSessionsWithEventsResponseSchema,
   devicesListResponseSchema,
   deviceTimeseriesQuerySchema,
   deviceTimeseriesResponseSchema,
@@ -223,6 +228,51 @@ const getDeviceLiveRoute = createRoute({
       content: {
         'application/json': {
           schema: deviceLiveResponseSchema,
+        },
+      },
+    },
+    ...errorResponses,
+  },
+});
+
+const getDeviceActivityTimeseriesRoute = createRoute({
+  method: 'get',
+  path: '/:deviceId/activity',
+  tags: ['device'],
+  description: 'Get device activity time series (daily session count)',
+  security: [{ CookieAuth: [] }],
+  request: {
+    query: deviceActivityTimeseriesQuerySchema,
+  },
+  responses: {
+    200: {
+      description: 'Device activity time series data',
+      content: {
+        'application/json': {
+          schema: deviceActivityTimeseriesResponseSchema,
+        },
+      },
+    },
+    ...errorResponses,
+  },
+});
+
+const getDeviceSessionsWithEventsRoute = createRoute({
+  method: 'get',
+  path: '/:deviceId/sessions-with-events',
+  tags: ['device'],
+  description:
+    'Get device sessions with their events (paginated, ordered by most recent)',
+  security: [{ CookieAuth: [] }],
+  request: {
+    query: deviceSessionsWithEventsQuerySchema,
+  },
+  responses: {
+    200: {
+      description: 'Device sessions with events',
+      content: {
+        'application/json': {
+          schema: deviceSessionsWithEventsResponseSchema,
         },
       },
     },
@@ -1089,6 +1139,172 @@ deviceWebRouter.openapi(getDeviceRoute, async (c: any) => {
       {
         code: ErrorCode.INTERNAL_SERVER_ERROR,
         detail: 'Failed to fetch device',
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
+});
+
+// biome-ignore lint/suspicious/noExplicitAny: OpenAPI handler type inference issue with union response types
+deviceWebRouter.openapi(getDeviceActivityTimeseriesRoute, async (c: any) => {
+  try {
+    const { deviceId } = c.req.param();
+    const query = c.req.valid('query');
+    const { appId, startDate, endDate } = query;
+
+    const device = await db.query.devices.findFirst({
+      where: (table, { eq: eqFn }) =>
+        and(eqFn(table.deviceId, deviceId), eqFn(table.appId, appId)),
+    });
+
+    if (!device) {
+      return c.json(
+        {
+          code: ErrorCode.NOT_FOUND,
+          detail: 'Device not found',
+        },
+        HttpStatus.NOT_FOUND
+      );
+    }
+
+    const now = new Date();
+    const defaultStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const start = startDate ? new Date(startDate) : defaultStart;
+    const end = endDate ? new Date(endDate) : now;
+
+    const result = await db.execute<{
+      date: string;
+      sessionCount: number;
+    }>(sql`
+      WITH date_series AS (
+        SELECT DATE(generate_series(
+          ${start}::timestamp,
+          ${end}::timestamp,
+          '1 day'::interval
+        )) as date
+      )
+      SELECT
+        ds.date::text,
+        COALESCE(COUNT(s.session_id), 0)::int as "sessionCount"
+      FROM date_series ds
+      LEFT JOIN sessions_analytics s ON DATE(s.started_at) = ds.date
+        AND s.device_id = ${deviceId}
+      WHERE ds.date <= CURRENT_DATE
+      GROUP BY ds.date
+      ORDER BY ds.date
+    `);
+
+    const data = result.rows.map((row) => ({
+      date: row.date,
+      sessionCount: Number(row.sessionCount),
+    }));
+
+    return c.json(
+      {
+        data,
+        period: {
+          startDate: start.toISOString(),
+          endDate: end.toISOString(),
+        },
+      },
+      HttpStatus.OK
+    );
+  } catch (error) {
+    console.error('[Device.ActivityTimeseries] Error:', error);
+    return c.json(
+      {
+        code: ErrorCode.INTERNAL_SERVER_ERROR,
+        detail: 'Failed to fetch device activity timeseries',
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
+});
+
+// biome-ignore lint/suspicious/noExplicitAny: OpenAPI handler type inference issue with union response types
+deviceWebRouter.openapi(getDeviceSessionsWithEventsRoute, async (c: any) => {
+  try {
+    const { deviceId } = c.req.param();
+    const query = c.req.valid('query');
+    const { appId, page = 1, pageSize = 5 } = query;
+
+    const device = await db.query.devices.findFirst({
+      where: (table, { eq: eqFn }) =>
+        and(eqFn(table.deviceId, deviceId), eqFn(table.appId, appId)),
+    });
+
+    if (!device) {
+      return c.json(
+        {
+          code: ErrorCode.NOT_FOUND,
+          detail: 'Device not found',
+        },
+        HttpStatus.NOT_FOUND
+      );
+    }
+
+    const offset = (page - 1) * pageSize;
+
+    const [sessionsList, [{ count: totalCount }]] = await Promise.all([
+      db
+        .select({
+          sessionId: sessions.sessionId,
+          startedAt: sessions.startedAt,
+          lastActivityAt: sessions.lastActivityAt,
+        })
+        .from(sessions)
+        .where(eq(sessions.deviceId, deviceId))
+        .orderBy(desc(sessions.startedAt))
+        .limit(pageSize)
+        .offset(offset),
+      db
+        .select({ count: count() })
+        .from(sessions)
+        .where(eq(sessions.deviceId, deviceId)),
+    ]);
+
+    const sessionsWithEvents = await Promise.all(
+      sessionsList.map(async (session) => {
+        const duration =
+          (session.lastActivityAt.getTime() - session.startedAt.getTime()) /
+          1000;
+
+        const { events: eventsList } = await getEvents({
+          sessionId: session.sessionId,
+          appId,
+          limit: 100,
+        });
+
+        const events = eventsList.map((event) => ({
+          eventId: event.event_id,
+          name: event.name,
+          params: event.params ? JSON.parse(event.params) : null,
+          timestamp: event.timestamp,
+        }));
+
+        return {
+          sessionId: session.sessionId,
+          startedAt: session.startedAt.toISOString(),
+          lastActivityAt: session.lastActivityAt.toISOString(),
+          duration,
+          events,
+        };
+      })
+    );
+
+    return c.json(
+      {
+        sessions: sessionsWithEvents,
+        pagination: formatPaginationResponse(totalCount, page, pageSize),
+      },
+      HttpStatus.OK
+    );
+  } catch (error) {
+    console.error('[Device.SessionsWithEvents] Error:', error);
+    return c.json(
+      {
+        code: ErrorCode.INTERNAL_SERVER_ERROR,
+        detail: 'Failed to fetch device sessions with events',
       },
       HttpStatus.INTERNAL_SERVER_ERROR
     );
