@@ -23,10 +23,12 @@ export type PaginationParams = {
 export function validatePagination(
   c: Context,
   pageStr: string,
-  pageSizeStr: string
+  pageSizeStr: string,
+  maxPageSize?: number
 ): ValidationResult<PaginationParams> {
   const page = Number.parseInt(pageStr, 10);
   const pageSize = Number.parseInt(pageSizeStr, 10);
+  const effectiveMaxPageSize = maxPageSize ?? MAX_PAGE_SIZE;
 
   if (Number.isNaN(page) || page < 1) {
     return {
@@ -54,13 +56,13 @@ export function validatePagination(
     };
   }
 
-  if (pageSize > MAX_PAGE_SIZE) {
+  if (pageSize > effectiveMaxPageSize) {
     return {
       success: false,
       response: c.json(
         {
           code: ErrorCode.VALIDATION_ERROR,
-          detail: `Invalid pageSize parameter: must be between ${MIN_PAGE_SIZE} and ${MAX_PAGE_SIZE}`,
+          detail: `Invalid pageSize parameter: must be between ${MIN_PAGE_SIZE} and ${effectiveMaxPageSize}`,
         },
         HttpStatus.BAD_REQUEST
       ),
