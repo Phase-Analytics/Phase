@@ -17,9 +17,14 @@ export function getGeneratedName(seed: string): string {
     .split('')
     .reduce((acc, char) => acc + char.charCodeAt(0), 0);
   faker.seed(numericSeed);
+
+  const adjective = faker.word.adjective();
   const firstName = faker.person.firstName();
-  const lastName = faker.person.lastName();
-  return `${firstName} ${lastName}`;
+
+  const capitalize = (str: string) =>
+    str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+
+  return `${capitalize(adjective)} ${firstName}`;
 }
 
 type UserAvatarProps = {
