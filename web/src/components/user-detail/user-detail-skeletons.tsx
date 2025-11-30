@@ -25,13 +25,6 @@ export function UserInformationSkeleton() {
             </div>
             <Skeleton className="mt-1 h-5 w-64" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="size-4" />
-              <p className="text-muted-foreground text-sm">Identifier</p>
-            </div>
-            <Skeleton className="mt-1 h-5 w-48" />
-          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">

@@ -121,24 +121,6 @@ export function UserInformationCard({ deviceId }: UserInformationCardProps) {
               {device.deviceId}
             </p>
           </div>
-          {device.identifier && (
-            <div>
-              <div className="flex items-center gap-2">
-                <CopyButton
-                  className="size-4 [&_svg]:size-4"
-                  content={device.identifier}
-                  variant="ghost"
-                />
-                <p className="text-muted-foreground text-sm">Identifier</p>
-              </div>
-              <p
-                className="mt-1 truncate font-mono font-semibold text-sm"
-                title={device.identifier}
-              >
-                {device.identifier}
-              </p>
-            </div>
-          )}
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">

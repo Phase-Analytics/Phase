@@ -62,23 +62,16 @@ export const account = pgTable(
   })
 );
 
-export const verification = pgTable(
-  'verification',
-  {
-    id: text('id').primaryKey(),
-    identifier: text('identifier').notNull(),
-    value: text('value').notNull(),
-    expiresAt: timestamp('expires_at').notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at')
-      .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
-  },
-  (table) => ({
-    identifierIdx: index('verification_identifier_idx').on(table.identifier),
-  })
-);
+export const verification = pgTable('verification', {
+  id: text('id').primaryKey(),
+  value: text('value').notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
 
 export const apps = pgTable(
   'apps',
@@ -110,7 +103,6 @@ export const devices = pgTable(
     appId: text('app_id')
       .notNull()
       .references(() => apps.id, { onDelete: 'cascade' }),
-    identifier: text('identifier'),
     model: text('model'),
     osVersion: text('os_version'),
     platform: text('platform'),

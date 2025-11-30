@@ -74,26 +74,6 @@ const columns: ColumnDef<Device>[] = [
     ),
   },
   {
-    accessorKey: 'identifier',
-    header: 'Identifier',
-    size: 250,
-    cell: ({ row }) => {
-      const identifier = row.getValue('identifier') as string | null;
-      return (
-        <div
-          className="max-w-xs truncate lg:max-w-sm"
-          title={identifier || 'Anonymous'}
-        >
-          {identifier ? (
-            <span className="text-sm">{identifier}</span>
-          ) : (
-            <span className="text-muted-foreground text-sm">Anonymous</span>
-          )}
-        </div>
-      );
-    },
-  },
-  {
     accessorKey: 'platform',
     header: 'Platform',
     size: 120,
@@ -167,7 +147,7 @@ export function UsersTable() {
   const router = useRouter();
   const [appId] = useQueryState('app', parseAsString);
   const [page] = useQueryState('page', parseAsInteger.withDefault(1));
-  const [search] = useQueryState('search', parseAsString.withDefault(''));
+  const [_search] = useQueryState('search', parseAsString.withDefault(''));
   const [filter] = useQueryState('filter', parseAsString.withDefault(''));
 
   const { pageSize } = usePaginationStore();
@@ -175,7 +155,6 @@ export function UsersTable() {
   const { data: devicesData, isLoading } = useDevices(appId || '', {
     page: page.toString(),
     pageSize: pageSize.toString(),
-    identifier: search || undefined,
     platform: filter || undefined,
   });
 
@@ -203,8 +182,8 @@ export function UsersTable() {
           totalPages: 0,
         }
       }
-      searchKey="identifier"
-      searchPlaceholder="Search UserID / Identifier"
+      searchKey="deviceId"
+      searchPlaceholder="Search User ID"
     />
   );
 }

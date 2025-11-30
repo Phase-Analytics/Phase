@@ -57,6 +57,13 @@
       "when": 1764402804774,
       "tag": "0007_sloppy_groot",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1764529411342,
+      "tag": "0008_complete_silver_sable",
+      "breakpoints": true
     }
   ]
 }

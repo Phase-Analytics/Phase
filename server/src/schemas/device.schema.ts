@@ -11,7 +11,6 @@ export const platformEnum = z.enum(['ios', 'android', 'web']);
 export const deviceSchema = z
   .object({
     deviceId: z.string().openapi({ example: 'device_abc123' }),
-    identifier: z.string().nullable().openapi({ example: 'user@example.com' }),
     model: z.string().nullable().openapi({ example: 'iPhone 15 Pro' }),
     osVersion: z.string().nullable().openapi({ example: '17.0.1' }),
     platform: platformEnum.nullable().openapi({ example: 'ios' }),
@@ -30,7 +29,6 @@ export const deviceSchema = z
 export const createDeviceRequestSchema = z
   .object({
     deviceId: z.string().openapi({ example: 'device_abc123' }),
-    identifier: z.string().nullish().openapi({ example: 'user@example.com' }),
     model: z.string().nullish().openapi({ example: 'iPhone 15 Pro' }),
     osVersion: z.string().nullish().openapi({ example: '17.0.1' }),
     platform: platformEnum.nullish().openapi({ example: 'ios' }),
@@ -42,7 +40,6 @@ export const listDevicesQuerySchema = paginationQuerySchema
   .merge(dateFilterQuerySchema)
   .extend({
     platform: platformEnum.optional().openapi({ example: 'ios' }),
-    identifier: z.string().optional().openapi({ example: 'user@example.com' }),
     appId: z.string().openapi({ example: '123456789012345' }),
   })
   .openapi('ListDevicesQuery');
@@ -50,7 +47,6 @@ export const listDevicesQuerySchema = paginationQuerySchema
 export const deviceListItemSchema = z
   .object({
     deviceId: z.string().openapi({ example: 'device_abc123' }),
-    identifier: z.string().nullable().openapi({ example: 'user@example.com' }),
     platform: platformEnum.nullable().openapi({ example: 'ios' }),
     country: z.string().nullable().openapi({ example: 'US' }),
     city: z.string().nullable().openapi({ example: 'New York' }),
@@ -64,7 +60,6 @@ export const deviceListItemSchema = z
 export const deviceDetailSchema = z
   .object({
     deviceId: z.string().openapi({ example: 'device_abc123' }),
-    identifier: z.string().nullable().openapi({ example: 'user@example.com' }),
     model: z.string().nullable().openapi({ example: 'iPhone 15 Pro' }),
     osVersion: z.string().nullable().openapi({ example: '17.0.1' }),
     platform: platformEnum.nullable().openapi({ example: 'ios' }),

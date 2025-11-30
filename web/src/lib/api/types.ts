@@ -74,7 +74,6 @@ export type EventsListResponse = {
 
 export type Device = {
   deviceId: string;
-  identifier: string | null;
   platform: Platform | null;
   country: string | null;
   firstSeen: string;

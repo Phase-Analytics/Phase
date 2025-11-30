@@ -8,7 +8,6 @@ import {
   gte,
   lt,
   lte,
-  or,
   type SQL,
   sql,
 } from 'drizzle-orm';
@@ -367,7 +366,6 @@ deviceSdkRouter.openapi(createDeviceRoute, async (c: any) => {
       [device] = await db
         .update(devices)
         .set({
-          identifier: body.identifier ?? existingDevice.identifier,
           model: body.model ?? existingDevice.model,
           osVersion: body.osVersion ?? existingDevice.osVersion,
           platform: body.platform ?? existingDevice.platform,
@@ -387,7 +385,6 @@ deviceSdkRouter.openapi(createDeviceRoute, async (c: any) => {
         .values({
           deviceId: body.deviceId,
           appId: app.id,
-          identifier: body.identifier ?? null,
           model: body.model ?? null,
           osVersion: body.osVersion ?? null,
           platform: body.platform ?? null,
@@ -401,7 +398,6 @@ deviceSdkRouter.openapi(createDeviceRoute, async (c: any) => {
     return c.json(
       {
         deviceId: device.deviceId,
-        identifier: device.identifier,
         model: device.model,
         osVersion: device.osVersion,
         platform: device.platform,
@@ -897,16 +893,6 @@ deviceWebRouter.openapi(getDevicesRoute, async (c) => {
       filters.push(eq(devices.platform, query.platform));
     }
 
-    if (query.identifier) {
-      const searchCondition = or(
-        eq(devices.identifier, query.identifier),
-        eq(devices.deviceId, query.identifier)
-      );
-      if (searchCondition) {
-        filters.push(searchCondition);
-      }
-    }
-
     const whereClause = buildFilters({
       filters,
       startDateColumn: devices.firstSeen,
@@ -919,7 +905,6 @@ deviceWebRouter.openapi(getDevicesRoute, async (c) => {
       db
         .select({
           deviceId: devices.deviceId,
-          identifier: devices.identifier,
           platform: devices.platform,
           country: devices.country,
           city: devices.city,
@@ -1077,7 +1062,6 @@ deviceWebRouter.openapi(getDeviceRoute, async (c: any) => {
     const [deviceWithSession] = await db
       .select({
         deviceId: devices.deviceId,
-        identifier: devices.identifier,
         model: devices.model,
         osVersion: devices.osVersion,
         platform: devices.platform,
@@ -1118,7 +1102,6 @@ deviceWebRouter.openapi(getDeviceRoute, async (c: any) => {
     return c.json(
       {
         deviceId: deviceWithSession.deviceId,
-        identifier: deviceWithSession.identifier,
         model: deviceWithSession.model,
         osVersion: deviceWithSession.osVersion,
         platform: deviceWithSession.platform,

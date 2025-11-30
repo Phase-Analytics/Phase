@@ -31,7 +31,6 @@ function getTimeRangeDates(range: TimeRange): DateRangeParams {
 
 type DeviceFilters = PaginationParams & {
   platform?: string;
-  identifier?: string;
   startDate?: string;
   endDate?: string;
 };
