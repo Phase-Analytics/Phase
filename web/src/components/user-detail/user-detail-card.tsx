@@ -152,7 +152,7 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
             <div className="mt-1 space-y-2">
               <p className="flex items-center gap-1.5 font-medium text-sm">
                 <HugeiconsIcon
-                  className="fade-in size-4 animate-in duration-300"
+                  className="fade-in size-4 animate-in text-muted-foreground duration-300"
                   icon={getPlatformIcon(device.platform)}
                 />
                 <span>
@@ -167,7 +167,7 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
               </p>
               <p className="flex items-center gap-1.5 font-medium text-sm">
                 <HugeiconsIcon
-                  className="size-4"
+                  className="size-4 text-muted-foreground"
                   icon={ComputerPhoneSyncIcon}
                 />
                 <span>{device.model || 'Unknown'}</span>
@@ -178,7 +178,10 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
           <div>
             <p className="text-muted-foreground text-sm">App Version</p>
             <p className="mt-1 flex items-center gap-1.5 font-medium font-mono text-sm">
-              <HugeiconsIcon className="size-4" icon={InformationCircleIcon} />
+              <HugeiconsIcon
+                className="size-4 text-muted-foreground"
+                icon={InformationCircleIcon}
+              />
               <span>{device.appVersion || 'Unknown'}</span>
             </p>
           </div>

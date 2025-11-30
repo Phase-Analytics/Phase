@@ -157,7 +157,10 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
           <div>
             <p className="text-muted-foreground text-sm">Total Sessions</p>
             <p className="mt-1 flex items-center gap-1.5 font-medium font-mono text-sm">
-              <HugeiconsIcon className="size-4" icon={PlaySquareIcon} />
+              <HugeiconsIcon
+                className="size-4 text-muted-foreground"
+                icon={PlaySquareIcon}
+              />
               <span>{data?.totalSessions ?? 0}</span>
             </p>
           </div>
@@ -166,7 +169,10 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
               Avg Session Duration
             </p>
             <p className="mt-1 flex items-center gap-1.5 font-medium font-mono text-sm">
-              <HugeiconsIcon className="size-4" icon={Time03Icon} />
+              <HugeiconsIcon
+                className="size-4 text-muted-foreground"
+                icon={Time03Icon}
+              />
               {formatDuration(data?.avgSessionDuration ?? null)}
             </p>
           </div>
@@ -176,7 +182,10 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
           <div>
             <p className="text-muted-foreground text-sm">First Seen</p>
             <p className="mt-1 flex items-center gap-1.5 font-medium font-mono text-xs">
-              <HugeiconsIcon className="size-4" icon={Calendar03Icon} />
+              <HugeiconsIcon
+                className="size-4 text-muted-foreground"
+                icon={Calendar03Icon}
+              />
               <span>
                 {data?.firstSeen ? formatDateTime(data.firstSeen) : 'Unknown'}
               </span>
@@ -185,7 +194,10 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
           <div>
             <p className="text-muted-foreground text-sm">Last Activity</p>
             <p className="mt-1 flex items-center gap-1.5 font-medium font-mono text-xs">
-              <HugeiconsIcon className="size-4" icon={Calendar03Icon} />
+              <HugeiconsIcon
+                className="size-4 text-muted-foreground"
+                icon={Calendar03Icon}
+              />
               <span>
                 {data?.lastActivityAt
                   ? formatDateTime(data.lastActivityAt)

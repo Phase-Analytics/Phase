@@ -67,7 +67,7 @@ function SessionItem({ session }: SessionItemProps) {
                   className="size-4 text-muted-foreground"
                   icon={Time03Icon}
                 />
-                <span className="font-mono text-muted-foreground text-xs">
+                <span className="font-mono text-xs">
                   {formatDuration(session.duration)}
                 </span>
               </div>
