@@ -5,32 +5,33 @@ type GeoLocationData = {
 
 export async function getLocationFromIP(ip: string): Promise<GeoLocationData> {
   try {
-    if (
-      ip === '127.0.0.1' ||
-      ip === 'localhost' ||
-      ip.startsWith('192.168.') ||
-      ip.startsWith('10.') ||
-      ip.startsWith('172.')
-    ) {
+    if (ip === '127.0.0.1' || ip === 'localhost' || ip.startsWith('192.168.')) {
       return { countryCode: null, city: null };
     }
 
     const response = await fetch(
-      `https://ipwho.org/${ip}?fields=country_code,city`
+      `https://api.ipwho.org/ip/${ip}?get=countryCode,city`
     );
 
     if (!response.ok) {
       return { countryCode: null, city: null };
     }
 
-    const data = (await response.json()) as {
-      country_code?: string;
-      city?: string;
+    const result = (await response.json()) as {
+      success?: boolean;
+      data?: {
+        countryCode?: string;
+        city?: string;
+      };
     };
 
+    if (!(result.success && result.data)) {
+      return { countryCode: null, city: null };
+    }
+
     return {
-      countryCode: data.country_code || null,
-      city: data.city || null,
+      countryCode: result.data.countryCode || null,
+      city: result.data.city || null,
     };
   } catch {
     return { countryCode: null, city: null };
