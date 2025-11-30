@@ -1,17 +1,21 @@
 'use client';
 
-import { Calendar03Icon } from '@hugeicons/core-free-icons';
+import {
+  Calendar03Icon,
+  PlaySquareIcon,
+  Time03Icon,
+} from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { formatDate } from '@/lib/date-utils';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { formatDate, formatDateTime } from '@/lib/date-utils';
 import { useDeviceActivityTimeseries } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 import { UserActivityCalendarSkeleton } from './user-detail-skeletons';
@@ -40,6 +44,67 @@ function getIntensityClass(sessionCount: number): string {
     return 'bg-chart-2/60 hover:bg-chart-2/70';
   }
   return 'bg-chart-2 hover:bg-chart-2/90';
+}
+
+function getSessionLabel(sessionCount: number): string {
+  if (sessionCount === 0) {
+    return 'No Sessions';
+  }
+  if (sessionCount === 1) {
+    return 'Session';
+  }
+  return 'Sessions';
+}
+
+function formatDuration(seconds: number | null) {
+  if (seconds === null || seconds === 0) {
+    return (
+      <>
+        0<span>s</span>
+      </>
+    );
+  }
+
+  const totalSeconds = Math.floor(seconds);
+
+  if (totalSeconds < 60) {
+    return (
+      <>
+        {totalSeconds}
+        <span>s</span>
+      </>
+    );
+  }
+  if (totalSeconds < 3600) {
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return secs > 0 ? (
+      <>
+        {mins}
+        <span>m</span> {secs}
+        <span>s</span>
+      </>
+    ) : (
+      <>
+        {mins}
+        <span>m</span>
+      </>
+    );
+  }
+  const hours = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  return mins > 0 ? (
+    <>
+      {hours}
+      <span>h</span> {mins}
+      <span>m</span>
+    </>
+  ) : (
+    <>
+      {hours}
+      <span>h</span>
+    </>
+  );
 }
 
 export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
@@ -86,7 +151,48 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
       <CardContent className="space-y-4 p-4">
         <div className="flex items-center gap-2">
           <h2 className="font-semibold text-lg">Activity Calendar</h2>
-          <span className="text-muted-foreground text-sm">(Last 1 year)</span>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <p className="text-muted-foreground text-sm">Total Sessions</p>
+            <p className="mt-1 flex items-center gap-1.5 font-medium font-mono text-sm">
+              <HugeiconsIcon className="size-4" icon={PlaySquareIcon} />
+              <span>{data?.totalSessions ?? 0}</span>
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-sm">
+              Avg Session Duration
+            </p>
+            <p className="mt-1 flex items-center gap-1.5 font-medium font-mono text-sm">
+              <HugeiconsIcon className="size-4" icon={Time03Icon} />
+              {formatDuration(data?.avgSessionDuration ?? null)}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <p className="text-muted-foreground text-sm">First Seen</p>
+            <p className="mt-1 flex items-center gap-1.5 font-medium font-mono text-xs">
+              <HugeiconsIcon className="size-4" icon={Calendar03Icon} />
+              <span>
+                {data?.firstSeen ? formatDateTime(data.firstSeen) : 'Unknown'}
+              </span>
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-sm">Last Activity</p>
+            <p className="mt-1 flex items-center gap-1.5 font-medium font-mono text-xs">
+              <HugeiconsIcon className="size-4" icon={Calendar03Icon} />
+              <span>
+                {data?.lastActivityAt
+                  ? formatDateTime(data.lastActivityAt)
+                  : 'Never'}
+              </span>
+            </p>
+          </div>
         </div>
 
         <TooltipProvider>
@@ -118,11 +224,7 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
                         {day.sessionCount === 0 ? '0' : day.sessionCount}
                       </div>
                       <div className="text-muted-foreground text-xs">
-                        {day.sessionCount === 0
-                          ? 'No Sessions'
-                          : day.sessionCount === 1
-                            ? 'Session'
-                            : 'Sessions'}
+                        {getSessionLabel(day.sessionCount)}
                       </div>
                     </div>
                   </div>

@@ -83,10 +83,9 @@ export interface DeviceDetail extends Device {
   model: string | null;
   osVersion: string | null;
   appVersion: string | null;
+  city: string | null;
   firstSeen: string;
   lastActivityAt: string | null;
-  totalSessions: number;
-  avgSessionDuration: number | null;
 }
 
 export type DeviceOverview = {
@@ -145,6 +144,10 @@ export type DeviceActivityTimeseriesResponse = {
     startDate: string;
     endDate: string;
   };
+  totalSessions: number;
+  avgSessionDuration: number | null;
+  firstSeen: string;
+  lastActivityAt: string | null;
 };
 
 export type DeviceSessionEvent = {

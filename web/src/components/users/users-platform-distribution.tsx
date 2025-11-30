@@ -87,7 +87,7 @@ export function UsersPlatformDistribution() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <HugeiconsIcon
-                      className="size-4 text-muted-foreground"
+                      className="size-4 text-primary"
                       icon={getPlatformIcon(platform)}
                     />
                     <span className="font-medium text-sm">

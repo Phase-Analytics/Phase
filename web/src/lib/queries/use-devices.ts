@@ -192,7 +192,7 @@ export function useDeviceActivityTimeseries(
       ? getTimeRangeDates(range)
       : (range as DateRangeParams | undefined);
 
-  return useSuspenseQuery({
+  return useSuspenseQuery<DeviceActivityTimeseriesResponse>({
     queryKey: queryKeys.devices.activityTimeseries(deviceId, appId, dateParams),
     queryFn: () => {
       if (!(deviceId && appId)) {
@@ -202,6 +202,10 @@ export function useDeviceActivityTimeseries(
             startDate: new Date().toISOString(),
             endDate: new Date().toISOString(),
           },
+          totalSessions: 0,
+          avgSessionDuration: null,
+          firstSeen: new Date().toISOString(),
+          lastActivityAt: null,
         });
       }
 
