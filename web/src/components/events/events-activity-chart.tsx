@@ -52,7 +52,7 @@ export function EventsActivityChart() {
 
   return (
     <TimescaleChart
-      chartColor="var(--color-chart-1)"
+      chartColor="var(--color-chart-2)"
       data={chartData}
       dataKey="value"
       dataLabel="Daily Events"

@@ -59,7 +59,7 @@ export function SessionsActivityChart() {
 
   return (
     <TimescaleChart
-      chartColor="var(--color-chart-1)"
+      chartColor="var(--color-chart-2)"
       data={chartData}
       dataKey="value"
       dataLabel={metric === 'daily_sessions' ? 'Sessions' : 'Avg Duration'}

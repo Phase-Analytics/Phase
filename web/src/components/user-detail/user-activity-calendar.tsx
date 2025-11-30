@@ -30,15 +30,15 @@ function getIntensityClass(sessionCount: number): string {
     return 'bg-muted hover:bg-muted/80';
   }
   if (sessionCount === 1) {
-    return 'bg-chart-1/20 hover:bg-chart-1/30';
+    return 'bg-chart-2/20 hover:bg-chart-2/30';
   }
   if (sessionCount === 2) {
-    return 'bg-chart-1/40 hover:bg-chart-1/50';
+    return 'bg-chart-2/40 hover:bg-chart-2/50';
   }
   if (sessionCount === 3) {
-    return 'bg-chart-1/60 hover:bg-chart-1/70';
+    return 'bg-chart-2/60 hover:bg-chart-2/70';
   }
-  return 'bg-chart-1 hover:bg-chart-1/90';
+  return 'bg-chart-2 hover:bg-chart-2/90';
 }
 
 export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
@@ -134,10 +134,10 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
           <span className="text-muted-foreground">Less</span>
           <div className="flex gap-1">
             <div className="size-3 rounded-sm bg-muted" />
-            <div className="size-3 rounded-sm bg-chart-1/20" />
-            <div className="size-3 rounded-sm bg-chart-1/40" />
-            <div className="size-3 rounded-sm bg-chart-1/60" />
-            <div className="size-3 rounded-sm bg-chart-1" />
+            <div className="size-3 rounded-sm bg-chart-2/20" />
+            <div className="size-3 rounded-sm bg-chart-2/40" />
+            <div className="size-3 rounded-sm bg-chart-2/60" />
+            <div className="size-3 rounded-sm bg-chart-2" />
           </div>
           <span className="text-muted-foreground">More</span>
         </div>

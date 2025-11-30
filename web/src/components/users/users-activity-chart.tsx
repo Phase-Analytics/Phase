@@ -58,7 +58,7 @@ export function UsersActivityChart() {
 
   return (
     <TimescaleChart
-      chartColor="var(--color-chart-1)"
+      chartColor="var(--color-chart-2)"
       data={chartData}
       dataKey="activeUsers"
       dataLabel={metric === 'dau' ? 'Active Users' : 'Total Users'}
