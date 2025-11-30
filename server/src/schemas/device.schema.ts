@@ -275,15 +275,6 @@ export const deviceSessionEventSchema = z
   .object({
     eventId: z.string().openapi({ example: '01JCXYZ5K3QWERTYUIOP01234' }),
     name: z.string().openapi({ example: 'button_clicked' }),
-    params: z
-      .record(
-        z.string(),
-        z.union([z.string(), z.number(), z.boolean(), z.null()])
-      )
-      .nullable()
-      .openapi({
-        example: { button_id: 'submit_btn', screen: 'checkout' },
-      }),
     timestamp: z
       .string()
       .datetime()

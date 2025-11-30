@@ -1279,7 +1279,6 @@ deviceWebRouter.openapi(getDeviceSessionsWithEventsRoute, async (c: any) => {
         const events = eventsList.map((event) => ({
           eventId: event.event_id,
           name: event.name,
-          params: event.params ? JSON.parse(event.params) : null,
           timestamp: event.timestamp,
         }));
 
