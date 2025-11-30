@@ -62,7 +62,7 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
     const days: DayData[] = [];
     const now = new Date();
 
-    for (let i = 179; i >= 0; i--) {
+    for (let i = 364; i >= 0; i--) {
       const date = new Date(now);
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
@@ -86,7 +86,7 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
       <CardContent className="space-y-4 p-4">
         <div className="flex items-center gap-2">
           <h2 className="font-semibold text-lg">Activity Calendar</h2>
-          <span className="text-muted-foreground text-sm">(Last 6 months)</span>
+          <span className="text-muted-foreground text-sm">(Last 1 year)</span>
         </div>
 
         <TooltipProvider>
