@@ -5,6 +5,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { formatDate } from '@/lib/date-utils';
 import {
   Tooltip,
   TooltipContent,
@@ -69,11 +70,7 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
       days.push({
         date: dateStr,
         sessionCount: dataMap.get(dateStr) || 0,
-        formattedDate: date.toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-        }),
+        formattedDate: formatDate(dateStr),
       });
     }
 
@@ -105,22 +102,27 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
                   />
                 </TooltipTrigger>
                 <TooltipContent
-                  className="border-border bg-background p-3 text-foreground"
+                  className="border-border bg-background px-2.5 py-1.5 text-foreground"
                   side="top"
                 >
                   <div className="flex flex-col gap-1.5">
-                    <span className="flex items-center gap-1.5 font-mono text-muted-foreground text-xs">
+                    <span className="flex items-center gap-1.5">
                       <HugeiconsIcon
                         className="size-3.5"
                         icon={Calendar03Icon}
                       />
-                      {day.formattedDate}
+                      <span className="font-mono">{day.formattedDate}</span>
                     </span>
                     <div className="flex flex-col gap-0.5">
-                      <div className="font-mono font-semibold text-base text-foreground tabular-nums">
+                      <div className="font-mono font-semibold text-base tabular-nums">
+                        {day.sessionCount === 0 ? '0' : day.sessionCount}
+                      </div>
+                      <div className="text-muted-foreground text-xs">
                         {day.sessionCount === 0
                           ? 'No Sessions'
-                          : `${day.sessionCount} Session${day.sessionCount > 1 ? 's' : ''}`}
+                          : day.sessionCount === 1
+                            ? 'Session'
+                            : 'Sessions'}
                       </div>
                     </div>
                   </div>

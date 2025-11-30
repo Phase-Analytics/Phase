@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { formatDate } from '@/lib/date-utils';
 
 type TimeRangeOption = {
   value: string;
@@ -250,13 +251,7 @@ export function TimescaleChart({
                 dataKey="date"
                 minTickGap={32}
                 tick={{ fontFamily: 'var(--font-geist-mono)' }}
-                tickFormatter={(value) => {
-                  const date = new Date(value);
-                  return date.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                  });
-                }}
+                tickFormatter={(value) => formatDate(value)}
                 tickLine={false}
                 tickMargin={8}
               />
@@ -288,14 +283,7 @@ export function TimescaleChart({
                     hideLabel={false}
                     indicator="dot"
                     labelFormatter={(value) => {
-                      const formattedDate = new Date(value).toLocaleDateString(
-                        'en-US',
-                        {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        }
-                      );
+                      const formattedDate = formatDate(value);
                       return (
                         <span className="flex items-center gap-1.5">
                           <HugeiconsIcon
