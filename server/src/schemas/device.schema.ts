@@ -234,7 +234,6 @@ export const deviceLiveResponseSchema = z
 
 export const deviceActivityTimeseriesQuerySchema = z
   .object({
-    deviceId: z.string().openapi({ example: 'device_abc123' }),
     appId: z.string().openapi({ example: '123456789012345' }),
     startDate: z
       .string()
@@ -313,7 +312,6 @@ export const deviceSessionWithEventsSchema = z
 
 export const deviceSessionsWithEventsQuerySchema = paginationQuerySchema.extend(
   {
-    deviceId: z.string().openapi({ example: 'device_abc123' }),
     appId: z.string().openapi({ example: '123456789012345' }),
   }
 );
