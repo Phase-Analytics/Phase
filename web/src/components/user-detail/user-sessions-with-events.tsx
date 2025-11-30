@@ -44,19 +44,27 @@ function SessionItem({ session }: SessionItemProps) {
     <div className="space-y-3 rounded-lg border border-border bg-card p-4">
       <div className="flex items-center justify-between border-border border-b pb-3">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 text-muted-foreground text-sm">
-            <HugeiconsIcon className="size-4" icon={Calendar03Icon} />
-            <span className="font-medium">
+          <div className="flex items-center gap-1.5">
+            <HugeiconsIcon
+              className="size-4 text-muted-foreground"
+              icon={Calendar03Icon}
+            />
+            <span className="font-mono text-muted-foreground text-xs">
               {formatDateTime(session.startedAt)}
             </span>
           </div>
-          <div className="flex items-center gap-1.5 text-muted-foreground text-sm">
-            <HugeiconsIcon className="size-4" icon={Time03Icon} />
-            <span>{formatDuration(session.duration)}</span>
+          <div className="flex items-center gap-1.5">
+            <HugeiconsIcon
+              className="size-4 text-muted-foreground"
+              icon={Time03Icon}
+            />
+            <span className="font-mono text-muted-foreground text-xs">
+              {formatDuration(session.duration)}
+            </span>
           </div>
         </div>
         <div className="text-muted-foreground text-sm">
-          {session.events.length}{' '}
+          <span className="font-mono">{session.events.length}</span>{' '}
           {session.events.length === 1 ? 'event' : 'events'}
         </div>
       </div>
@@ -75,7 +83,7 @@ function SessionItem({ session }: SessionItemProps) {
                 />
                 <span className="font-medium text-sm">{event.name}</span>
               </div>
-              <span className="text-muted-foreground text-xs">
+              <span className="font-mono text-muted-foreground text-xs">
                 {formatTime(event.timestamp)}
               </span>
             </div>
@@ -119,7 +127,8 @@ export function UserSessionsWithEvents({
           <h2 className="font-semibold text-lg">Sessions & Events</h2>
           {pagination.total > 0 && (
             <span className="text-muted-foreground text-sm">
-              {pagination.total} total sessions
+              <span className="font-mono">{pagination.total}</span> total
+              sessions
             </span>
           )}
         </div>
@@ -150,7 +159,8 @@ export function UserSessionsWithEvents({
           <div className="text-muted-foreground text-sm">
             {pagination.total > 0 ? (
               <>
-                Page {page} of {pagination.totalPages}
+                Page <span className="font-mono">{page}</span> of{' '}
+                <span className="font-mono">{pagination.totalPages}</span>
               </>
             ) : (
               'No results'

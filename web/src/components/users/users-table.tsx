@@ -142,7 +142,7 @@ const columns: ColumnDef<Device>[] = [
     cell: ({ row }) => {
       const timestamp = row.getValue('firstSeen') as string;
       return (
-        <span className="text-muted-foreground text-xs">
+        <span className="font-mono text-muted-foreground text-xs">
           {formatDateTime(timestamp)}
         </span>
       );

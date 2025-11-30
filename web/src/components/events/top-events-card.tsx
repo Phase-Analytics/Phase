@@ -23,7 +23,7 @@ export function TopEventsCard() {
         </div>
 
         {topEvents?.events && topEvents.events.length > 0 && (
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-x-8 gap-y-3 md:grid-cols-2">
             {(() => {
               const totalCount = topEvents.events
                 .filter((e) => e?.count !== undefined)
@@ -46,10 +46,10 @@ export function TopEventsCard() {
                           {event.name}
                         </span>
                         <div className="flex shrink-0 items-baseline gap-2">
-                          <span className="font-semibold text-sm">
+                          <span className="font-mono font-semibold text-sm">
                             {event.count.toLocaleString()}
                           </span>
-                          <span className="text-muted-foreground text-xs">
+                          <span className="font-mono text-muted-foreground text-xs">
                             ({percentage.toFixed(1)}%)
                           </span>
                         </div>

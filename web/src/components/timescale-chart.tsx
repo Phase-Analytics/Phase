@@ -249,6 +249,7 @@ export function TimescaleChart({
                 axisLine={false}
                 dataKey="date"
                 minTickGap={32}
+                tick={{ fontFamily: 'var(--font-geist-mono)' }}
                 tickFormatter={(value) => {
                   const date = new Date(value);
                   return date.toLocaleDateString('en-US', {
@@ -275,7 +276,7 @@ export function TimescaleChart({
                         : defaultFormatter(value as number);
                       return (
                         <div className="flex flex-col gap-0.5">
-                          <div className="font-semibold text-base tabular-nums">
+                          <div className="font-mono font-semibold text-base tabular-nums">
                             {formattedValue}
                           </div>
                           <div className="text-muted-foreground text-xs">
@@ -301,7 +302,7 @@ export function TimescaleChart({
                             className="size-3.5"
                             icon={Calendar03Icon}
                           />
-                          {formattedDate}
+                          <span className="font-mono">{formattedDate}</span>
                         </span>
                       );
                     }}

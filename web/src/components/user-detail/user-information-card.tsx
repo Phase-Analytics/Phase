@@ -18,7 +18,7 @@ function formatDuration(seconds: number | null) {
   if (seconds === null || seconds === 0) {
     return (
       <>
-        0<span className="text-muted-foreground">s</span>
+        0<span>s</span>
       </>
     );
   }
@@ -29,7 +29,7 @@ function formatDuration(seconds: number | null) {
     return (
       <>
         {totalSeconds}
-        <span className="text-muted-foreground">s</span>
+        <span>s</span>
       </>
     );
   }
@@ -39,13 +39,13 @@ function formatDuration(seconds: number | null) {
     return secs > 0 ? (
       <>
         {mins}
-        <span className="text-muted-foreground">m</span> {secs}
-        <span className="text-muted-foreground">s</span>
+        <span>m</span> {secs}
+        <span>s</span>
       </>
     ) : (
       <>
         {mins}
-        <span className="text-muted-foreground">m</span>
+        <span>m</span>
       </>
     );
   }
@@ -54,13 +54,13 @@ function formatDuration(seconds: number | null) {
   return mins > 0 ? (
     <>
       {hours}
-      <span className="text-muted-foreground">h</span> {mins}
-      <span className="text-muted-foreground">m</span>
+      <span>h</span> {mins}
+      <span>m</span>
     </>
   ) : (
     <>
       {hours}
-      <span className="text-muted-foreground">h</span>
+      <span>h</span>
     </>
   );
 }
@@ -129,7 +129,7 @@ export function UserInformationCard({ deviceId }: UserInformationCardProps) {
               <HugeiconsIcon className="size-4" icon={Calendar03Icon} />
               <p className="text-muted-foreground text-sm">First Seen</p>
             </div>
-            <p className="mt-1 font-medium text-sm">
+            <p className="mt-1 font-mono text-muted-foreground text-xs">
               {formatDate(device.firstSeen)}
             </p>
           </div>
@@ -138,7 +138,7 @@ export function UserInformationCard({ deviceId }: UserInformationCardProps) {
               <HugeiconsIcon className="size-4" icon={Calendar03Icon} />
               <p className="text-muted-foreground text-sm">Last Activity</p>
             </div>
-            <p className="mt-1 font-medium text-sm">
+            <p className="mt-1 font-mono text-muted-foreground text-xs">
               {formatDate(device.lastActivityAt) ||
                 formatDate(device.firstSeen)}
             </p>
@@ -148,7 +148,9 @@ export function UserInformationCard({ deviceId }: UserInformationCardProps) {
               <HugeiconsIcon className="size-4" icon={PlaySquareIcon} />
               <p className="text-muted-foreground text-sm">Total Sessions</p>
             </div>
-            <p className="mt-1 font-medium text-sm">{device.totalSessions}</p>
+            <p className="mt-1 font-medium font-mono text-sm">
+              {device.totalSessions}
+            </p>
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -157,7 +159,7 @@ export function UserInformationCard({ deviceId }: UserInformationCardProps) {
                 Avg Session Duration
               </p>
             </div>
-            <p className="mt-1 font-medium text-sm">
+            <p className="mt-1 font-mono text-muted-foreground text-xs">
               {formatDuration(device.avgSessionDuration)}
             </p>
           </div>

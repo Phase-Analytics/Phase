@@ -79,7 +79,7 @@ export function DeviceInformationCard({
               <HugeiconsIcon className="size-4" icon={InformationCircleIcon} />
               <p className="text-muted-foreground text-sm">OS Version</p>
             </div>
-            <p className="mt-1 font-medium text-sm">
+            <p className="mt-1 font-medium font-mono text-sm">
               {device.osVersion || 'Unknown'}
             </p>
           </div>
@@ -97,7 +97,7 @@ export function DeviceInformationCard({
               <HugeiconsIcon className="size-4" icon={InformationCircleIcon} />
               <p className="text-muted-foreground text-sm">App Version</p>
             </div>
-            <p className="mt-1 font-medium text-sm">
+            <p className="mt-1 font-medium font-mono text-sm">
               {device.appVersion || 'Unknown'}
             </p>
           </div>

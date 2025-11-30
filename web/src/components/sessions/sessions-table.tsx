@@ -15,20 +15,20 @@ function formatDurationTable(startedAt: string, lastActivityAt: string) {
   const end = new Date(lastActivityAt).getTime();
 
   if (Number.isNaN(start) || Number.isNaN(end)) {
-    return <span className="text-muted-foreground">—</span>;
+    return <>—</>;
   }
 
   const seconds = Math.floor((end - start) / 1000);
 
   if (seconds < 0) {
-    return <span className="text-muted-foreground">—</span>;
+    return <>—</>;
   }
 
   if (seconds < 60) {
     return (
       <>
         {seconds}
-        <span className="text-muted-foreground">s</span>
+        <span>s</span>
       </>
     );
   }
@@ -38,13 +38,13 @@ function formatDurationTable(startedAt: string, lastActivityAt: string) {
     return secs > 0 ? (
       <>
         {mins}
-        <span className="text-muted-foreground">m</span> {secs}
-        <span className="text-muted-foreground">s</span>
+        <span>m</span> {secs}
+        <span>s</span>
       </>
     ) : (
       <>
         {mins}
-        <span className="text-muted-foreground">m</span>
+        <span>m</span>
       </>
     );
   }
@@ -53,13 +53,13 @@ function formatDurationTable(startedAt: string, lastActivityAt: string) {
   return mins > 0 ? (
     <>
       {hours}
-      <span className="text-muted-foreground">h</span> {mins}
-      <span className="text-muted-foreground">m</span>
+      <span>h</span> {mins}
+      <span>m</span>
     </>
   ) : (
     <>
       {hours}
-      <span className="text-muted-foreground">h</span>
+      <span>h</span>
     </>
   );
 }
@@ -84,6 +84,19 @@ const columns: ColumnDef<Session>[] = [
     },
   },
   {
+    accessorKey: 'startedAt',
+    header: 'Date',
+    size: 200,
+    cell: ({ row }) => {
+      const timestamp = row.getValue('startedAt') as string;
+      return (
+        <span className="font-mono text-muted-foreground text-xs">
+          {formatDateTime(timestamp)}
+        </span>
+      );
+    },
+  },
+  {
     accessorKey: 'lastActivityAt',
     header: 'Duration',
     size: 150,
@@ -92,20 +105,7 @@ const columns: ColumnDef<Session>[] = [
         row.original.startedAt,
         row.original.lastActivityAt
       );
-      return <div className="text-sm">{duration}</div>;
-    },
-  },
-  {
-    accessorKey: 'startedAt',
-    header: 'Date',
-    size: 200,
-    cell: ({ row }) => {
-      const timestamp = row.getValue('startedAt') as string;
-      return (
-        <span className="text-muted-foreground text-xs">
-          {formatDateTime(timestamp)}
-        </span>
-      );
+      return <div className="font-mono text-xs">{duration}</div>;
     },
   },
 ];

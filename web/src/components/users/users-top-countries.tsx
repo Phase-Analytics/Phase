@@ -100,10 +100,10 @@ export function UsersTopCountries() {
                         </span>
                       </div>
                       <div className="flex items-baseline gap-2">
-                        <span className="font-semibold text-sm">
+                        <span className="font-mono font-semibold text-sm">
                           {count.toLocaleString()}
                         </span>
-                        <span className="text-muted-foreground text-xs">
+                        <span className="font-mono text-muted-foreground text-xs">
                           ({percentage.toFixed(1)}%)
                         </span>
                       </div>
@@ -145,10 +145,10 @@ export function UsersTopCountries() {
                     <div className="flex items-center justify-between">
                       <span className="font-medium text-sm">{city}</span>
                       <div className="flex items-baseline gap-2">
-                        <span className="font-semibold text-sm">
+                        <span className="font-mono font-semibold text-sm">
                           {count.toLocaleString()}
                         </span>
-                        <span className="text-muted-foreground text-xs">
+                        <span className="font-mono text-muted-foreground text-xs">
                           ({percentage.toFixed(1)}%)
                         </span>
                       </div>

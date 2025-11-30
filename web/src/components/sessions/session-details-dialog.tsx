@@ -81,7 +81,7 @@ function EventRow({
       <span className="flex-1 truncate font-medium text-sm" title={event.name}>
         {event.name}
       </span>
-      <span className="shrink-0 text-muted-foreground text-xs">
+      <span className="shrink-0 font-mono text-muted-foreground text-xs">
         {formatTime(event.timestamp)}
       </span>
     </motion.button>
@@ -149,14 +149,16 @@ export function SessionDetailsDialog({
                   <HugeiconsIcon className="size-4" icon={Calendar03Icon} />
                   <p className="text-muted-foreground text-xs">Started At</p>
                 </div>
-                <p className="text-sm">{formatDateTime(session.startedAt)}</p>
+                <p className="font-mono text-muted-foreground text-xs">
+                  {formatDateTime(session.startedAt)}
+                </p>
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <HugeiconsIcon className="size-4" icon={Time03Icon} />
                   <p className="text-muted-foreground text-xs">Duration</p>
                 </div>
-                <p className="text-sm">{duration}</p>
+                <p className="font-mono text-xs">{duration}</p>
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
@@ -166,7 +168,9 @@ export function SessionDetailsDialog({
                   />
                   <p className="text-muted-foreground text-xs">Events</p>
                 </div>
-                <p className="text-sm">{eventsData?.events.length || 0}</p>
+                <p className="font-mono text-sm">
+                  {eventsData?.events.length || 0}
+                </p>
               </div>
             </div>
           </div>

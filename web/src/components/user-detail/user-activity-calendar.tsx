@@ -109,7 +109,7 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
                   side="top"
                 >
                   <div className="flex flex-col gap-1.5">
-                    <span className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                    <span className="flex items-center gap-1.5 font-mono text-muted-foreground text-xs">
                       <HugeiconsIcon
                         className="size-3.5"
                         icon={Calendar03Icon}
@@ -117,7 +117,7 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
                       {day.formattedDate}
                     </span>
                     <div className="flex flex-col gap-0.5">
-                      <div className="font-semibold text-base text-foreground tabular-nums">
+                      <div className="font-mono font-semibold text-base text-foreground tabular-nums">
                         {day.sessionCount === 0
                           ? 'No Sessions'
                           : `${day.sessionCount} Session${day.sessionCount > 1 ? 's' : ''}`}

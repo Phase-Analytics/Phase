@@ -28,7 +28,7 @@ export function EventsOverviewCards() {
       <Card className="py-0">
         <CardContent className="p-4">
           <p className="text-muted-foreground text-sm">Total Events</p>
-          <p className="font-bold text-3xl">
+          <p className="font-bold font-mono text-3xl">
             <CountingNumber number={overview?.totalEvents || 0} />
           </p>
           <div className="mt-1 flex items-center gap-1 text-xs">
@@ -47,7 +47,7 @@ export function EventsOverviewCards() {
             )}
             <span
               className={cn(
-                'font-medium',
+                'font-medium font-mono',
                 getChangeColor(overview?.totalEventsChange24h || 0)
               )}
             >
@@ -61,7 +61,7 @@ export function EventsOverviewCards() {
       <Card className="py-0">
         <CardContent className="p-4">
           <p className="text-muted-foreground text-sm">Daily Events</p>
-          <p className="font-bold text-3xl">
+          <p className="font-bold font-mono text-3xl">
             <CountingNumber number={overview?.events24h || 0} />
           </p>
           <div className="mt-1 flex items-center gap-1 text-xs">
@@ -80,7 +80,7 @@ export function EventsOverviewCards() {
             )}
             <span
               className={cn(
-                'font-medium',
+                'font-medium font-mono',
                 getChangeColor(overview?.events24hChange || 0)
               )}
             >

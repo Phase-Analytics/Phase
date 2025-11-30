@@ -20,7 +20,7 @@ const columns: ColumnDef<Event>[] = [
   {
     accessorKey: 'deviceId',
     header: 'User',
-    size: 300,
+    size: 350,
     cell: ({ row }) => {
       const deviceId = row.getValue('deviceId') as string;
       const generatedName = getGeneratedName(deviceId);
@@ -55,7 +55,7 @@ const columns: ColumnDef<Event>[] = [
     cell: ({ row }) => {
       const timestamp = row.getValue('timestamp') as string;
       return (
-        <span className="text-muted-foreground text-xs">
+        <span className="font-mono text-muted-foreground text-xs">
           {formatDateTime(timestamp)}
         </span>
       );

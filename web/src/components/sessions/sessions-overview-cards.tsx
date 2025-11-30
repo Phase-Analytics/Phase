@@ -19,7 +19,7 @@ function formatDuration(seconds: number | null) {
   if (seconds === null || seconds === 0) {
     return (
       <>
-        0<span className="text-muted-foreground">s</span>
+        0<span>s</span>
       </>
     );
   }
@@ -28,8 +28,8 @@ function formatDuration(seconds: number | null) {
   return (
     <>
       {minutes}
-      <span className="text-muted-foreground">m</span> {secs}
-      <span className="text-muted-foreground">s</span>
+      <span>m</span> {secs}
+      <span>s</span>
     </>
   );
 }
@@ -47,7 +47,7 @@ export function SessionsOverviewCards() {
       <Card className="py-0">
         <CardContent className="p-4">
           <p className="text-muted-foreground text-sm">Total Sessions</p>
-          <p className="font-bold text-3xl">
+          <p className="font-bold font-mono text-3xl">
             <CountingNumber number={overview?.totalSessions || 0} />
           </p>
           <div className="mt-1 flex items-center gap-1 text-xs">
@@ -66,7 +66,7 @@ export function SessionsOverviewCards() {
             )}
             <span
               className={cn(
-                'font-medium',
+                'font-medium font-mono',
                 getChangeColor(overview?.totalSessionsChange24h || 0)
               )}
             >
@@ -80,7 +80,7 @@ export function SessionsOverviewCards() {
       <Card className="py-0">
         <CardContent className="p-4">
           <p className="text-muted-foreground text-sm">Daily Sessions</p>
-          <p className="font-bold text-3xl">
+          <p className="font-bold font-mono text-3xl">
             <CountingNumber number={overview?.activeSessions24h || 0} />
           </p>
           <div className="mt-1 flex items-center gap-1 text-xs">
@@ -99,7 +99,7 @@ export function SessionsOverviewCards() {
             )}
             <span
               className={cn(
-                'font-medium',
+                'font-medium font-mono',
                 getChangeColor(overview?.activeSessions24hChange || 0)
               )}
             >
@@ -115,7 +115,7 @@ export function SessionsOverviewCards() {
           <p className="text-muted-foreground text-sm">
             Average Session Duration
           </p>
-          <p className="font-bold text-3xl">
+          <p className="font-bold font-mono text-3xl">
             {formatDuration(overview?.averageSessionDuration || null)}
           </p>
           <div className="mt-1 flex items-center gap-1 text-xs">

@@ -2,7 +2,13 @@
 
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { useTimezoneStore } from '@/stores/timezone-store';
 
 function getTimezoneOffset(timezone: string): string {
@@ -138,6 +144,9 @@ export function UserSettings({ children }: UserSettingsProps) {
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Time & Date Settings</DialogTitle>
+        </DialogHeader>
         <div className="space-y-6 py-2">
           <div className="space-y-4">
             <div className="space-y-3">

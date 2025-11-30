@@ -29,7 +29,7 @@ export function UsersOverviewCards() {
       <Card className="py-0">
         <CardContent className="p-4">
           <p className="text-muted-foreground text-sm">Total Users</p>
-          <p className="font-bold text-3xl">
+          <p className="font-bold font-mono text-3xl">
             <CountingNumber number={overview?.totalDevices || 0} />
           </p>
           <div className="mt-1 flex items-center gap-1 text-xs">
@@ -48,7 +48,7 @@ export function UsersOverviewCards() {
             )}
             <span
               className={cn(
-                'font-medium',
+                'font-medium font-mono',
                 getChangeColor(overview?.totalDevicesChange24h || 0)
               )}
             >
@@ -62,7 +62,7 @@ export function UsersOverviewCards() {
       <Card className="py-0">
         <CardContent className="p-4">
           <p className="text-muted-foreground text-sm">Daily Active Users</p>
-          <p className="font-bold text-3xl">
+          <p className="font-bold font-mono text-3xl">
             <CountingNumber number={overview?.activeDevices24h || 0} />
           </p>
           <div className="mt-1 flex items-center gap-1 text-xs">
@@ -81,7 +81,7 @@ export function UsersOverviewCards() {
             )}
             <span
               className={cn(
-                'font-medium',
+                'font-medium font-mono',
                 getChangeColor(overview?.activeDevicesChange24h || 0)
               )}
             >
@@ -101,7 +101,7 @@ export function UsersOverviewCards() {
             </div>
             <p className="text-muted-foreground text-sm">Online Users</p>
           </div>
-          <p className="font-bold text-3xl">
+          <p className="font-bold font-mono text-3xl">
             <CountingNumber number={liveData?.activeNow || 0} />
           </p>
           <p className="mt-1 text-muted-foreground text-xs">
