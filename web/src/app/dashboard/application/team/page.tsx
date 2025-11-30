@@ -7,14 +7,13 @@ import {
   UserRemove01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { minidenticon } from 'minidenticons';
+import Avatar from 'boring-avatars';
 import Link from 'next/link';
 import { useQueryState } from 'nuqs';
-import { useMemo } from 'react';
 import { AddMemberDialog } from '@/components/add-member-dialog';
 import { RemoveMemberDialog } from '@/components/remove-member-dialog';
 import { RequireApp } from '@/components/require-app';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { AvatarFallback, Avatar as UIAvatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -32,16 +31,6 @@ export default function TeamPage() {
 
   const isOwner = app?.role === 'owner';
   const showLoading = appLoading || teamLoading;
-
-  const ownerAvatarSrc = useMemo(
-    () =>
-      teamData?.owner.email
-        ? `data:image/svg+xml;utf8,${encodeURIComponent(
-            minidenticon(teamData.owner.email, 55, 45)
-          )}`
-        : '',
-    [teamData?.owner.email]
-  );
 
   return (
     <RequireApp>
@@ -68,13 +57,23 @@ export default function TeamPage() {
                 <Skeleton className="h-12 w-full" />
               ) : (
                 <div className="flex items-center gap-3 rounded-lg border p-3">
-                  <Avatar className="size-8">
-                    <AvatarImage
-                      alt={teamData?.owner.email}
-                      src={ownerAvatarSrc}
-                    />
+                  <UIAvatar className="size-8">
+                    <div className="flex h-full w-full items-center justify-center">
+                      <Avatar
+                        colors={[
+                          '#92A1C6',
+                          '#146A7C',
+                          '#F0AB3D',
+                          '#C271B4',
+                          '#C20D90',
+                        ]}
+                        name={teamData?.owner.email || 'Owner'}
+                        size={32}
+                        variant="marble"
+                      />
+                    </div>
                     <AvatarFallback className="bg-transparent" />
-                  </Avatar>
+                  </UIAvatar>
                   <div className="min-w-0 flex-1">
                     {teamData?.owner.name && (
                       <p className="truncate font-medium text-sm">
@@ -141,70 +140,67 @@ export default function TeamPage() {
                 teamData?.members &&
                 teamData.members.length > 0 && (
                   <div className="space-y-2">
-                    {teamData.members.map((member) => {
-                      const memberAvatarSrc = `data:image/svg+xml;utf8,${encodeURIComponent(
-                        minidenticon(member.email, 55, 45)
-                      )}`;
-
-                      return (
-                        <div
-                          className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
-                          key={member.userId}
-                        >
-                          <div className="flex items-center gap-3">
-                            <Avatar className="size-8">
-                              <AvatarImage
-                                alt={member.email}
-                                src={memberAvatarSrc}
+                    {teamData.members.map((member) => (
+                      <div
+                        className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
+                        key={member.userId}
+                      >
+                        <div className="flex items-center gap-3">
+                          <UIAvatar className="size-8">
+                            <div className="flex h-full w-full items-center justify-center">
+                              <Avatar
+                                name={member.email}
+                                size={32}
+                                variant="marble"
                               />
-                              <AvatarFallback className="bg-transparent" />
-                            </Avatar>
-                            <div className="min-w-0 flex-1">
-                              {member.name && (
-                                <p className="truncate font-medium text-sm">
-                                  {member.name}
-                                </p>
-                              )}
-                              <p
-                                className={`truncate text-xs ${member.name ? 'text-muted-foreground' : 'font-medium text-sm'}`}
-                              >
-                                {member.email}
-                              </p>
                             </div>
-                          </div>
-                          <div className="w-full sm:w-auto">
-                            {isOwner ? (
-                              <RemoveMemberDialog
-                                appId={appId || ''}
-                                email={member.email}
-                                userId={member.userId}
-                              />
-                            ) : (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="block w-full sm:inline-block sm:w-auto">
-                                    <Button
-                                      className="w-full sm:w-auto"
-                                      disabled
-                                      size="sm"
-                                      type="button"
-                                      variant="destructive"
-                                    >
-                                      <HugeiconsIcon
-                                        className="mr-1.5 size-3"
-                                        icon={UserRemove01Icon}
-                                      />
-                                      Remove
-                                    </Button>
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent>Owner only</TooltipContent>
-                              </Tooltip>
+                            <AvatarFallback className="bg-transparent" />
+                          </UIAvatar>
+                          <div className="min-w-0 flex-1">
+                            {member.name && (
+                              <p className="truncate font-medium text-sm">
+                                {member.name}
+                              </p>
                             )}
+                            <p
+                              className={`truncate text-xs ${member.name ? 'text-muted-foreground' : 'font-medium text-sm'}`}
+                            >
+                              {member.email}
+                            </p>
                           </div>
                         </div>
-                      );
-                    })}
+                        <div className="w-full sm:w-auto">
+                          {isOwner ? (
+                            <RemoveMemberDialog
+                              appId={appId || ''}
+                              email={member.email}
+                              userId={member.userId}
+                            />
+                          ) : (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="block w-full sm:inline-block sm:w-auto">
+                                  <Button
+                                    className="w-full sm:w-auto"
+                                    disabled
+                                    size="sm"
+                                    type="button"
+                                    variant="destructive"
+                                  >
+                                    <HugeiconsIcon
+                                      className="mr-1.5 size-3"
+                                      icon={UserRemove01Icon}
+                                    />
+                                    Remove
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>Owner only</TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
 
