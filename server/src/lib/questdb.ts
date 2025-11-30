@@ -214,8 +214,7 @@ export async function getEvents(
   const limit = sanitizeNumeric(options.limit, 10, 1, 1000);
   const offset = sanitizeNumeric(options.offset, 0, 0, 1_000_000);
 
-  const limitClause =
-    offset > 0 ? `LIMIT ${offset}, ${limit}` : `LIMIT ${limit}`;
+  const limitClause = `LIMIT ${limit} OFFSET ${offset}`;
 
   const eventsQuery = `
     SELECT event_id, session_id, device_id, name, params, to_str(timestamp, 'yyyy-MM-ddTHH:mm:ss.SSSUUUZ') as timestamp
