@@ -9,22 +9,17 @@ type AvatarVariant =
   | 'ring'
   | 'bauhaus';
 
-function hashString(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = hash * 31 + char;
-  }
-  return Math.abs(hash);
-}
-
 export function getGeneratedName(seed: string): string {
   if (!seed) {
     return 'Anonymous';
   }
-  const hash = hashString(seed);
-  faker.seed(hash);
-  return faker.person.fullName();
+  const numericSeed = seed
+    .split('')
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  faker.seed(numericSeed);
+  const firstName = faker.person.firstName();
+  const lastName = faker.person.lastName();
+  return `${firstName} ${lastName}`;
 }
 
 type UserAvatarProps = {
