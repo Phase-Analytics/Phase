@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { Elysia } from 'elysia';
 import { db, sessions } from '@/db';
-import { type App, sdkAuthPlugin } from '@/lib/middleware';
+import { sdkAuthPlugin } from '@/lib/middleware';
 import {
   invalidateSessionCache,
   validateSession,
@@ -15,23 +15,12 @@ import {
   PingSessionResponseSchema,
 } from '@/schemas';
 
-type SdkContext = { app: App | null; userId: string | null };
-
 export const pingSdkRouter = new Elysia({ prefix: '/ping' })
   .use(sdkAuthPlugin)
   .post(
     '/',
-    async (ctx) => {
-      const { body, app, set } = ctx as typeof ctx & SdkContext;
+    async ({ body, app, set }) => {
       try {
-        if (!app?.id) {
-          set.status = HttpStatus.UNAUTHORIZED;
-          return {
-            code: ErrorCode.UNAUTHORIZED,
-            detail: 'App key is required',
-          };
-        }
-
         const sessionValidation = await validateSession(body.sessionId, app.id);
         if (!sessionValidation.success) {
           set.status = sessionValidation.error.status;

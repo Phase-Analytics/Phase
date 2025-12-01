@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { Elysia } from 'elysia';
 import { ulid } from 'ulid';
 import { db, sessions } from '@/db';
-import { type App, sdkAuthPlugin } from '@/lib/middleware';
+import { sdkAuthPlugin } from '@/lib/middleware';
 import { writeEvent } from '@/lib/questdb';
 import {
   invalidateSessionCache,
@@ -17,23 +17,12 @@ import {
   HttpStatus,
 } from '@/schemas';
 
-type SdkContext = { app: App | null; userId: string | null };
-
 export const eventSdkRouter = new Elysia({ prefix: '/events' })
   .use(sdkAuthPlugin)
   .post(
     '/',
-    async (ctx) => {
-      const { body, set, app } = ctx as typeof ctx & SdkContext;
+    async ({ body, set, app }) => {
       try {
-        if (!app?.id) {
-          set.status = HttpStatus.UNAUTHORIZED;
-          return {
-            code: ErrorCode.UNAUTHORIZED,
-            detail: 'App key is required',
-          };
-        }
-
         const sessionValidation = await validateSession(body.sessionId, app.id);
         if (!sessionValidation.success) {
           set.status = sessionValidation.error.status;

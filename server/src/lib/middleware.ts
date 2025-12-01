@@ -27,22 +27,58 @@ export type App = typeof appsTable.$inferSelect;
 
 export const sessionPlugin = new ElysiaClass({ name: 'session' });
 
-export const sdkAuthPlugin = new ElysiaClass({ name: 'sdkAuth' }).derive(
-  async ({ request }) => {
+class SdkAuthError extends Error {
+  statusCode: number;
+  errorCode: string;
+  detail: string;
+
+  constructor(statusCode: number, errorCode: string, detail: string) {
+    super(detail);
+    this.name = 'SdkAuthError';
+    this.statusCode = statusCode;
+    this.errorCode = errorCode;
+    this.detail = detail;
+  }
+}
+
+export const sdkAuthPlugin = new ElysiaClass({ name: 'sdkAuth' })
+  .error({ SDK_AUTH_ERROR: SdkAuthError })
+  .onError(({ error, set }) => {
+    if (error instanceof SdkAuthError) {
+      set.status = error.statusCode;
+      return {
+        code: error.errorCode,
+        detail: error.detail,
+      };
+    }
+  })
+  .resolve(async ({ request }) => {
     const authHeader = request.headers.get('authorization');
 
     if (!authHeader) {
-      return { app: null as App | null, userId: null as string | null };
+      throw new SdkAuthError(
+        HttpStatus.UNAUTHORIZED,
+        ErrorCode.UNAUTHORIZED,
+        'Authorization header is required. Use: Authorization: Bearer <api_key>'
+      );
     }
 
     const parts = authHeader.split(' ');
     if (parts.length !== 2 || parts[0].toLowerCase() !== 'bearer') {
-      return { app: null as App | null, userId: null as string | null };
+      throw new SdkAuthError(
+        HttpStatus.UNAUTHORIZED,
+        ErrorCode.UNAUTHORIZED,
+        'Invalid authorization format. Use: Bearer <api_key>'
+      );
     }
 
     const bearerToken = parts[1];
     if (!bearerToken) {
-      return { app: null as App | null, userId: null as string | null };
+      throw new SdkAuthError(
+        HttpStatus.UNAUTHORIZED,
+        ErrorCode.UNAUTHORIZED,
+        'API key is required'
+      );
     }
 
     try {
@@ -51,19 +87,30 @@ export const sdkAuthPlugin = new ElysiaClass({ name: 'sdkAuth' }).derive(
       });
 
       if (!app) {
-        return { app: null as App | null, userId: null as string | null };
+        throw new SdkAuthError(
+          HttpStatus.UNAUTHORIZED,
+          ErrorCode.UNAUTHORIZED,
+          'Invalid API key'
+        );
       }
 
       return {
-        app: app as App,
-        userId: app.userId as string,
+        app,
+        sdkUserId: app.userId,
       };
     } catch (error) {
-      console.error('[Middleware] App key verification error:', error);
-      return { app: null as App | null, userId: null as string | null };
+      if (error instanceof SdkAuthError) {
+        throw error;
+      }
+      console.error('[SDK Auth] App key verification error:', error);
+      throw new SdkAuthError(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        ErrorCode.INTERNAL_SERVER_ERROR,
+        'Failed to verify API key'
+      );
     }
-  }
-);
+  })
+  .as('scoped');
 
 export const authPlugin = new ElysiaClass({ name: 'auth' })
   .state({

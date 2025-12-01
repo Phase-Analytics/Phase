@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { Elysia } from 'elysia';
 import { db, devices, sessions } from '@/db';
-import { type App, sdkAuthPlugin } from '@/lib/middleware';
+import { sdkAuthPlugin } from '@/lib/middleware';
 import { validateDevice, validateTimestamp } from '@/lib/validators';
 import {
   CreateSessionRequestSchema,
@@ -11,23 +11,12 @@ import {
   SessionSchema,
 } from '@/schemas';
 
-type SdkContext = { app: App | null; userId: string | null };
-
 export const sessionSdkRouter = new Elysia({ prefix: '/sessions' })
   .use(sdkAuthPlugin)
   .post(
     '/',
-    async (ctx) => {
-      const { body, set, app } = ctx as typeof ctx & SdkContext;
+    async ({ body, set, app }) => {
       try {
-        if (!app?.id) {
-          set.status = HttpStatus.UNAUTHORIZED;
-          return {
-            code: ErrorCode.UNAUTHORIZED,
-            detail: 'App key is required',
-          };
-        }
-
         const deviceValidation = await validateDevice(body.deviceId, app.id);
         if (!deviceValidation.success) {
           set.status = deviceValidation.error.status;
