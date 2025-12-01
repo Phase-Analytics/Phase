@@ -27,6 +27,28 @@ type AuthContext = { user: BetterAuthUser };
 export const appWebRouter = new Elysia({ prefix: '/apps' })
   .use(sessionPlugin)
   .use(authPlugin)
+  .get('/debug-session', async ({ request }) => {
+    console.log('🔍 DEBUG ENDPOINT CALLED');
+    console.log('🔍 Cookie:', request.headers.get('cookie'));
+
+    const { auth } = await import('@/lib/auth');
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    console.log('🔍 Session result:', session);
+
+    return {
+      hasCookie: !!request.headers.get('cookie'),
+      cookieValue: request.headers.get('cookie'),
+      hasSession: !!session,
+      session: session ? {
+        userId: session.user?.id,
+        userEmail: session.user?.email,
+        sessionId: session.session?.id,
+      } : null,
+    };
+  })
   .post(
     '/',
     async (ctx) => {
