@@ -25,8 +25,8 @@ export type BetterAuthSession = {
 
 export type App = typeof appsTable.$inferSelect;
 
-export const sessionPlugin = new ElysiaClass({ name: 'session' }).derive(
-  async ({ request }) => {
+export const sessionPlugin = new ElysiaClass({ name: 'session' })
+  .resolve(async ({ request }) => {
     console.log('========================================');
     console.log('[SessionPlugin] Request URL:', request.url);
     console.log('[SessionPlugin] Request Method:', request.method);
@@ -50,8 +50,7 @@ export const sessionPlugin = new ElysiaClass({ name: 'session' }).derive(
       user: session?.user as BetterAuthUser,
       session: session?.session as BetterAuthSession,
     };
-  }
-);
+  });
 
 const appContextPlugin = new ElysiaClass({ name: 'app-context' }).state({
   app: null as App | null,
