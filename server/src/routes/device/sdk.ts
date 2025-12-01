@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { Elysia } from 'elysia';
 import { db, devices } from '@/db';
 import { getLocationFromIP } from '@/lib/geolocation';
-import { authPlugin } from '@/lib/middleware';
+import { type App, sdkAuthPlugin } from '@/lib/middleware';
 import {
   CreateDeviceRequestSchema,
   DeviceSchema,
@@ -25,14 +25,15 @@ function normalizePlatform(
   return 'unknown';
 }
 
+type SdkContext = { app: App | null; userId: string | null };
+
 export const deviceSdkRouter = new Elysia({ prefix: '/devices' })
-  .use(authPlugin)
+  .use(sdkAuthPlugin)
   .post(
     '/',
-    async ({ body, store, set, request }) => {
+    async (ctx) => {
+      const { body, app, set, request } = ctx as typeof ctx & SdkContext;
       try {
-        const app = store.app;
-
         if (!app?.id) {
           set.status = HttpStatus.UNAUTHORIZED;
           return {
@@ -118,7 +119,6 @@ export const deviceSdkRouter = new Elysia({ prefix: '/devices' })
       }
     },
     {
-      requireAppKey: true,
       body: CreateDeviceRequestSchema,
       response: {
         200: DeviceSchema,

@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { Elysia } from 'elysia';
 import { db, sessions } from '@/db';
-import { authPlugin } from '@/lib/middleware';
+import { type App, sdkAuthPlugin } from '@/lib/middleware';
 import {
   invalidateSessionCache,
   validateSession,
@@ -15,14 +15,15 @@ import {
   PingSessionResponseSchema,
 } from '@/schemas';
 
+type SdkContext = { app: App | null; userId: string | null };
+
 export const pingSdkRouter = new Elysia({ prefix: '/ping' })
-  .use(authPlugin)
+  .use(sdkAuthPlugin)
   .post(
     '/',
-    async ({ body, store, set }) => {
+    async (ctx) => {
+      const { body, app, set } = ctx as typeof ctx & SdkContext;
       try {
-        const app = store.app;
-
         if (!app?.id) {
           set.status = HttpStatus.UNAUTHORIZED;
           return {
@@ -91,7 +92,6 @@ export const pingSdkRouter = new Elysia({ prefix: '/ping' })
       }
     },
     {
-      requireAppKey: true,
       body: PingSessionRequestSchema,
       response: {
         200: PingSessionResponseSchema,

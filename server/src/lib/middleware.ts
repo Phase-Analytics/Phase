@@ -27,6 +27,44 @@ export type App = typeof appsTable.$inferSelect;
 
 export const sessionPlugin = new ElysiaClass({ name: 'session' });
 
+export const sdkAuthPlugin = new ElysiaClass({ name: 'sdkAuth' }).derive(
+  async ({ request }) => {
+    const authHeader = request.headers.get('authorization');
+
+    if (!authHeader) {
+      return { app: null as App | null, userId: null as string | null };
+    }
+
+    const parts = authHeader.split(' ');
+    if (parts.length !== 2 || parts[0].toLowerCase() !== 'bearer') {
+      return { app: null as App | null, userId: null as string | null };
+    }
+
+    const bearerToken = parts[1];
+    if (!bearerToken) {
+      return { app: null as App | null, userId: null as string | null };
+    }
+
+    try {
+      const app = await db.query.apps.findFirst({
+        where: eq(appsTable.key, bearerToken),
+      });
+
+      if (!app) {
+        return { app: null as App | null, userId: null as string | null };
+      }
+
+      return {
+        app: app as App,
+        userId: app.userId as string,
+      };
+    } catch (error) {
+      console.error('[Middleware] App key verification error:', error);
+      return { app: null as App | null, userId: null as string | null };
+    }
+  }
+);
+
 export const authPlugin = new ElysiaClass({ name: 'auth' })
   .state({
     app: null as App | null,
