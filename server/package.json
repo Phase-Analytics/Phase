@@ -18,6 +18,7 @@
     "better-auth": "1.4.1",
     "drizzle-orm": "^0.44.7",
     "elysia": "latest",
+    "elysia-compress": "^1.2.1",
     "ioredis": "^5.4.2",
     "nanoid": "^5.1.6",
     "pg": "^8.16.3",

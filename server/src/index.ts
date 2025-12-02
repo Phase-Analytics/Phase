@@ -1,4 +1,5 @@
 import { Elysia } from 'elysia';
+import { compression } from 'elysia-compress';
 import { pool } from '@/db';
 import { auth } from '@/lib/auth';
 import { authCors, sdkCors, webCors } from '@/lib/cors';
@@ -26,6 +27,7 @@ const webRoutes = new Elysia({ prefix: '/web' })
   .use(sessionWebRouter);
 
 const app = new Elysia()
+  .use(compression())
   .use(authCors)
   .mount(auth.handler)
   .use(health)
