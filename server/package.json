@@ -6,7 +6,7 @@
     "build": "bun build --compile --minify --sourcemap --outfile server src/index.ts",
     "start": "bun run src/index.ts",
     "check": "bunx ultracite fix --unsafe",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsgo --noEmit",
     "auth:generate": "bunx @better-auth/cli@latest generate",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
@@ -25,10 +25,11 @@
     "ulid": "^3.0.1"
   },
   "devDependencies": {
-    "bun-types": "latest",
-    "@types/bun": "latest",
     "@biomejs/biome": "2.2.5",
+    "@types/bun": "latest",
     "@types/pg": "^8.15.6",
+    "@typescript/native-preview": "^7.0.0-dev.20251203.1",
+    "bun-types": "latest",
     "drizzle-kit": "^0.31.6",
     "typescript": "^5",
     "ultracite": "5.6.1"
