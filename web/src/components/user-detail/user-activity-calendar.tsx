@@ -7,7 +7,7 @@ import {
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { parseAsString, useQueryState } from 'nuqs';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Tooltip,
@@ -58,11 +58,16 @@ function getSessionLabel(sessionCount: number): string {
 
 export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
   const [appId] = useQueryState('app', parseAsString);
+  const [isClient, setIsClient] = useState(false);
 
   const { data, isPending } = useDeviceActivityTimeseries(
     deviceId,
     appId || ''
   );
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const calendarData = useMemo<DayData[]>(() => {
     if (!data?.data) {
@@ -136,7 +141,11 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
                 icon={Calendar03Icon}
               />
               <span>
-                {data?.firstSeen ? formatDateTime(data.firstSeen) : 'Unknown'}
+                {isClient
+                  ? data?.firstSeen
+                    ? formatDateTime(data.firstSeen)
+                    : 'Unknown'
+                  : '—'}
               </span>
             </p>
           </div>
@@ -148,9 +157,11 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
                 icon={Calendar03Icon}
               />
               <span>
-                {data?.lastActivityAt
-                  ? formatDateTime(data.lastActivityAt)
-                  : 'Never'}
+                {isClient
+                  ? data?.lastActivityAt
+                    ? formatDateTime(data.lastActivityAt)
+                    : 'Never'
+                  : '—'}
               </span>
             </p>
           </div>
@@ -163,7 +174,7 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
                 <TooltipTrigger asChild>
                   <div
                     className={cn(
-                      'size-3 cursor-pointer rounded-sm transition-colors',
+                      'size-3 cursor-pointer rounded-[2px] transition-colors',
                       getIntensityClass(day.sessionCount)
                     )}
                   />
@@ -198,11 +209,11 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
         <div className="flex items-center gap-2 text-xs">
           <span className="text-muted-foreground">Less</span>
           <div className="flex gap-1">
-            <div className="size-3 rounded-sm bg-muted" />
-            <div className="size-3 rounded-sm bg-chart-2/20" />
-            <div className="size-3 rounded-sm bg-chart-2/40" />
-            <div className="size-3 rounded-sm bg-chart-2/60" />
-            <div className="size-3 rounded-sm bg-chart-2" />
+            <div className="size-3 rounded-[2px] bg-muted" />
+            <div className="size-3 rounded-[2px] bg-chart-2/20" />
+            <div className="size-3 rounded-[2px] bg-chart-2/40" />
+            <div className="size-3 rounded-[2px] bg-chart-2/60" />
+            <div className="size-3 rounded-[2px] bg-chart-2" />
           </div>
           <span className="text-muted-foreground">More</span>
         </div>
