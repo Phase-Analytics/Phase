@@ -110,7 +110,7 @@ export type DevicePlatformOverview = {
 export type DeviceLocationOverview = {
   totalDevices: number;
   countryStats: Record<string, number>;
-  cityStats: Record<string, number>;
+  cityStats: Record<string, { count: number; country: string }>;
 };
 
 export type DeviceMetric = 'dau' | 'total';

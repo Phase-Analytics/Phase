@@ -42,15 +42,18 @@ export function UsersTopCountries() {
   }
 
   const countryStats = (overview?.countryStats || {}) as Record<string, number>;
-  const cityStats = (overview?.cityStats || {}) as Record<string, number>;
+  const cityStats = (overview?.cityStats || {}) as Record<
+    string,
+    { count: number; country: string }
+  >;
 
   const sortedCountries = Object.entries(countryStats)
     .filter(([, count]) => count > 0)
     .sort(([, a], [, b]) => b - a);
 
   const sortedCities = Object.entries(cityStats)
-    .filter(([, count]) => count > 0)
-    .sort(([, a], [, b]) => b - a);
+    .filter(([, data]) => data.count > 0)
+    .sort(([, a], [, b]) => b.count - a.count);
 
   const totalDevices = overview?.totalDevices || 0;
 
@@ -141,18 +144,23 @@ export function UsersTopCountries() {
 
             {activeTab === 'city' &&
               sortedCities.length > 0 &&
-              sortedCities.map(([city, count]) => {
+              sortedCities.map(([city, data]) => {
                 const percentage = totalDevices
-                  ? (count / totalDevices) * 100
+                  ? (data.count / totalDevices) * 100
                   : 0;
 
                 return (
                   <div className="space-y-1.5" key={city}>
                     <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm">{city}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-block w-4 text-center text-base leading-none">
+                          {getCountryFlag(data.country)}
+                        </span>
+                        <span className="font-medium text-sm">{city}</span>
+                      </div>
                       <div className="flex items-baseline gap-2">
                         <span className="font-semibold text-sm">
-                          {count.toLocaleString()}
+                          {data.count.toLocaleString()}
                         </span>
                         <span className="text-muted-foreground text-xs">
                           ({percentage.toFixed(1)}%)
