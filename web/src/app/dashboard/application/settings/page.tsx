@@ -74,7 +74,9 @@ export default function SettingsPage() {
           <Card className="py-0">
             <CardContent className="space-y-4 p-4">
               <div>
-                <h2 className="font-semibold text-lg">Application Details</h2>
+                <h2 className="font-semibold text-muted-foreground text-sm uppercase">
+                  Application Details
+                </h2>
                 <p className="text-muted-foreground text-sm">
                   View and manage your application information
                 </p>
@@ -85,7 +87,9 @@ export default function SettingsPage() {
           </Card>
 
           <div>
-            <h2 className="mb-3 font-semibold text-lg">Quick Access</h2>
+            <h2 className="mb-3 font-semibold text-muted-foreground text-sm uppercase">
+              Quick Access
+            </h2>
             <div className="grid gap-4 md:grid-cols-2">
               <Link
                 className="block"
@@ -101,7 +105,9 @@ export default function SettingsPage() {
                         />
                       </div>
                       <div>
-                        <h3 className="font-semibold">API Keys</h3>
+                        <h3 className="font-semibold text-muted-foreground text-sm uppercase">
+                          API Keys
+                        </h3>
                         <p className="text-muted-foreground text-sm">
                           Manage your API keys
                         </p>
@@ -129,7 +135,9 @@ export default function SettingsPage() {
                         />
                       </div>
                       <div>
-                        <h3 className="font-semibold">Team</h3>
+                        <h3 className="font-semibold text-muted-foreground text-sm uppercase">
+                          Team
+                        </h3>
                         <p className="text-muted-foreground text-sm">
                           Manage team members
                         </p>
@@ -148,7 +156,7 @@ export default function SettingsPage() {
           <Card className="py-0">
             <CardContent className="space-y-4 p-4">
               <div>
-                <h2 className="font-semibold text-destructive text-lg">
+                <h2 className="font-semibold text-destructive text-sm uppercase">
                   Danger Zone
                 </h2>
                 <p className="text-muted-foreground text-sm">

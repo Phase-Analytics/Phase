@@ -151,7 +151,9 @@ export function UserSettings({ children }: UserSettingsProps) {
           <div className="space-y-4">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="font-medium text-sm">Timezone</h4>
+                <h4 className="font-semibold text-muted-foreground text-xs uppercase">
+                  Timezone
+                </h4>
                 <p className="text-muted-foreground text-xs">
                   {currentTimezoneLabel}
                 </p>
@@ -197,7 +199,9 @@ export function UserSettings({ children }: UserSettingsProps) {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <h4 className="font-medium text-sm">Time Format</h4>
+                  <h4 className="font-semibold text-muted-foreground text-xs uppercase">
+                    Time Format
+                  </h4>
                 </div>
                 <div className="space-y-1 rounded-md border p-2">
                   {TIME_FORMAT_OPTIONS.map((option) => (
@@ -232,7 +236,9 @@ export function UserSettings({ children }: UserSettingsProps) {
 
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <h4 className="font-medium text-sm">Date Format</h4>
+                  <h4 className="font-semibold text-muted-foreground text-xs uppercase">
+                    Date Format
+                  </h4>
                 </div>
                 <div className="space-y-1 rounded-md border p-2">
                   {DATE_FORMAT_OPTIONS.map((option) => (
@@ -267,7 +273,9 @@ export function UserSettings({ children }: UserSettingsProps) {
             </div>
 
             <div className="space-y-2">
-              <h4 className="font-medium text-sm">Preview</h4>
+              <h4 className="font-semibold text-muted-foreground text-xs uppercase">
+                Preview
+              </h4>
               <div className="rounded-md border bg-muted/50 p-3">
                 <p className="text-sm">{previewTime}</p>
               </div>

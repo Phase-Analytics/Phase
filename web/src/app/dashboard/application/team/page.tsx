@@ -57,7 +57,9 @@ export default function TeamPage() {
           <Card className="py-0">
             <CardContent className="space-y-4 p-4">
               <div>
-                <h2 className="font-semibold text-lg">Owner</h2>
+                <h2 className="font-semibold text-muted-foreground text-sm uppercase">
+                  Owner
+                </h2>
                 <p className="text-muted-foreground text-sm">
                   Owner has full control and can manage all settings, API keys,
                   and team members
@@ -96,7 +98,9 @@ export default function TeamPage() {
             <CardContent className="space-y-4 p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex-1">
-                  <h2 className="font-semibold text-lg">Team Members</h2>
+                  <h2 className="font-semibold text-muted-foreground text-sm uppercase">
+                    Team Members
+                  </h2>
                   <p className="text-muted-foreground text-sm">
                     Members can view analytics and reports but cannot modify
                     settings
@@ -221,7 +225,9 @@ export default function TeamPage() {
           </Card>
 
           <div>
-            <h2 className="mb-3 font-semibold text-lg">Documentation</h2>
+            <h2 className="mb-3 font-semibold text-muted-foreground text-sm uppercase">
+              Documentation
+            </h2>
             <Link className="block" href="/docs">
               <Card className="cursor-pointer py-0 transition-colors hover:bg-accent">
                 <CardContent className="flex items-center justify-between p-4">
@@ -233,7 +239,9 @@ export default function TeamPage() {
                       />
                     </div>
                     <div>
-                      <h3 className="font-semibold">Team Management</h3>
+                      <h3 className="font-semibold text-muted-foreground text-sm uppercase">
+                        Team Management
+                      </h3>
                       <p className="text-muted-foreground text-sm">
                         Learn about roles and permissions
                       </p>

@@ -106,7 +106,9 @@ export default function ApiKeysPage() {
           <Card className="py-0">
             <CardContent className="space-y-4 p-4">
               <div>
-                <h2 className="font-semibold text-lg">SDK API Key</h2>
+                <h2 className="font-semibold text-muted-foreground text-sm uppercase">
+                  SDK API Key
+                </h2>
                 <p className="text-muted-foreground text-sm">
                   Use this key to authenticate your application
                 </p>
@@ -199,7 +201,9 @@ export default function ApiKeysPage() {
           </Card>
 
           <div>
-            <h2 className="mb-3 font-semibold text-lg">Documentation</h2>
+            <h2 className="mb-3 font-semibold text-muted-foreground text-sm uppercase">
+              Documentation
+            </h2>
             <Link className="block" href="/docs" prefetch={false}>
               <Card className="cursor-pointer py-0 transition-colors hover:bg-accent">
                 <CardContent className="flex items-center justify-between p-4">
@@ -211,7 +215,9 @@ export default function ApiKeysPage() {
                       />
                     </div>
                     <div>
-                      <h3 className="font-semibold">API Key Usage</h3>
+                      <h3 className="font-semibold text-muted-foreground text-sm uppercase">
+                        API Key Usage
+                      </h3>
                       <p className="text-muted-foreground text-sm">
                         Learn how to integrate API keys in your app
                       </p>
