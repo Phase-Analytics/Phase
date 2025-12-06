@@ -11,7 +11,7 @@ import {
   sql,
 } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
-import { db, devices, sessions } from '@/db';
+import { apps, db, devices, sessions } from '@/db';
 import { auth } from '@/lib/auth';
 import {
   authPlugin,
@@ -991,6 +991,97 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
       }),
       response: {
         200: DeviceActivityTimeseriesResponseSchema,
+        401: ErrorResponseSchema,
+        403: ErrorResponseSchema,
+        404: ErrorResponseSchema,
+        500: ErrorResponseSchema,
+      },
+    }
+  )
+  .delete(
+    '/:deviceId',
+    async (ctx) => {
+      const { params, user, set, query } = ctx as typeof ctx & {
+        user: BetterAuthUser;
+        session: BetterAuthSession;
+      };
+
+      try {
+        if (!user?.id) {
+          set.status = HttpStatus.UNAUTHORIZED;
+          return {
+            code: ErrorCode.UNAUTHORIZED,
+            detail: 'Authentication required',
+          };
+        }
+
+        const { appId } = query;
+
+        const device = await db.query.devices.findFirst({
+          where: eq(devices.deviceId, params.deviceId),
+        });
+
+        if (!device) {
+          set.status = HttpStatus.NOT_FOUND;
+          return {
+            code: ErrorCode.NOT_FOUND,
+            detail: 'Device not found',
+          };
+        }
+
+        const app = await db.query.apps.findFirst({
+          where: and(eq(apps.id, appId), eq(apps.userId, user.id)),
+        });
+
+        if (!app) {
+          set.status = HttpStatus.FORBIDDEN;
+          return {
+            code: ErrorCode.FORBIDDEN,
+            detail: 'You must be the app owner to perform this action',
+          };
+        }
+
+        if (device.appId !== appId) {
+          set.status = HttpStatus.FORBIDDEN;
+          return {
+            code: ErrorCode.FORBIDDEN,
+            detail: 'Device does not belong to this app',
+          };
+        }
+
+        const deviceSessions = await db.query.sessions.findMany({
+          where: eq(sessions.deviceId, params.deviceId),
+          columns: { sessionId: true },
+        });
+
+        await Promise.all(
+          deviceSessions.map((session) =>
+            db.$cache?.invalidate({ tags: `session:${session.sessionId}` })
+          )
+        );
+
+        await db.delete(devices).where(eq(devices.deviceId, params.deviceId));
+
+        set.status = HttpStatus.NO_CONTENT;
+      } catch (error) {
+        console.error('[Device.Delete] Error:', error);
+        set.status = HttpStatus.INTERNAL_SERVER_ERROR;
+        return {
+          code: ErrorCode.INTERNAL_SERVER_ERROR,
+          detail: 'Failed to delete device',
+        };
+      }
+    },
+    {
+      requireAuth: true,
+      params: t.Object({
+        deviceId: t.String(),
+      }),
+      query: t.Object({
+        appId: t.String(),
+      }),
+      response: {
+        204: t.Void(),
         401: ErrorResponseSchema,
         403: ErrorResponseSchema,
         404: ErrorResponseSchema,
