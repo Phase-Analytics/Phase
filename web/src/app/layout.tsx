@@ -2,6 +2,7 @@ import { GeistSans } from 'geist/font/sans';
 import type { Metadata } from 'next';
 import { JetBrains_Mono } from 'next/font/google';
 import './globals.css';
+import { ThemeProvider } from '@/lib/theme-provider';
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
@@ -24,7 +25,7 @@ export default function RootLayout({
       <body
         className={`${GeistSans.variable} ${jetbrainsMono.variable} font-mono antialiased`}
       >
-        {children}
+        <ThemeProvider forceTheme="dark">{children}</ThemeProvider>
       </body>
     </html>
   );
