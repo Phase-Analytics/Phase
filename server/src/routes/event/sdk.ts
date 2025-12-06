@@ -92,6 +92,7 @@ export const eventSdkRouter = new Elysia({ prefix: '/events' })
         return {
           eventId,
           sessionId: body.sessionId,
+          deviceId: session.deviceId,
           name: body.name,
           params: body.params ?? null,
           timestamp: clientTimestamp.toISOString(),

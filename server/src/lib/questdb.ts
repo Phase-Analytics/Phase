@@ -160,6 +160,7 @@ export type EventQueryResult = {
 export type EventDetailResult = {
   event_id: string;
   session_id: string;
+  device_id: string;
   name: string;
   params: string | null;
   timestamp: string;
@@ -298,7 +299,7 @@ export async function getEventById(
   validateIdentifier(options.appId, 'appId');
 
   const query = `
-    SELECT event_id, session_id, name, params, to_str(timestamp, 'yyyy-MM-ddTHH:mm:ss.SSSUUUZ') as timestamp
+    SELECT event_id, session_id, device_id, name, params, to_str(timestamp, 'yyyy-MM-ddTHH:mm:ss.SSSUUUZ') as timestamp
     FROM events
     WHERE event_id = '${escapeSqlString(options.eventId)}'
     AND app_id = '${escapeSqlString(options.appId)}'

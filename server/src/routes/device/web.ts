@@ -473,7 +473,8 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
         const finalCities =
           limit === 'top3' ? sortedCities.slice(0, 3) : sortedCities;
 
-        const cityStats: Record<string, { count: number; country: string }> = {};
+        const cityStats: Record<string, { count: number; country: string }> =
+          {};
         for (const { city, count: countValue, country } of finalCities) {
           cityStats[city] = { count: countValue, country };
         }

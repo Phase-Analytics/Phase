@@ -15,6 +15,7 @@ export const EventListItemSchema = t.Object({
 export const EventSchema = t.Object({
   eventId: t.String(),
   sessionId: t.String(),
+  deviceId: t.String(),
   name: t.String(),
   params: t.Union([EventParamsSchema, t.Null()]),
   timestamp: t.String({ format: 'date-time' }),

@@ -446,6 +446,7 @@ export const eventWebRouter = new Elysia({ prefix: '/events' })
         return {
           eventId: event.event_id,
           sessionId: event.session_id,
+          deviceId: event.device_id,
           name: event.name,
           params: parsedParams,
           timestamp,
