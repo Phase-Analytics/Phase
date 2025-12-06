@@ -76,7 +76,13 @@ export const DevicePlatformOverviewResponseSchema = t.Object({
 export const DeviceLocationOverviewResponseSchema = t.Object({
   totalDevices: t.Number({ minimum: 0 }),
   countryStats: t.Record(t.String(), t.Number()),
-  cityStats: t.Record(t.String(), t.Number()),
+  cityStats: t.Record(
+    t.String(),
+    t.Object({
+      count: t.Number(),
+      country: t.String(),
+    })
+  ),
 });
 
 export const DeviceTimeseriesDataPointSchema = t.Object({

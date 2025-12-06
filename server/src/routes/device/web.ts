@@ -421,11 +421,12 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
             db
               .select({
                 city: devices.city,
+                country: devices.country,
                 count: count(),
               })
               .from(devices)
               .where(eq(devices.appId, appId))
-              .groupBy(devices.city),
+              .groupBy(devices.city, devices.country),
           ]);
 
         const totalDevicesNum = Number(totalDevices);
@@ -452,12 +453,17 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
           countryStats[country] = countValue;
         }
 
-        const allCityStats: Array<{ city: string; count: number }> = [];
+        const allCityStats: Array<{
+          city: string;
+          country: string;
+          count: number;
+        }> = [];
 
         for (const row of cityStatsResult) {
           if (row.city !== null) {
             allCityStats.push({
               city: row.city,
+              country: row.country || '',
               count: Number(row.count),
             });
           }
@@ -467,9 +473,9 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
         const finalCities =
           limit === 'top3' ? sortedCities.slice(0, 3) : sortedCities;
 
-        const cityStats: Record<string, number> = {};
-        for (const { city, count: countValue } of finalCities) {
-          cityStats[city] = countValue;
+        const cityStats: Record<string, { count: number; country: string }> = {};
+        for (const { city, count: countValue, country } of finalCities) {
+          cityStats[city] = { count: countValue, country };
         }
 
         set.status = HttpStatus.OK;
