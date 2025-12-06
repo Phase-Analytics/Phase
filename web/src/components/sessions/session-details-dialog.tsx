@@ -192,14 +192,12 @@ export function SessionDetailsDialog({
         <div className="flex-1 overflow-y-auto px-4 pb-4">
           {isLoading && (
             <div className="flex flex-col gap-1">
-              {/* Session Ended Skeleton */}
               <div className="flex items-center gap-3 rounded-md bg-muted/30 px-3 py-2">
                 <Skeleton className="size-4 shrink-0 rounded-full" />
                 <Skeleton className="h-5 flex-1" />
                 <Skeleton className="h-4 w-12 shrink-0" />
               </div>
 
-              {/* Event Skeletons */}
               {['skeleton-event-1', 'skeleton-event-2', 'skeleton-event-3'].map(
                 (key) => (
                   <div
@@ -213,7 +211,6 @@ export function SessionDetailsDialog({
                 )
               )}
 
-              {/* Session Started Skeleton */}
               <div className="flex items-center gap-3 rounded-md bg-muted/30 px-3 py-2">
                 <Skeleton className="size-4 shrink-0 rounded-full" />
                 <Skeleton className="h-5 flex-1" />

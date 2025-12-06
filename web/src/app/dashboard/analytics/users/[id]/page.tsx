@@ -3,7 +3,9 @@
 import { ArrowTurnBackwardIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useRouter } from 'next/navigation';
+import { useQueryState } from 'nuqs';
 import { Suspense, use } from 'react';
+import { DeviceBanDialog } from '@/components/device-ban-dialog';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { RequireApp } from '@/components/require-app';
 import { Button } from '@/components/ui/button';
@@ -25,6 +27,7 @@ type UserPageProps = {
 export default function UserPage({ params }: UserPageProps) {
   const { id } = use(params);
   const router = useRouter();
+  const [appId] = useQueryState('app');
 
   return (
     <RequireApp>
@@ -36,14 +39,24 @@ export default function UserPage({ params }: UserPageProps) {
           </p>
         </div>
 
-        <Button
-          className="w-fit font-normal"
-          onClick={() => router.back()}
-          variant="outline"
-        >
-          <HugeiconsIcon icon={ArrowTurnBackwardIcon} />
-          Back
-        </Button>
+        <div className="flex items-center justify-between">
+          <Button
+            className="w-fit font-normal"
+            onClick={() => router.back()}
+            variant="outline"
+          >
+            <HugeiconsIcon icon={ArrowTurnBackwardIcon} />
+            Back
+          </Button>
+
+          {appId && (
+            <DeviceBanDialog
+              appId={appId}
+              deviceId={id}
+              onSuccess={() => router.back()}
+            />
+          )}
+        </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
           <ErrorBoundary>

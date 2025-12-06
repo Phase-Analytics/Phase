@@ -1,4 +1,5 @@
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { buildQueryString, fetchApi } from '@/lib/api/client';
 import type {
   DateRangeParams,
@@ -14,7 +15,7 @@ import type {
   PaginationParams,
   TimeRange,
 } from '../api/types';
-import { cacheConfig } from './query-client';
+import { cacheConfig, getQueryClient } from './query-client';
 import { queryKeys } from './query-keys';
 
 function getTimeRangeDates(range: TimeRange): DateRangeParams {
@@ -215,5 +216,27 @@ export function useDeviceActivityTimeseries(
       );
     },
     ...cacheConfig.timeseries,
+  });
+}
+
+export function useDeleteDevice() {
+  return useMutation({
+    mutationFn: ({ deviceId, appId }: { deviceId: string; appId: string }) =>
+      fetchApi<void>(`/web/devices/${deviceId}?appId=${appId}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: (_, variables) => {
+      const queryClient = getQueryClient();
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.devices.list(variables.appId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.devices.detail(variables.deviceId, variables.appId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.devices.overview(variables.appId),
+      });
+      toast.success('User banned successfully');
+    },
   });
 }
