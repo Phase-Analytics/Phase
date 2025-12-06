@@ -87,7 +87,9 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
     <Card className="py-0">
       <CardContent className="space-y-4 p-4">
         <div className="flex items-center gap-2">
-          <h2 className="font-semibold text-lg">User Information</h2>
+          <h2 className="font-semibold text-muted-foreground text-sm uppercase">
+            User Information
+          </h2>
         </div>
 
         <div className="flex flex-col gap-4">
@@ -116,7 +118,7 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
 
         <div className="space-y-4">
           <div>
-            <p className="text-muted-foreground text-sm">Location</p>
+            <p className="text-muted-foreground text-xs uppercase">Location</p>
             <div className="mt-1">
               {(() => {
                 const flag = getCountryFlag(device.country);
@@ -148,7 +150,7 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
           </div>
 
           <div>
-            <p className="text-muted-foreground text-sm">Device</p>
+            <p className="text-muted-foreground text-xs uppercase">Device</p>
             <div className="mt-1 space-y-2">
               <p className="flex items-center gap-1.5 font-medium text-sm">
                 <HugeiconsIcon
@@ -176,7 +178,9 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
           </div>
 
           <div>
-            <p className="text-muted-foreground text-sm">App Version</p>
+            <p className="text-muted-foreground text-xs uppercase">
+              App Version
+            </p>
             <p className="mt-1 flex items-center gap-1.5 font-medium text-sm">
               <HugeiconsIcon
                 className="size-4 text-muted-foreground"

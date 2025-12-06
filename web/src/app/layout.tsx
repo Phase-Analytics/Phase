@@ -1,11 +1,11 @@
 import { GeistSans } from 'geist/font/sans';
 import type { Metadata } from 'next';
-import localFont from 'next/font/local';
+import { JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 
-const menlo = localFont({
-  src: '../../public/fonts/Menlo-Regular.woff2',
-  variable: '--font-menlo',
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-jetbrains-mono',
   display: 'swap',
 });
 
@@ -22,7 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${GeistSans.variable} ${menlo.variable} font-sans antialiased`}
+        className={`${GeistSans.variable} ${jetbrainsMono.variable} font-mono antialiased`}
       >
         {children}
       </body>

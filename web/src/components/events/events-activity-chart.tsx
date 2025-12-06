@@ -84,7 +84,12 @@ export function EventsActivityChartSkeleton() {
           <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <Tabs value="daily">
               <TabsList>
-                <TabsTrigger value="daily">Daily Events</TabsTrigger>
+                <TabsTrigger
+                  className="text-muted-foreground text-xs uppercase"
+                  value="daily"
+                >
+                  Daily Events
+                </TabsTrigger>
               </TabsList>
             </Tabs>
             <Skeleton className="h-9 w-24" />

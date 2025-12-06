@@ -100,8 +100,18 @@ export function SessionsActivityChartSkeleton() {
           <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <Tabs value="daily_sessions">
               <TabsList>
-                <TabsTrigger value="daily_sessions">Daily Sessions</TabsTrigger>
-                <TabsTrigger value="avg_duration">Average Duration</TabsTrigger>
+                <TabsTrigger
+                  className="text-muted-foreground text-xs uppercase"
+                  value="daily_sessions"
+                >
+                  Daily Sessions
+                </TabsTrigger>
+                <TabsTrigger
+                  className="text-muted-foreground text-xs uppercase"
+                  value="avg_duration"
+                >
+                  Average Duration
+                </TabsTrigger>
               </TabsList>
             </Tabs>
             <Skeleton className="h-9 w-24" />

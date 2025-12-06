@@ -12,7 +12,7 @@ function getChangeColor(change: number) {
   if (change === 0) {
     return 'text-muted-foreground';
   }
-  return change > 0 ? 'text-green-600' : 'text-red-600';
+  return change > 0 ? 'text-success' : 'text-destructive';
 }
 
 export function UsersOverviewCards() {
@@ -28,7 +28,7 @@ export function UsersOverviewCards() {
     <div className="grid gap-4 md:grid-cols-3">
       <Card className="py-0">
         <CardContent className="p-4">
-          <p className="text-muted-foreground text-sm">Total Users</p>
+          <p className="text-muted-foreground text-xs uppercase">Total Users</p>
           <p className="font-bold text-3xl">
             <CountingNumber number={overview?.totalDevices || 0} />
           </p>
@@ -61,7 +61,9 @@ export function UsersOverviewCards() {
 
       <Card className="py-0">
         <CardContent className="p-4">
-          <p className="text-muted-foreground text-sm">Daily Active Users</p>
+          <p className="text-muted-foreground text-xs uppercase">
+            Daily Active Users
+          </p>
           <p className="font-bold text-3xl">
             <CountingNumber number={overview?.activeDevices24h || 0} />
           </p>
@@ -99,7 +101,9 @@ export function UsersOverviewCards() {
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-400 opacity-75" />
               <span className="relative inline-flex size-2 rounded-full bg-green-500" />
             </div>
-            <p className="text-muted-foreground text-sm">Online Users</p>
+            <p className="text-muted-foreground text-xs uppercase">
+              Online Users
+            </p>
           </div>
           <p className="font-bold text-3xl">
             <CountingNumber number={liveData?.activeNow || 0} />

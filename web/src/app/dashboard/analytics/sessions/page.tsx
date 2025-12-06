@@ -41,7 +41,9 @@ export default function SessionsPage() {
         <Card className="py-0">
           <CardContent className="space-y-4 p-4">
             <div>
-              <h2 className="font-semibold text-lg">All Sessions</h2>
+              <h2 className="font-semibold text-muted-foreground text-sm uppercase">
+                All Sessions
+              </h2>
               <p className="text-muted-foreground text-sm">
                 Complete list of all sessions
               </p>

@@ -104,12 +104,16 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
     <Card className="py-0">
       <CardContent className="space-y-4 p-4">
         <div className="flex items-center gap-2">
-          <h2 className="font-semibold text-lg">Activity Calendar</h2>
+          <h2 className="font-semibold text-muted-foreground text-sm uppercase">
+            Activity Calendar
+          </h2>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <p className="text-muted-foreground text-sm">Total Sessions</p>
+            <p className="text-muted-foreground text-xs uppercase">
+              Total Sessions
+            </p>
             <p className="mt-1 flex items-center gap-1.5 font-medium text-sm">
               <HugeiconsIcon
                 className="size-4 text-muted-foreground"
@@ -119,7 +123,7 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
             </p>
           </div>
           <div>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-muted-foreground text-xs uppercase">
               Avg Session Duration
             </p>
             <p className="mt-1 flex items-center gap-1.5 font-medium text-sm">
@@ -134,34 +138,36 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
 
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <p className="text-muted-foreground text-sm">First Seen</p>
+            <p className="text-muted-foreground text-xs uppercase">
+              First Seen
+            </p>
             <p className="mt-1 flex items-center gap-1.5 font-medium text-sm">
               <HugeiconsIcon
                 className="size-4 text-muted-foreground"
                 icon={Calendar03Icon}
               />
               <span>
-                {isClient
-                  ? data?.firstSeen
-                    ? formatDateTime(data.firstSeen)
-                    : 'Unknown'
-                  : '—'}
+                {!isClient && '—'}
+                {isClient && data?.firstSeen && formatDateTime(data.firstSeen)}
+                {isClient && !data?.firstSeen && 'Unknown'}
               </span>
             </p>
           </div>
           <div>
-            <p className="text-muted-foreground text-sm">Last Activity</p>
+            <p className="text-muted-foreground text-xs uppercase">
+              Last Activity
+            </p>
             <p className="mt-1 flex items-center gap-1.5 font-medium text-sm">
               <HugeiconsIcon
                 className="size-4 text-muted-foreground"
                 icon={Calendar03Icon}
               />
               <span>
-                {isClient
-                  ? data?.lastActivityAt
-                    ? formatDateTime(data.lastActivityAt)
-                    : 'Never'
-                  : '—'}
+                {!isClient && '—'}
+                {isClient &&
+                  data?.lastActivityAt &&
+                  formatDateTime(data.lastActivityAt)}
+                {isClient && !data?.lastActivityAt && 'Never'}
               </span>
             </p>
           </div>

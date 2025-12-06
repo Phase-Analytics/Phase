@@ -122,7 +122,7 @@ export function SessionDetailsDialog({
           <DialogTitle>Session Details</DialogTitle>
           <div className="space-y-3 pt-4">
             <div className="space-y-2">
-              <p className="text-muted-foreground text-sm">User</p>
+              <p className="text-muted-foreground text-xs uppercase">User</p>
               <div className="flex items-center gap-3">
                 <UserAvatar
                   seed={session.deviceId}
@@ -164,7 +164,7 @@ export function SessionDetailsDialog({
 
             <div className="flex items-start justify-between gap-6">
               <div className="space-y-1">
-                <p className="text-muted-foreground text-sm">Date</p>
+                <p className="text-muted-foreground text-xs uppercase">Date</p>
                 <div className="flex items-center gap-2">
                   <HugeiconsIcon
                     className="size-4 text-muted-foreground"
@@ -176,7 +176,9 @@ export function SessionDetailsDialog({
                 </div>
               </div>
               <div className="space-y-1">
-                <p className="text-muted-foreground text-sm">Duration</p>
+                <p className="text-muted-foreground text-xs uppercase">
+                  Duration
+                </p>
                 <div className="flex items-center gap-2">
                   <HugeiconsIcon
                     className="size-4 text-muted-foreground"

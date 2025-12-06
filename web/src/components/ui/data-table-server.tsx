@@ -215,7 +215,7 @@ export function DataTableServer<TData, TValue>({
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <TableHead
-                    className="bg-muted/50 font-semibold text-muted-foreground"
+                    className="bg-muted/50 font-semibold text-muted-foreground text-xs uppercase"
                     key={header.id}
                     style={{
                       width: header.getSize(),
@@ -231,7 +231,7 @@ export function DataTableServer<TData, TValue>({
                   </TableHead>
                 ))}
                 {onRowClick && (
-                  <TableHead className="w-12 bg-muted/50 font-semibold text-muted-foreground" />
+                  <TableHead className="w-12 bg-muted/50 font-semibold text-muted-foreground text-xs uppercase" />
                 )}
               </TableRow>
             ))}

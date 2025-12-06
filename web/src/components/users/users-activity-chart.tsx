@@ -95,8 +95,18 @@ export function UsersActivityChartSkeleton() {
           <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <Tabs value="total">
               <TabsList>
-                <TabsTrigger value="total">Total Users</TabsTrigger>
-                <TabsTrigger value="dau">Daily Active Users</TabsTrigger>
+                <TabsTrigger
+                  className="text-muted-foreground text-xs uppercase"
+                  value="total"
+                >
+                  Total Users
+                </TabsTrigger>
+                <TabsTrigger
+                  className="text-muted-foreground text-xs uppercase"
+                  value="dau"
+                >
+                  Daily Active Users
+                </TabsTrigger>
               </TabsList>
             </Tabs>
             <Skeleton className="h-9 w-24" />

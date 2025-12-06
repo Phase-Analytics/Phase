@@ -12,7 +12,7 @@ function getChangeColor(change: number) {
   if (change === 0) {
     return 'text-muted-foreground';
   }
-  return change > 0 ? 'text-green-600' : 'text-red-600';
+  return change > 0 ? 'text-success' : 'text-destructive';
 }
 
 export function EventsOverviewCards() {
@@ -27,7 +27,9 @@ export function EventsOverviewCards() {
     <div className="grid gap-4 md:grid-cols-2">
       <Card className="py-0">
         <CardContent className="p-4">
-          <p className="text-muted-foreground text-sm">Total Events</p>
+          <p className="text-muted-foreground text-xs uppercase">
+            Total Events
+          </p>
           <p className="font-bold text-3xl">
             <CountingNumber number={overview?.totalEvents || 0} />
           </p>
@@ -60,7 +62,9 @@ export function EventsOverviewCards() {
 
       <Card className="py-0">
         <CardContent className="p-4">
-          <p className="text-muted-foreground text-sm">Daily Events</p>
+          <p className="text-muted-foreground text-xs uppercase">
+            Daily Events
+          </p>
           <p className="font-bold text-3xl">
             <CountingNumber number={overview?.events24h || 0} />
           </p>

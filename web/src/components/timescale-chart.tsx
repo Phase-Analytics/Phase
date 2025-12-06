@@ -132,7 +132,11 @@ export function TimescaleChart({
               <Tabs onValueChange={onMetricChange} value={metric}>
                 <TabsList>
                   {metricOptions.map((option) => (
-                    <TabsTrigger key={option.value} value={option.value}>
+                    <TabsTrigger
+                      className="text-muted-foreground text-xs uppercase"
+                      key={option.value}
+                      value={option.value}
+                    >
                       {option.label}
                     </TabsTrigger>
                   ))}

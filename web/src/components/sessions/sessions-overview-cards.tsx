@@ -13,7 +13,7 @@ function getChangeColor(change: number) {
   if (change === 0) {
     return 'text-muted-foreground';
   }
-  return change > 0 ? 'text-green-600' : 'text-red-600';
+  return change > 0 ? 'text-success' : 'text-destructive';
 }
 
 export function SessionsOverviewCards() {
@@ -28,7 +28,9 @@ export function SessionsOverviewCards() {
     <div className="grid gap-4 md:grid-cols-3">
       <Card className="py-0">
         <CardContent className="p-4">
-          <p className="text-muted-foreground text-sm">Total Sessions</p>
+          <p className="text-muted-foreground text-xs uppercase">
+            Total Sessions
+          </p>
           <p className="font-bold text-3xl">
             <CountingNumber number={overview?.totalSessions || 0} />
           </p>
@@ -61,7 +63,9 @@ export function SessionsOverviewCards() {
 
       <Card className="py-0">
         <CardContent className="p-4">
-          <p className="text-muted-foreground text-sm">Daily Sessions</p>
+          <p className="text-muted-foreground text-xs uppercase">
+            Daily Sessions
+          </p>
           <p className="font-bold text-3xl">
             <CountingNumber number={overview?.activeSessions24h || 0} />
           </p>
@@ -94,7 +98,7 @@ export function SessionsOverviewCards() {
 
       <Card className="py-0">
         <CardContent className="p-4">
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground text-xs uppercase">
             Average Session Duration
           </p>
           <p className="font-bold text-3xl">

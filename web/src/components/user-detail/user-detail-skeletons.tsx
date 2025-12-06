@@ -10,7 +10,9 @@ export function UserDetailCardSkeleton() {
     <Card className="py-0">
       <CardContent className="space-y-4 p-4">
         <div className="flex items-center gap-2">
-          <h2 className="font-semibold text-lg">User Information</h2>
+          <h2 className="font-semibold text-muted-foreground text-sm uppercase">
+            User Information
+          </h2>
         </div>
 
         <div className="flex flex-col gap-4">
@@ -30,14 +32,14 @@ export function UserDetailCardSkeleton() {
 
         <div className="space-y-4">
           <div>
-            <p className="text-muted-foreground text-sm">Location</p>
+            <p className="text-muted-foreground text-xs uppercase">Location</p>
             <div className="mt-1">
               <Skeleton className="h-5 w-32" />
             </div>
           </div>
 
           <div>
-            <p className="text-muted-foreground text-sm">Device</p>
+            <p className="text-muted-foreground text-xs uppercase">Device</p>
             <div className="mt-1 space-y-2">
               <Skeleton className="h-5 w-40" />
               <Skeleton className="h-5 w-36" />
@@ -45,7 +47,9 @@ export function UserDetailCardSkeleton() {
           </div>
 
           <div>
-            <p className="text-muted-foreground text-sm">App Version</p>
+            <p className="text-muted-foreground text-xs uppercase">
+              App Version
+            </p>
             <Skeleton className="mt-1 h-5 w-24" />
           </div>
         </div>
@@ -68,7 +72,9 @@ export function UserSessionsTableSkeleton() {
     <Card className="py-0">
       <CardContent className="space-y-4 p-4">
         <div>
-          <h2 className="font-semibold text-lg">Sessions & Events</h2>
+          <h2 className="font-semibold text-muted-foreground text-sm uppercase">
+            Sessions & Events
+          </h2>
           <p className="text-muted-foreground text-sm">
             User session history with events
           </p>
@@ -102,19 +108,23 @@ export function UserActivityCalendarSkeleton() {
     <Card className="py-0">
       <CardContent className="space-y-4 p-4">
         <div className="flex items-center gap-2">
-          <h2 className="font-semibold text-lg">Activity Calendar</h2>
+          <h2 className="font-semibold text-muted-foreground text-sm uppercase">
+            Activity Calendar
+          </h2>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <p className="text-muted-foreground text-sm">Total Sessions</p>
+            <p className="text-muted-foreground text-xs uppercase">
+              Total Sessions
+            </p>
             <div className="mt-1 flex items-center gap-1.5">
               <Skeleton className="size-4" />
               <Skeleton className="h-5 w-12" />
             </div>
           </div>
           <div>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-muted-foreground text-xs uppercase">
               Avg Session Duration
             </p>
             <div className="mt-1 flex items-center gap-1.5">
@@ -126,14 +136,18 @@ export function UserActivityCalendarSkeleton() {
 
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <p className="text-muted-foreground text-sm">First Seen</p>
+            <p className="text-muted-foreground text-xs uppercase">
+              First Seen
+            </p>
             <div className="mt-1 flex items-center gap-1.5">
               <Skeleton className="size-4" />
               <Skeleton className="h-4 w-32" />
             </div>
           </div>
           <div>
-            <p className="text-muted-foreground text-sm">Last Activity</p>
+            <p className="text-muted-foreground text-xs uppercase">
+              Last Activity
+            </p>
             <div className="mt-1 flex items-center gap-1.5">
               <Skeleton className="size-4" />
               <Skeleton className="h-4 w-32" />

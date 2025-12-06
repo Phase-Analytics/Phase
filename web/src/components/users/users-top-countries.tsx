@@ -62,11 +62,17 @@ export function UsersTopCountries() {
           value={activeTab}
         >
           <TabsList className="h-8">
-            <TabsTrigger className="text-xs" value="country">
+            <TabsTrigger
+              className="text-muted-foreground text-xs uppercase"
+              value="country"
+            >
               <span className="sm:hidden">Countries</span>
               <span className="hidden sm:inline">Countries</span>
             </TabsTrigger>
-            <TabsTrigger className="text-xs" value="city">
+            <TabsTrigger
+              className="text-muted-foreground text-xs uppercase"
+              value="city"
+            >
               <span className="sm:hidden">Cities</span>
               <span className="hidden sm:inline">Cities</span>
             </TabsTrigger>

@@ -64,7 +64,10 @@ export function UsersPlatformDistribution() {
       <CardContent className="space-y-4 p-4">
         <Tabs value="platform">
           <TabsList className="h-8">
-            <TabsTrigger className="text-xs" value="platform">
+            <TabsTrigger
+              className="text-muted-foreground text-xs uppercase"
+              value="platform"
+            >
               <span className="sm:hidden">Platforms</span>
               <span className="hidden sm:inline">Platform Distribution</span>
             </TabsTrigger>

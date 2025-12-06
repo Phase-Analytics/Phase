@@ -16,7 +16,9 @@ export function TopEventsCard() {
     <Card className="py-0">
       <CardContent className="space-y-4 p-4">
         <div>
-          <h2 className="font-semibold text-lg">Top Events</h2>
+          <h2 className="font-semibold text-muted-foreground text-sm uppercase">
+            Top Events
+          </h2>
           <p className="text-muted-foreground text-sm">
             Most frequently triggered events
           </p>
