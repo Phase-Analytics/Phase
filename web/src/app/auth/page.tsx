@@ -185,7 +185,7 @@ export default function AuthPage() {
             </p>
           ) : (
             session && (
-              <p className="text-green-600 text-xs">
+              <p className="text-success text-xs">
                 ✅ Logged in as: {session.user.email} (redirecting...)
               </p>
             )

@@ -238,7 +238,7 @@ export function SessionDetailsDialog({
                 transition={{ duration: 0.15, ease: 'easeOut' }}
               >
                 <HugeiconsIcon
-                  className="size-4 shrink-0 text-red-500"
+                  className="size-4 shrink-0 text-destructive"
                   icon={StopCircleIcon}
                 />
                 <span className="flex-1 truncate font-medium text-sm">
@@ -272,7 +272,7 @@ export function SessionDetailsDialog({
                 transition={{ duration: 0.15, ease: 'easeOut' }}
               >
                 <HugeiconsIcon
-                  className="size-4 shrink-0 text-green-500"
+                  className="size-4 shrink-0 text-success"
                   icon={PlayCircleIcon}
                 />
                 <span className="flex-1 truncate font-medium text-sm">

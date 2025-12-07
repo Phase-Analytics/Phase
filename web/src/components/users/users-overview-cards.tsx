@@ -98,8 +98,8 @@ export function UsersOverviewCards() {
         <CardContent className="p-4">
           <div className="flex items-center gap-2">
             <div className="relative flex size-2">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-400 opacity-75" />
-              <span className="relative inline-flex size-2 rounded-full bg-green-500" />
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-success" />
+              <span className="relative inline-flex size-2 rounded-full bg-success" />
             </div>
             <p className="text-muted-foreground text-xs uppercase">
               Online Users
