@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { Elysia } from 'elysia';
 import { db, devices, sessions } from '@/db';
 import { sdkAuthPlugin } from '@/lib/middleware';
+import { sseManager } from '@/lib/sse-manager';
 import { validateDevice, validateTimestamp } from '@/lib/validators';
 import {
   CreateSessionRequestSchema,
@@ -70,6 +71,12 @@ export const sessionSdkRouter = new Elysia({ prefix: '/sessions' })
             lastActivityAt: clientStartedAt,
           })
           .returning();
+
+        sseManager.pushSession(device.appId, {
+          sessionId: newSession.sessionId,
+          deviceId: newSession.deviceId,
+          startedAt: newSession.startedAt.toISOString(),
+        });
 
         set.status = HttpStatus.OK;
         return {

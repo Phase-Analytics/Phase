@@ -4,6 +4,7 @@ import { ulid } from 'ulid';
 import { db, sessions } from '@/db';
 import { sdkAuthPlugin } from '@/lib/middleware';
 import { writeEvent } from '@/lib/questdb';
+import { sseManager } from '@/lib/sse-manager';
 import {
   invalidateSessionCache,
   validateEventParams,
@@ -97,6 +98,13 @@ export const eventSdkRouter = new Elysia({ prefix: '/events' })
           .where(eq(sessions.sessionId, session.sessionId));
 
         await invalidateSessionCache(session.sessionId);
+
+        sseManager.pushEvent(device.appId, {
+          eventId,
+          deviceId: session.deviceId,
+          name: body.name,
+          timestamp: clientTimestamp.toISOString(),
+        });
 
         set.status = HttpStatus.OK;
         return {

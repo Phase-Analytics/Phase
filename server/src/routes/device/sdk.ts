@@ -3,6 +3,7 @@ import { Elysia } from 'elysia';
 import { db, devices } from '@/db';
 import { getLocationFromIP } from '@/lib/geolocation';
 import { sdkAuthPlugin } from '@/lib/middleware';
+import { sseManager } from '@/lib/sse-manager';
 import {
   CreateDeviceRequestSchema,
   DeviceSchema,
@@ -86,6 +87,11 @@ export const deviceSdkRouter = new Elysia({ prefix: '/devices' })
             })
             .returning();
         }
+
+        sseManager.pushDevice(app.id, {
+          deviceId: device.deviceId,
+          country: device.country,
+        });
 
         set.status = HttpStatus.OK;
         return {

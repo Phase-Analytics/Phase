@@ -4,11 +4,13 @@ import { auth } from '@/lib/auth';
 import { authCors, sdkCors, webCors } from '@/lib/cors';
 import { runMigrations } from '@/lib/migrate';
 import { initQuestDB } from '@/lib/questdb';
+import { sseManager } from '@/lib/sse-manager';
 import { appWebRouter } from '@/routes/app';
 import { deviceSdkRouter, deviceWebRouter } from '@/routes/device';
 import { eventSdkRouter, eventWebRouter } from '@/routes/event';
 import health from '@/routes/health';
 import { pingSdkRouter } from '@/routes/ping';
+import { realtimeWebRouter } from '@/routes/realtime';
 import { sessionSdkRouter, sessionWebRouter } from '@/routes/session';
 
 const sdkRoutes = new Elysia({ prefix: '/sdk' })
@@ -23,6 +25,7 @@ const webRoutes = new Elysia({ prefix: '/web' })
   .use(appWebRouter)
   .use(deviceWebRouter)
   .use(eventWebRouter)
+  .use(realtimeWebRouter)
   .use(sessionWebRouter);
 
 const app = new Elysia()
@@ -44,6 +47,7 @@ const app = new Elysia()
 try {
   await runMigrations();
   await initQuestDB();
+  sseManager.start();
 } catch (error) {
   console.error('[Server] Failed to start:', error);
   process.exit(1);
@@ -52,6 +56,7 @@ try {
 const shutdown = async () => {
   try {
     console.log('[Server] Shutting down...');
+    sseManager.stop();
     await pool.end();
     process.exit(0);
   } catch (error) {
