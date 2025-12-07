@@ -11,7 +11,7 @@ export function UsersOverviewCardsSkeleton() {
     <div className="grid gap-4 md:grid-cols-3">
       <Card className="py-0">
         <CardContent className="p-4">
-          <p className="text-muted-foreground text-sm">Total Users</p>
+          <p className="text-muted-foreground text-xs uppercase">Total Users</p>
           <Skeleton className="h-8 w-20" />
           <Skeleton className="mt-1 h-3 w-32" />
         </CardContent>
@@ -19,7 +19,9 @@ export function UsersOverviewCardsSkeleton() {
 
       <Card className="py-0">
         <CardContent className="p-4">
-          <p className="text-muted-foreground text-sm">Daily Active Users</p>
+          <p className="text-muted-foreground text-xs uppercase">
+            Daily Active Users
+          </p>
           <Skeleton className="h-8 w-20" />
           <Skeleton className="mt-1 h-3 w-32" />
         </CardContent>
@@ -29,10 +31,12 @@ export function UsersOverviewCardsSkeleton() {
         <CardContent className="p-4">
           <div className="flex items-center gap-2">
             <div className="relative flex size-2">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-400 opacity-75" />
-              <span className="relative inline-flex size-2 rounded-full bg-green-500" />
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-success" />
+              <span className="relative inline-flex size-2 rounded-full bg-success" />
             </div>
-            <p className="text-muted-foreground text-sm">Online Users</p>
+            <p className="text-muted-foreground text-xs uppercase">
+              Online Users
+            </p>
           </div>
           <Skeleton className="h-8 w-20" />
           <Skeleton className="mt-1 h-3 w-32" />
@@ -48,7 +52,10 @@ export function UsersPlatformDistributionSkeleton() {
       <CardContent className="space-y-4 p-4">
         <Tabs value="platform">
           <TabsList className="h-8">
-            <TabsTrigger className="text-xs" value="platform">
+            <TabsTrigger
+              className="text-muted-foreground text-xs uppercase"
+              value="platform"
+            >
               <span className="sm:hidden">Platforms</span>
               <span className="hidden sm:inline">Platform Distribution</span>
             </TabsTrigger>
@@ -77,13 +84,19 @@ export function UsersTopCountriesSkeleton() {
       <CardContent className="space-y-4 p-4">
         <Tabs value="country">
           <TabsList className="h-8">
-            <TabsTrigger className="text-xs" value="country">
+            <TabsTrigger
+              className="text-muted-foreground text-xs uppercase"
+              value="country"
+            >
               <span className="sm:hidden">Countries</span>
-              <span className="hidden sm:inline">Top Countries</span>
+              <span className="hidden sm:inline">Countries</span>
             </TabsTrigger>
-            <TabsTrigger className="text-xs" value="city">
+            <TabsTrigger
+              className="text-muted-foreground text-xs uppercase"
+              value="city"
+            >
               <span className="sm:hidden">Cities</span>
-              <span className="hidden sm:inline">Top Cities</span>
+              <span className="hidden sm:inline">Cities</span>
             </TabsTrigger>
           </TabsList>
         </Tabs>

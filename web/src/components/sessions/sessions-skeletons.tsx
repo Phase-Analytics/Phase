@@ -10,7 +10,9 @@ export function SessionsOverviewCardsSkeleton() {
     <div className="grid gap-4 md:grid-cols-3">
       <Card className="py-0">
         <CardContent className="p-4">
-          <p className="text-muted-foreground text-sm">Total Sessions</p>
+          <p className="text-muted-foreground text-xs uppercase">
+            Total Sessions
+          </p>
           <Skeleton className="h-8 w-20" />
           <Skeleton className="mt-1 h-3 w-32" />
         </CardContent>
@@ -18,7 +20,9 @@ export function SessionsOverviewCardsSkeleton() {
 
       <Card className="py-0">
         <CardContent className="p-4">
-          <p className="text-muted-foreground text-sm">Daily Sessions</p>
+          <p className="text-muted-foreground text-xs uppercase">
+            Daily Sessions
+          </p>
           <Skeleton className="h-8 w-20" />
           <Skeleton className="mt-1 h-3 w-32" />
         </CardContent>
@@ -26,7 +30,7 @@ export function SessionsOverviewCardsSkeleton() {
 
       <Card className="py-0">
         <CardContent className="p-4">
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground text-xs uppercase">
             Average Session Duration
           </p>
           <Skeleton className="h-8 w-20" />
