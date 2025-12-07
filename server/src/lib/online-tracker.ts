@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm';
 import { db, devices, sessions } from '@/db';
 import type { OnlineUsers } from '@/schemas';
 
-const ACTIVE_SESSION_THRESHOLD_MS = 1 * 60 * 1000;
+const ACTIVE_SESSION_THRESHOLD_MS = 60_000;
 
 export async function getOnlineUsers(appId: string): Promise<OnlineUsers> {
   const thresholdDate = new Date(Date.now() - ACTIVE_SESSION_THRESHOLD_MS);
@@ -19,25 +19,36 @@ export async function getOnlineUsers(appId: string): Promise<OnlineUsers> {
       sql`${devices.appId} = ${appId} AND ${sessions.lastActivityAt} >= ${thresholdDate}`
     );
 
-  const deviceIds = [...new Set(result.map((r) => r.deviceId))];
+  const uniqueDevices = new Map<
+    string,
+    { platform: string | null; country: string | null }
+  >();
 
-  const platformCounts: Record<string, number> = {};
   for (const row of result) {
-    if (row.platform) {
-      platformCounts[row.platform] = (platformCounts[row.platform] || 0) + 1;
+    if (!uniqueDevices.has(row.deviceId)) {
+      uniqueDevices.set(row.deviceId, {
+        platform: row.platform,
+        country: row.country,
+      });
     }
   }
 
+  const platformCounts: Record<string, number> = {};
   const countryCounts: Record<string, number> = {};
-  for (const row of result) {
-    if (row.country) {
-      countryCounts[row.country] = (countryCounts[row.country] || 0) + 1;
+
+  for (const device of uniqueDevices.values()) {
+    if (device.platform) {
+      platformCounts[device.platform] =
+        (platformCounts[device.platform] || 0) + 1;
+    }
+    if (device.country) {
+      countryCounts[device.country] = (countryCounts[device.country] || 0) + 1;
     }
   }
 
   return {
-    total: deviceIds.length,
-    devices: deviceIds,
+    total: uniqueDevices.size,
+    devices: [...uniqueDevices.keys()],
     platforms: platformCounts,
     countries: countryCounts,
   };
