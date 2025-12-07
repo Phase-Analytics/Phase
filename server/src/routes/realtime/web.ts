@@ -1,4 +1,3 @@
-import { or, sql } from 'drizzle-orm';
 import { Elysia, sse, t } from 'elysia';
 import { db } from '@/db';
 import { auth } from '@/lib/auth';
@@ -42,17 +41,30 @@ export const realtimeWebRouter = new Elysia({ prefix: '/realtime' })
         }
 
         const app = await db.query.apps.findFirst({
-          where: (table, { eq: eqFn }) =>
-            or(
-              eqFn(table.userId, user.id),
-              sql`${user.id} = ANY(${table.memberIds})`
-            ),
+          where: (table, { eq: eqFn }) => eqFn(table.id, query.appId),
           columns: {
             id: true,
+            userId: true,
+            memberIds: true,
           },
         });
 
-        if (!app || app.id !== query.appId) {
+        if (!app) {
+          set.status = HttpStatus.NOT_FOUND;
+          yield sse({
+            event: 'error',
+            data: {
+              code: ErrorCode.NOT_FOUND,
+              detail: 'App not found',
+            },
+          });
+          return;
+        }
+
+        const hasAccess =
+          app.userId === user.id || app.memberIds?.includes(user.id);
+
+        if (!hasAccess) {
           set.status = HttpStatus.FORBIDDEN;
           yield sse({
             event: 'error',
