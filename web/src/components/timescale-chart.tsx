@@ -203,6 +203,26 @@ export function TimescaleChart({
                     stopOpacity={0.1}
                   />
                 </linearGradient>
+                {data.length >= 2 && (
+                  <linearGradient
+                    id={`stroke${dataKey}`}
+                    x1="0"
+                    x2="1"
+                    y1="0"
+                    y2="0"
+                  >
+                    <stop
+                      offset={`${((data.length - 2) / (data.length - 1)) * 100}%`}
+                      stopColor={`var(--color-${dataKey})`}
+                      stopOpacity={1}
+                    />
+                    <stop
+                      offset={`${((data.length - 2) / (data.length - 1)) * 100}%`}
+                      stopColor={`var(--color-${dataKey})`}
+                      stopOpacity={0}
+                    />
+                  </linearGradient>
+                )}
               </defs>
               <CartesianGrid vertical={false} />
               <XAxis
@@ -215,42 +235,77 @@ export function TimescaleChart({
                 tickMargin={8}
               />
               <ChartTooltip
-                content={
-                  <ChartTooltipContent
-                    formatter={(value) => {
-                      const formattedValue = valueFormatter
-                        ? valueFormatter(value as number)
-                        : defaultFormatter(value as number);
-                      return (
-                        <div className="flex flex-col gap-0.5">
-                          <div className="font-semibold text-base tabular-nums">
-                            {formattedValue}
+                content={(props) => {
+                  const filteredPayload = props.payload?.filter(
+                    (item) => item.name !== '__dashed'
+                  );
+                  return (
+                    <ChartTooltipContent
+                      // biome-ignore lint/suspicious/noExplicitAny: Recharts payload filtering causes type issues
+                      {...(props as any)}
+                      formatter={(value) => {
+                        const formattedValue = valueFormatter
+                          ? valueFormatter(value as number)
+                          : defaultFormatter(value as number);
+                        return (
+                          <div className="flex flex-col gap-0.5">
+                            <div className="font-semibold text-base tabular-nums">
+                              {formattedValue}
+                            </div>
+                            <div className="text-muted-foreground text-xs">
+                              {dataLabel}
+                            </div>
                           </div>
-                          <div className="text-muted-foreground text-xs">
-                            {dataLabel}
-                          </div>
-                        </div>
-                      );
-                    }}
-                    hideLabel={false}
-                    indicator="dot"
-                    labelFormatter={(value) => (
-                      <span className="flex items-center gap-1.5">
-                        <HugeiconsIcon
-                          className="size-3.5"
-                          icon={Calendar03Icon}
-                        />
-                        <ClientDate date={value} format="date" />
-                      </span>
-                    )}
-                  />
-                }
-                cursor={false}
+                        );
+                      }}
+                      hideLabel={false}
+                      indicator="dot"
+                      labelFormatter={(value) => (
+                        <span className="flex items-center gap-1.5">
+                          <HugeiconsIcon
+                            className="size-3.5"
+                            icon={Calendar03Icon}
+                          />
+                          <ClientDate date={value} format="date" />
+                        </span>
+                      )}
+                      // biome-ignore lint/suspicious/noExplicitAny: Recharts payload filtering causes type issues
+                      payload={filteredPayload as any}
+                    />
+                  );
+                }}
+                cursor={{
+                  stroke: 'hsl(var(--border))',
+                  strokeWidth: 1,
+                  strokeDasharray: '4 2',
+                }}
               />
+              {data.length >= 2 && (
+                <Area
+                  activeDot={false}
+                  dataKey="value"
+                  fill="none"
+                  name="__dashed"
+                  stroke={`var(--color-${dataKey})`}
+                  strokeDasharray="5 5"
+                  strokeWidth={2}
+                  type="monotone"
+                />
+              )}
               <Area
+                activeDot={{
+                  r: 5,
+                  stroke: `var(--color-${dataKey})`,
+                  strokeWidth: 2,
+                  fill: 'hsl(var(--background))',
+                }}
                 dataKey="value"
                 fill={`url(#fill${dataKey})`}
-                stroke={`var(--color-${dataKey})`}
+                stroke={
+                  data.length >= 2
+                    ? `url(#stroke${dataKey})`
+                    : `var(--color-${dataKey})`
+                }
                 strokeWidth={2}
                 type="monotone"
               />
