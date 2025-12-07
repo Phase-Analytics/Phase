@@ -80,10 +80,6 @@ export const realtimeWebRouter = new Elysia({ prefix: '/realtime' })
 
         const messageQueue: RealtimeMessage[] = [];
         let isConnected = true;
-        let lastMessageTime = Date.now();
-        let lastOnlineUsersUpdate = Date.now();
-        const HEARTBEAT_INTERVAL = 4000;
-        const ONLINE_USERS_INTERVAL = 10_000;
 
         const cleanup = sseManager.addConnection(query.appId, (data) => {
           if (isConnected) {
@@ -93,22 +89,6 @@ export const realtimeWebRouter = new Elysia({ prefix: '/realtime' })
 
         try {
           while (isConnected) {
-            const now = Date.now();
-
-            if (now - lastOnlineUsersUpdate >= ONLINE_USERS_INTERVAL) {
-              const freshOnlineUsers = await getOnlineUsers(query.appId);
-              sseManager.setOnlineUsers(query.appId, freshOnlineUsers);
-              lastOnlineUsersUpdate = now;
-            }
-
-            if (now - lastMessageTime >= HEARTBEAT_INTERVAL) {
-              yield sse({
-                event: 'ping',
-                data: { timestamp: new Date().toISOString() },
-              });
-              lastMessageTime = now;
-            }
-
             if (messageQueue.length > 0) {
               const message = messageQueue.shift();
               if (message) {
@@ -116,15 +96,10 @@ export const realtimeWebRouter = new Elysia({ prefix: '/realtime' })
                   event: 'realtime',
                   data: message,
                 });
-                lastMessageTime = now;
               }
             }
 
             await new Promise((resolve) => setTimeout(resolve, 100));
-
-            if (messageQueue.length === 0) {
-              await new Promise((resolve) => setTimeout(resolve, 900));
-            }
           }
         } finally {
           isConnected = false;

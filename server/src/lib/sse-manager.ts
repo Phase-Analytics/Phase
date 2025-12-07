@@ -5,6 +5,7 @@ import type {
   RealtimeMessage,
   RealtimeSession,
 } from '@/schemas';
+import { getOnlineUsers } from './online-tracker';
 
 type RealtimeBuffer = {
   events: RealtimeEvent[];
@@ -23,23 +24,28 @@ export class SSEManager {
   private readonly connections: Map<string, Set<SSESendFunction>>;
   private readonly buffers: Map<string, RealtimeBuffer>;
   private batchInterval: Timer | null;
+  private onlineUsersInterval: Timer | null;
   private readonly maxBufferSize: number;
   private readonly batchIntervalMs: number;
   private readonly onlineUsersCache: Map<string, OnlineUsersCache>;
   private readonly onlineUsersCacheTTL: number;
+  private readonly onlineUsersRefreshMs: number;
 
   constructor(
     batchIntervalMs = 3000,
     maxBufferSize = 1000,
-    onlineUsersCacheTTL = 30_000
+    onlineUsersCacheTTL = 30_000,
+    onlineUsersRefreshMs = 30_000
   ) {
     this.connections = new Map();
     this.buffers = new Map();
     this.batchInterval = null;
+    this.onlineUsersInterval = null;
     this.maxBufferSize = maxBufferSize;
     this.batchIntervalMs = batchIntervalMs;
     this.onlineUsersCache = new Map();
     this.onlineUsersCacheTTL = onlineUsersCacheTTL;
+    this.onlineUsersRefreshMs = onlineUsersRefreshMs;
   }
 
   addConnection(appId: string, sendFn: SSESendFunction): () => void {
@@ -161,15 +167,6 @@ export class SSEManager {
         continue;
       }
 
-      const hasData =
-        buffer.events.length > 0 ||
-        buffer.sessions.length > 0 ||
-        buffer.devices.length > 0;
-
-      if (!hasData) {
-        continue;
-      }
-
       const message: RealtimeMessage = {
         timestamp: new Date().toISOString(),
         events: [...buffer.events],
@@ -180,9 +177,24 @@ export class SSEManager {
 
       this.broadcast(appId, message);
 
+      // Clear buffers after sending
       buffer.events = [];
       buffer.sessions = [];
       buffer.devices = [];
+    }
+  }
+
+  private async refreshOnlineUsers(): Promise<void> {
+    for (const appId of this.connections.keys()) {
+      try {
+        const onlineUsers = await getOnlineUsers(appId);
+        this.setOnlineUsers(appId, onlineUsers);
+      } catch (error) {
+        console.error(
+          `[SSEManager] Failed to refresh online users for app ${appId}:`,
+          error
+        );
+      }
     }
   }
 
@@ -191,15 +203,25 @@ export class SSEManager {
       return;
     }
 
+    // Start buffer flushing interval
     this.batchInterval = setInterval(() => {
       this.flushBuffers();
     }, this.batchIntervalMs);
+
+    this.onlineUsersInterval = setInterval(() => {
+      this.refreshOnlineUsers();
+    }, this.onlineUsersRefreshMs);
   }
 
   stop(): void {
     if (this.batchInterval) {
       clearInterval(this.batchInterval);
       this.batchInterval = null;
+    }
+
+    if (this.onlineUsersInterval) {
+      clearInterval(this.onlineUsersInterval);
+      this.onlineUsersInterval = null;
     }
 
     this.connections.clear();
@@ -235,5 +257,6 @@ export class SSEManager {
 export const sseManager = new SSEManager(
   Number(process.env.REALTIME_BATCH_INTERVAL) || 3000,
   Number(process.env.REALTIME_MAX_BUFFER_SIZE) || 1000,
-  Number(process.env.ONLINE_USERS_CACHE_TTL) || 30_000
+  Number(process.env.ONLINE_USERS_CACHE_TTL) || 60_000, // Cache TTL should be longer than refresh
+  Number(process.env.ONLINE_USERS_REFRESH_INTERVAL) || 30_000 // Refresh every 30 seconds
 );
