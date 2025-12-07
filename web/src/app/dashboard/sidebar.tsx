@@ -2,7 +2,6 @@
 
 import {
   Activity03Icon,
-  ChatEditIcon,
   ComputerPhoneSyncIcon,
   CreditCardIcon,
   CursorPointer02Icon,
@@ -82,15 +81,6 @@ const analyticsNavItems: NavItem[] = [
     icon: GlobalIcon,
     path: '/dashboard/analytics/realtime',
     tooltip: 'Realtime',
-  },
-];
-
-const reportsNavItems: NavItem[] = [
-  {
-    label: 'Feedbacks',
-    icon: ChatEditIcon,
-    path: '/dashboard/reports/feedbacks',
-    tooltip: 'Feedbacks',
   },
 ];
 
@@ -213,7 +203,7 @@ export function DashboardSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Analytics</SidebarGroupLabel>
+          <SidebarGroupLabel>ANALYTICS</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {analyticsNavItems.map((item) => (
@@ -249,43 +239,7 @@ export function DashboardSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Reports</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {reportsNavItems.map((item) => (
-                <SidebarMenuItem key={item.label}>
-                  {appId ? (
-                    <SidebarMenuButton
-                      asChild
-                      isActive={pathname.includes(item.path)}
-                      tooltip={item.tooltip}
-                    >
-                      <Link
-                        href={`${item.path}?app=${appId}`}
-                        onClick={() => {
-                          if (isMobile) {
-                            setOpenMobile(false);
-                          }
-                        }}
-                      >
-                        <HugeiconsIcon icon={item.icon} />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  ) : (
-                    <SidebarMenuButton disabled tooltip={item.tooltip}>
-                      <HugeiconsIcon icon={item.icon} />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
-                  )}
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Application</SidebarGroupLabel>
+          <SidebarGroupLabel>APPLICATION</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {applicationNavItems.map((item) => (

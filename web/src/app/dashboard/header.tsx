@@ -3,7 +3,6 @@
 import {
   Activity03Icon,
   Blockchain05Icon,
-  ChatEditIcon,
   ComputerPhoneSyncIcon,
   CreditCardIcon,
   File02Icon,
@@ -122,15 +121,6 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
         icon: GlobalIcon,
         keywords: ['realtime', 'analytics', 'real-time'],
         path: `/dashboard/analytics/realtime?app=${appId}`,
-      },
-      {
-        id: 'feedbacks',
-        name: 'Feedbacks',
-        description: 'Read user feedback and reviews',
-        category: 'Reports',
-        icon: ChatEditIcon,
-        keywords: ['feedbacks', 'reports', 'comments', 'reviews'],
-        path: `/dashboard/reports/feedbacks?app=${appId}`,
       },
       {
         id: 'settings',

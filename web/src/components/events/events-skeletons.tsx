@@ -10,7 +10,9 @@ export function EventsOverviewCardsSkeleton() {
     <div className="grid gap-4 md:grid-cols-2">
       <Card className="py-0">
         <CardContent className="p-4">
-          <p className="text-muted-foreground text-xs uppercase">Total Events</p>
+          <p className="text-muted-foreground text-xs uppercase">
+            Total Events
+          </p>
           <Skeleton className="h-8 w-20" />
           <div className="mt-1 flex items-center gap-1 text-xs">
             <Skeleton className="h-3 w-12" />
@@ -21,7 +23,9 @@ export function EventsOverviewCardsSkeleton() {
 
       <Card className="py-0">
         <CardContent className="p-4">
-          <p className="text-muted-foreground text-xs uppercase">Daily Events</p>
+          <p className="text-muted-foreground text-xs uppercase">
+            Daily Events
+          </p>
           <Skeleton className="h-8 w-20" />
           <div className="mt-1 flex items-center gap-1 text-xs">
             <Skeleton className="h-3 w-12" />
