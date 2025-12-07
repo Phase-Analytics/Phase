@@ -30,13 +30,13 @@ export function UsersOverviewCardsSkeleton() {
       <Card className="py-0">
         <CardContent className="p-4">
           <div className="flex items-center gap-2">
+            <p className="text-muted-foreground text-xs uppercase">
+              Online Users
+            </p>
             <div className="relative flex size-2">
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-success" />
               <span className="relative inline-flex size-2 rounded-full bg-success" />
             </div>
-            <p className="text-muted-foreground text-xs uppercase">
-              Online Users
-            </p>
           </div>
           <Skeleton className="h-8 w-20" />
           <Skeleton className="mt-1 h-3 w-32" />

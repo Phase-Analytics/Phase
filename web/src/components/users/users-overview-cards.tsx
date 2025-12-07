@@ -97,13 +97,13 @@ export function UsersOverviewCards() {
       <Card className="py-0">
         <CardContent className="p-4">
           <div className="flex items-center gap-2">
+            <p className="text-muted-foreground text-xs uppercase">
+              Online Users
+            </p>
             <div className="relative flex size-2">
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-success" />
               <span className="relative inline-flex size-2 rounded-full bg-success" />
             </div>
-            <p className="text-muted-foreground text-xs uppercase">
-              Online Users
-            </p>
           </div>
           <p className="font-bold text-3xl">
             <CountingNumber number={liveData?.activeNow || 0} />
