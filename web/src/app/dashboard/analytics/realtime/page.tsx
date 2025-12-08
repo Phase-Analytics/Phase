@@ -191,8 +191,8 @@ export default function RealtimePage() {
 
   return (
     <RequireApp>
-      <div className="flex flex-1 gap-6">
-        <div className="flex flex-col gap-4">
+      <div className="grid h-full grid-cols-2 gap-6">
+        <div className="flex flex-col justify-between gap-4">
           <RealtimeHeader
             appName={appName || undefined}
             onlineUsers={onlineUsers}
@@ -203,7 +203,7 @@ export default function RealtimePage() {
           />
           <RealtimeActivityFeed activities={activities} />
         </div>
-        <div className="flex flex-1 items-center justify-center">
+        <div className="flex items-center justify-center">
           <Earth
             className="relative aspect-square w-full max-w-[700px]"
             markers={markers}
