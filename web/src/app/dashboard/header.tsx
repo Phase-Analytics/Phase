@@ -26,9 +26,10 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 export function DashboardHeader({ children }: { children: ReactNode }) {
   const isMobile = useIsMobile();
-  const _pathname = usePathname();
+  const pathname = usePathname();
   const [commandMenuOpen, setCommandMenuOpen] = useState(false);
   const [appId] = useQueryState('app');
+  const isRealtimePage = pathname === '/dashboard/analytics/realtime';
 
   const commandItems = useMemo<CommandItem[]>(() => {
     if (!appId) {
@@ -219,21 +220,23 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
-        <SidebarTrigger />
-        <div className="flex flex-1 items-center justify-between">
-          <div className="flex items-center gap-2"> </div>
-          <div className="flex items-center gap-2">
-            {!isMobile && (
-              <>
-                <KeybindsDialog />
-                <CommandMenuTrigger onClick={() => setCommandMenuOpen(true)} />
-              </>
-            )}
-            <ThemeTogglerButton />
+      {!isRealtimePage && (
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger />
+          <div className="flex flex-1 items-center justify-between">
+            <div className="flex items-center gap-2"> </div>
+            <div className="flex items-center gap-2">
+              {!isMobile && (
+                <>
+                  <KeybindsDialog />
+                  <CommandMenuTrigger onClick={() => setCommandMenuOpen(true)} />
+                </>
+              )}
+              <ThemeTogglerButton />
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
       {!isMobile && (
         <CommandMenu
           items={commandItems}
@@ -241,7 +244,9 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
           open={commandMenuOpen}
         />
       )}
-      <div className="flex flex-1 flex-col gap-4 p-4">{children}</div>
+      <div className={`flex flex-1 flex-col ${isRealtimePage ? '' : 'gap-4 p-4'}`}>
+        {children}
+      </div>
     </>
   );
 }
