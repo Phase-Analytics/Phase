@@ -31,6 +31,7 @@ export const OnlineUsersSchema = t.Object({
 
 export const RealtimeMessageSchema = t.Object({
   timestamp: t.String({ format: 'date-time' }),
+  appName: t.Optional(t.String()),
   events: t.Array(RealtimeEventSchema),
   sessions: t.Array(RealtimeSessionSchema),
   devices: t.Array(RealtimeDeviceSchema),

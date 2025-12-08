@@ -44,6 +44,7 @@ export const realtimeWebRouter = new Elysia({ prefix: '/realtime' })
           where: (table, { eq: eqFn }) => eqFn(table.id, query.appId),
           columns: {
             id: true,
+            name: true,
             userId: true,
             memberIds: true,
           },
@@ -83,6 +84,7 @@ export const realtimeWebRouter = new Elysia({ prefix: '/realtime' })
           event: 'connected',
           data: {
             timestamp: new Date().toISOString(),
+            appName: app.name,
             events: [],
             sessions: [],
             devices: [],
