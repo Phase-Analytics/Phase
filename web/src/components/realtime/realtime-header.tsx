@@ -107,7 +107,9 @@ export function RealtimeHeader({
                 className={`size-3.5 ${statusInfo.color}`}
                 icon={statusInfo.icon}
               />
-              <span className="text-sm">{statusInfo.label}</span>
+              <span className="text-muted-foreground text-sm">
+                {statusInfo.label}
+              </span>
             </Badge>
             {(status === 'connected' || status === 'connecting') && onPause && (
               <Button
