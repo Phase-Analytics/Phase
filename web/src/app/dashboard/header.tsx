@@ -247,7 +247,7 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
         />
       )}
       <div
-        className={`flex flex-1 flex-col ${isRealtimePage ? '' : 'gap-4 p-4'}`}
+        className={`flex flex-1 flex-col ${isRealtimePage ? 'p-4' : 'gap-4 p-4'}`}
       >
         {children}
       </div>

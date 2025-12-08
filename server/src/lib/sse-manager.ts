@@ -17,10 +17,10 @@ type SSEManagerOptions = {
 };
 
 const DEFAULT_OPTIONS: Required<SSEManagerOptions> = {
-  batchIntervalMs: 3000,
+  batchIntervalMs: 2000,
   maxBufferSize: 1000,
   onlineUsersCacheTTL: 10_000,
-  onlineUsersRefreshMs: 5000,
+  onlineUsersRefreshMs: 4000,
   heartbeatIntervalMs: 30_000,
   connectionTimeoutMs: 90_000,
 };

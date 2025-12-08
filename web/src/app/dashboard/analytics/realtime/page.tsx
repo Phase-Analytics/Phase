@@ -97,7 +97,7 @@ export default function RealtimePage() {
 
   return (
     <RequireApp>
-      <div className="flex flex-1 flex-col gap-4">
+      <div className="flex flex-1 flex-col justify-between">
         <RealtimeHeader
           appName={appName || undefined}
           onlineUsers={onlineUsers}
@@ -106,7 +106,7 @@ export default function RealtimePage() {
           platforms={platforms}
           status={status}
         />
-        <RealtimeActivityFeed activities={activities} status={status} />
+        <RealtimeActivityFeed activities={activities} />
       </div>
     </RequireApp>
   );

@@ -15,7 +15,7 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { CountingNumber } from '@/components/ui/counting-number';
 import {
   Tooltip,
@@ -90,8 +90,8 @@ export function RealtimeHeader({
   ].filter((p) => p.value > 0);
 
   return (
-    <Card className="w-fit min-w-[400px]">
-      <CardHeader className="flex w-full flex-col gap-3 space-y-0">
+    <Card className="w-fit min-w-[370px] py-4">
+      <CardContent className="flex w-full flex-col gap-3 space-y-0 px-4">
         <div className="flex w-full items-center justify-between">
           <div className="flex items-center gap-2">
             <HugeiconsIcon
@@ -184,7 +184,7 @@ export function RealtimeHeader({
         </div>
 
         <MusicPlayer />
-      </CardHeader>
+      </CardContent>
     </Card>
   );
 }
