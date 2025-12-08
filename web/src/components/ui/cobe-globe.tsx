@@ -1,9 +1,23 @@
 'use client';
 import createGlobe from 'cobe';
+import { useTheme } from 'next-themes';
 import type React from 'react';
 import type { ComponentProps } from 'react';
 import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
+
+const HEX_REGEX = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i;
+
+const hexToRgb = (hex: string): [number, number, number] => {
+  const result = HEX_REGEX.exec(hex);
+  return result
+    ? [
+        Number.parseInt(result[1], 16) / 255,
+        Number.parseInt(result[2], 16) / 255,
+        Number.parseInt(result[3], 16) / 255,
+      ]
+    : [0, 0, 0];
+};
 
 type Marker = {
   location: [number, number];
@@ -34,19 +48,20 @@ type EarthProps = ComponentProps<'div'> & {
 const Earth: React.FC<EarthProps> = ({
   className,
   theta = 0.2,
-  dark = 1,
+  dark,
   scale = 1.1,
   diffuse = 1.2,
   mapSamples = 16_000,
-  mapBrightness = 1.8,
-  baseColor = [0.4, 0.6509, 1],
-  markerColor = [1, 0, 0],
-  glowColor = [0.2745, 0.5765, 0.898],
+  mapBrightness,
+  baseColor,
+  markerColor,
+  glowColor,
   markers = [],
   markerSize = 0.05,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const markersRef = useRef<Marker[]>(markers);
+  const { resolvedTheme } = useTheme();
 
   useEffect(() => {
     markersRef.current = markers;
@@ -67,6 +82,17 @@ const Earth: React.FC<EarthProps> = ({
       return;
     }
 
+    const isDark = resolvedTheme === 'dark';
+    const themeBaseColor: [number, number, number] =
+      baseColor ?? (isDark ? hexToRgb('#ffffff') : hexToRgb('#ffffff'));
+    const themeGlowColor: [number, number, number] =
+      glowColor ?? (isDark ? hexToRgb('#ffffff') : hexToRgb('#ffffff'));
+
+    const themeMarkerColor: [number, number, number] =
+      markerColor ?? (isDark ? hexToRgb('#5cd688') : hexToRgb('#3eb96e'));
+    const themeMapBrightness = mapBrightness ?? (isDark ? 1.8 : 1.8);
+    const themeDark = dark ?? (isDark ? 1.1 : 0);
+
     const processedMarkers: MarkerWithColor[] = markersRef.current.map(
       (marker: Marker) => ({
         location: marker.location,
@@ -81,14 +107,14 @@ const Earth: React.FC<EarthProps> = ({
       height: width * 2,
       phi: 0,
       theta,
-      dark,
+      dark: themeDark,
       scale,
       diffuse,
       mapSamples,
-      mapBrightness,
-      baseColor,
-      markerColor,
-      glowColor,
+      mapBrightness: themeMapBrightness,
+      baseColor: themeBaseColor,
+      markerColor: themeMarkerColor,
+      glowColor: themeGlowColor,
       opacity: 1,
       offset: [0, 0],
       markers: processedMarkers,
@@ -112,6 +138,9 @@ const Earth: React.FC<EarthProps> = ({
     setTimeout(() => {
       if (canvasRef.current) {
         canvasRef.current.style.opacity = '1';
+        canvasRef.current.style.filter = isDark
+          ? 'brightness(1.1)'
+          : 'brightness(0.95)';
       }
     });
 
@@ -120,6 +149,7 @@ const Earth: React.FC<EarthProps> = ({
       window.removeEventListener('resize', onResize);
     };
   }, [
+    resolvedTheme,
     theta,
     dark,
     scale,
