@@ -1,9 +1,9 @@
 'use client';
 
 import {
-  AddSquareIcon,
   ArrowRight01Icon,
   BookOpen01Icon,
+  UserGroupIcon,
   UserRemove01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -122,7 +122,7 @@ export default function TeamPage() {
                           >
                             <HugeiconsIcon
                               className="mr-1.5 size-3"
-                              icon={AddSquareIcon}
+                              icon={UserGroupIcon}
                             />
                             Add Member
                           </Button>
@@ -214,10 +214,13 @@ export default function TeamPage() {
 
               {!showLoading &&
                 (!teamData?.members || teamData.members.length === 0) && (
-                  <div className="rounded-lg border border-dashed p-8 text-center">
-                    <p className="text-muted-foreground">
-                      No team members yet. Add members to collaborate on this
-                      application.
+                  <div className="flex flex-col items-center justify-center gap-2 py-8">
+                    <HugeiconsIcon
+                      className="size-10 text-muted-foreground opacity-40"
+                      icon={UserGroupIcon}
+                    />
+                    <p className="text-center font-medium text-muted-foreground text-sm">
+                      No team members
                     </p>
                   </div>
                 )}

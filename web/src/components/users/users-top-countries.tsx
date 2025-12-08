@@ -133,9 +133,13 @@ export function UsersTopCountries() {
               })}
 
             {activeTab === 'country' && sortedCountries.length === 0 && (
-              <div className="rounded-lg border border-dashed p-8 text-center">
-                <p className="text-muted-foreground">
-                  No country data available yet.
+              <div className="flex flex-col items-center justify-center gap-2 py-8">
+                <HugeiconsIcon
+                  className="size-10 text-muted-foreground opacity-40"
+                  icon={Flag02Icon}
+                />
+                <p className="text-center font-medium text-muted-foreground text-sm">
+                  No country data available
                 </p>
               </div>
             )}
@@ -193,9 +197,13 @@ export function UsersTopCountries() {
               })}
 
             {activeTab === 'city' && sortedCities.length === 0 && (
-              <div className="rounded-lg border border-dashed p-8 text-center">
-                <p className="text-muted-foreground">
-                  No city data available yet.
+              <div className="flex flex-col items-center justify-center gap-2 py-8">
+                <HugeiconsIcon
+                  className="size-10 text-muted-foreground opacity-40"
+                  icon={Flag02Icon}
+                />
+                <p className="text-center font-medium text-muted-foreground text-sm">
+                  No city data available
                 </p>
               </div>
             )}

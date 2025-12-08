@@ -1,5 +1,7 @@
 'use client';
 
+import { CursorPointer02Icon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { Card, CardContent } from '@/components/ui/card';
 import { useTopEvents } from '@/lib/queries';
@@ -70,9 +72,13 @@ export function TopEventsCard() {
         )}
 
         {(!topEvents?.events || topEvents.events.length === 0) && (
-          <div className="rounded-lg border border-dashed p-8 text-center">
-            <p className="text-muted-foreground">
-              No event data available yet.
+          <div className="flex flex-col items-center justify-center gap-2 py-8">
+            <HugeiconsIcon
+              className="size-10 text-muted-foreground opacity-40"
+              icon={CursorPointer02Icon}
+            />
+            <p className="text-center font-medium text-muted-foreground text-sm">
+              No event data available
             </p>
           </div>
         )}

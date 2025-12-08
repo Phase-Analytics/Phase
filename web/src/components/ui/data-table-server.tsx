@@ -7,7 +7,7 @@ import {
   ArrowUp01Icon,
   ArrowUpDownIcon,
   CheckmarkSquare01Icon,
-  FilterIcon,
+  FilterMailSquareIcon,
   FolderSearchIcon,
   Search01Icon,
   ViewIcon,
@@ -204,7 +204,7 @@ export function DataTableServer<TData, TValue>({
                   size="sm"
                   variant={params.filter ? 'default' : 'outline'}
                 >
-                  <HugeiconsIcon icon={FilterIcon} />
+                  <HugeiconsIcon icon={FilterMailSquareIcon} />
                   {currentFilterLabel}
                 </Button>
               </DropdownMenuTrigger>
