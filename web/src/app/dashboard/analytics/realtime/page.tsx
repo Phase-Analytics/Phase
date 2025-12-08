@@ -95,14 +95,25 @@ export default function RealtimePage() {
     onMessage: handleMessage,
   });
 
+  const handlePause = () => {
+    pause();
+    setActivities([]);
+    setOnlineUsers(0);
+    setPlatforms({});
+  };
+
+  const handleResume = () => {
+    resume();
+  };
+
   return (
     <RequireApp>
       <div className="flex flex-1 flex-col justify-between">
         <RealtimeHeader
           appName={appName || undefined}
           onlineUsers={onlineUsers}
-          onPause={pause}
-          onResume={resume}
+          onPause={handlePause}
+          onResume={handleResume}
           platforms={platforms}
           status={status}
         />
