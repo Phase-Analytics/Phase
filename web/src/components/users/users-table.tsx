@@ -13,12 +13,15 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useRouter } from 'next/navigation';
 import { parseAsInteger, parseAsString, useQueryState } from 'nuqs';
+import 'flag-icons/css/flag-icons.min.css';
 import { ClientDate } from '@/components/client-date';
 import { DataTableServer } from '@/components/ui/data-table-server';
 import { getGeneratedName, UserAvatar } from '@/components/user-profile';
 import type { Device } from '@/lib/api/types';
 import { useDevices } from '@/lib/queries';
 import { usePaginationStore } from '@/stores/pagination-store';
+
+const COUNTRY_CODE_REGEX = /^[A-Za-z]{2}$/;
 
 function getPlatformIcon(platform: string) {
   switch (platform) {
@@ -44,14 +47,6 @@ function getPlatformLabel(platform: string) {
     default:
       return 'Unknown';
   }
-}
-
-function getCountryFlag(countryCode: string) {
-  return String.fromCodePoint(
-    ...[...countryCode.toUpperCase()].map(
-      (char) => 0x1_f1_e6 - 65 + char.charCodeAt(0)
-    )
-  );
 }
 
 function getCountryLabel(countryCode: string) {
@@ -114,24 +109,24 @@ const columns: ColumnDef<Device>[] = [
     cell: ({ row }) => {
       const country = row.getValue('country') as string | null;
 
-      if (!country) {
-        return (
-          <div className="flex items-center gap-1.5">
+      return (
+        <div className="flex items-center gap-1.5">
+          {!country ||
+          country.length !== 2 ||
+          !COUNTRY_CODE_REGEX.test(country) ? (
             <HugeiconsIcon
               className="size-3.5 text-muted-foreground"
               icon={Flag02Icon}
             />
-            <span className="text-sm">Unknown</span>
-          </div>
-        );
-      }
-
-      return (
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block w-3.5 text-center text-sm leading-none">
-            {getCountryFlag(country)}
+          ) : (
+            <span
+              className={`fi fi-${country.toLowerCase()} rounded-xs text-[14px]`}
+              title={getCountryLabel(country)}
+            />
+          )}
+          <span className="text-sm">
+            {country ? getCountryLabel(country) : 'Unknown'}
           </span>
-          <span className="text-sm">{getCountryLabel(country)}</span>
         </div>
       );
     },

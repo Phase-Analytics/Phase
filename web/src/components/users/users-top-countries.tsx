@@ -1,28 +1,16 @@
 'use client';
 
+import { Flag02Icon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useState } from 'react';
+import 'flag-icons/css/flag-icons.min.css';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDeviceLocationOverview } from '@/lib/queries';
 
 const COUNTRY_CODE_REGEX = /^[A-Za-z]{2}$/;
-
-function getCountryFlag(countryCode: string) {
-  if (
-    !countryCode ||
-    countryCode.length !== 2 ||
-    !COUNTRY_CODE_REGEX.test(countryCode)
-  ) {
-    return '🏳️';
-  }
-  return String.fromCodePoint(
-    ...[...countryCode.toUpperCase()].map(
-      (char) => 0x1_f1_e6 - 65 + char.charCodeAt(0)
-    )
-  );
-}
 
 function getCountryLabel(countryCode: string) {
   return (
@@ -100,10 +88,20 @@ export function UsersTopCountries() {
                 return (
                   <div className="space-y-1.5" key={country}>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="inline-block w-4 text-center text-base leading-none">
-                          {getCountryFlag(country)}
-                        </span>
+                      <div className="flex items-center gap-1.5">
+                        {!country ||
+                        country.length !== 2 ||
+                        !COUNTRY_CODE_REGEX.test(country) ? (
+                          <HugeiconsIcon
+                            className="size-3.5 text-muted-foreground"
+                            icon={Flag02Icon}
+                          />
+                        ) : (
+                          <span
+                            className={`fi fi-${country.toLowerCase()} rounded-xs text-[14px]`}
+                            title={getCountryLabel(country)}
+                          />
+                        )}
                         <span className="font-medium text-sm">
                           {getCountryLabel(country)}
                         </span>
@@ -152,10 +150,20 @@ export function UsersTopCountries() {
                 return (
                   <div className="space-y-1.5" key={city}>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="inline-block w-4 text-center text-base leading-none">
-                          {getCountryFlag(data.country)}
-                        </span>
+                      <div className="flex items-center gap-1.5">
+                        {!data.country ||
+                        data.country.length !== 2 ||
+                        !COUNTRY_CODE_REGEX.test(data.country) ? (
+                          <HugeiconsIcon
+                            className="size-3.5 text-muted-foreground"
+                            icon={Flag02Icon}
+                          />
+                        ) : (
+                          <span
+                            className={`fi fi-${data.country.toLowerCase()} rounded-sm text-[14px]`}
+                            title={getCountryLabel(data.country)}
+                          />
+                        )}
                         <span className="font-medium text-sm">{city}</span>
                       </div>
                       <div className="flex items-baseline gap-2">

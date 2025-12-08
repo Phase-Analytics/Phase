@@ -28,6 +28,7 @@
     "clsx": "^2.1.1",
     "cobe": "^0.6.5",
     "date-fns": "^4.1.0",
+    "flag-icons": "^7.5.0",
     "fuse.js": "^7.1.0",
     "geist": "^1.5.1",
     "lucide-react": "^0.556.0",

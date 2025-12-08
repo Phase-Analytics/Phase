@@ -6,15 +6,19 @@ import {
   AppleIcon,
   BrowserIcon,
   ComputerPhoneSyncIcon,
+  Flag02Icon,
   InformationCircleIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useMemo } from 'react';
+import 'flag-icons/css/flag-icons.min.css';
 import { Card, CardContent } from '@/components/ui/card';
 import { CopyButton } from '@/components/ui/copy-button';
 import { getGeneratedName, UserAvatar } from '@/components/user-profile';
 import { useDevice } from '@/lib/queries';
+
+const COUNTRY_CODE_REGEX = /^[A-Za-z]{2}$/;
 
 function getPlatformIcon(platform: string | null) {
   switch (platform) {
@@ -40,17 +44,6 @@ function getPlatformLabel(platform: string | null) {
     default:
       return 'Unknown';
   }
-}
-
-function getCountryFlag(countryCode: string | null) {
-  if (!countryCode || countryCode.length !== 2) {
-    return null;
-  }
-  return String.fromCodePoint(
-    ...[...countryCode.toUpperCase()].map(
-      (char) => 0x1_f1_e6 - 65 + char.charCodeAt(0)
-    )
-  );
 }
 
 function getCountryLabel(countryCode: string | null) {
@@ -121,19 +114,42 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
             <p className="text-muted-foreground text-xs uppercase">Location</p>
             <div className="mt-1">
               {(() => {
-                const flag = getCountryFlag(device.country);
                 const countryLabel = getCountryLabel(device.country);
                 const city = device.city;
+                const hasValidCountry =
+                  device.country &&
+                  device.country.length === 2 &&
+                  COUNTRY_CODE_REGEX.test(device.country);
 
-                const hasLocation = flag || countryLabel || city;
+                const hasLocation = hasValidCountry || countryLabel || city;
 
                 if (!hasLocation) {
-                  return <p className="font-medium text-sm">Unknown</p>;
+                  return (
+                    <p className="flex items-center gap-1.5 font-medium text-sm">
+                      <HugeiconsIcon
+                        className="size-3.5 text-muted-foreground"
+                        icon={Flag02Icon}
+                      />
+                      <span>Unknown</span>
+                    </p>
+                  );
                 }
 
                 return (
                   <p className="flex items-center gap-1.5 font-medium text-sm">
-                    {flag && <span>{flag}</span>}
+                    {!device.country ||
+                    device.country.length !== 2 ||
+                    !COUNTRY_CODE_REGEX.test(device.country) ? (
+                      <HugeiconsIcon
+                        className="size-3.5 text-muted-foreground"
+                        icon={Flag02Icon}
+                      />
+                    ) : (
+                      <span
+                        className={`fi fi-${device.country.toLowerCase()} rounded-xs text-[14px]`}
+                        title={countryLabel || device.country}
+                      />
+                    )}
                     {countryLabel && (
                       <span>
                         {countryLabel}
