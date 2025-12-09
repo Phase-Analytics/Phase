@@ -212,7 +212,7 @@ export default function RealtimePage() {
               platforms={platforms}
               status={status}
             />
-            <RealtimeActivityFeed activities={activities} />
+            <RealtimeActivityFeed activities={activities} appId={appId || ''} />
           </div>
           <div className="flex items-center justify-center">
             <Earth
