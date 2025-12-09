@@ -7,24 +7,24 @@ import { usePaginationStore } from '@/stores/pagination-store';
 
 export function UserDetailCardSkeleton() {
   return (
-    <Card className="py-0">
-      <CardContent className="space-y-4 p-4">
+    <Card className="min-w-0 py-0">
+      <CardContent className="min-w-0 space-y-4 p-4">
         <div className="flex items-center gap-2">
           <h2 className="font-semibold text-muted-foreground text-sm uppercase">
             User Information
           </h2>
         </div>
 
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-4">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full">
+        <div className="flex min-w-0 flex-col gap-4">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full">
               <Skeleton className="h-20 w-20 rounded-full" />
             </div>
-            <div className="flex flex-col gap-2">
-              <Skeleton className="h-7 w-48" />
-              <div className="flex items-center gap-2">
-                <Skeleton className="size-4" />
-                <Skeleton className="h-5 w-64" />
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
+              <Skeleton className="h-8 w-48" />
+              <div className="flex min-w-0 items-center gap-2">
+                <Skeleton className="size-4 shrink-0" />
+                <Skeleton className="h-4 max-w-64 flex-1" />
               </div>
             </div>
           </div>
@@ -33,7 +33,8 @@ export function UserDetailCardSkeleton() {
         <div className="space-y-4">
           <div>
             <p className="text-muted-foreground text-xs uppercase">Location</p>
-            <div className="mt-1">
+            <div className="mt-1 flex items-center gap-1.5">
+              <Skeleton className="size-3.5" />
               <Skeleton className="h-5 w-32" />
             </div>
           </div>
@@ -41,8 +42,14 @@ export function UserDetailCardSkeleton() {
           <div>
             <p className="text-muted-foreground text-xs uppercase">Device</p>
             <div className="mt-1 space-y-2">
-              <Skeleton className="h-5 w-40" />
-              <Skeleton className="h-5 w-36" />
+              <div className="flex items-center gap-1.5">
+                <Skeleton className="size-4" />
+                <Skeleton className="h-5 w-40" />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Skeleton className="size-4" />
+                <Skeleton className="h-5 w-36" />
+              </div>
             </div>
           </div>
 
@@ -50,7 +57,10 @@ export function UserDetailCardSkeleton() {
             <p className="text-muted-foreground text-xs uppercase">
               App Version
             </p>
-            <Skeleton className="mt-1 h-5 w-24" />
+            <div className="mt-1 flex items-center gap-1.5">
+              <Skeleton className="size-4" />
+              <Skeleton className="h-5 w-24" />
+            </div>
           </div>
         </div>
       </CardContent>
@@ -105,8 +115,8 @@ export function UserSessionsTableSkeleton() {
 
 export function UserActivityCalendarSkeleton() {
   return (
-    <Card className="py-0">
-      <CardContent className="space-y-4 p-4">
+    <Card className="min-w-0 py-0">
+      <CardContent className="min-w-0 space-y-4 p-4">
         <div className="flex items-center gap-2">
           <h2 className="font-semibold text-muted-foreground text-sm uppercase">
             Activity Calendar
@@ -141,7 +151,7 @@ export function UserActivityCalendarSkeleton() {
             </p>
             <div className="mt-1 flex items-center gap-1.5">
               <Skeleton className="size-4" />
-              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-5 w-32" />
             </div>
           </div>
           <div>
@@ -150,23 +160,25 @@ export function UserActivityCalendarSkeleton() {
             </p>
             <div className="mt-1 flex items-center gap-1.5">
               <Skeleton className="size-4" />
-              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-5 w-32" />
             </div>
           </div>
         </div>
 
-        <div className="flex h-[120px] flex-wrap gap-1">
-          <Skeleton className="h-full w-full rounded-sm" />
+        <div className="overflow-x-auto">
+          <div className="flex flex-wrap gap-1">
+            <Skeleton className="h-[120px] w-full rounded-[2px]" />
+          </div>
         </div>
 
         <div className="flex items-center gap-2 text-xs">
           <span className="text-muted-foreground">Less</span>
           <div className="flex gap-1">
-            <div className="size-3 rounded-sm bg-muted" />
-            <div className="size-3 rounded-sm bg-chart-2/20" />
-            <div className="size-3 rounded-sm bg-chart-2/40" />
-            <div className="size-3 rounded-sm bg-chart-2/60" />
-            <div className="size-3 rounded-sm bg-chart-2" />
+            <div className="size-3 rounded-[2px] bg-muted" />
+            <div className="size-3 rounded-[2px] bg-chart-2/20" />
+            <div className="size-3 rounded-[2px] bg-chart-2/40" />
+            <div className="size-3 rounded-[2px] bg-chart-2/60" />
+            <div className="size-3 rounded-[2px] bg-chart-2" />
           </div>
           <span className="text-muted-foreground">More</span>
         </div>

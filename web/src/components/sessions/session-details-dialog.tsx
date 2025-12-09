@@ -121,10 +121,10 @@ export function SessionDetailsDialog({
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="flex max-h-[85vh] max-w-3xl flex-col p-0">
-        <DialogHeader className="border-b px-6 pt-6 pb-4">
+      <DialogContent className="flex max-h-[85vh] max-w-[95vw] flex-col p-0 sm:max-w-2xl lg:max-w-3xl">
+        <DialogHeader className="border-b px-4 pt-4 pb-3 text-left sm:px-6 sm:pt-6 sm:pb-4">
           <DialogTitle>Session Details</DialogTitle>
-          <div className="space-y-3 pt-4">
+          <div className="space-y-3 pt-3 sm:pt-4">
             <div className="space-y-2">
               <p className="text-muted-foreground text-xs uppercase">User</p>
               <div className="flex items-center gap-3">
@@ -166,7 +166,7 @@ export function SessionDetailsDialog({
               </div>
             </div>
 
-            <div className="flex items-start justify-between gap-6">
+            <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 sm:gap-6">
               <div className="space-y-1">
                 <p className="text-muted-foreground text-xs uppercase">Date</p>
                 <div className="flex items-center gap-2">
@@ -199,7 +199,7 @@ export function SessionDetailsDialog({
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto px-4 pb-4">
+        <div className="flex-1 overflow-y-auto px-4 pb-4 sm:px-6">
           {isLoading && (
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-3 rounded-md bg-muted/30 px-3 py-2">
