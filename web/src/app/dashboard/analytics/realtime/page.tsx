@@ -202,8 +202,8 @@ export default function RealtimePage() {
             speed={0.4}
           />
         </div>
-        <div className="relative grid h-full grid-cols-2 gap-6">
-          <div className="flex flex-col justify-between gap-4">
+        <div className="relative flex h-full flex-col gap-6 lg:grid lg:grid-cols-2">
+          <div className="order-1">
             <RealtimeHeader
               appName={appName || undefined}
               onlineUsers={onlineUsers}
@@ -212,13 +212,17 @@ export default function RealtimePage() {
               platforms={platforms}
               status={status}
             />
-            <RealtimeActivityFeed activities={activities} appId={appId || ''} />
           </div>
-          <div className="flex items-center justify-center">
+
+          <div className="order-2 flex items-center justify-center lg:row-span-2">
             <Earth
-              className="relative aspect-square w-full max-w-[700px]"
+              className="relative aspect-square w-full max-w-[500px] lg:max-w-[700px] xl:max-w-[900px] 2xl:max-w-[1100px]"
               markers={markers}
             />
+          </div>
+
+          <div className="order-3 flex-1 lg:flex-none">
+            <RealtimeActivityFeed activities={activities} appId={appId || ''} />
           </div>
         </div>
       </div>
