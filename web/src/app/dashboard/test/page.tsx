@@ -130,12 +130,21 @@ export default function TestPage() {
       const session = await sessionResponse.json();
       addLog('success', `Session created: ${session.sessionId}`);
 
-      addLog('info', 'Sending 5 random events...');
+      const sessionDelay = Math.random() * 1000 + 500;
+      addLog(
+        'info',
+        `Waiting ${(sessionDelay / 1000).toFixed(2)}s before sending events...`
+      );
+      await new Promise((resolve) => setTimeout(resolve, sessionDelay));
 
-      for (let i = 0; i < 5; i++) {
+      const eventCount = 15;
+      addLog('info', `Sending ${eventCount} random events...`);
+
+      let cumulativeTime = 0;
+      for (let i = 0; i < eventCount; i++) {
         const eventName =
           EVENT_NAMES[Math.floor(Math.random() * EVENT_NAMES.length)];
-        const eventTimestamp = new Date(now.getTime() + (i + 1) * 1000);
+        const eventTimestamp = new Date(now.getTime() + cumulativeTime);
 
         const eventResponse = await fetch(`${API_URL}/sdk/events`, {
           method: 'POST',
@@ -165,10 +174,12 @@ export default function TestPage() {
         const event = await eventResponse.json();
         addLog(
           'success',
-          `Event ${i + 1} sent: ${event.name} (${event.eventId})`
+          `Event ${i + 1}/${eventCount} sent: ${event.name} (${event.eventId})`
         );
 
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        const eventDelay = Math.random() * 1000 + 500;
+        cumulativeTime += eventDelay;
+        await new Promise((resolve) => setTimeout(resolve, eventDelay));
       }
 
       addLog('success', '✓ All operations completed successfully!');
