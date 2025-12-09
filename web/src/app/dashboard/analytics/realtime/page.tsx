@@ -216,7 +216,7 @@ export default function RealtimePage() {
 
           <div className="order-2 flex items-center justify-center lg:row-span-2">
             <Earth
-              className="relative aspect-square w-full max-w-[500px] lg:max-w-[700px] xl:max-w-[900px] 2xl:max-w-[1100px]"
+              className="relative aspect-square w-full max-w-[500px] lg:max-w-[700px] xl:max-w-[800px] 2xl:max-w-[900px]"
               markers={markers}
             />
           </div>
