@@ -7,6 +7,7 @@ import { RealtimeHeader } from '@/components/realtime/realtime-header';
 import { RequireApp } from '@/components/require-app';
 import Earth from '@/components/ui/cobe-globe';
 import { useSidebar } from '@/components/ui/sidebar';
+import { Sparkles } from '@/components/ui/sparkles';
 import type { RealtimeMessage } from '@/lib/api/types';
 import { useRealtime } from '@/lib/queries/use-realtime';
 
@@ -191,23 +192,34 @@ export default function RealtimePage() {
 
   return (
     <RequireApp>
-      <div className="grid h-full grid-cols-2 gap-6">
-        <div className="flex flex-col justify-between gap-4">
-          <RealtimeHeader
-            appName={appName || undefined}
-            onlineUsers={onlineUsers}
-            onPause={handlePause}
-            onResume={handleResume}
-            platforms={platforms}
-            status={status}
+      <div className="relative isolate h-full">
+        <div className="-z-10 pointer-events-none absolute inset-0">
+          <Sparkles
+            className="absolute inset-0"
+            density={200}
+            opacity={0.7}
+            size={1.15}
+            speed={0.4}
           />
-          <RealtimeActivityFeed activities={activities} />
         </div>
-        <div className="flex items-center justify-center">
-          <Earth
-            className="relative aspect-square w-full max-w-[700px]"
-            markers={markers}
-          />
+        <div className="relative grid h-full grid-cols-2 gap-6">
+          <div className="flex flex-col justify-between gap-4">
+            <RealtimeHeader
+              appName={appName || undefined}
+              onlineUsers={onlineUsers}
+              onPause={handlePause}
+              onResume={handleResume}
+              platforms={platforms}
+              status={status}
+            />
+            <RealtimeActivityFeed activities={activities} />
+          </div>
+          <div className="flex items-center justify-center">
+            <Earth
+              className="relative aspect-square w-full max-w-[700px]"
+              markers={markers}
+            />
+          </div>
         </div>
       </div>
     </RequireApp>

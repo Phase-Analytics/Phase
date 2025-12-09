@@ -86,12 +86,12 @@ const Earth: React.FC<EarthProps> = ({
     const themeBaseColor: [number, number, number] =
       baseColor ?? (isDark ? hexToRgb('#ffffff') : hexToRgb('#ffffff'));
     const themeGlowColor: [number, number, number] =
-      glowColor ?? (isDark ? hexToRgb('#ffffff') : hexToRgb('#ffffff'));
+      glowColor ?? (isDark ? hexToRgb('#ffffff') : hexToRgb('#e6f2ff'));
 
     const themeMarkerColor: [number, number, number] =
       markerColor ?? (isDark ? hexToRgb('#5cd688') : hexToRgb('#3eb96e'));
     const themeMapBrightness = mapBrightness ?? (isDark ? 1.8 : 1.8);
-    const themeDark = dark ?? (isDark ? 1.1 : 0);
+    const themeDark = dark ?? (isDark ? 1.1 : 0.1);
 
     const processedMarkers: MarkerWithColor[] = markersRef.current.map(
       (marker: Marker) => ({
