@@ -3,7 +3,7 @@ WORKDIR /app
 
 FROM base AS deps
 COPY package.json bun.lock ./
-COPY web/package.json source.config.ts next.config.ts tsconfig.json ./web/
+COPY web/package.json web/source.config.ts web/next.config.ts web/tsconfig.json ./web/
 COPY server/package.json ./server/
 RUN bun install --frozen-lockfile --filter web
 
