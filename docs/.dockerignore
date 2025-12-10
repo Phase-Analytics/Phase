@@ -1,0 +1,58 @@
+# Dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+bun-debug.log*
+
+# TypeScript
+*.tsbuildinfo
+
+# Build outputs
+dist
+build
+server
+server.exe
+*.bun-build
+
+# Testing
+coverage
+.nyc_output
+
+# Environment files
+.env
+.env.*
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# IDE / Editor
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+.cursor
+
+# Git
+.git
+.gitignore
+
+# Docker & Compose
+.dockerignore
+docker-compose*.yml
+
+# Documentation
+README.md
+*.md
+
+# CI/CD
+.github
+.gitlab-ci.yml
+
+# Misc
+.claude
+scripts
+*.log

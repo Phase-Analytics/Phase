@@ -5,6 +5,7 @@ FROM base AS deps
 COPY package.json bun.lock ./
 COPY web/package.json ./web/
 COPY server/package.json ./server/
+COPY docs/package.json ./docs/
 RUN bun install --frozen-lockfile --filter web
 
 FROM base AS builder
