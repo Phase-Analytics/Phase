@@ -230,6 +230,11 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
           activeSessions24hResult,
           activeSessionsYesterdayResult,
           avgDurationResult,
+          bouncedSessionsResult,
+          bouncedSessions24hResult,
+          totalSessions24hResult,
+          bouncedSessionsYesterdayResult,
+          totalSessionsYesterdayForBounceResult,
         ] = await Promise.all([
           db
             .select({ count: count() })
@@ -280,6 +285,62 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
             .where(
               sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`
             ),
+
+          db
+            .select({ count: count() })
+            .from(sessions)
+            .where(
+              and(
+                sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
+                sql`EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt})) < 10`
+              )
+            ),
+
+          db
+            .select({ count: count() })
+            .from(sessions)
+            .where(
+              and(
+                sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
+                gte(sessions.startedAt, twentyFourHoursAgo),
+                lte(sessions.startedAt, now),
+                sql`EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt})) < 10`
+              )
+            ),
+
+          db
+            .select({ count: count() })
+            .from(sessions)
+            .where(
+              and(
+                sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
+                gte(sessions.startedAt, twentyFourHoursAgo),
+                lte(sessions.startedAt, now)
+              )
+            ),
+
+          db
+            .select({ count: count() })
+            .from(sessions)
+            .where(
+              and(
+                sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
+                gte(sessions.startedAt, fortyEightHoursAgo),
+                lt(sessions.startedAt, twentyFourHoursAgo),
+                sql`EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt})) < 10`
+              )
+            ),
+
+          db
+            .select({ count: count() })
+            .from(sessions)
+            .where(
+              and(
+                sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
+                gte(sessions.startedAt, fortyEightHoursAgo),
+                lt(sessions.startedAt, twentyFourHoursAgo)
+              )
+            ),
         ]);
 
         const totalSessionsNum = Number(totalSessions);
@@ -290,10 +351,41 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
         const activeSessionsYesterday = Number(
           activeSessionsYesterdayResult[0]?.count ?? 0
         );
+        const bouncedSessions = Number(bouncedSessionsResult[0]?.count ?? 0);
+        const bouncedSessions24h = Number(
+          bouncedSessions24hResult[0]?.count ?? 0
+        );
+        const totalSessions24h = Number(totalSessions24hResult[0]?.count ?? 0);
+        const bouncedSessionsYesterday = Number(
+          bouncedSessionsYesterdayResult[0]?.count ?? 0
+        );
+        const totalSessionsYesterdayForBounce = Number(
+          totalSessionsYesterdayForBounceResult[0]?.count ?? 0
+        );
 
         const averageSessionDuration = avgDurationResult[0]?.avg
           ? Number(avgDurationResult[0].avg)
           : null;
+
+        const bounceRate =
+          totalSessionsNum > 0
+            ? Number(((bouncedSessions / totalSessionsNum) * 100).toFixed(2))
+            : 0;
+
+        const bounceRate24h =
+          totalSessions24h > 0
+            ? (bouncedSessions24h / totalSessions24h) * 100
+            : 0;
+
+        const bounceRateYesterday =
+          totalSessionsYesterdayForBounce > 0
+            ? (bouncedSessionsYesterday / totalSessionsYesterdayForBounce) * 100
+            : 0;
+
+        const bounceRateYesterdayForCalc = Math.max(bounceRateYesterday, 0.01);
+        const bounceRateChange24h =
+          ((bounceRate24h - bounceRateYesterday) / bounceRateYesterdayForCalc) *
+          100;
 
         const totalSessionsYesterdayForCalc = Math.max(
           totalSessionsYesterdayNum,
@@ -320,6 +412,8 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
           activeSessions24h,
           totalSessionsChange24h: Number(totalSessionsChange24h.toFixed(2)),
           activeSessions24hChange: Number(activeSessions24hChange.toFixed(2)),
+          bounceRate,
+          bounceRateChange24h: Number(bounceRateChange24h.toFixed(2)),
         };
       } catch (error) {
         console.error('[Session.Overview] Error:', error);
@@ -406,6 +500,52 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
           const data = result.rows.map((row) => ({
             date: row.date,
             dailySessions: Number(row.dailySessions),
+          }));
+
+          set.status = HttpStatus.OK;
+          return {
+            data,
+            period: {
+              startDate: start.toISOString(),
+              endDate: end.toISOString(),
+            },
+          };
+        }
+
+        if (metric === 'bounce_rate') {
+          const result = await db.execute<{
+            date: string;
+            bounceRate: number;
+          }>(sql`
+        WITH date_series AS (
+          SELECT DATE(generate_series(
+            ${start}::timestamp,
+            ${end}::timestamp,
+            '1 day'::interval
+          )) as date
+        )
+        SELECT
+          ds.date::text,
+          COALESCE(
+            (SUM(CASE WHEN EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at)) < 10 THEN 1 ELSE 0 END)::float
+            / NULLIF(COUNT(s.session_id), 0)) * 100,
+            0
+          )::float as "bounceRate"
+        FROM date_series ds
+        LEFT JOIN (
+          SELECT s.session_id, s.started_at, s.last_activity_at
+          FROM sessions_analytics s
+          INNER JOIN devices d ON s.device_id = d.device_id
+          WHERE d.app_id = ${appId}
+        ) s ON DATE(s.started_at) = ds.date
+        WHERE ds.date <= CURRENT_DATE
+        GROUP BY ds.date
+        ORDER BY ds.date
+      `);
+
+          const data = result.rows.map((row) => ({
+            date: row.date,
+            bounceRate: Number(row.bounceRate.toFixed(2)),
           }));
 
           set.status = HttpStatus.OK;

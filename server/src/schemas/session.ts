@@ -28,14 +28,17 @@ export const SessionOverviewResponseSchema = t.Object({
   totalSessions: t.Number({ minimum: 0 }),
   averageSessionDuration: t.Union([t.Number(), t.Null()]),
   activeSessions24h: t.Number({ minimum: 0 }),
+  bounceRate: t.Number({ minimum: 0, maximum: 100 }),
   totalSessionsChange24h: t.Number(),
   activeSessions24hChange: t.Number(),
+  bounceRateChange24h: t.Number(),
 });
 
 export const SessionTimeseriesDataPointSchema = t.Object({
   date: t.String(),
   dailySessions: t.Optional(t.Number({ minimum: 0 })),
   avgDuration: t.Optional(t.Number({ minimum: 0 })),
+  bounceRate: t.Optional(t.Number({ minimum: 0, maximum: 100 })),
 });
 
 export const SessionTimeseriesResponseSchema = t.Object({
@@ -73,5 +76,5 @@ export type SessionTimeseriesQuery = {
   appId: string;
   startDate?: string;
   endDate?: string;
-  metric?: 'daily_sessions' | 'avg_duration';
+  metric?: 'daily_sessions' | 'avg_duration' | 'bounce_rate';
 };
