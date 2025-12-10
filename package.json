@@ -4,18 +4,15 @@
   "private": true,
   "workspaces": [
     "server",
-    "web",
-    "docs"
+    "web"
   ],
   "scripts": {
     "dev": "bun run --filter server dev & bun run --filter web dev",
     "dev:server": "bun run --filter server dev",
     "dev:web": "bun run --filter web dev",
-    "dev:docs": "bun run --filter docs dev",
     "build": "bun run --filter server build && bun run --filter web build",
     "build:server": "bun run --filter server build",
     "build:web": "bun run --filter web build",
-    "build:docs": "bun run --filter docs build",
     "db:studio": "drizzle-kit studio",
     "check": "bunx ultracite fix --unsafe",
     "typecheck": "bun run --filter server typecheck && bun run --filter web typecheck"
