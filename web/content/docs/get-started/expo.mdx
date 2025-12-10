@@ -1,18 +1,18 @@
 ---
-title: Getting Started
-description: Learn how to get started with Telemetra
+title: Expo
+description: Get started with Telemetra in your Expo app
 ---
 
-# Getting Started
+# Expo
 
-This guide will help you get started with Telemetra.
+Learn how to integrate Telemetra into your Expo application.
 
 ## Installation
 
 Install the Telemetra SDK using your preferred package manager:
 
 ```bash
-npm install telemetra-sdk
+npx expo install telemetra-expo
 ```
 
 ## Configuration
@@ -20,7 +20,7 @@ npm install telemetra-sdk
 Configure your Telemetra instance with your API key:
 
 ```typescript
-import { Telemetra } from 'telemetra-sdk';
+import { Telemetra } from 'telemetra-expo';
 
 const telemetra = new Telemetra({
   apiKey: 'your-api-key',
@@ -41,6 +41,6 @@ telemetra.track('button_clicked', {
 
 ## Next Steps
 
-- Learn about [advanced features](#)
-- Explore [API reference](#)
-- Check out [examples](#)
+- Learn about [Concepts](/docs/concepts)
+- Explore the API reference
+

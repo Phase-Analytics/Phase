@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "fumadocs-ui/css/solar.css";
+@import "fumadocs-ui/css/vitepress.css";
 @import "fumadocs-ui/css/preset.css";
 
 @custom-variant dark (&:is(.dark *));
@@ -174,6 +174,7 @@
 @theme inline {
   --breakpoint-xs: 30rem;
 
+  --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-jetbrains-mono);
 
   --color-background: var(--background);
@@ -290,4 +291,8 @@
   .animate-shine {
     animation: shine 8s ease-in-out infinite;
   }
+}
+
+body.docs-page [role="dialog"] {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }

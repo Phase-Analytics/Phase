@@ -1,7 +1,7 @@
 import { DocsBody, DocsPage } from 'fumadocs-ui/page';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { source } from '@/lib/docs-source';
+import { getPageImage, source } from '@/app/docs/docs-source';
 
 type PageDataWithContent = {
   body: React.ComponentType;
@@ -43,7 +43,11 @@ export async function generateMetadata(props: {
   }
 
   return {
-    title: page.data.title,
+    title: `${page.data.title} | Telemetra`,
     description: page.data.description,
+    openGraph: {
+      title: `${page.data.title} | Telemetra`,
+      images: getPageImage(page).url,
+    },
   };
 }

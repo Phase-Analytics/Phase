@@ -2,7 +2,6 @@ import { GeistSans } from 'geist/font/sans';
 import type { Metadata } from 'next';
 import { JetBrains_Mono } from 'next/font/google';
 import './global.css';
-import { RootProvider } from 'fumadocs-ui/provider/next';
 import { ThemeProvider } from '@/lib/theme-provider';
 
 const jetbrainsMono = JetBrains_Mono({
@@ -26,9 +25,7 @@ export default function RootLayout({
       <body
         className={`${GeistSans.variable} ${jetbrainsMono.variable} flex min-h-screen flex-col font-mono antialiased`}
       >
-        <ThemeProvider>
-          <RootProvider>{children}</RootProvider>
-        </ThemeProvider>
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

@@ -1,0 +1,48 @@
+---
+title: React Native
+description: Get started with Telemetra in your React Native app
+---
+
+# React Native
+
+Learn how to integrate Telemetra into your bare React Native application.
+
+## Installation
+
+Install the Telemetra SDK using your preferred package manager:
+
+```bash
+npm install telemetra-react-native
+# or
+yarn add telemetra-react-native
+```
+
+## Configuration
+
+Configure your Telemetra instance with your API key:
+
+```typescript
+import { Telemetra } from 'telemetra-react-native';
+
+const telemetra = new Telemetra({
+  apiKey: 'your-api-key',
+  endpoint: 'https://api.telemetra.com',
+});
+```
+
+## Tracking Events
+
+Track custom events in your application:
+
+```typescript
+telemetra.track('button_clicked', {
+  buttonName: 'signup',
+  page: 'homepage',
+});
+```
+
+## Next Steps
+
+- Learn about [Concepts](/docs/concepts)
+- Explore the API reference
+
