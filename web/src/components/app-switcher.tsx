@@ -46,7 +46,7 @@ export function AppSwitcher({ variant, onMobileClose }: AppSwitcherProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 's') {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 's') {
         e.preventDefault();
         setOpen((prev) => !prev);
       }
