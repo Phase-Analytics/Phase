@@ -242,7 +242,7 @@ export function formatDuration(seconds: number | null): string {
   }
 
   if (totalSeconds < 60) {
-    return totalSeconds === 1 ? '1 second' : `${totalSeconds} seconds`;
+    return totalSeconds === 1 ? '1 sec' : `${totalSeconds} secs`;
   }
 
   if (totalSeconds < 3600) {
@@ -250,7 +250,7 @@ export function formatDuration(seconds: number | null): string {
     const secs = totalSeconds % 60;
 
     if (secs === 0) {
-      return mins === 1 ? '1 minute' : `${mins} minutes`;
+      return mins === 1 ? '1 min' : `${mins} mins`;
     }
 
     const minsPart = `${mins} ${mins === 1 ? 'min' : 'mins'}`;
@@ -261,7 +261,7 @@ export function formatDuration(seconds: number | null): string {
   const hours = Math.floor(totalSeconds / 3600);
   const mins = Math.floor((totalSeconds % 3600) / 60);
 
-  const hoursPart = `${hours} hr`;
+  const hoursPart = `${hours} hrs`;
   if (mins === 0) {
     return hoursPart;
   }
