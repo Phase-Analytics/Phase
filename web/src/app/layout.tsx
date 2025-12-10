@@ -1,7 +1,7 @@
 import { GeistSans } from 'geist/font/sans';
 import type { Metadata } from 'next';
 import { JetBrains_Mono } from 'next/font/google';
-import './globals.css';
+import './global.css';
 import { ThemeProvider } from '@/lib/theme-provider';
 
 const jetbrainsMono = JetBrains_Mono({
