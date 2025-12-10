@@ -231,10 +231,6 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
           activeSessionsYesterdayResult,
           avgDurationResult,
           bouncedSessionsResult,
-          bouncedSessions24hResult,
-          totalSessions24hResult,
-          bouncedSessionsYesterdayResult,
-          totalSessionsYesterdayForBounceResult,
         ] = await Promise.all([
           db
             .select({ count: count() })
@@ -295,52 +291,6 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
                 sql`EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt})) < 10`
               )
             ),
-
-          db
-            .select({ count: count() })
-            .from(sessions)
-            .where(
-              and(
-                sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-                gte(sessions.startedAt, twentyFourHoursAgo),
-                lte(sessions.startedAt, now),
-                sql`EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt})) < 10`
-              )
-            ),
-
-          db
-            .select({ count: count() })
-            .from(sessions)
-            .where(
-              and(
-                sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-                gte(sessions.startedAt, twentyFourHoursAgo),
-                lte(sessions.startedAt, now)
-              )
-            ),
-
-          db
-            .select({ count: count() })
-            .from(sessions)
-            .where(
-              and(
-                sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-                gte(sessions.startedAt, fortyEightHoursAgo),
-                lt(sessions.startedAt, twentyFourHoursAgo),
-                sql`EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt})) < 10`
-              )
-            ),
-
-          db
-            .select({ count: count() })
-            .from(sessions)
-            .where(
-              and(
-                sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-                gte(sessions.startedAt, fortyEightHoursAgo),
-                lt(sessions.startedAt, twentyFourHoursAgo)
-              )
-            ),
         ]);
 
         const totalSessionsNum = Number(totalSessions);
@@ -352,16 +302,6 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
           activeSessionsYesterdayResult[0]?.count ?? 0
         );
         const bouncedSessions = Number(bouncedSessionsResult[0]?.count ?? 0);
-        const bouncedSessions24h = Number(
-          bouncedSessions24hResult[0]?.count ?? 0
-        );
-        const totalSessions24h = Number(totalSessions24hResult[0]?.count ?? 0);
-        const bouncedSessionsYesterday = Number(
-          bouncedSessionsYesterdayResult[0]?.count ?? 0
-        );
-        const totalSessionsYesterdayForBounce = Number(
-          totalSessionsYesterdayForBounceResult[0]?.count ?? 0
-        );
 
         const averageSessionDuration = avgDurationResult[0]?.avg
           ? Number(avgDurationResult[0].avg)
@@ -371,21 +311,6 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
           totalSessionsNum > 0
             ? Number(((bouncedSessions / totalSessionsNum) * 100).toFixed(2))
             : 0;
-
-        const bounceRate24h =
-          totalSessions24h > 0
-            ? (bouncedSessions24h / totalSessions24h) * 100
-            : 0;
-
-        const bounceRateYesterday =
-          totalSessionsYesterdayForBounce > 0
-            ? (bouncedSessionsYesterday / totalSessionsYesterdayForBounce) * 100
-            : 0;
-
-        const bounceRateYesterdayForCalc = Math.max(bounceRateYesterday, 0.01);
-        const bounceRateChange24h =
-          ((bounceRate24h - bounceRateYesterday) / bounceRateYesterdayForCalc) *
-          100;
 
         const totalSessionsYesterdayForCalc = Math.max(
           totalSessionsYesterdayNum,
@@ -413,7 +338,6 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
           totalSessionsChange24h: Number(totalSessionsChange24h.toFixed(2)),
           activeSessions24hChange: Number(activeSessions24hChange.toFixed(2)),
           bounceRate,
-          bounceRateChange24h: Number(bounceRateChange24h.toFixed(2)),
         };
       } catch (error) {
         console.error('[Session.Overview] Error:', error);

@@ -9,6 +9,56 @@ import type { TimeRange } from '@/lib/api/types';
 import { formatDuration } from '@/lib/date-utils';
 import { useSessionTimeseries } from '@/lib/queries';
 
+function getMetricType(metric: string) {
+  if (metric === 'daily_sessions') {
+    return 'daily_sessions';
+  }
+  if (metric === 'avg_duration') {
+    return 'avg_duration';
+  }
+  return 'bounce_rate';
+}
+
+function getValueKey(metric: string) {
+  if (metric === 'daily_sessions') {
+    return 'dailySessions';
+  }
+  if (metric === 'avg_duration') {
+    return 'avgDuration';
+  }
+  return 'bounceRate';
+}
+
+function getDataLabel(metric: string) {
+  if (metric === 'daily_sessions') {
+    return 'Sessions';
+  }
+  if (metric === 'avg_duration') {
+    return 'Avg Duration';
+  }
+  return 'Bounce Rate';
+}
+
+function getDescription(metric: string) {
+  if (metric === 'daily_sessions') {
+    return 'Number of sessions started each day';
+  }
+  if (metric === 'avg_duration') {
+    return 'Average session duration in seconds per day';
+  }
+  return 'Percentage of sessions under 10 seconds per day';
+}
+
+function getValueFormatter(metric: string) {
+  if (metric === 'avg_duration') {
+    return (value: number) => formatDuration(value);
+  }
+  if (metric === 'bounce_rate') {
+    return (value: number) => `${value.toFixed(2)}%`;
+  }
+  return;
+}
+
 export function SessionsActivityChart() {
   const [appId] = useQueryState('app', parseAsString);
   const [timeRange, setTimeRange] = useQueryState(
@@ -23,7 +73,7 @@ export function SessionsActivityChart() {
   const { data: timeseriesData, isLoading } = useSessionTimeseries(
     appId || '',
     (timeRange || '7d') as TimeRange,
-    metric === 'daily_sessions' ? 'daily_sessions' : 'avg_duration'
+    getMetricType(metric)
   );
 
   if (!appId) {
@@ -35,8 +85,7 @@ export function SessionsActivityChart() {
       return [];
     }
 
-    const valueKey =
-      metric === 'daily_sessions' ? 'dailySessions' : 'avgDuration';
+    const valueKey = getValueKey(metric);
     const dataMap = new Map(
       timeseriesData.data.map((item) => [item.date, item[valueKey] || 0])
     );
@@ -63,17 +112,14 @@ export function SessionsActivityChart() {
       chartColor="var(--color-chart-2)"
       data={chartData}
       dataKey="value"
-      dataLabel={metric === 'daily_sessions' ? 'Sessions' : 'Avg Duration'}
-      description={
-        metric === 'daily_sessions'
-          ? 'Number of sessions started each day'
-          : 'Average session duration in seconds per day'
-      }
+      dataLabel={getDataLabel(metric)}
+      description={getDescription(metric)}
       isPending={isLoading}
       metric={metric}
       metricOptions={[
         { value: 'daily_sessions', label: 'Daily Sessions' },
         { value: 'avg_duration', label: 'Average Duration' },
+        { value: 'bounce_rate', label: 'Bounce Rate' },
       ]}
       onMetricChange={setMetric}
       onTimeRangeChange={setTimeRange}
@@ -85,9 +131,7 @@ export function SessionsActivityChart() {
         { value: '360d', label: '1 Year' },
       ]}
       title="Session Activity"
-      valueFormatter={
-        metric === 'avg_duration' ? (value) => formatDuration(value) : undefined
-      }
+      valueFormatter={getValueFormatter(metric)}
     />
   );
 }
@@ -111,6 +155,12 @@ export function SessionsActivityChartSkeleton() {
                   value="avg_duration"
                 >
                   Average Duration
+                </TabsTrigger>
+                <TabsTrigger
+                  className="text-muted-foreground text-xs uppercase"
+                  value="bounce_rate"
+                >
+                  Bounce Rate
                 </TabsTrigger>
               </TabsList>
             </Tabs>

@@ -25,7 +25,7 @@ export function SessionsOverviewCards() {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <Card className="py-0">
         <CardContent className="p-4">
           <p className="text-muted-foreground text-xs uppercase">
@@ -98,8 +98,20 @@ export function SessionsOverviewCards() {
 
       <Card className="py-0">
         <CardContent className="p-4">
+          <p className="text-muted-foreground text-xs uppercase">Bounce Rate</p>
+          <p className="font-bold text-3xl">
+            <CountingNumber number={overview?.bounceRate || 0} />%
+          </p>
+          <div className="mt-1 flex items-center gap-1 text-xs">
+            <span className="text-muted-foreground">Total bounce rate</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="py-0">
+        <CardContent className="p-4">
           <p className="text-muted-foreground text-xs uppercase">
-            Average Session Duration
+            Average Duration
           </p>
           <ClientDuration
             className="font-bold text-3xl"

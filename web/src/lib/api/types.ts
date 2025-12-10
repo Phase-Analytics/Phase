@@ -160,17 +160,19 @@ export type Session = {
 export type SessionOverview = {
   totalSessions: number;
   averageSessionDuration: number | null;
+  bounceRate: number;
   activeSessions24h: number;
   totalSessionsChange24h: number;
   activeSessions24hChange: number;
 };
 
-export type SessionMetric = 'daily_sessions' | 'avg_duration';
+export type SessionMetric = 'daily_sessions' | 'avg_duration' | 'bounce_rate';
 
 export type SessionTimeseriesDataPoint = {
   date: string;
   dailySessions?: number;
   avgDuration?: number;
+  bounceRate?: number;
 };
 
 export type SessionTimeseriesResponse = {

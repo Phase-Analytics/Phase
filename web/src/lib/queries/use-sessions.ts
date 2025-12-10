@@ -60,6 +60,7 @@ export function useSessionOverview(appId: string) {
           activeSessions24h: 0,
           activeSessions24hChange: 0,
           averageSessionDuration: 0,
+          bounceRate: 0,
         });
       }
       return fetchApi<SessionOverview>(`/web/sessions/overview?appId=${appId}`);

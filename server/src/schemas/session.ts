@@ -31,7 +31,6 @@ export const SessionOverviewResponseSchema = t.Object({
   bounceRate: t.Number({ minimum: 0, maximum: 100 }),
   totalSessionsChange24h: t.Number(),
   activeSessions24hChange: t.Number(),
-  bounceRateChange24h: t.Number(),
 });
 
 export const SessionTimeseriesDataPointSchema = t.Object({

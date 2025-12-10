@@ -7,7 +7,7 @@ import { usePaginationStore } from '@/stores/pagination-store';
 
 export function SessionsOverviewCardsSkeleton() {
   return (
-    <div className="grid gap-4 md:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <Card className="py-0">
         <CardContent className="p-4">
           <p className="text-muted-foreground text-xs uppercase">
@@ -23,6 +23,14 @@ export function SessionsOverviewCardsSkeleton() {
           <p className="text-muted-foreground text-xs uppercase">
             Daily Sessions
           </p>
+          <Skeleton className="h-8 w-20" />
+          <Skeleton className="mt-1 h-3 w-32" />
+        </CardContent>
+      </Card>
+
+      <Card className="py-0">
+        <CardContent className="p-4">
+          <p className="text-muted-foreground text-xs uppercase">Bounce Rate</p>
           <Skeleton className="h-8 w-20" />
           <Skeleton className="mt-1 h-3 w-32" />
         </CardContent>
