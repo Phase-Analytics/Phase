@@ -6,6 +6,9 @@ const withMDX = createMDX();
 const config = {
   reactStrictMode: true,
   output: 'standalone',
+  turbopack: {
+    root: '..',
+  },
 };
 
 export default withMDX(config);
