@@ -5,6 +5,7 @@ import {
   CheckmarkSquare01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
+import { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
 import { ClientDate } from '@/components/client-date';
 import { Button } from '@/components/ui/button';
@@ -76,6 +77,11 @@ export function TimescaleChart({
   valueFormatter,
   emptyMessage = 'No data available for this period',
 }: TimescaleChartProps) {
+  const chartId = useMemo(
+    () => `${dataKey}-${Math.random().toString(36).slice(2, 11)}`,
+    [dataKey]
+  );
+
   const chartConfig = {
     [dataKey]: {
       label: dataLabel,
@@ -88,6 +94,14 @@ export function TimescaleChart({
 
   const defaultFormatter = (value: number) => value;
 
+  const allValuesSame = useMemo(() => {
+    if (data.length === 0) {
+      return true;
+    }
+    const firstValue = data[0].value;
+    return data.every((d) => d.value === firstValue);
+  }, [data]);
+
   return (
     <Card className="py-0">
       <CardHeader className="space-y-0 border-b py-5">
@@ -95,7 +109,7 @@ export function TimescaleChart({
           <div className="flex flex-col gap-3">
             <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
               <Tabs onValueChange={onMetricChange} value={metric}>
-                <TabsList>
+                <TabsList className="gap-1">
                   {metricOptions.map((option) => (
                     <TabsTrigger
                       className="text-muted-foreground text-xs uppercase"
@@ -186,7 +200,7 @@ export function TimescaleChart({
             <AreaChart data={data}>
               <defs>
                 <linearGradient
-                  id={`fill${dataKey}`}
+                  id={`fill-${chartId}`}
                   x1="0"
                   x2="0"
                   y1="0"
@@ -205,7 +219,7 @@ export function TimescaleChart({
                 </linearGradient>
                 {data.length >= 2 && (
                   <linearGradient
-                    id={`stroke${dataKey}`}
+                    id={`stroke-${chartId}`}
                     x1="0"
                     x2="1"
                     y1="0"
@@ -280,7 +294,7 @@ export function TimescaleChart({
                   strokeDasharray: '4 2',
                 }}
               />
-              {data.length >= 2 && (
+              {data.length >= 2 && !allValuesSame && (
                 <Area
                   activeDot={false}
                   dataKey="value"
@@ -300,10 +314,10 @@ export function TimescaleChart({
                   fill: 'hsl(var(--background))',
                 }}
                 dataKey="value"
-                fill={`url(#fill${dataKey})`}
+                fill={`url(#fill-${chartId})`}
                 stroke={
-                  data.length >= 2
-                    ? `url(#stroke${dataKey})`
+                  data.length >= 2 && !allValuesSame
+                    ? `url(#stroke-${chartId})`
                     : `var(--color-${dataKey})`
                 }
                 strokeWidth={2}

@@ -252,12 +252,12 @@ export function CommandMenuTrigger({ onClick }: { onClick: () => void }) {
 
   return (
     <button
-      className="hidden h-9 w-full items-center gap-2 rounded-md border bg-background px-3 text-muted-foreground text-sm shadow-[var(--shadow),var(--highlight)] transition-colors hover:bg-accent hover:text-accent-foreground sm:flex sm:w-63"
+      className="hidden h-9 w-full items-center gap-2 rounded-md border bg-background px-3 text-muted-foreground text-sm shadow-[var(--shadow),var(--highlight)] transition-colors hover:bg-accent hover:text-accent-foreground sm:flex sm:w-48"
       onClick={onClick}
       type="button"
     >
       <HugeiconsIcon className="size-4 shrink-0" icon={Search01Icon} />
-      <span className="flex-1 text-left">Search...</span>
+      <span className="flex-1 text-left">Search</span>
       {mounted && modKey && (
         <KbdGroup>
           <Kbd>{modKey}</Kbd>

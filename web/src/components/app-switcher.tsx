@@ -78,14 +78,14 @@ export function AppSwitcher({ variant, onMobileClose }: AppSwitcherProps) {
               {isPending ? (
                 <Skeleton className="h-4 w-20" />
               ) : (
-                <span className="font-semibold">
+                <span className="font-sans font-semibold">
                   {selectedApp ? selectedApp.name : 'Select App'}
                 </span>
               )}
               {isPending ? (
                 <Skeleton className="h-3 w-16" />
               ) : (
-                <span className="text-sidebar-foreground/70 text-xs">
+                <span className="font-sans text-sidebar-foreground/70 text-xs">
                   {selectedApp ? 'Analytics' : 'Choose an app'}
                 </span>
               )}
@@ -98,11 +98,13 @@ export function AppSwitcher({ variant, onMobileClose }: AppSwitcherProps) {
           <DropdownMenuSeparator />
           {isPending && (
             <DropdownMenuItem disabled>
-              Loading applications...
+              <span className="font-sans">Loading applications...</span>
             </DropdownMenuItem>
           )}
           {!isPending && apps.length === 0 && (
-            <DropdownMenuItem disabled>No apps available</DropdownMenuItem>
+            <DropdownMenuItem disabled>
+              <span className="font-sans">No apps available</span>
+            </DropdownMenuItem>
           )}
           {!isPending &&
             apps.length > 0 &&
@@ -114,7 +116,7 @@ export function AppSwitcher({ variant, onMobileClose }: AppSwitcherProps) {
                   key={app.id}
                   onClick={() => handleAppSelect(app.id)}
                 >
-                  {app.name}
+                  <span className="font-sans">{app.name}</span>
                   <HugeiconsIcon
                     className="ml-auto size-4"
                     icon={app.role === 'owner' ? UserSquareIcon : UserGroupIcon}
@@ -129,7 +131,7 @@ export function AppSwitcher({ variant, onMobileClose }: AppSwitcherProps) {
               variant="success"
             >
               <HugeiconsIcon className="mr-2 size-4" icon={AddSquareIcon} />
-              Create New
+              <span className="font-sans">Create New</span>
             </DropdownMenuItem>
           </CreateAppDialog>
         </DropdownMenuContent>
@@ -154,9 +156,13 @@ export function AppSwitcher({ variant, onMobileClose }: AppSwitcherProps) {
             {isPending ? (
               <Skeleton className="h-4 w-24" />
             ) : (
-              <span className="font-semibold text-sm">Select App</span>
+              <span className="font-sans font-semibold text-sm">
+                Select App
+              </span>
             )}
-            <span className="text-muted-foreground text-xs">Choose an app</span>
+            <span className="font-sans text-muted-foreground text-xs">
+              Choose an app
+            </span>
           </div>
           <HugeiconsIcon className="ml-2 size-4" icon={UnfoldMoreIcon} />
         </button>
@@ -165,10 +171,14 @@ export function AppSwitcher({ variant, onMobileClose }: AppSwitcherProps) {
         <DropdownMenuLabel>Switch Application</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {isPending && (
-          <DropdownMenuItem disabled>Loading applications...</DropdownMenuItem>
+          <DropdownMenuItem disabled>
+            <span className="font-sans">Loading applications...</span>
+          </DropdownMenuItem>
         )}
         {!isPending && apps.length === 0 && (
-          <DropdownMenuItem disabled>No apps available</DropdownMenuItem>
+          <DropdownMenuItem disabled>
+            <span className="font-sans">No apps available</span>
+          </DropdownMenuItem>
         )}
         {!isPending &&
           apps.length > 0 &&
@@ -180,7 +190,7 @@ export function AppSwitcher({ variant, onMobileClose }: AppSwitcherProps) {
                 key={app.id}
                 onClick={() => handleAppSelect(app.id)}
               >
-                {app.name}
+                <span className="font-sans">{app.name}</span>
                 <HugeiconsIcon
                   className="ml-auto size-4"
                   icon={app.role === 'owner' ? UserSquareIcon : UserGroupIcon}
@@ -195,7 +205,7 @@ export function AppSwitcher({ variant, onMobileClose }: AppSwitcherProps) {
             variant="success"
           >
             <HugeiconsIcon className="mr-2 size-4" icon={AddSquareIcon} />
-            Create New
+            <span className="font-sans">Create New</span>
           </DropdownMenuItem>
         </CreateAppDialog>
       </DropdownMenuContent>

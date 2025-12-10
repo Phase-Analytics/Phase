@@ -47,8 +47,8 @@ export default function TeamPage() {
     <RequireApp>
       <div className="flex flex-1 flex-col gap-6">
         <div>
-          <h1 className="font-bold text-2xl">Team</h1>
-          <p className="text-muted-foreground text-sm">
+          <h1 className="font-bold font-sans text-2xl">Team</h1>
+          <p className="font-sans text-muted-foreground text-sm">
             Manage your application team members
           </p>
         </div>

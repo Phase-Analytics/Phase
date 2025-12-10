@@ -230,13 +230,13 @@ export function DashboardSidebar() {
                         }}
                       >
                         <HugeiconsIcon icon={item.icon} />
-                        <span>{item.label}</span>
+                        <span className="font-sans">{item.label}</span>
                       </Link>
                     </SidebarMenuButton>
                   ) : (
                     <SidebarMenuButton disabled tooltip={item.tooltip}>
                       <HugeiconsIcon icon={item.icon} />
-                      <span>{item.label}</span>
+                      <span className="font-sans">{item.label}</span>
                     </SidebarMenuButton>
                   )}
                 </SidebarMenuItem>
@@ -258,7 +258,7 @@ export function DashboardSidebar() {
                     <SidebarMenuItem key={item.label}>
                       <SidebarMenuButton disabled tooltip={item.tooltip}>
                         <HugeiconsIcon icon={item.icon} />
-                        <span>{item.label}</span>
+                        <span className="font-sans">{item.label}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   );
@@ -284,7 +284,7 @@ export function DashboardSidebar() {
                         }}
                       >
                         <HugeiconsIcon icon={item.icon} />
-                        <span>{item.label}</span>
+                        <span className="font-sans">{item.label}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -313,7 +313,7 @@ export function DashboardSidebar() {
                   target="_blank"
                 >
                   <HugeiconsIcon icon={item.icon} />
-                  <span>{item.label}</span>
+                  <span className="font-sans">{item.label}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -335,8 +335,10 @@ export function DashboardSidebar() {
                     <AvatarFallback className="bg-transparent" />
                   </Avatar>
                   <div className="flex flex-col gap-0.5 leading-none">
-                    <span className="font-semibold text-sm">{displayName}</span>
-                    <span className="text-sidebar-foreground/70 text-xs">
+                    <span className="font-sans font-semibold text-sm">
+                      {displayName}
+                    </span>
+                    <span className="font-sans text-sidebar-foreground/70 text-xs">
                       {username}
                     </span>
                   </div>
@@ -355,7 +357,7 @@ export function DashboardSidebar() {
                       className="mr-2 size-4"
                       icon={Setting07Icon}
                     />
-                    User Settings
+                    <span className="font-sans">User Settings</span>
                   </DropdownMenuItem>
                 </UserSettings>
                 <DropdownMenuItem>
@@ -363,12 +365,12 @@ export function DashboardSidebar() {
                     className="mr-2 size-4"
                     icon={CreditCardIcon}
                   />
-                  Billing
+                  <span className="font-sans">Billing</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} variant="destructive">
                   <HugeiconsIcon className="mr-2 size-4" icon={Logout01Icon} />
-                  Log out
+                  <span className="font-sans">Log out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

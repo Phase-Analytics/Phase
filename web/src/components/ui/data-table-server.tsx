@@ -69,7 +69,7 @@ export function DataTableServer<TData, TValue>({
   pagination,
   isLoading = false,
   searchKey,
-  searchPlaceholder = 'Search...',
+  searchPlaceholder = 'Search',
   filterKey,
   filterOptions = [],
   filterPlaceholder = 'All',

@@ -51,7 +51,7 @@ export function UsersPlatformDistributionSkeleton() {
     <Card className="py-0">
       <CardContent className="space-y-4 p-4">
         <Tabs value="platform">
-          <TabsList className="h-8">
+          <TabsList className="h-8 gap-1">
             <TabsTrigger
               className="text-muted-foreground text-xs uppercase"
               value="platform"
@@ -83,7 +83,7 @@ export function UsersTopCountriesSkeleton() {
     <Card className="py-0">
       <CardContent className="space-y-4 p-4">
         <Tabs value="country">
-          <TabsList className="h-8">
+          <TabsList className="h-8 gap-1">
             <TabsTrigger
               className="text-muted-foreground text-xs uppercase"
               value="country"

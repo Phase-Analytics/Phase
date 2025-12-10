@@ -29,10 +29,6 @@ type EventDetailsSheetProps = {
   appId: string;
 };
 
-/**
- * Flattens a nested object into a single-level object with dot notation keys.
- * Arrays are converted to JSON strings.
- */
 function flattenObject(
   obj: unknown,
   prefix = '',

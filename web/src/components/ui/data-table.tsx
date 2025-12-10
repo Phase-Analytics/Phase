@@ -48,7 +48,7 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   searchKey,
-  searchPlaceholder = 'Search...',
+  searchPlaceholder = 'Search',
   pageSize = 10,
   onRowClick,
 }: DataTableProps<TData, TValue>) {

@@ -92,7 +92,7 @@ function Input({
         autoCorrect="off"
         className={cn(
           'peer h-full w-full flex-1 bg-transparent px-3 py-1 text-base caret-primary outline-none selection:bg-primary selection:text-primary-foreground file:inline-flex file:h-7 file:border-0 file:bg-transparent file:font-medium file:text-foreground file:text-sm placeholder:sr-only md:text-sm',
-          'font-normal text-foreground'
+          'font-normal font-sans text-foreground'
         )}
         defaultValue={defaultValue}
         onChange={(event) => {
@@ -122,7 +122,7 @@ function Input({
             animate="show"
             className={cn(
               'pointer-events-none absolute left-3',
-              'font-normal text-muted-foreground text-sm'
+              'font-normal font-sans text-muted-foreground text-sm'
             )}
             exit="hidden"
             initial="hidden"
