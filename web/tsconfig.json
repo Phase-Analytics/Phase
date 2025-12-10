@@ -23,7 +23,9 @@
       "@/components/*": ["./src/components/*"],
       "@/lib/*": ["./src/lib/*"],
       "@/hooks/*": ["./src/hooks/*"],
-      "@/app/*": ["./src/app/*"]
+      "@/app/*": ["./src/app/*"],
+      "@/docs/*": ["./src/docs/*"],
+      "fumadocs-mdx:collections/*": ["./.source/*"]
     }
   },
   "include": [

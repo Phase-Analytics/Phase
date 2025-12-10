@@ -1,0 +1,46 @@
+---
+title: Getting Started
+description: Learn how to get started with Telemetra
+---
+
+# Getting Started
+
+This guide will help you get started with Telemetra.
+
+## Installation
+
+Install the Telemetra SDK using your preferred package manager:
+
+```bash
+npm install telemetra-sdk
+```
+
+## Configuration
+
+Configure your Telemetra instance with your API key:
+
+```typescript
+import { Telemetra } from 'telemetra-sdk';
+
+const telemetra = new Telemetra({
+  apiKey: 'your-api-key',
+  endpoint: 'https://api.telemetra.com',
+});
+```
+
+## Tracking Events
+
+Track custom events in your application:
+
+```typescript
+telemetra.track('button_clicked', {
+  buttonName: 'signup',
+  page: 'homepage',
+});
+```
+
+## Next Steps
+
+- Learn about [advanced features](#)
+- Explore [API reference](#)
+- Check out [examples](#)
