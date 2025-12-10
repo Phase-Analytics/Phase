@@ -18,15 +18,19 @@ ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY docs/ ./docs/
 
+WORKDIR /app/docs
+
 RUN bun run build
 
 FROM base AS runner
 
 RUN adduser --system --uid 1001 nextjs
 
-COPY --from=builder --chown=nextjs:bun /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:bun /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:bun /app/public ./public
+WORKDIR /app
+
+COPY --from=builder --chown=nextjs:bun /app/docs/.next/standalone ./
+COPY --from=builder --chown=nextjs:bun /app/docs/.next/static ./docs/.next/static
+COPY --from=builder --chown=nextjs:bun /app/docs/public ./docs/public
 
 USER nextjs
 
@@ -35,4 +39,4 @@ EXPOSE 3003
 ENV PORT=3003
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["bun", "server.js"]
+CMD ["bun", "docs/server.js"]
