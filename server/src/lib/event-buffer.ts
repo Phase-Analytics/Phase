@@ -75,6 +75,59 @@ export class EventBuffer {
     await this.redis.lpush(BUFFER_KEY, JSON.stringify(event));
   }
 
+  async pushMany(
+    events: BufferedEvent[]
+  ): Promise<{
+    success: number;
+    failed: Array<{ index: number; error: string }>;
+  }> {
+    if (this.isShuttingDown) {
+      throw new Error('EventBuffer is shutting down');
+    }
+
+    if (events.length === 0) {
+      return { success: 0, failed: [] };
+    }
+
+    const validEvents: Array<{ index: number; event: BufferedEvent }> = [];
+    const failed: Array<{ index: number; error: string }> = [];
+
+    for (let i = 0; i < events.length; i++) {
+      const event = events[i];
+      const validationError = this.validateEvent(event);
+      if (validationError) {
+        failed.push({ index: i, error: validationError });
+      } else {
+        validEvents.push({ index: i, event });
+      }
+    }
+
+    if (validEvents.length === 0) {
+      return { success: 0, failed };
+    }
+
+    const pipeline = this.redis.pipeline();
+    for (const { event } of validEvents) {
+      pipeline.lpush(BUFFER_KEY, JSON.stringify(event));
+    }
+
+    const results = await pipeline.exec();
+
+    if (results) {
+      for (let i = 0; i < results.length; i++) {
+        const [err] = results[i];
+        if (err) {
+          const originalIndex = validEvents[i].index;
+          failed.push({ index: originalIndex, error: err.message });
+        }
+      }
+    }
+
+    const successCount =
+      validEvents.length - (results?.filter(([err]) => err).length ?? 0);
+    return { success: successCount, failed };
+  }
+
   start(): void {
     if (this.flushTimer) {
       return;

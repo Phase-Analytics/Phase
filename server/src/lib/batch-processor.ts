@@ -326,6 +326,19 @@ async function processSessions(
   return { results, errors };
 }
 
+type ValidatedEvent = {
+  clientOrder: number;
+  eventId: string;
+  sessionId: string;
+  deviceId: string;
+  appId: string;
+  name: string;
+  params: Record<string, string | number | boolean | null> | null;
+  timestamp: Date;
+  country: string | null;
+  platform: string | null;
+};
+
 async function processEvents(
   items: BatchEventItem[],
   appId: string,
@@ -341,6 +354,9 @@ async function processEvents(
       device: typeof devices.$inferSelect;
     }
   >();
+
+  const validatedEvents: ValidatedEvent[] = [];
+  const sessionMaxTimestamps = new Map<string, Date>();
 
   for (const item of items) {
     const { payload, clientOrder } = item;
@@ -467,39 +483,23 @@ async function processEvents(
 
       const eventId = ulid();
 
-      await getEventBuffer().push({
+      validatedEvents.push({
+        clientOrder,
         eventId,
         sessionId: payload.sessionId,
         deviceId: sessionData.session.deviceId,
         appId: sessionData.device.appId,
         name: payload.name,
         params: payload.params ?? null,
-        timestamp: clientTimestamp.toISOString(),
-      });
-
-      if (clientTimestamp > sessionData.session.lastActivityAt) {
-        await db
-          .update(sessions)
-          .set({ lastActivityAt: clientTimestamp })
-          .where(eq(sessions.sessionId, payload.sessionId));
-
-        sessionData.session.lastActivityAt = clientTimestamp;
-      }
-
-      sseManager.pushEvent(sessionData.device.appId, {
-        eventId,
-        deviceId: sessionData.session.deviceId,
-        name: payload.name,
-        timestamp: clientTimestamp.toISOString(),
+        timestamp: clientTimestamp,
         country: sessionData.device.country,
         platform: sessionData.device.platform,
       });
 
-      results.push({
-        clientOrder,
-        type: 'event',
-        id: eventId,
-      });
+      const currentMax = sessionMaxTimestamps.get(payload.sessionId);
+      if (!currentMax || clientTimestamp > currentMax) {
+        sessionMaxTimestamps.set(payload.sessionId, clientTimestamp);
+      }
     } catch (error) {
       console.error('[BatchProcessor.Event] Error:', error);
       errors.push({
@@ -507,6 +507,68 @@ async function processEvents(
         code: ErrorCode.INTERNAL_SERVER_ERROR,
         detail: 'Failed to process event',
       });
+    }
+  }
+
+  if (validatedEvents.length > 0) {
+    const bufferEvents = validatedEvents.map((e) => ({
+      eventId: e.eventId,
+      sessionId: e.sessionId,
+      deviceId: e.deviceId,
+      appId: e.appId,
+      name: e.name,
+      params: e.params,
+      timestamp: e.timestamp.toISOString(),
+    }));
+
+    const pushResult = await getEventBuffer().pushMany(bufferEvents);
+
+    const failedIndices = new Set(pushResult.failed.map((f) => f.index));
+
+    for (let i = 0; i < validatedEvents.length; i++) {
+      const event = validatedEvents[i];
+
+      if (failedIndices.has(i)) {
+        const failInfo = pushResult.failed.find((f) => f.index === i);
+        errors.push({
+          clientOrder: event.clientOrder,
+          code: ErrorCode.INTERNAL_SERVER_ERROR,
+          detail: failInfo?.error ?? 'Failed to buffer event',
+        });
+        continue;
+      }
+
+      sseManager.pushEvent(event.appId, {
+        eventId: event.eventId,
+        deviceId: event.deviceId,
+        name: event.name,
+        timestamp: event.timestamp.toISOString(),
+        country: event.country,
+        platform: event.platform,
+      });
+
+      results.push({
+        clientOrder: event.clientOrder,
+        type: 'event',
+        id: event.eventId,
+      });
+    }
+
+    const updatePromises: Promise<unknown>[] = [];
+    for (const [sessionId, maxTimestamp] of sessionMaxTimestamps) {
+      const sessionData = sessionCache.get(sessionId);
+      if (sessionData && maxTimestamp > sessionData.session.lastActivityAt) {
+        updatePromises.push(
+          db
+            .update(sessions)
+            .set({ lastActivityAt: maxTimestamp })
+            .where(eq(sessions.sessionId, sessionId))
+        );
+      }
+    }
+
+    if (updatePromises.length > 0) {
+      await Promise.all(updatePromises);
     }
   }
 
