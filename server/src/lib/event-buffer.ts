@@ -19,8 +19,22 @@ const MAX_CONCURRENT_WRITES = 10;
 const QUESTDB_HTTP = 'http://questdb:9000';
 const QUESTDB_TIMEOUT_MS = 30_000;
 
-function escapeSqlString(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/'/g, "''");
+function escapeILPString(value: string): string {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r');
+}
+
+function escapeILPTag(value: string): string {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/,/g, '\\,')
+    .replace(/=/g, '\\=')
+    .replace(/ /g, '\\ ')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r');
 }
 
 export class EventBuffer {
@@ -264,31 +278,43 @@ export class EventBuffer {
     return { success: true, count: 0 };
   }
 
-  private buildInsertQuery(events: BufferedEvent[]): string {
-    const values = events
+  private buildILPLines(events: BufferedEvent[]): string {
+    return events
       .map((event) => {
-        const paramsValue =
+        const tags = [
+          `app_id=${escapeILPTag(event.appId)}`,
+          `device_id=${escapeILPTag(event.deviceId)}`,
+          `session_id=${escapeILPTag(event.sessionId)}`,
+          `name=${escapeILPTag(event.name)}`,
+        ].join(',');
+
+        const paramsField =
           event.params !== null
-            ? `'${escapeSqlString(JSON.stringify(event.params))}'`
-            : 'null';
-        const timestampMicros = new Date(event.timestamp).getTime() * 1000;
+            ? `params="${escapeILPString(JSON.stringify(event.params))}"`
+            : '';
 
-        return `('${escapeSqlString(event.eventId)}','${escapeSqlString(event.sessionId)}','${escapeSqlString(event.deviceId)}','${escapeSqlString(event.appId)}','${escapeSqlString(event.name)}',${paramsValue},${timestampMicros})`;
+        const fields = [
+          `event_id="${escapeILPString(event.eventId)}"`,
+          paramsField,
+        ]
+          .filter(Boolean)
+          .join(',');
+
+        const timestampNanos = new Date(event.timestamp).getTime() * 1_000_000;
+
+        return `events,${tags} ${fields} ${timestampNanos}`;
       })
-      .join(',');
-
-    return `INSERT INTO events (event_id, session_id, device_id, app_id, name, params, timestamp) VALUES ${values}`;
+      .join('\n');
   }
 
-  private async executeQuestDBQuery(query: string): Promise<boolean> {
+  private async writeILP(ilpData: string): Promise<boolean> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), QUESTDB_TIMEOUT_MS);
 
     try {
-      const response = await fetch(`${QUESTDB_HTTP}/exec`, {
+      const response = await fetch(`${QUESTDB_HTTP}/write`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `query=${encodeURIComponent(query)}`,
+        body: ilpData,
         signal: controller.signal,
       });
 
@@ -314,8 +340,8 @@ export class EventBuffer {
     }
 
     try {
-      const query = this.buildInsertQuery(events);
-      await this.executeQuestDBQuery(query);
+      const ilpData = this.buildILPLines(events);
+      await this.writeILP(ilpData);
       return true;
     } catch (error) {
       console.error(
@@ -332,8 +358,8 @@ export class EventBuffer {
   ): Promise<boolean> {
     for (const event of events) {
       try {
-        const query = this.buildInsertQuery([event]);
-        await this.executeQuestDBQuery(query);
+        const ilpData = this.buildILPLines([event]);
+        await this.writeILP(ilpData);
       } catch (error) {
         await this.sendToDeadLetterQueue(event, error);
       }
