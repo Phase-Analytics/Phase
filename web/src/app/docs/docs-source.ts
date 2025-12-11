@@ -2,7 +2,9 @@ import { docs } from 'fumadocs-mdx:collections/server';
 import {
   BookOpen01Icon,
   DiscoverSquareIcon,
+  ServerStack03Icon,
   SourceCodeSquareIcon,
+  ViewIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { type InferPageType, loader } from 'fumadocs-core/source';
@@ -12,6 +14,8 @@ const icons = {
   DiscoverSquareIcon,
   SourceCodeSquareIcon,
   BookOpen01Icon,
+  ViewIcon,
+  ServerStack03Icon,
 };
 
 export const source = loader({

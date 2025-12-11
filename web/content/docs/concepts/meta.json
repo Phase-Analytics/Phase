@@ -1,4 +1,5 @@
 {
   "title": "Concepts",
-  "icon": "BookOpen01Icon"
+  "icon": "BookOpen01Icon",
+  "pages": ["team-billing", "publishing"]
 }
