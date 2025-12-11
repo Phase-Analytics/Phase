@@ -193,12 +193,14 @@ export class EventBuffer {
     const timeoutId = setTimeout(() => controller.abort(), QUESTDB_TIMEOUT_MS);
 
     try {
-      const response = await fetch(`${QUESTDB_HTTP}/exec`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `query=${encodeURIComponent(query)}`,
-        signal: controller.signal,
-      });
+      const response = await fetch(
+        `${QUESTDB_HTTP}/exec?query=${encodeURIComponent(query)}`,
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+        }
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
