@@ -7,53 +7,6 @@ const IDENTIFIER_REGEX = /^[a-zA-Z0-9_-]+$/;
 // biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally checking for control characters
 const CONTROL_CHARS_REGEX = /[\x00-\x1F\x7F]/;
 
-export type EventRecord = {
-  eventId: string;
-  sessionId: string;
-  deviceId: string;
-  appId: string;
-  name: string;
-  params: Record<string, string | number | boolean | null> | null;
-  timestamp: Date;
-};
-
-export async function writeEvent(event: EventRecord): Promise<void> {
-  const url = `${QUESTDB_HTTP}/exec`;
-
-  const paramsValue =
-    event.params !== null
-      ? `'${escapeSqlString(JSON.stringify(event.params))}'`
-      : 'null';
-  const timestampMicros = event.timestamp.getTime() * 1000;
-
-  const query = `
-    INSERT INTO events (event_id, session_id, device_id, app_id, name, params, timestamp)
-    VALUES (
-      '${escapeSqlString(event.eventId)}',
-      '${escapeSqlString(event.sessionId)}',
-      '${escapeSqlString(event.deviceId)}',
-      '${escapeSqlString(event.appId)}',
-      '${escapeSqlString(event.name)}',
-      ${paramsValue},
-      ${timestampMicros}
-    )
-  `;
-
-  const response = await fetch(`${url}?query=${encodeURIComponent(query)}`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `QuestDB insert failed: ${response.status} ${response.statusText} - ${errorText}`
-    );
-  }
-}
-
 type QueryResponse = {
   query: string;
   columns: Array<{ name: string; type: string }>;

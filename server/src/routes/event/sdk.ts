@@ -2,8 +2,8 @@ import { eq } from 'drizzle-orm';
 import { Elysia } from 'elysia';
 import { ulid } from 'ulid';
 import { db, sessions } from '@/db';
+import { getEventBuffer } from '@/lib/event-buffer';
 import { sdkAuthPlugin } from '@/lib/middleware';
-import { writeEvent } from '@/lib/questdb';
 import { sseManager } from '@/lib/sse-manager';
 import {
   invalidateSessionCache,
@@ -82,14 +82,14 @@ export const eventSdkRouter = new Elysia({ prefix: '/events' })
 
         const eventId = ulid();
 
-        await writeEvent({
+        await getEventBuffer().push({
           eventId,
           sessionId: body.sessionId,
           deviceId: session.deviceId,
           appId: device.appId,
           name: body.name,
           params: body.params ?? null,
-          timestamp: clientTimestamp,
+          timestamp: clientTimestamp.toISOString(),
         });
 
         await db

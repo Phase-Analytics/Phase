@@ -2,6 +2,7 @@ import { Elysia } from 'elysia';
 import { pool } from '@/db';
 import { auth } from '@/lib/auth';
 import { authCors, sdkCors, webCors } from '@/lib/cors';
+import { initEventBuffer } from '@/lib/event-buffer';
 import { runMigrations } from '@/lib/migrate';
 import { initQuestDB } from '@/lib/questdb';
 import { sseManager } from '@/lib/sse-manager';
@@ -44,9 +45,21 @@ const app = new Elysia()
     };
   });
 
+let eventBuffer: ReturnType<typeof initEventBuffer> | null = null;
+
 try {
   await runMigrations();
   await initQuestDB();
+
+  if (process.env.REDIS_URL) {
+    eventBuffer = initEventBuffer(process.env.REDIS_URL);
+    eventBuffer.start();
+  } else {
+    console.warn(
+      '[Server] REDIS_URL not set, event buffering disabled - events will not be persisted'
+    );
+  }
+
   sseManager.start();
 } catch (error) {
   console.error('[Server] Failed to start:', error);
@@ -57,6 +70,11 @@ const shutdown = async () => {
   try {
     console.log('[Server] Shutting down...');
     sseManager.stop();
+
+    if (eventBuffer) {
+      await eventBuffer.flushAndClose();
+    }
+
     await pool.end();
     process.exit(0);
   } catch (error) {
