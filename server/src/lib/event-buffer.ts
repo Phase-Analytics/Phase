@@ -12,8 +12,10 @@ export type BufferedEvent = {
 
 const BUFFER_KEY = 'events:buffer';
 const FLUSH_KEY = 'events:flushing';
-const FLUSH_INTERVAL_MS = 3000;
-const BATCH_SIZE = 300;
+const FLUSH_INTERVAL_MS = 2500;
+const FLUSH_THRESHOLD = 500;
+const BATCH_SIZE = 500;
+const MAX_CONCURRENT_WRITES = 10;
 const QUESTDB_HTTP = 'http://questdb:9000';
 const QUESTDB_TIMEOUT_MS = 30_000;
 
@@ -27,6 +29,7 @@ export class EventBuffer {
   private isFlushing = false;
   private isShuttingDown = false;
   private flushPromise: Promise<void> | null = null;
+  private pendingCount = 0;
 
   constructor(redisUrl: string) {
     this.redis = new Redis(redisUrl, {
@@ -73,11 +76,14 @@ export class EventBuffer {
     }
 
     await this.redis.lpush(BUFFER_KEY, JSON.stringify(event));
+    this.pendingCount++;
+
+    if (this.pendingCount >= FLUSH_THRESHOLD) {
+      this.triggerFlush();
+    }
   }
 
-  async pushMany(
-    events: BufferedEvent[]
-  ): Promise<{
+  async pushMany(events: BufferedEvent[]): Promise<{
     success: number;
     failed: Array<{ index: number; error: string }>;
   }> {
@@ -125,7 +131,21 @@ export class EventBuffer {
 
     const successCount =
       validEvents.length - (results?.filter(([err]) => err).length ?? 0);
+
+    this.pendingCount += successCount;
+
+    if (this.pendingCount >= FLUSH_THRESHOLD) {
+      this.triggerFlush();
+    }
+
     return { success: successCount, failed };
+  }
+
+  private triggerFlush(): void {
+    this.pendingCount = 0;
+    this.flush().catch((err) => {
+      console.error('[EventBuffer] Triggered flush error:', err);
+    });
   }
 
   start(): void {
@@ -180,41 +200,68 @@ export class EventBuffer {
       }
     }
 
+    this.pendingCount = 0;
     await this.processBatches();
   }
 
   private async processBatches(): Promise<void> {
-    let _totalProcessed = 0;
-
     while (true) {
-      const rawEvents = await this.redis.lrange(FLUSH_KEY, -BATCH_SIZE, -1);
-
-      if (rawEvents.length === 0) {
+      const totalLen = await this.redis.llen(FLUSH_KEY);
+      if (totalLen === 0) {
         await this.redis.del(FLUSH_KEY);
         break;
       }
 
-      const events: BufferedEvent[] = [];
-      for (const raw of rawEvents) {
-        try {
-          events.push(JSON.parse(raw));
-        } catch {
-          console.error('[EventBuffer] Invalid JSON in buffer, skipping');
-        }
+      const batchCount = Math.ceil(totalLen / BATCH_SIZE);
+      const concurrentBatches = Math.min(batchCount, MAX_CONCURRENT_WRITES);
+
+      const batchPromises: Promise<{ success: boolean; count: number }>[] = [];
+
+      for (let i = 0; i < concurrentBatches; i++) {
+        batchPromises.push(this.processSingleBatch());
       }
 
-      if (events.length > 0) {
-        const success = await this.writeBatchToQuestDB(events);
-        if (success) {
-          await this.redis.ltrim(FLUSH_KEY, 0, -(rawEvents.length + 1));
-          _totalProcessed += events.length;
-        } else {
-          break;
-        }
-      } else {
-        await this.redis.ltrim(FLUSH_KEY, 0, -(rawEvents.length + 1));
+      const results = await Promise.all(batchPromises);
+
+      const allSuccess = results.every((r) => r.success);
+      const totalProcessed = results.reduce((sum, r) => sum + r.count, 0);
+
+      if (!allSuccess || totalProcessed === 0) {
+        break;
       }
     }
+  }
+
+  private async processSingleBatch(): Promise<{
+    success: boolean;
+    count: number;
+  }> {
+    const rawEvents = await this.redis.lrange(FLUSH_KEY, -BATCH_SIZE, -1);
+
+    if (rawEvents.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    const events: BufferedEvent[] = [];
+    for (const raw of rawEvents) {
+      try {
+        events.push(JSON.parse(raw));
+      } catch {
+        console.error('[EventBuffer] Invalid JSON in buffer, skipping');
+      }
+    }
+
+    if (events.length > 0) {
+      const success = await this.writeBatchToQuestDB(events);
+      if (success) {
+        await this.redis.ltrim(FLUSH_KEY, 0, -(rawEvents.length + 1));
+        return { success: true, count: events.length };
+      }
+      return { success: false, count: 0 };
+    }
+
+    await this.redis.ltrim(FLUSH_KEY, 0, -(rawEvents.length + 1));
+    return { success: true, count: 0 };
   }
 
   private buildInsertQuery(events: BufferedEvent[]): string {
@@ -226,15 +273,7 @@ export class EventBuffer {
             : 'null';
         const timestampMicros = new Date(event.timestamp).getTime() * 1000;
 
-        return `(
-          '${escapeSqlString(event.eventId)}',
-          '${escapeSqlString(event.sessionId)}',
-          '${escapeSqlString(event.deviceId)}',
-          '${escapeSqlString(event.appId)}',
-          '${escapeSqlString(event.name)}',
-          ${paramsValue},
-          ${timestampMicros}
-        )`;
+        return `('${escapeSqlString(event.eventId)}','${escapeSqlString(event.sessionId)}','${escapeSqlString(event.deviceId)}','${escapeSqlString(event.appId)}','${escapeSqlString(event.name)}',${paramsValue},${timestampMicros})`;
       })
       .join(',');
 
@@ -246,14 +285,12 @@ export class EventBuffer {
     const timeoutId = setTimeout(() => controller.abort(), QUESTDB_TIMEOUT_MS);
 
     try {
-      const response = await fetch(
-        `${QUESTDB_HTTP}/exec?query=${encodeURIComponent(query)}`,
-        {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal,
-        }
-      );
+      const response = await fetch(`${QUESTDB_HTTP}/exec`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `query=${encodeURIComponent(query)}`,
+        signal: controller.signal,
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -293,16 +330,11 @@ export class EventBuffer {
   private async writeEventsIndividually(
     events: BufferedEvent[]
   ): Promise<boolean> {
-    let _successCount = 0;
-    let _failCount = 0;
-
     for (const event of events) {
       try {
         const query = this.buildInsertQuery([event]);
         await this.executeQuestDBQuery(query);
-        _successCount++;
       } catch (error) {
-        _failCount++;
         await this.sendToDeadLetterQueue(event, error);
       }
     }

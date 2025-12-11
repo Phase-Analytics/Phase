@@ -70,7 +70,7 @@ services:
       - QDB_HTTP_SEND_BUFFER_SIZE=2M
       - QDB_PG_ENABLED=false
       - QDB_LINE_TCP_ENABLED=false
-      - QDB_LINE_HTTP_ENABLED=false
+      - QDB_LINE_HTTP_ENABLED=true
       - QDB_SHARED_WORKER_COUNT=6
       - QDB_HTTP_WORKER_COUNT=6
       - QDB_IO_WORKER_COUNT=4
