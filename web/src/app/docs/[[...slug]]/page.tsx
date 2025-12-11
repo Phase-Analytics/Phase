@@ -2,6 +2,7 @@ import { DocsBody, DocsPage } from 'fumadocs-ui/page';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getPageImage, source } from '@/app/docs/docs-source';
+import { siteConfig } from '@/lib/seo';
 
 type PageDataWithContent = {
   body: React.ComponentType;
@@ -42,9 +43,17 @@ export async function generateMetadata(props: {
     notFound();
   }
 
+  const slug = params.slug?.join('/') ?? '';
+  const canonical = slug
+    ? `${siteConfig.url}/docs/${slug}`
+    : `${siteConfig.url}/docs`;
+
   return {
     title: `${page.data.title} | Telemetra Docs`,
     description: page.data.description,
+    alternates: {
+      canonical,
+    },
     openGraph: {
       title: `${page.data.title} | Telemetra Docs`,
       images: getPageImage(page).url,

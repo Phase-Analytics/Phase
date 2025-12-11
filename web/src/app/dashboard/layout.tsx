@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { DashboardHeader } from '@/app/dashboard/header';
@@ -6,7 +7,15 @@ import { AuthRedirect } from '@/components/auth-redirect';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/sonner';
 import { QueryProvider } from '@/lib/queries/query-provider';
+import { createMetadata, siteConfig } from '@/lib/seo';
 import { ThemeProvider } from '@/lib/theme-provider';
+
+export const metadata: Metadata = createMetadata({
+  title: 'Dashboard',
+  description: 'Manage your analytics and view insights',
+  canonical: `${siteConfig.url}/dashboard`,
+  noIndex: true,
+});
 
 export default async function DashboardLayout({
   children,
