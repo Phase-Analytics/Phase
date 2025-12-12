@@ -5,6 +5,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { useForm } from '@tanstack/react-form';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { CopyButton } from '@/components/ui/copy-button';
 import {
   Dialog,
   DialogContent,
@@ -100,8 +101,9 @@ export function DeleteAppDialog({
                 <div className="space-y-2">
                   <label className="font-medium text-sm" htmlFor="confirm-name">
                     Please type your application name{' '}
-                    <span className="font-semibold text-foreground">
-                      "{appName}"
+                    <span className="inline-flex items-center gap-1.5 font-semibold text-foreground">
+                      {appName}
+                      <CopyButton content={appName} size="xs" variant="ghost" />
                     </span>{' '}
                     to confirm
                   </label>
