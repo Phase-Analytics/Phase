@@ -4,7 +4,6 @@ import { parseAsString, useQueryState } from 'nuqs';
 import { TimescaleChart } from '@/components/timescale-chart';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { TimeRange } from '@/lib/api/types';
 import { useDeviceTimeseries } from '@/lib/queries';
 
@@ -93,27 +92,10 @@ export function UsersActivityChartSkeleton() {
       <CardHeader className="space-y-0 border-b py-5">
         <div className="flex flex-col gap-3">
           <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <Tabs value="total">
-              <TabsList className="h-auto flex-wrap gap-1">
-                <TabsTrigger
-                  className="text-muted-foreground text-xs uppercase"
-                  value="total"
-                >
-                  Total Users
-                </TabsTrigger>
-                <TabsTrigger
-                  className="text-muted-foreground text-xs uppercase"
-                  value="dau"
-                >
-                  Daily Active Users
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <Skeleton className="h-8 w-64" />
             <Skeleton className="h-9 w-24" />
           </div>
-          <p className="text-muted-foreground text-sm">
-            Cumulative total users over selected period
-          </p>
+          <Skeleton className="h-5 w-72" />
         </div>
       </CardHeader>
       <CardContent className="px-2 pt-4 pb-4 sm:px-6 sm:pt-6">

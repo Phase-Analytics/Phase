@@ -42,6 +42,7 @@ function Tabs(props: TabsProps) {
     <TabsProvider value={{ value, setValue }}>
       <TabsPrimitive.Root
         data-slot="tabs"
+        suppressHydrationWarning
         {...props}
         onValueChange={setValue}
       />
@@ -72,7 +73,13 @@ function TabsHighlight({
 type TabsListProps = React.ComponentProps<typeof TabsPrimitive.List>;
 
 function TabsList(props: TabsListProps) {
-  return <TabsPrimitive.List data-slot="tabs-list" {...props} />;
+  return (
+    <TabsPrimitive.List
+      data-slot="tabs-list"
+      suppressHydrationWarning
+      {...props}
+    />
+  );
 }
 
 type TabsHighlightItemProps = HighlightItemProps & {
@@ -86,7 +93,13 @@ function TabsHighlightItem(props: TabsHighlightItemProps) {
 type TabsTriggerProps = React.ComponentProps<typeof TabsPrimitive.Trigger>;
 
 function TabsTrigger(props: TabsTriggerProps) {
-  return <TabsPrimitive.Trigger data-slot="tabs-trigger" {...props} />;
+  return (
+    <TabsPrimitive.Trigger
+      data-slot="tabs-trigger"
+      suppressHydrationWarning
+      {...props}
+    />
+  );
 }
 
 type TabsContentProps = React.ComponentProps<typeof TabsPrimitive.Content> &

@@ -186,7 +186,7 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
                   </p>
                 );
               })()}
-              {device.locale !== null && (
+              {device.locale && (
                 <p className="flex items-center gap-1.5 font-medium text-sm">
                   <HugeiconsIcon
                     className="size-4 text-muted-foreground"
@@ -203,7 +203,7 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
             <div className="mt-1 space-y-2">
               <p className="flex items-center gap-1.5 font-medium text-sm">
                 <HugeiconsIcon
-                  className="fade-in size-4 animate-in text-muted-foreground duration-300"
+                  className="size-4 text-muted-foreground"
                   icon={getPlatformIcon(device.platform)}
                 />
                 <span>
@@ -216,7 +216,7 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
                   )}
                 </span>
               </p>
-              {device.deviceType !== null && (
+              {device.deviceType && (
                 <p className="flex items-center gap-1.5 font-medium text-sm">
                   <HugeiconsIcon
                     className="size-4 text-muted-foreground"
@@ -228,7 +228,7 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
             </div>
           </div>
 
-          {device.appVersion !== null && (
+          {device.appVersion && (
             <div>
               <p className="text-muted-foreground text-xs uppercase">
                 App Version

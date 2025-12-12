@@ -69,6 +69,7 @@ function ChartContainer({
         )}
         data-chart={chartId}
         data-slot="chart"
+        suppressHydrationWarning
         {...props}
       >
         <ChartStyle config={config} id={chartId} />
@@ -108,6 +109,7 @@ ${colorConfig
           )
           .join('\n'),
       }}
+      suppressHydrationWarning
     />
   );
 };

@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePaginationStore } from '@/stores/pagination-store';
 
 export function UsersOverviewCardsSkeleton() {
@@ -50,22 +49,8 @@ export function UsersPlatformDistributionSkeleton() {
   return (
     <Card className="py-0">
       <CardContent className="space-y-4 p-4">
-        <Tabs value="platform">
-          <TabsList className="h-8 gap-1">
-            <TabsTrigger
-              className="text-muted-foreground text-xs uppercase"
-              value="platform"
-            >
-              <span className="sm:hidden">Platforms</span>
-              <span className="hidden sm:inline">Platform Distribution</span>
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        <p className="text-muted-foreground text-sm">
-          User distribution across platforms
-        </p>
-
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-5 w-56" />
         <div className="space-y-3">
           {Array.from({ length: 3 }, (_, i) => `skeleton-platform-${i}`).map(
             (key) => (
@@ -82,29 +67,8 @@ export function UsersTopCountriesSkeleton() {
   return (
     <Card className="py-0">
       <CardContent className="space-y-4 p-4">
-        <Tabs value="country">
-          <TabsList className="h-8 gap-1">
-            <TabsTrigger
-              className="text-muted-foreground text-xs uppercase"
-              value="country"
-            >
-              <span className="sm:hidden">Countries</span>
-              <span className="hidden sm:inline">Countries</span>
-            </TabsTrigger>
-            <TabsTrigger
-              className="text-muted-foreground text-xs uppercase"
-              value="city"
-            >
-              <span className="sm:hidden">Cities</span>
-              <span className="hidden sm:inline">Cities</span>
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        <p className="text-muted-foreground text-sm">
-          User distribution by country
-        </p>
-
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-5 w-48" />
         <div className="space-y-3">
           {Array.from({ length: 3 }, (_, i) => `skeleton-country-${i}`).map(
             (key) => (
