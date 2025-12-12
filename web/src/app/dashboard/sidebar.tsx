@@ -325,7 +325,7 @@ export function DashboardSidebar() {
       </SidebarContent>
 
       <SidebarFooter>
-        <Separator />
+        <Separator className="group-data-[collapsible=icon]:hidden" />
         <SidebarMenu>
           {footerNavItems.map((item) => (
             <SidebarMenuItem key={item.label}>
@@ -353,17 +353,19 @@ export function DashboardSidebar() {
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
-                  className={`transition-opacity duration-300 ${
+                  className={`overflow-visible! transition-opacity duration-300 group-data-[collapsible=icon]:justify-center ${
                     isUserLoaded ? 'opacity-100' : 'opacity-0'
                   }`}
                   size="lg"
                   tooltip="Account"
                 >
-                  <Avatar className="size-8">
-                    <AvatarImage alt={username} src={avatarSrc} />
-                    <AvatarFallback className="bg-transparent" />
-                  </Avatar>
-                  <div className="flex flex-col gap-0.5 leading-none">
+                  <div className="flex shrink-0 items-center justify-center p-0.5">
+                    <Avatar className="size-8">
+                      <AvatarImage alt={username} src={avatarSrc} />
+                      <AvatarFallback className="bg-transparent" />
+                    </Avatar>
+                  </div>
+                  <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
                     <span className="font-sans font-semibold text-sm">
                       {displayName}
                     </span>
@@ -372,7 +374,7 @@ export function DashboardSidebar() {
                     </span>
                   </div>
                   <HugeiconsIcon
-                    className="ml-auto size-4"
+                    className="ml-auto size-4 group-data-[collapsible=icon]:hidden"
                     icon={UnfoldMoreIcon}
                   />
                 </SidebarMenuButton>
