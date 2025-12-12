@@ -86,58 +86,73 @@ export function DeleteAppDialog({
             </DialogDescription>
           </DialogHeader>
           <div className="pt-4 pb-2">
-            <form.Field
-              name="confirmName"
-              validators={{
-                onChange: ({ value }) => {
-                  if (value !== appName) {
-                    return `Please type "${appName}" to confirm`;
-                  }
-                  return;
-                },
-              }}
-            >
-              {(field) => (
-                <div className="space-y-2">
-                  <label className="font-medium text-sm" htmlFor="confirm-name">
-                    Please type your application name{' '}
-                    <span className="inline-flex items-center gap-1.5 font-semibold text-foreground">
-                      {appName}
-                      <CopyButton content={appName} size="xs" variant="ghost" />
-                    </span>{' '}
-                    to confirm
-                  </label>
-                  <Input
-                    autoComplete="off"
-                    disabled={deleteApp.isPending}
-                    id="confirm-name"
-                    onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                    placeholder="Enter application name"
-                    type="text"
-                    value={field.state.value}
-                  />
-                  <AutoHeight
-                    deps={[
-                      field.state.meta.errors.length,
-                      deleteApp.error?.message,
-                    ]}
-                  >
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-destructive text-sm">
-                        {field.state.meta.errors[0]}
-                      </p>
-                    )}
-                    {deleteApp.error && (
-                      <p className="text-destructive text-sm">
-                        {deleteApp.error.message ||
-                          'Failed to delete application'}
-                      </p>
-                    )}
-                  </AutoHeight>
-                </div>
+            <form.Subscribe selector={(state) => state.submissionAttempts}>
+              {(submissionAttempts) => (
+                <form.Field
+                  name="confirmName"
+                  validators={{
+                    onChange: ({ value }) => {
+                      if (value !== appName) {
+                        return `Please type "${appName}" to confirm`;
+                      }
+                      return;
+                    },
+                  }}
+                >
+                  {(field) => {
+                    const showErrors =
+                      submissionAttempts > 0 &&
+                      field.state.meta.errors.length > 0;
+                    return (
+                      <div className="space-y-2">
+                        <label
+                          className="font-medium text-sm"
+                          htmlFor="confirm-name"
+                        >
+                          Please type your application name{' '}
+                          <span className="inline-flex items-center gap-1.5 font-semibold text-foreground">
+                            {appName}
+                            <CopyButton
+                              content={appName}
+                              size="xs"
+                              variant="ghost"
+                            />
+                          </span>{' '}
+                          to confirm
+                        </label>
+                        <Input
+                          autoComplete="off"
+                          disabled={deleteApp.isPending}
+                          id="confirm-name"
+                          onBlur={field.handleBlur}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          placeholder="Enter application name"
+                          type="text"
+                          value={field.state.value}
+                        />
+                        <AutoHeight
+                          deps={[showErrors, deleteApp.error?.message]}
+                        >
+                          {showErrors && (
+                            <p className="text-destructive text-sm">
+                              {field.state.meta.errors[0]}
+                            </p>
+                          )}
+                          {deleteApp.error && (
+                            <p className="text-destructive text-sm">
+                              {deleteApp.error.message ||
+                                'Failed to delete application'}
+                            </p>
+                          )}
+                        </AutoHeight>
+                      </div>
+                    );
+                  }}
+                </form.Field>
               )}
-            </form.Field>
+            </form.Subscribe>
           </div>
           <DialogFooter>
             <Button
@@ -149,11 +164,21 @@ export function DeleteAppDialog({
               Cancel
             </Button>
             <form.Subscribe
-              selector={(state) => [state.canSubmit, state.isSubmitting]}
+              selector={(state) =>
+                [
+                  state.canSubmit,
+                  state.isSubmitting,
+                  state.submissionAttempts,
+                ] as const
+              }
             >
-              {([canSubmit, isSubmitting]) => (
+              {([canSubmit, isSubmitting, submissionAttempts]) => (
                 <Button
-                  disabled={!canSubmit || deleteApp.isPending || isSubmitting}
+                  disabled={
+                    (submissionAttempts > 0 && !canSubmit) ||
+                    deleteApp.isPending ||
+                    isSubmitting
+                  }
                   type="submit"
                   variant="destructive"
                 >

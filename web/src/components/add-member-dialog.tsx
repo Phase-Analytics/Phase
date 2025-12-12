@@ -81,60 +81,71 @@ export function AddMemberDialog({ appId, children }: AddMemberDialogProps) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <form.Field
-              name="email"
-              validators={{
-                onChange: ({ value }) => {
-                  const trimmedValue = value.trim();
+            <form.Subscribe selector={(state) => state.submissionAttempts}>
+              {(submissionAttempts) => (
+                <form.Field
+                  name="email"
+                  validators={{
+                    onChange: ({ value }) => {
+                      const trimmedValue = value.trim();
 
-                  if (!trimmedValue) {
-                    return 'Email is required';
-                  }
+                      if (!trimmedValue) {
+                        return 'Email is required';
+                      }
 
-                  if (!EMAIL_REGEX.test(trimmedValue)) {
-                    return 'Please enter a valid email address';
-                  }
+                      if (!EMAIL_REGEX.test(trimmedValue)) {
+                        return 'Please enter a valid email address';
+                      }
 
-                  return;
-                },
-                onChangeAsyncDebounceMs: 300,
-              }}
-            >
-              {(field) => (
-                <div className="space-y-2">
-                  <label className="font-medium text-sm" htmlFor="member-email">
-                    Email Address
-                  </label>
-                  <Input
-                    autoComplete="off"
-                    disabled={addMember.isPending}
-                    id="member-email"
-                    onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                    placeholder="member@example.com"
-                    type="email"
-                    value={field.state.value}
-                  />
-                  <AutoHeight
-                    deps={[
-                      field.state.meta.errors.length,
-                      addMember.error?.message,
-                    ]}
-                  >
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-destructive text-sm">
-                        {field.state.meta.errors[0]}
-                      </p>
-                    )}
-                    {addMember.error && (
-                      <p className="text-destructive text-sm">
-                        {addMember.error.message || 'Failed to add team member'}
-                      </p>
-                    )}
-                  </AutoHeight>
-                </div>
+                      return;
+                    },
+                  }}
+                >
+                  {(field) => {
+                    const showErrors =
+                      submissionAttempts > 0 &&
+                      field.state.meta.errors.length > 0;
+                    return (
+                      <div className="space-y-2">
+                        <label
+                          className="font-medium text-sm"
+                          htmlFor="member-email"
+                        >
+                          Email Address
+                        </label>
+                        <Input
+                          autoComplete="off"
+                          disabled={addMember.isPending}
+                          id="member-email"
+                          onBlur={field.handleBlur}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          placeholder="member@example.com"
+                          type="email"
+                          value={field.state.value}
+                        />
+                        <AutoHeight
+                          deps={[showErrors, addMember.error?.message]}
+                        >
+                          {showErrors && (
+                            <p className="text-destructive text-sm">
+                              {field.state.meta.errors[0]}
+                            </p>
+                          )}
+                          {addMember.error && (
+                            <p className="text-destructive text-sm">
+                              {addMember.error.message ||
+                                'Failed to add team member'}
+                            </p>
+                          )}
+                        </AutoHeight>
+                      </div>
+                    );
+                  }}
+                </form.Field>
               )}
-            </form.Field>
+            </form.Subscribe>
           </div>
           <DialogFooter>
             <Button
@@ -146,11 +157,21 @@ export function AddMemberDialog({ appId, children }: AddMemberDialogProps) {
               Cancel
             </Button>
             <form.Subscribe
-              selector={(state) => [state.canSubmit, state.isSubmitting]}
+              selector={(state) =>
+                [
+                  state.canSubmit,
+                  state.isSubmitting,
+                  state.submissionAttempts,
+                ] as const
+              }
             >
-              {([canSubmit, isSubmitting]) => (
+              {([canSubmit, isSubmitting, submissionAttempts]) => (
                 <Button
-                  disabled={!canSubmit || addMember.isPending || isSubmitting}
+                  disabled={
+                    (submissionAttempts > 0 && !canSubmit) ||
+                    addMember.isPending ||
+                    isSubmitting
+                  }
                   type="submit"
                 >
                   {addMember.isPending && <Spinner className="mr-2 size-4" />}

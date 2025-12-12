@@ -83,67 +83,74 @@ export function CreateAppDialog({ children, onSuccess }: CreateAppDialogProps) {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <form.Field
-              name="name"
-              validators={{
-                onChange: ({ value }) => {
-                  const trimmedValue = value.trim();
+            <form.Subscribe selector={(state) => state.submissionAttempts}>
+              {(submissionAttempts) => (
+                <form.Field
+                  name="name"
+                  validators={{
+                    onChange: ({ value }) => {
+                      const trimmedValue = value.trim();
 
-                  if (trimmedValue.length === 0) {
-                    return 'Application name is required';
-                  }
+                      if (trimmedValue.length === 0) {
+                        return 'Application name is required';
+                      }
 
-                  if (trimmedValue.length < APP_NAME_MIN_LENGTH) {
-                    return `Application name must be at least ${APP_NAME_MIN_LENGTH} characters`;
-                  }
+                      if (trimmedValue.length < APP_NAME_MIN_LENGTH) {
+                        return `Application name must be at least ${APP_NAME_MIN_LENGTH} characters`;
+                      }
 
-                  if (trimmedValue.length > APP_NAME_MAX_LENGTH) {
-                    return `Application name must be at most ${APP_NAME_MAX_LENGTH} characters`;
-                  }
+                      if (trimmedValue.length > APP_NAME_MAX_LENGTH) {
+                        return `Application name must be at most ${APP_NAME_MAX_LENGTH} characters`;
+                      }
 
-                  if (!APP_NAME_REGEX.test(trimmedValue)) {
-                    return 'Application name can only contain letters, numbers, spaces, and hyphens';
-                  }
+                      if (!APP_NAME_REGEX.test(trimmedValue)) {
+                        return 'Application name can only contain letters, numbers, spaces, and hyphens';
+                      }
 
-                  return;
-                },
-                onChangeAsyncDebounceMs: 300,
-              }}
-            >
-              {(field) => (
-                <div className="space-y-2">
-                  <Input
-                    aria-invalid={field.state.meta.errors.length > 0}
-                    autoComplete="off"
-                    disabled={createApp.isPending}
-                    maxLength={APP_NAME_MAX_LENGTH}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                    placeholder="Enter application name"
-                    type="text"
-                    value={field.state.value}
-                  />
-                  <AutoHeight
-                    deps={[
-                      field.state.meta.errors.length,
-                      createApp.error?.message,
-                    ]}
-                  >
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-destructive text-sm">
-                        {field.state.meta.errors[0]}
-                      </p>
-                    )}
-                    {createApp.error && (
-                      <p className="text-destructive text-sm">
-                        {createApp.error.message ||
-                          'Failed to create application'}
-                      </p>
-                    )}
-                  </AutoHeight>
-                </div>
+                      return;
+                    },
+                  }}
+                >
+                  {(field) => {
+                    const showErrors =
+                      submissionAttempts > 0 &&
+                      field.state.meta.errors.length > 0;
+                    return (
+                      <div className="space-y-2">
+                        <Input
+                          aria-invalid={showErrors}
+                          autoComplete="off"
+                          disabled={createApp.isPending}
+                          maxLength={APP_NAME_MAX_LENGTH}
+                          onBlur={field.handleBlur}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          placeholder="Enter application name"
+                          type="text"
+                          value={field.state.value}
+                        />
+                        <AutoHeight
+                          deps={[showErrors, createApp.error?.message]}
+                        >
+                          {showErrors && (
+                            <p className="text-destructive text-sm">
+                              {field.state.meta.errors[0]}
+                            </p>
+                          )}
+                          {createApp.error && (
+                            <p className="text-destructive text-sm">
+                              {createApp.error.message ||
+                                'Failed to create application'}
+                            </p>
+                          )}
+                        </AutoHeight>
+                      </div>
+                    );
+                  }}
+                </form.Field>
               )}
-            </form.Field>
+            </form.Subscribe>
           </div>
           <DialogFooter>
             <Button
@@ -155,11 +162,21 @@ export function CreateAppDialog({ children, onSuccess }: CreateAppDialogProps) {
               Cancel
             </Button>
             <form.Subscribe
-              selector={(state) => [state.canSubmit, state.isSubmitting]}
+              selector={(state) =>
+                [
+                  state.canSubmit,
+                  state.isSubmitting,
+                  state.submissionAttempts,
+                ] as const
+              }
             >
-              {([canSubmit, isSubmitting]) => (
+              {([canSubmit, isSubmitting, submissionAttempts]) => (
                 <Button
-                  disabled={!canSubmit || createApp.isPending || isSubmitting}
+                  disabled={
+                    (submissionAttempts > 0 && !canSubmit) ||
+                    createApp.isPending ||
+                    isSubmitting
+                  }
                   type="submit"
                 >
                   {createApp.isPending && <Spinner className="mr-2 size-4" />}

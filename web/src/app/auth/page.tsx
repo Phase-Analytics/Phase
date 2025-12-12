@@ -85,7 +85,6 @@ function LoginForm() {
 
                       return;
                     },
-                    onChangeAsyncDebounceMs: 300,
                   }}
                 >
                   {(field) => {
@@ -141,7 +140,6 @@ function LoginForm() {
 
                       return;
                     },
-                    onChangeAsyncDebounceMs: 300,
                   }}
                 >
                   {(field) => {
@@ -313,7 +311,6 @@ function SignupForm() {
 
                       return;
                     },
-                    onChangeAsyncDebounceMs: 300,
                   }}
                 >
                   {(field) => {
@@ -367,7 +364,6 @@ function SignupForm() {
 
                       return;
                     },
-                    onChangeAsyncDebounceMs: 300,
                   }}
                 >
                   {(field) => {
@@ -423,7 +419,6 @@ function SignupForm() {
 
                       return;
                     },
-                    onChangeAsyncDebounceMs: 300,
                   }}
                 >
                   {(field) => {
