@@ -78,6 +78,10 @@ try {
 const shutdown = async () => {
   try {
     console.log('[Server] Shutting down...');
+    app.server?.stop();
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     sseManager.stop();
     shutdownGeoIP();
 
@@ -90,6 +94,8 @@ const shutdown = async () => {
     }
 
     await pool.end();
+
+    console.log('[Server] Shutdown complete');
     process.exit(0);
   } catch (error) {
     console.error('[Server] Shutdown error:', error);
@@ -110,10 +116,18 @@ process.on('unhandledRejection', async (reason) => {
   await shutdown();
 });
 
-app.listen(3001, (server) => {
-  if (server) {
-    console.log(`🦊 Elysia is running at ${server.hostname}:${server.port}`);
-  }
+app.listen({
+  port: 3001,
+  hostname: '0.0.0.0',
+  reusePort: false,
 });
+
+setTimeout(() => {
+  if (app.server) {
+    console.log(
+      `🦊 Elysia is running at ${app.server.hostname}:${app.server.port}`
+    );
+  }
+}, 100);
 
 export default app;
