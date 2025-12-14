@@ -43,25 +43,38 @@ class GeoIPManager {
     await this.downloadDatabase();
   }
 
-  private async downloadDatabase() {
-    try {
-      await mkdir(dirname(GEOIP_DB_PATH), { recursive: true });
+  private async downloadDatabase(retries = 3) {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        await mkdir(dirname(GEOIP_DB_PATH), { recursive: true });
 
-      const tempPath = `${GEOIP_DB_PATH}.tmp`;
-      const response = await fetch(GEOIP_DB_URL);
+        const tempPath = `${GEOIP_DB_PATH}.tmp`;
+        const response = await fetch(GEOIP_DB_URL);
 
-      if (!response.ok) {
-        throw new Error(`Failed to download: ${response.statusText}`);
+        if (!response.ok) {
+          throw new Error(`Failed to download: ${response.statusText}`);
+        }
+
+        const buffer = await response.arrayBuffer();
+        await writeFile(tempPath, Buffer.from(buffer));
+        await rename(tempPath, GEOIP_DB_PATH);
+
+        console.log('✅ [GeoIP] Database downloaded successfully');
+        return;
+      } catch (error) {
+        console.error(
+          `❌ [GeoIP] Download attempt ${attempt}/${retries} failed:`,
+          error
+        );
+
+        if (attempt < retries) {
+          const delay = attempt * 2000;
+          console.log(`⏳ [GeoIP] Retrying in ${delay}ms...`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        } else {
+          throw error;
+        }
       }
-
-      const buffer = await response.arrayBuffer();
-      await writeFile(tempPath, Buffer.from(buffer));
-      await rename(tempPath, GEOIP_DB_PATH);
-
-      console.log('✅ [GeoIP] Database downloaded successfully');
-    } catch (error) {
-      console.error('❌ [GeoIP] Failed to download database:', error);
-      throw error;
     }
   }
 

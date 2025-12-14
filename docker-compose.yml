@@ -53,12 +53,12 @@ services:
       retries: 5
     restart: unless-stopped
 
-  geoip-init:
+  geoip:
     image: busybox:1.36-musl
-    container_name: telemetra-geoip-init
+    container_name: telemetra-geoip
     volumes:
       - geoip-data:/app/geoip
-    command: sh -c "mkdir -p /app/geoip && chown -R 65532:65532 /app/geoip && chmod -R 755 /app/geoip"
+    command: sh -c "mkdir -p /app/geoip && chown -R 65532:65532 /app/geoip && chmod -R 755 /app/geoip && echo 'GeoIP volume ready'"
     networks:
       - telemetra-network
     restart: "no"
@@ -138,7 +138,7 @@ services:
     expose:
       - "3001"
     depends_on:
-      geoip-init:
+      geoip:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
