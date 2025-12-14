@@ -405,7 +405,7 @@ export async function initQuestDB(): Promise<void> {
           app_id SYMBOL CAPACITY 64 CACHE INDEX CAPACITY 262144,
           name SYMBOL CAPACITY 256 CACHE,
           params STRING,
-          is_screen BOOLEAN INDEX,
+          is_screen BOOLEAN,
           timestamp TIMESTAMP
         ) TIMESTAMP(timestamp) PARTITION BY DAY WAL DEDUP UPSERT KEYS(timestamp, event_id)
       `;

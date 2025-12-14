@@ -71,6 +71,18 @@ export const TopEventsResponseSchema = t.Object({
   endDate: t.Union([t.String({ format: 'date-time' }), t.Null()]),
 });
 
+export const TopScreenSchema = t.Object({
+  name: t.String(),
+  count: t.Number({ minimum: 0 }),
+});
+
+export const TopScreensResponseSchema = t.Object({
+  screens: t.Array(TopScreenSchema),
+  appId: t.String(),
+  startDate: t.Union([t.String({ format: 'date-time' }), t.Null()]),
+  endDate: t.Union([t.String({ format: 'date-time' }), t.Null()]),
+});
+
 export const EventTimeseriesDataPointSchema = t.Object({
   date: t.String(),
   dailyEvents: t.Number({ minimum: 0 }),

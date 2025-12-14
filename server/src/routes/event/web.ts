@@ -12,6 +12,7 @@ import {
   getEvents,
   getEventTimeseries,
   getTopEvents,
+  getTopScreens,
 } from '@/lib/questdb';
 import {
   formatPaginationResponse,
@@ -29,6 +30,7 @@ import {
   EventTimeseriesResponseSchema,
   HttpStatus,
   TopEventsResponseSchema,
+  TopScreensResponseSchema,
 } from '@/schemas';
 
 type AuthContext = {
@@ -147,6 +149,7 @@ export const eventWebRouter = new Elysia({ prefix: '/events' })
             eventId: event.event_id,
             name: event.name,
             deviceId: event.device_id,
+            isScreen: event.is_screen,
             timestamp,
           };
         });
@@ -255,6 +258,80 @@ export const eventWebRouter = new Elysia({ prefix: '/events' })
       }),
       response: {
         200: TopEventsResponseSchema,
+        400: ErrorResponseSchema,
+        401: ErrorResponseSchema,
+        403: ErrorResponseSchema,
+        500: ErrorResponseSchema,
+      },
+    }
+  )
+  .get(
+    '/screens/top',
+    async (ctx) => {
+      const { query, user, set } = ctx as typeof ctx & AuthContext;
+      try {
+        if (!user?.id) {
+          set.status = HttpStatus.UNAUTHORIZED;
+          return {
+            code: ErrorCode.UNAUTHORIZED,
+            detail: 'User authentication required',
+          };
+        }
+
+        const appId = query.appId as string;
+        const startDate = query.startDate as string | undefined;
+        const endDate = query.endDate as string | undefined;
+
+        if (!appId) {
+          set.status = HttpStatus.BAD_REQUEST;
+          return {
+            code: ErrorCode.VALIDATION_ERROR,
+            detail: 'appId is required',
+          };
+        }
+
+        const dateRangeValidation = validateDateRange(startDate, endDate);
+        if (!dateRangeValidation.success) {
+          set.status = dateRangeValidation.error.status;
+          return {
+            code: dateRangeValidation.error.code,
+            detail: dateRangeValidation.error.detail,
+          };
+        }
+
+        const topScreens = await getTopScreens({
+          appId,
+          startDate: startDate || undefined,
+          endDate: endDate || undefined,
+          limit: 6,
+        });
+
+        set.status = HttpStatus.OK;
+        return {
+          screens: topScreens,
+          appId,
+          startDate: startDate || null,
+          endDate: endDate || null,
+        };
+      } catch (error) {
+        console.error('[Event.TopScreens] Error:', error);
+        set.status = HttpStatus.INTERNAL_SERVER_ERROR;
+        return {
+          code: ErrorCode.INTERNAL_SERVER_ERROR,
+          detail: 'Failed to fetch top screens',
+        };
+      }
+    },
+    {
+      requireAuth: true,
+      verifyAppAccess: true,
+      query: t.Object({
+        appId: t.String(),
+        startDate: t.Optional(t.String()),
+        endDate: t.Optional(t.String()),
+      }),
+      response: {
+        200: TopScreensResponseSchema,
         400: ErrorResponseSchema,
         401: ErrorResponseSchema,
         403: ErrorResponseSchema,
@@ -449,6 +526,7 @@ export const eventWebRouter = new Elysia({ prefix: '/events' })
           deviceId: event.device_id,
           name: event.name,
           params: parsedParams,
+          isScreen: event.is_screen,
           timestamp,
         };
       } catch (error) {
