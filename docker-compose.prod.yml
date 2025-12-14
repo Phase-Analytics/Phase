@@ -1,0 +1,221 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: telemetra-postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=telemetra
+    command: >
+      postgres
+      -c shared_buffers=512MB
+      -c effective_cache_size=2GB
+      -c maintenance_work_mem=192MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=16MB
+      -c min_wal_size=1GB
+      -c max_wal_size=4GB
+      -c max_connections=100
+      -c max_worker_processes=4
+      -c max_parallel_workers_per_gather=2
+      -c max_parallel_workers=4
+    networks:
+      telemetra-network:
+        aliases:
+          - postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:8.0.5-alpine
+    container_name: telemetra-redis
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      telemetra-network:
+        aliases:
+          - redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  geoip:
+    build:
+      context: ./geoip
+      dockerfile: Dockerfile
+    container_name: telemetra-geoip
+    volumes:
+      - geoip-data:/app/geoip
+    networks:
+      - telemetra-network
+    restart: "no"
+
+  cron:
+    build:
+      context: ./cron
+      dockerfile: Dockerfile
+    container_name: telemetra-cron
+    volumes:
+      - geoip-data:/app/geoip
+    networks:
+      - telemetra-network
+    restart: unless-stopped
+    depends_on:
+      geoip:
+        condition: service_completed_successfully
+
+  questdb:
+    image: questdb/questdb:9.1.1
+    container_name: telemetra-questdb
+    volumes:
+      - questdb-data:/var/lib/questdb
+    environment:
+      - QDB_JAVA_OPTS=-Xms2G -Xmx8G -XX:+UseG1GC -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=16M
+
+      - QDB_HTTP_ENABLED=true
+      - QDB_HTTP_BIND_TO=0.0.0.0:9000
+      - QDB_HTTP_NET_CONNECTION_LIMIT=64
+      - QDB_HTTP_SECURITY_READONLY=false
+      - QDB_HTTP_MIN_ENABLED=false
+      - QDB_HTTP_RECEIVE_BUFFER_SIZE=1M
+      - QDB_HTTP_SEND_BUFFER_SIZE=2M
+      - QDB_PG_ENABLED=false
+      - QDB_LINE_TCP_ENABLED=false
+      - QDB_LINE_HTTP_ENABLED=true
+      - QDB_SHARED_WORKER_COUNT=6
+      - QDB_HTTP_WORKER_COUNT=6
+      - QDB_IO_WORKER_COUNT=4
+      - QDB_CAIRO_WAL_ENABLED_DEFAULT=true
+      - QDB_CAIRO_WAL_APPLY_ENABLED=true
+      - QDB_CAIRO_WAL_APPLY_WORKER_COUNT=4
+      - QDB_CAIRO_WAL_SEGMENT_ROLLOVER_ROW_COUNT=200000
+      - QDB_CAIRO_WAL_MAX_LAG_TXN_COUNT=20
+      - QDB_CAIRO_PAGE_FRAME_COUNT=2048
+      - QDB_CAIRO_PAGE_FRAME_SIZE=128k
+      - QDB_CAIRO_O3_COLUMN_MEMORY_SIZE=8M
+      - QDB_CAIRO_SQL_MAP_PAGE_SIZE=4M
+      - QDB_CAIRO_WRITER_DATA_APPEND_PAGE_SIZE=4M
+      - QDB_CAIRO_MAX_UNCOMMITTED_ROWS=500000
+      - QDB_CAIRO_COMMIT_LAG=5000
+      - QDB_CAIRO_SQL_QUERY_TIMEOUT=60000
+      - QDB_CAIRO_SQL_JIT_MODE=on
+      - QDB_CAIRO_SQL_PARALLEL_FILTER_ENABLED=true
+      - QDB_CAIRO_SYMBOL_CACHE_FLAG=true
+      - QDB_LOG_W_LEVEL=CRITICAL
+      - QDB_LOG_W_FILE_LOCATION=stdout
+      - QDB_TELEMETRY_ENABLED=false
+      - QDB_METRICS_ENABLED=false
+    networks:
+      telemetra-network:
+        aliases:
+          - questdb
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/9000 || exit 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  server:
+    build:
+      context: .
+      dockerfile: ./server/Dockerfile
+    container_name: telemetra-server
+    volumes:
+      - geoip-data:/app/geoip
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - BETTER_AUTH_TELEMETRY=0
+      - SERVER_URL=http://localhost:3001
+      - WEB_URL=http://localhost:3002
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/telemetra
+      - REDIS_URL=redis://redis:6379
+      - QUESTDB_HOST=questdb
+      - QUESTDB_ILP_PORT=9009
+      - GEOIP_DB_PATH=/app/geoip/GeoLite2-City.mmdb
+    expose:
+      - "3001"
+    depends_on:
+      geoip:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      questdb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - telemetra-network
+      - dokploy-network
+    healthcheck:
+      test: ["CMD", "/bin/busybox", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: ./web/Dockerfile
+      args:
+        - NODE_ENV=production
+        - NEXT_TELEMETRY_DISABLED=1
+        - BETTER_AUTH_TELEMETRY=0
+        - NEXT_PUBLIC_SERVER_URL=http://localhost:3001
+    container_name: telemetra-web
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+      - BETTER_AUTH_TELEMETRY=0
+      - NEXT_PUBLIC_SERVER_URL=http://localhost:3001
+    expose:
+      - "3002"
+    depends_on:
+      server:
+        condition: service_healthy
+    networks:
+      - telemetra-network
+      - dokploy-network
+    healthcheck:
+      test: ["CMD-SHELL", "bun -e \"fetch('http://localhost:3002', {method: 'HEAD'}).then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+networks:
+  telemetra-network:
+    driver: bridge
+  dokploy-network:
+    external: true
+
+volumes:
+  postgres-data:
+    driver: local
+  questdb-data:
+    driver: local
+  redis-data:
+    driver: local
+  geoip-data:
+    driver: local
+

@@ -35,6 +35,21 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Detect changed paths (before version bump)
+        id: changes
+        run: |
+          if [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+          else
+            FILES=$(git diff-tree --no-commit-id --name-only -r HEAD)
+          fi
+          echo "Changed files:"
+          echo "$FILES"
+          echo "server=$(echo "$FILES" | grep -E '^server/' | wc -l)" >> $GITHUB_OUTPUT
+          echo "web=$(echo "$FILES" | grep -E '^web/' | wc -l)" >> $GITHUB_OUTPUT
+          echo "geoip=$(echo "$FILES" | grep -E '^geoip/' | wc -l)" >> $GITHUB_OUTPUT
+          echo "cron=$(echo "$FILES" | grep -E '^cron/' | wc -l)" >> $GITHUB_OUTPUT
+
       - name: Bump version
         id: bump
         continue-on-error: true
@@ -70,15 +85,6 @@ jobs:
         run: |
           git tag ${{ steps.bump.outputs.tag }}
           git push origin ${{ steps.bump.outputs.tag }}
-
-      - name: Detect changed paths
-        if: steps.bump.outcome == 'success'
-        id: changes
-        run: |
-          echo "server=$(git diff --name-only HEAD~1 HEAD | grep -E '^server/' | wc -l)" >> $GITHUB_OUTPUT
-          echo "web=$(git diff --name-only HEAD~1 HEAD | grep -E '^web/' | wc -l)" >> $GITHUB_OUTPUT
-          echo "geoip=$(git diff --name-only HEAD~1 HEAD | grep -E '^geoip/' | wc -l)" >> $GITHUB_OUTPUT
-          echo "cron=$(git diff --name-only HEAD~1 HEAD | grep -E '^cron/' | wc -l)" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         if: steps.bump.outcome == 'success'
@@ -198,20 +204,4 @@ jobs:
             ## What's Changed
 
             See [CHANGELOG.md](CHANGELOG.md) for details.
-
-            ## Docker Images
-
-            ```bash
-            # Quick start
-            docker compose up -d
-
-            # Or pull specific images:
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-server:latest
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-web:latest
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-geoip:latest
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-cron:latest
-
-            # Or use specific version:
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-server:${{ steps.bump.outputs.tag }}
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-web:${{ steps.bump.outputs.tag }}
             ```
