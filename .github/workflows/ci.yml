@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 env:
@@ -11,31 +13,33 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  version-and-build:
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: write
       packages: write
-
-    outputs:
-      version: ${{ steps.bump.outputs.version }}
-      tag: ${{ steps.bump.outputs.tag }}
-      bump_type: ${{ steps.bump.outputs.bump_type }}
-      should_skip: ${{ steps.bump.outcome == 'failure' }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+      - name: Get version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG=${GITHUB_REF#refs/tags/}
+            VERSION=${TAG#v}
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+          else
+            echo "version=dev" >> $GITHUB_OUTPUT
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Detect changed paths (before version bump)
+      - name: Detect changed paths
+        if: startsWith(github.ref, 'refs/heads/')
         id: changes
         run: |
           if [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
@@ -50,66 +54,47 @@ jobs:
           echo "geoip=$(echo "$FILES" | grep -E '^geoip/' | wc -l)" >> $GITHUB_OUTPUT
           echo "cron=$(echo "$FILES" | grep -E '^cron/' | wc -l)" >> $GITHUB_OUTPUT
 
-      - name: Bump version
-        id: bump
-        continue-on-error: true
+      - name: Set build flags
+        id: build_flags
         run: |
-          bun run scripts/bump-version.ts
-          echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
-          echo "tag=v$(cat VERSION)" >> $GITHUB_OUTPUT
-
-      - name: Get bump type from commit
-        id: bump_type
-        if: steps.bump.outcome == 'success'
-        run: |
-          COMMIT_MSG=$(git log -1 --pretty=%B)
-          if [[ "$COMMIT_MSG" == *"[major]"* ]]; then
-            echo "bump_type=major" >> $GITHUB_OUTPUT
-          elif [[ "$COMMIT_MSG" == *"[minor]"* ]]; then
-            echo "bump_type=minor" >> $GITHUB_OUTPUT
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "Building all services (tag push)"
+            echo "server=1" >> $GITHUB_OUTPUT
+            echo "web=1" >> $GITHUB_OUTPUT
+            echo "geoip=1" >> $GITHUB_OUTPUT
+            echo "cron=1" >> $GITHUB_OUTPUT
+            echo "is_release=true" >> $GITHUB_OUTPUT
           else
-            echo "bump_type=patch" >> $GITHUB_OUTPUT
+            echo "Building changed services only (branch push)"
+            echo "server=${{ steps.changes.outputs.server }}" >> $GITHUB_OUTPUT
+            echo "web=${{ steps.changes.outputs.web }}" >> $GITHUB_OUTPUT
+            echo "geoip=${{ steps.changes.outputs.geoip }}" >> $GITHUB_OUTPUT
+            echo "cron=${{ steps.changes.outputs.cron }}" >> $GITHUB_OUTPUT
+            echo "is_release=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Commit version bump
-        if: steps.bump.outcome == 'success'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add VERSION
-          git commit -m "chore: bump version to ${{ steps.bump.outputs.version }} [skip-v]"
-          git push
-
-      - name: Create git tag
-        if: steps.bump.outcome == 'success'
-        run: |
-          git tag ${{ steps.bump.outputs.tag }}
-          git push origin ${{ steps.bump.outputs.tag }}
-
       - name: Set up Docker Buildx
-        if: steps.bump.outcome == 'success'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to Container Registry
-        if: steps.bump.outcome == 'success'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Server
-        if: steps.bump.outcome == 'success' && steps.changes.outputs.server > 0
+      - name: Extract Server metadata
+        if: steps.build_flags.outputs.server > 0
         id: meta-server
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-server
           tags: |
             type=raw,value=latest
-            type=raw,value=${{ steps.bump.outputs.tag }}
+            type=raw,value=${{ steps.version.outputs.tag }}
 
       - name: Build and push Server image
-        if: steps.bump.outcome == 'success' && steps.changes.outputs.server > 0
+        if: steps.build_flags.outputs.server > 0
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -120,18 +105,18 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Extract metadata (tags, labels) for Web
-        if: steps.bump.outcome == 'success' && steps.changes.outputs.web > 0
+      - name: Extract Web metadata
+        if: steps.build_flags.outputs.web > 0
         id: meta-web
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-web
           tags: |
             type=raw,value=latest
-            type=raw,value=${{ steps.bump.outputs.tag }}
+            type=raw,value=${{ steps.version.outputs.tag }}
 
       - name: Build and push Web image
-        if: steps.bump.outcome == 'success' && steps.changes.outputs.web > 0
+        if: steps.build_flags.outputs.web > 0
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -146,18 +131,18 @@ jobs:
             NEXT_TELEMETRY_DISABLED=1
             BETTER_AUTH_TELEMETRY=0
 
-      - name: Extract metadata (tags, labels) for GeoIP
-        if: steps.bump.outcome == 'success' && steps.changes.outputs.geoip > 0
+      - name: Extract GeoIP metadata
+        if: steps.build_flags.outputs.geoip > 0
         id: meta-geoip
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-geoip
           tags: |
             type=raw,value=latest
-            type=raw,value=${{ steps.bump.outputs.tag }}
+            type=raw,value=${{ steps.version.outputs.tag }}
 
       - name: Build and push GeoIP image
-        if: steps.bump.outcome == 'success' && steps.changes.outputs.geoip > 0
+        if: steps.build_flags.outputs.geoip > 0
         uses: docker/build-push-action@v6
         with:
           context: ./geoip
@@ -168,18 +153,18 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Extract metadata (tags, labels) for Cron
-        if: steps.bump.outcome == 'success' && steps.changes.outputs.cron > 0
+      - name: Extract Cron metadata
+        if: steps.build_flags.outputs.cron > 0
         id: meta-cron
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-cron
           tags: |
             type=raw,value=latest
-            type=raw,value=${{ steps.bump.outputs.tag }}
+            type=raw,value=${{ steps.version.outputs.tag }}
 
       - name: Build and push Cron image
-        if: steps.bump.outcome == 'success' && steps.changes.outputs.cron > 0
+        if: steps.build_flags.outputs.cron > 0
         uses: docker/build-push-action@v6
         with:
           context: ./cron
@@ -191,17 +176,21 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Create GitHub Release
-        if: steps.bump.outcome == 'success' && (steps.bump_type.outputs.bump_type == 'major' || steps.bump_type.outputs.bump_type == 'minor')
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: steps.build_flags.outputs.is_release == 'true'
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.bump.outputs.tag }}
-          release_name: Release ${{ steps.bump.outputs.tag }}
-          draft: false
-          prerelease: false
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Release ${{ steps.version.outputs.tag }}
           body: |
             ## What's Changed
 
             See [CHANGELOG.md](CHANGELOG.md) for details.
+
+            ## Docker Images
+
+            ```bash
+            # Quick start
+            docker compose up -d
             ```
+          draft: false
+          prerelease: false

@@ -1,5 +1,4 @@
 FROM busybox:1.36-musl
-
 WORKDIR /scripts
 
 COPY update.sh .

@@ -1,5 +1,5 @@
 {
-  "name": "telemetra",
+  "name": "telemetra-main",
   "private": true,
   "workspaces": [
     "server",
