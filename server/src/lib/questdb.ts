@@ -345,14 +345,24 @@ export async function initQuestDB(): Promise<void> {
     const url = `${QUESTDB_HTTP}/exec`;
 
     try {
+      // TEMPORARY: Drop table to apply schema changes (remove after first deployment)
+      const dropTableQuery = 'DROP TABLE IF EXISTS events';
+      await fetch(`${url}?query=${encodeURIComponent(dropTableQuery)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
       const eventsTableQuery = `
         CREATE TABLE IF NOT EXISTS events (
           event_id SYMBOL CAPACITY 256 CACHE,
           session_id SYMBOL CAPACITY 256 CACHE INDEX CAPACITY 1048576,
-          device_id SYMBOL CAPACITY 256 CACHE,
+          device_id SYMBOL CAPACITY 256 CACHE INDEX CAPACITY 524288,
           app_id SYMBOL CAPACITY 64 CACHE INDEX CAPACITY 262144,
           name SYMBOL CAPACITY 256 CACHE,
           params STRING,
+          is_screen BOOLEAN INDEX,
           timestamp TIMESTAMP
         ) TIMESTAMP(timestamp) PARTITION BY DAY WAL DEDUP UPSERT KEYS(timestamp, event_id)
       `;
