@@ -119,7 +119,7 @@ process.on('unhandledRejection', async (reason) => {
 app.listen({
   port: 3001,
   hostname: '0.0.0.0',
-  reusePort: false,
+  reusePort: true,
 });
 
 setTimeout(() => {
