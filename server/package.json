@@ -1,5 +1,5 @@
 {
-  "name": "telemetra-server",
+  "name": "server",
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "build": "bun build --compile --minify --sourcemap --outfile server src/index.ts",
