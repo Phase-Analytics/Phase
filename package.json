@@ -1,5 +1,5 @@
 {
-  "name": "telemetra",
+  "name": "phase",
   "private": true,
   "workspaces": [
     "server",

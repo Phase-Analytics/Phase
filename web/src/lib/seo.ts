@@ -1,15 +1,15 @@
 import type { Metadata } from 'next';
 
-const SITE_URL = 'https://telemetra.dev';
-const SITE_NAME = 'Telemetra';
+const SITE_URL = 'https://phase.sh';
+const SITE_NAME = 'Phase';
 
 export const siteConfig = {
   name: SITE_NAME,
   url: SITE_URL,
   description:
-    'Open-source, privacy-focused analytics platform for mobile applications. Real-time insights without compromising user privacy.',
+    'Privacy-focused, open source mobile analytics platform. Real-time insights, event tracking, user & session tracking, screen views, and more.',
   keywords: [
-    'react nativ analytics',
+    'react native analytics',
     'expo analytics',
     'privacy focused analytics',
     'real-time analytics',
@@ -25,8 +25,8 @@ export const siteConfig = {
   creator: 'Berkinory',
   publisher: 'Berkinory',
   twitter: {
-    handle: '@telemetra.dev',
-    site: '@telemetra.dev',
+    handle: '@berkinory',
+    site: 'https://mirac.dev',
   },
   ogImage: `${SITE_URL}/og.png`,
 } as const;
@@ -49,7 +49,7 @@ export const baseMetadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Telemetra',
+    title: 'Phase',
   },
   other: {
     'theme-color': '#000000',
@@ -73,20 +73,20 @@ export const baseMetadata: Metadata = {
     locale: 'en_US',
     url: siteConfig.url,
     siteName: siteConfig.name,
-    title: `${siteConfig.name} - Open Source Analytics Platform`,
+    title: `${siteConfig.name} - Analytics Platform`,
     description: siteConfig.description,
     images: [
       {
         url: siteConfig.ogImage,
         width: 1200,
         height: 630,
-        alt: `${siteConfig.name} - Open Source Analytics Platform`,
+        alt: `${siteConfig.name} - Analytics Platform`,
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${siteConfig.name} - Open Source Analytics Platform`,
+    title: `${siteConfig.name} - Analytics Platform`,
     description: siteConfig.description,
     images: [siteConfig.ogImage],
     creator: siteConfig.twitter.handle,
@@ -198,7 +198,7 @@ export const jsonLd = {
     name: siteConfig.name,
     url: siteConfig.url,
     logo: `${siteConfig.url}/phase/logo.svg`,
-    sameAs: ['https://github.com/telemetra', 'https://x.com/telemetra.dev'],
+    sameAs: ['https://github.com/phase-analytics'],
   }),
 
   software: (): JsonLdSoftwareApplication => ({

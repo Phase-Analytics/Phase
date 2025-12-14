@@ -143,13 +143,13 @@ const footerNavItems: NavItem[] = [
   {
     label: 'Status',
     icon: Activity03Icon,
-    path: 'https://status.telemetra.dev',
+    path: 'https://status.phase.sh',
     tooltip: 'Status',
   },
   {
     label: 'Github',
     icon: GithubIcon,
-    path: 'https://github.com',
+    path: 'https://github.com/phase-analytics/Phase/',
     tooltip: 'Github',
   },
 ];

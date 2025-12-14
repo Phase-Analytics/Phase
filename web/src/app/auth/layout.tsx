@@ -6,7 +6,7 @@ import { createMetadata, siteConfig } from '@/lib/seo';
 
 export const metadata: Metadata = createMetadata({
   title: 'Auth',
-  description: 'Sign in to your Telemetra account',
+  description: 'Sign in to your Phase account',
   canonical: `${siteConfig.url}/auth`,
   noIndex: true,
 });

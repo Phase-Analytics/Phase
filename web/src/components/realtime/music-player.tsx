@@ -14,11 +14,11 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
 const LOFI_PLAYLIST = [
-  'https://telemetra.b-cdn.net/lofi-1.mp3',
-  'https://telemetra.b-cdn.net/lofi-2.mp3',
-  'https://telemetra.b-cdn.net/lofi-3.mp3',
-  'https://telemetra.b-cdn.net/lofi-4.mp3',
-  'https://telemetra.b-cdn.net/lofi-5.mp3',
+  'https://phase.b-cdn.net/lofi-1.mp3',
+  'https://phase.b-cdn.net/lofi-2.mp3',
+  'https://phase.b-cdn.net/lofi-3.mp3',
+  'https://phase.b-cdn.net/lofi-4.mp3',
+  'https://phase.b-cdn.net/lofi-5.mp3',
 ];
 
 function shuffleArray<T>(array: T[]): T[] {

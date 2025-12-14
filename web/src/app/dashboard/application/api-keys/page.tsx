@@ -95,9 +95,9 @@ export default function ApiKeysPage() {
                 <h3 className="font-semibold text-sm">About API Keys</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">
                   API keys are used by your applications to communicate with
-                  Telemetra. They are safe to use on the client side and do not
-                  need to be hidden. If you suspect abuse or unauthorized usage,
-                  you can rotate your key at any time.
+                  Phase. They are safe to use on the client side and do not need
+                  to be hidden. If you suspect abuse or unauthorized usage, you
+                  can rotate your key at any time.
                 </p>
               </div>
             </CardContent>

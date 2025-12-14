@@ -20,7 +20,7 @@ export const auth = betterAuth({
   trustedOrigins: [
     process.env.WEB_URL || 'http://localhost:3002',
     'http://localhost:3002',
-    'https://telemetra.dev',
+    'https://phase.sh',
   ],
   session: {
     expiresIn: 60 * 60 * 24 * 7,
@@ -37,8 +37,7 @@ export const auth = betterAuth({
     },
     defaultCookieAttributes: {
       sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'none',
-      domain:
-        process.env.NODE_ENV === 'production' ? '.telemetra.dev' : undefined,
+      domain: process.env.NODE_ENV === 'production' ? '.phase.sh' : undefined,
     },
   },
 });

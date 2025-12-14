@@ -1,7 +1,7 @@
 {
-  "name": "Telemetra Analytics",
-  "short_name": "Telemetra",
-  "description": "Open-source, privacy-focused analytics platform for mobile applications.",
+  "name": "Phase Analytics",
+  "short_name": "Phase",
+  "description": "Privacy-focused, open source mobile analytics platform. Real-time insights, event tracking, user & session tracking, screen views, and more.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",

@@ -53,7 +53,7 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-1 flex-col gap-8 p-8">
       <div className="text-center">
-        <h1 className="font-bold font-sans text-4xl">Welcome to Telemetra</h1>
+        <h1 className="font-bold font-sans text-4xl">Welcome to Phase</h1>
         <p className="mt-3 text-lg text-muted-foreground">
           Select an application to view analytics and insights
         </p>
@@ -195,7 +195,7 @@ export default function DashboardPage() {
                           Documentation
                         </h3>
                         <p className="text-muted-foreground text-sm">
-                          Learn how to use Telemetra
+                          Learn how to use Phase
                         </p>
                       </div>
                     </div>
@@ -236,7 +236,7 @@ export default function DashboardPage() {
 
               <Link
                 className="block"
-                href="https://status.telemetra.dev"
+                href="https://status.phase.sh"
                 target="_blank"
               >
                 <Card className="cursor-pointer py-0 transition-colors hover:bg-accent">
@@ -265,7 +265,11 @@ export default function DashboardPage() {
                 </Card>
               </Link>
 
-              <Link className="block" href="https://github.com" target="_blank">
+              <Link
+                className="block"
+                href="https://github.com/phase-analytics/Phase/"
+                target="_blank"
+              >
                 <Card className="cursor-pointer py-0 transition-colors hover:bg-accent">
                   <CardContent className="flex items-center justify-between p-4">
                     <div className="flex items-center gap-3">

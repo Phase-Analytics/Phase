@@ -1,31 +1,31 @@
 ---
 title: React Native
-description: Get started with Telemetra in your React Native app
+description: Get started with Phase in your React Native app
 ---
 
 
-Learn how to integrate Telemetra into your bare React Native application.
+Learn how to integrate Phase into your bare React Native application.
 
 ## Installation
 
-Install the Telemetra SDK using your preferred package manager:
+Install the Phase SDK using your preferred package manager:
 
 ```bash
-npm install telemetra-react-native
+npm install Phase-react-native
 # or
-yarn add telemetra-react-native
+yarn add Phase-react-native
 ```
 
 ## Configuration
 
-Configure your Telemetra instance with your API key:
+Configure your Phase instance with your API key:
 
 ```typescript
-import { Telemetra } from 'telemetra-react-native';
+import { Phase } from 'Phase-react-native';
 
-const telemetra = new Telemetra({
+const Phase = new Phase({
   apiKey: 'your-api-key',
-  endpoint: 'https://api.telemetra.com',
+  endpoint: 'https://api.Phase.com',
 });
 ```
 
@@ -34,7 +34,7 @@ const telemetra = new Telemetra({
 Track custom events in your application:
 
 ```typescript
-telemetra.track('button_clicked', {
+Phase.track('button_clicked', {
   buttonName: 'signup',
   page: 'homepage',
 });

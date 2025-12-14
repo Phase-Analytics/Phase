@@ -61,7 +61,7 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
           category: 'Resources',
           icon: Activity03Icon,
           keywords: ['status', 'uptime', 'health', 'availability'],
-          path: 'https://status.telemetra.dev',
+          path: 'https://status.phase.sh',
           external: true,
         },
         {
@@ -71,7 +71,7 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
           category: 'Resources',
           icon: GithubIcon,
           keywords: ['github', 'source', 'code', 'repository'],
-          path: 'https://github.com',
+          path: 'https://github.com/phase-analytics/Phase/',
           external: true,
         },
         {
@@ -177,7 +177,7 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
         category: 'Resources',
         icon: Activity03Icon,
         keywords: ['status', 'uptime', 'health', 'availability'],
-        path: 'https://status.telemetra.dev',
+        path: 'https://status.phase.sh',
         external: true,
       },
       {
@@ -187,7 +187,7 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
         category: 'Resources',
         icon: GithubIcon,
         keywords: ['github', 'source', 'code', 'repository'],
-        path: 'https://github.com',
+        path: 'https://github.com/phase-analytics/Phase/',
         external: true,
       },
       {

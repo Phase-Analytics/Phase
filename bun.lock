@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "telemetra",
+      "name": "phase",
       "devDependencies": {
         "@biomejs/biome": "2.2.5",
         "typescript": "^5",

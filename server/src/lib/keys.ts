@@ -8,7 +8,7 @@ const nanoid = customAlphabet(
 const numericNanoid = customAlphabet('0123456789', 15);
 
 export function generateAppKey(): string {
-  return `telemetra_${nanoid()}`;
+  return `phase_${nanoid()}`;
 }
 
 export function generateAppId(): string {

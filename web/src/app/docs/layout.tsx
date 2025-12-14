@@ -9,7 +9,7 @@ import { DocsBodyClass } from './docs-body-class';
 export const metadata: Metadata = {
   title: {
     template: '%s',
-    default: 'Documentation | Telemetra Docs',
+    default: 'Documentation | Phase Docs',
   },
   openGraph: {
     images: undefined,

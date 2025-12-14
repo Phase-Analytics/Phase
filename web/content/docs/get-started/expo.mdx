@@ -1,29 +1,29 @@
 ---
 title: Expo
-description: Get started with Telemetra in your Expo app
+description: Get started with Phase in your Expo app
 ---
 
 
-Learn how to integrate Telemetra into your Expo application.
+Learn how to integrate Phase into your Expo application.
 
 ## Installation
 
-Install the Telemetra SDK using your preferred package manager:
+Install the Phase SDK using your preferred package manager:
 
 ```bash
-npx expo install telemetra-expo
+npx expo install Phase-expo
 ```
 
 ## Configuration
 
-Configure your Telemetra instance with your API key:
+Configure your Phase instance with your API key:
 
 ```typescript
-import { Telemetra } from 'telemetra-expo';
+import { Phase } from 'Phase-expo';
 
-const telemetra = new Telemetra({
+const Phase = new Phase({
   apiKey: 'your-api-key',
-  endpoint: 'https://api.telemetra.com',
+  endpoint: 'https://api.Phase.com',
 });
 ```
 
@@ -32,7 +32,7 @@ const telemetra = new Telemetra({
 Track custom events in your application:
 
 ```typescript
-telemetra.track('button_clicked', {
+Phase.track('button_clicked', {
   buttonName: 'signup',
   page: 'homepage',
 });

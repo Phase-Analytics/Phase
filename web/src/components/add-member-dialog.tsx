@@ -77,7 +77,7 @@ export function AddMemberDialog({ appId, children }: AddMemberDialogProps) {
             <DialogTitle>Add Team Member</DialogTitle>
             <DialogDescription>
               Enter the email address of the user you want to add to your team.
-              They must have a Telemetra account.
+              They must have a Phase account.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

@@ -49,13 +49,13 @@ export async function generateMetadata(props: {
     : `${siteConfig.url}/docs`;
 
   return {
-    title: `${page.data.title} | Telemetra Docs`,
+    title: `${page.data.title} | Phase Docs`,
     description: page.data.description,
     alternates: {
       canonical,
     },
     openGraph: {
-      title: `${page.data.title} | Telemetra Docs`,
+      title: `${page.data.title} | Phase Docs`,
       images: getPageImage(page).url,
     },
   };

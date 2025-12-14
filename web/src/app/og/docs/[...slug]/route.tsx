@@ -151,7 +151,7 @@ export async function GET(
               color: colors.foreground,
             }}
           >
-            Telemetra
+            Phase
           </span>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -173,7 +173,7 @@ export async function GET(
                 color: colors.muted,
               }}
             >
-              berkinory/Telemetra
+              phase-analytics/Phase
             </span>
           </div>
         </div>

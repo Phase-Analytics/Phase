@@ -1,13 +1,13 @@
 services:
   postgres:
     image: postgres:17
-    container_name: telemetra-postgres
+    container_name: phase-postgres
     volumes:
       - postgres-data:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=telemetra
+      - POSTGRES_DB=phase
     command: >
       postgres
       -c shared_buffers=512MB
@@ -26,7 +26,7 @@ services:
       -c max_parallel_workers_per_gather=2
       -c max_parallel_workers=4
     networks:
-      telemetra-network:
+      phase-network:
         aliases:
           - postgres
     healthcheck:
@@ -38,12 +38,12 @@ services:
 
   redis:
     image: redis:8.0.5-alpine
-    container_name: telemetra-redis
+    container_name: phase-redis
     command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
     volumes:
       - redis-data:/data
     networks:
-      telemetra-network:
+      phase-network:
         aliases:
           - redis
     healthcheck:
@@ -57,22 +57,22 @@ services:
     build:
       context: ./geoip
       dockerfile: Dockerfile
-    container_name: telemetra-geoip
+    container_name: phase-geoip
     volumes:
       - geoip-data:/app/geoip
     networks:
-      - telemetra-network
+      - phase-network
     restart: "no"
 
   cron:
     build:
       context: ./cron
       dockerfile: Dockerfile
-    container_name: telemetra-cron
+    container_name: phase-cron
     volumes:
       - geoip-data:/app/geoip
     networks:
-      - telemetra-network
+      - phase-network
     restart: unless-stopped
     depends_on:
       geoip:
@@ -80,7 +80,7 @@ services:
 
   questdb:
     image: questdb/questdb:9.1.1
-    container_name: telemetra-questdb
+    container_name: phase-questdb
     volumes:
       - questdb-data:/var/lib/questdb
     environment:
@@ -120,7 +120,7 @@ services:
       - QDB_TELEMETRY_ENABLED=false
       - QDB_METRICS_ENABLED=false
     networks:
-      telemetra-network:
+      phase-network:
         aliases:
           - questdb
     healthcheck:
@@ -135,7 +135,7 @@ services:
     build:
       context: .
       dockerfile: ./server/Dockerfile
-    container_name: telemetra-server
+    container_name: phase-server
     volumes:
       - geoip-data:/app/geoip
     environment:
@@ -145,7 +145,7 @@ services:
       - BETTER_AUTH_TELEMETRY=0
       - SERVER_URL=${SERVER_URL}
       - WEB_URL=${WEB_URL}
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/telemetra
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/phase
       - REDIS_URL=redis://redis:6379
       - QUESTDB_HOST=questdb
       - QUESTDB_ILP_PORT=9009
@@ -162,7 +162,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - telemetra-network
+      - phase-network
       - dokploy-network
     healthcheck:
       test: ["CMD", "/bin/busybox", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
@@ -181,7 +181,7 @@ services:
         - NEXT_TELEMETRY_DISABLED=1
         - BETTER_AUTH_TELEMETRY=0
         - NEXT_PUBLIC_SERVER_URL=${SERVER_URL}
-    container_name: telemetra-web
+    container_name: phase-web
     environment:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
@@ -193,7 +193,7 @@ services:
       server:
         condition: service_healthy
     networks:
-      - telemetra-network
+      - phase-network
       - dokploy-network
     healthcheck:
       test: ["CMD-SHELL", "bun -e \"fetch('http://localhost:3002', {method: 'HEAD'}).then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
@@ -204,7 +204,7 @@ services:
     restart: unless-stopped
 
 networks:
-  telemetra-network:
+  phase-network:
     driver: bridge
   dokploy-network:
     external: true
