@@ -2,19 +2,23 @@
   "name": "phase",
   "private": true,
   "workspaces": [
-    "server",
-    "web"
+    "apps/*",
+    "packages/*"
   ],
   "scripts": {
-    "dev": "bun run --filter server dev & bun run --filter web dev",
+    "dev": "bun run dev:server & bun run dev:web",
     "dev:server": "bun run --filter server dev",
     "dev:web": "bun run --filter web dev",
-    "build": "bun run --filter server build && bun run --filter web build",
+    "build": "bun run build:packages && bun run build:apps",
+    "build:apps": "bun run --filter './apps/*' build",
     "build:server": "bun run --filter server build",
     "build:web": "bun run --filter web build",
-    "db:studio": "drizzle-kit studio",
+    "db:studio": "bun run --filter server db:studio",
+    "db:generate": "bun run --filter server db:generate",
+    "db:migrate": "bun run --filter server db:migrate",
+    "db:push": "bun run --filter server db:push",
     "check": "bunx ultracite fix --unsafe",
-    "typecheck": "bun run --filter server typecheck && bun run --filter web typecheck"
+    "typecheck": "tsgo --noEmit"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.5",

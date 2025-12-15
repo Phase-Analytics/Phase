@@ -55,8 +55,8 @@ services:
 
   geoip:
     build:
-      context: ./geoip
-      dockerfile: Dockerfile
+      context: ./tooling/geoip
+      dockerfile: ../../infrastructure/docker/geoip.Dockerfile
     container_name: phase-geoip
     volumes:
       - geoip-data:/app/geoip
@@ -66,8 +66,8 @@ services:
 
   cron:
     build:
-      context: ./cron
-      dockerfile: Dockerfile
+      context: ./tooling/cron
+      dockerfile: ../../infrastructure/docker/cron.Dockerfile
     container_name: phase-cron
     volumes:
       - geoip-data:/app/geoip
@@ -134,7 +134,7 @@ services:
   server:
     build:
       context: .
-      dockerfile: ./server/Dockerfile
+      dockerfile: ./infrastructure/docker/server.Dockerfile
     container_name: phase-server
     volumes:
       - geoip-data:/app/geoip
@@ -175,7 +175,7 @@ services:
   web:
     build:
       context: .
-      dockerfile: ./web/Dockerfile
+      dockerfile: ./infrastructure/docker/web.Dockerfile
       args:
         - NODE_ENV=production
         - NEXT_TELEMETRY_DISABLED=1

@@ -1,0 +1,184 @@
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { fetchApi } from '@/lib/api/client';
+import type {
+  AddTeamMemberRequest,
+  AddTeamMemberResponse,
+  AppCreated,
+  AppDetailResponse,
+  AppKeysResponse,
+  AppsListResponse,
+  AppTeamResponse,
+  CreateAppRequest,
+  UpdateAppRequest,
+} from '@/lib/api/types';
+import { useSession } from '@/lib/auth';
+import { cacheConfig, getQueryClient } from './query-client';
+import { queryKeys } from './query-keys';
+
+export function useApps() {
+  const { data: session } = useSession();
+
+  return useQuery({
+    queryKey: queryKeys.apps.list(),
+    queryFn: () => fetchApi<AppsListResponse>('/web/apps'),
+    ...cacheConfig.static,
+    refetchOnWindowFocus: true,
+    refetchOnMount: false,
+    enabled: !!session,
+  });
+}
+
+export function useApp(appId: string) {
+  const { data: session } = useSession();
+
+  return useQuery({
+    queryKey: queryKeys.apps.detail(appId),
+    queryFn: () => fetchApi<AppDetailResponse>(`/web/apps/${appId}`),
+    ...cacheConfig.detail,
+    refetchOnMount: false,
+    enabled: !!session && Boolean(appId),
+  });
+}
+
+export function useAppKeys(appId: string) {
+  const { data: session } = useSession();
+
+  return useQuery({
+    queryKey: queryKeys.apps.keys(appId),
+    queryFn: () => fetchApi<AppKeysResponse>(`/web/apps/${appId}/keys`),
+    ...cacheConfig.static,
+    refetchOnMount: false,
+    enabled: !!session && Boolean(appId),
+  });
+}
+
+export function useAppTeam(appId: string) {
+  const { data: session } = useSession();
+
+  return useQuery({
+    queryKey: queryKeys.apps.team(appId),
+    queryFn: () => fetchApi<AppTeamResponse>(`/web/apps/${appId}/team`),
+    ...cacheConfig.detail,
+    refetchOnMount: false,
+    enabled: !!session && Boolean(appId),
+  });
+}
+
+export function useCreateApp() {
+  return useMutation({
+    mutationFn: (data: CreateAppRequest) =>
+      fetchApi<AppCreated>('/web/apps', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (data) => {
+      const queryClient = getQueryClient();
+      queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
+      toast.success(`Application  "${data.name}" created successfully!`);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to create application');
+    },
+  });
+}
+
+export function useDeleteApp() {
+  return useMutation({
+    mutationFn: (appId: string) =>
+      fetchApi<void>(`/web/apps/${appId}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      const queryClient = getQueryClient();
+      queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
+      toast.success('Application deleted successfully');
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to delete application');
+    },
+  });
+}
+
+export function useRenameApp() {
+  return useMutation({
+    mutationFn: ({ appId, data }: { appId: string; data: UpdateAppRequest }) =>
+      fetchApi<AppCreated>(`/web/apps/${appId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (data, variables) => {
+      const queryClient = getQueryClient();
+      queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.apps.detail(variables.appId),
+      });
+      toast.success(`Application renamed to "${data.name}"`);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to rename application');
+    },
+  });
+}
+
+export function useRotateAppKey() {
+  return useMutation({
+    mutationFn: (appId: string) =>
+      fetchApi<AppKeysResponse>(`/web/apps/${appId}/keys/rotate`, {
+        method: 'POST',
+      }),
+    onSuccess: (_, appId) => {
+      const queryClient = getQueryClient();
+      queryClient.invalidateQueries({ queryKey: queryKeys.apps.keys(appId) });
+      toast.success('API key rotated successfully!');
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to rotate API key');
+    },
+  });
+}
+
+export function useAddTeamMember() {
+  return useMutation({
+    mutationFn: ({
+      appId,
+      data,
+    }: {
+      appId: string;
+      data: AddTeamMemberRequest;
+    }) =>
+      fetchApi<AddTeamMemberResponse>(`/web/apps/${appId}/team/members`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (data, variables) => {
+      const queryClient = getQueryClient();
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.apps.team(variables.appId),
+      });
+      toast.success(`${data.email} added to team successfully!`);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to add team member');
+    },
+  });
+}
+
+export function useRemoveTeamMember() {
+  return useMutation({
+    mutationFn: ({ appId, userId }: { appId: string; userId: string }) =>
+      fetchApi<void>(`/web/apps/${appId}/team/members/${userId}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: (_, variables) => {
+      const queryClient = getQueryClient();
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.apps.team(variables.appId),
+      });
+      toast.success('Team member removed successfully');
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to remove team member');
+    },
+  });
+}
