@@ -14,11 +14,11 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
 const LOFI_PLAYLIST = [
-  'https://phase.b-cdn.net/lofi-1.mp3',
-  'https://phase.b-cdn.net/lofi-2.mp3',
-  'https://phase.b-cdn.net/lofi-3.mp3',
-  'https://phase.b-cdn.net/lofi-4.mp3',
-  'https://phase.b-cdn.net/lofi-5.mp3',
+  'https://4q2mmgfazl.ufs.sh/f/Yt25zY7fL2Uk0jUXwf9XiEQHMGfkbcI1rylgNDuhPm7eY2do',
+  'https://4q2mmgfazl.ufs.sh/f/Yt25zY7fL2UkgxW0gHUdjX9lGoAe2s4QHibwVYI3pv5OFqzc',
+  'https://4q2mmgfazl.ufs.sh/f/Yt25zY7fL2UkSqodovTIA0LTzvdaXGeVWuO8mtqFgPsElcCf',
+  'https://4q2mmgfazl.ufs.sh/f/Yt25zY7fL2Ukx1gf8G0qBUOAC6Km9YIX7Ztyw8Wehu4rGHdi',
+  'https://4q2mmgfazl.ufs.sh/f/Yt25zY7fL2UkFEf61vRdSEy0V2Im5AUb9c86jpCaZHroluQ7',
 ];
 
 function shuffleArray<T>(array: T[]): T[] {

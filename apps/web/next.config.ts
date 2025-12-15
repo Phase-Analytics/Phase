@@ -11,7 +11,7 @@ const getContentSecurityPolicy = () => {
     'style-src': ["'self'", "'unsafe-inline'"],
     'img-src': ["'self'", 'data:', 'blob:', 'https:'],
     'font-src': ["'self'", 'data:'],
-    'media-src': ["'self'", 'https://phase.b-cdn.net'],
+    'media-src': ["'self'", 'https://4q2mmgfazl.ufs.sh'],
     'connect-src': ["'self'", serverUrl],
     'frame-ancestors': ["'none'"],
     'base-uri': ["'self'"],
