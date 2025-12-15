@@ -1,4 +1,10 @@
-import { ErrorCode, HttpStatus } from '@phase/shared';
+import {
+  DEVICE_ID,
+  ErrorCode,
+  EVENT_NAME,
+  HttpStatus,
+  SESSION_ID,
+} from '@phase/shared';
 import {
   type AnyColumn,
   and,
@@ -33,21 +39,21 @@ export const SESSION_MAX_AGE = {
 
 const ID_VALIDATION = {
   deviceId: {
-    minLength: 8,
-    maxLength: 128,
-    pattern: /^[\w-]+$/,
+    minLength: DEVICE_ID.MIN_LENGTH,
+    maxLength: DEVICE_ID.MAX_LENGTH,
+    pattern: DEVICE_ID.PATTERN,
     fieldName: 'deviceId',
   },
   sessionId: {
-    minLength: 8,
-    maxLength: 128,
-    pattern: /^[\w-]+$/,
+    minLength: SESSION_ID.MIN_LENGTH,
+    maxLength: SESSION_ID.MAX_LENGTH,
+    pattern: SESSION_ID.PATTERN,
     fieldName: 'sessionId',
   },
   eventName: {
-    minLength: 1,
-    maxLength: 256,
-    pattern: /^[\w.-]+$/,
+    minLength: EVENT_NAME.MIN_LENGTH,
+    maxLength: EVENT_NAME.MAX_LENGTH,
+    pattern: EVENT_NAME.PATTERN,
     fieldName: 'event name',
   },
 } as const;
@@ -546,7 +552,7 @@ export function validateEventName(name: string): ValidationResult<string> {
       success: false,
       error: {
         code: ErrorCode.VALIDATION_ERROR,
-        detail: `${config.fieldName} contains invalid characters (only alphanumeric, underscore, hyphen, and dot allowed)`,
+        detail: `${config.fieldName} contains invalid characters (only alphanumeric, underscore, hyphen, dot, and slash allowed)`,
         status: HttpStatus.BAD_REQUEST,
       },
     };
