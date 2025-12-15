@@ -24,7 +24,6 @@ export const EVENT_NAME = {
 
 export const VERSION = {
   OS_VERSION_MAX_LENGTH: 64,
-  APP_VERSION_MAX_LENGTH: 64,
 } as const;
 
 export const LOCALE = {

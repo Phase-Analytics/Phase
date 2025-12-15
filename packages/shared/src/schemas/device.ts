@@ -18,7 +18,6 @@ export const DeviceSchema = z.object({
   deviceType: DeviceTypeSchema.nullable(),
   osVersion: z.string().nullable(),
   platform: PlatformSchema.nullable(),
-  appVersion: z.string().nullable(),
   locale: z.string().nullable(),
   country: z.string().nullable(),
   city: z.string().nullable(),
@@ -38,11 +37,6 @@ export const CreateDeviceRequestSchema = z.object({
     .nullable()
     .optional(),
   platform: PlatformSchema.nullable().optional(),
-  appVersion: z
-    .string()
-    .max(VERSION.APP_VERSION_MAX_LENGTH)
-    .nullable()
-    .optional(),
   locale: z.string().max(LOCALE.MAX_LENGTH).nullable().optional(),
 });
 
@@ -59,7 +53,6 @@ export const DeviceDetailSchema = z.object({
   deviceType: DeviceTypeSchema.nullable(),
   osVersion: z.string().nullable(),
   platform: PlatformSchema.nullable(),
-  appVersion: z.string().nullable(),
   locale: z.string().nullable(),
   country: z.string().nullable(),
   city: z.string().nullable(),

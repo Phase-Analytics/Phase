@@ -140,7 +140,6 @@ async function processDevices(
             deviceType: payload.deviceType ?? existingDevice.deviceType,
             osVersion: payload.osVersion ?? existingDevice.osVersion,
             platform: payload.platform ?? existingDevice.platform,
-            appVersion: payload.appVersion ?? existingDevice.appVersion,
             locale: payload.locale ?? existingDevice.locale,
           })
           .where(eq(devices.deviceId, payload.deviceId))
@@ -161,7 +160,6 @@ async function processDevices(
             deviceType: payload.deviceType ?? null,
             osVersion: payload.osVersion ?? null,
             platform: payload.platform ?? null,
-            appVersion: payload.appVersion ?? null,
             locale: payload.locale ?? null,
             country: country ?? null,
             city: city ?? null,
@@ -295,13 +293,6 @@ async function processSessions(
           lastActivityAt: clientStartedAt,
         })
         .returning();
-
-      if (payload.appVersion) {
-        await db
-          .update(devices)
-          .set({ appVersion: payload.appVersion })
-          .where(eq(devices.deviceId, payload.deviceId));
-      }
 
       if (!device) {
         device = await db.query.devices.findFirst({

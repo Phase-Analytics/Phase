@@ -106,7 +106,6 @@ export const devices = pgTable(
     deviceType: text('device_type'),
     osVersion: text('os_version'),
     platform: text('platform'),
-    appVersion: text('app_version'),
     locale: text('locale'),
     country: text('country'),
     city: text('city'),

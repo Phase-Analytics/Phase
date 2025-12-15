@@ -6,7 +6,6 @@ import {
   AppleIcon,
   ComputerIcon,
   Flag02Icon,
-  InformationCircleIcon,
   LanguageSquareIcon,
   SmartPhone01Icon,
   Tablet01Icon,
@@ -227,21 +226,6 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
               )}
             </div>
           </div>
-
-          {device.appVersion && (
-            <div>
-              <p className="text-muted-foreground text-xs uppercase">
-                App Version
-              </p>
-              <p className="mt-1 flex items-center gap-1.5 font-medium text-sm">
-                <HugeiconsIcon
-                  className="size-4 text-muted-foreground"
-                  icon={InformationCircleIcon}
-                />
-                <span>{device.appVersion}</span>
-              </p>
-            </div>
-          )}
         </div>
       </CardContent>
     </Card>

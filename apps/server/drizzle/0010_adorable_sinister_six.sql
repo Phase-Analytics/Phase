@@ -1,0 +1,1 @@
+ALTER TABLE "devices" DROP COLUMN "app_version";

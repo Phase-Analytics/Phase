@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DEVICE_ID, SESSION_ID, VERSION } from '../constants/validation';
+import { DEVICE_ID, SESSION_ID } from '../constants/validation';
 import { PaginationMetaSchema } from './common';
 
 export const SessionSchema = z.object({
@@ -21,7 +21,6 @@ export const CreateSessionRequestSchema = z.object({
     .max(DEVICE_ID.MAX_LENGTH)
     .regex(DEVICE_ID.PATTERN),
   startedAt: z.string().datetime(),
-  appVersion: z.string().max(VERSION.APP_VERSION_MAX_LENGTH).optional(),
 });
 
 export const SessionsListResponseSchema = z.object({
