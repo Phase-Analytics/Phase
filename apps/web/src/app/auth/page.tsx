@@ -6,7 +6,7 @@ import { useForm } from '@tanstack/react-form';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useQueryState } from 'nuqs';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { toast } from 'sonner';
 import { PasswordResetDialog } from '@/components/password-reset-dialog';
 import { Button } from '@/components/ui/button';
@@ -928,7 +928,7 @@ function PasswordResetForm({ token }: { token: string }) {
   );
 }
 
-export default function AuthPage() {
+function AuthContent() {
   const [token] = useQueryState('token');
   const [loginValues, setLoginValues] = useState({
     email: '',
@@ -1003,5 +1003,19 @@ export default function AuthPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen w-full items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
+      <AuthContent />
+    </Suspense>
   );
 }
