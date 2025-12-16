@@ -1,5 +1,5 @@
-import { render } from '@react-email/render';
-import type { ReactElement } from 'react';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 type SendEmailParams = {
   to: string;
@@ -29,7 +29,12 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
     return;
   }
 
-  const { to, subject, body, from = 'Phase Analytics <no-reply@phase.sh>' } = params;
+  const {
+    to,
+    subject,
+    body,
+    from = 'Phase Analytics <no-reply@phase.sh>',
+  } = params;
 
   try {
     const controller = new AbortController();
@@ -76,17 +81,18 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
   }
 }
 
-export async function sendReactEmail(params: {
+export async function sendPasswordResetEmail(params: {
   to: string;
-  subject: string;
-  react: ReactElement;
+  resetUrl: string;
   from?: string;
 }): Promise<void> {
-  const html = await render(params.react);
+  const templatePath = join(__dirname, '../emails/password-reset.html');
+  const template = readFileSync(templatePath, 'utf-8');
+  const html = template.replaceAll('{{resetUrl}}', params.resetUrl);
 
-  return sendEmail({
+  await sendEmail({
     to: params.to,
-    subject: params.subject,
+    subject: 'Reset your password',
     body: html,
     from: params.from,
   });

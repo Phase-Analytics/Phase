@@ -4,7 +4,6 @@
     "module": "ESNext",
     "noEmit": true,
     "moduleResolution": "bundler",
-    "jsx": "react-jsx",
     "types": ["bun-types"],
     "esModuleInterop": true,
     "isolatedModules": true,
@@ -17,6 +16,6 @@
       "@routes/*": ["./src/routes/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.mts", "**/*.tsx"],
+  "include": ["**/*.ts", "**/*.mts"],
   "exclude": ["node_modules"]
 }

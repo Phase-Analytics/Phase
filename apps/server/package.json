@@ -15,8 +15,6 @@
   "dependencies": {
     "@elysiajs/cors": "^1.4.0",
     "@phase/shared": "workspace:*",
-    "@react-email/components": "^1.0.1",
-    "@react-email/render": "^2.0.0",
     "better-auth": "1.4.1",
     "drizzle-orm": "^0.44.7",
     "elysia": "^1.4.19",
@@ -24,16 +22,12 @@
     "maxmind": "^5.0.1",
     "nanoid": "^5.1.6",
     "pg": "^8.16.3",
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3",
     "ulid": "^3.0.1"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.5",
     "@types/bun": "latest",
     "@types/pg": "^8.15.6",
-    "@types/react": "^19.1.8",
-    "@types/react-dom": "^19.1.6",
     "@typescript/native-preview": "^7.0.0-dev.20251203.1",
     "bun-types": "latest",
     "drizzle-kit": "^0.31.6",

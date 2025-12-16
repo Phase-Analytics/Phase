@@ -9,7 +9,8 @@
       "!**/dist",
       "!**/build",
       "!**/node_modules",
-      "!bun.lock"
+      "!bun.lock",
+      "!**/emails/**/*.html"
     ]
   },
   "javascript": {
