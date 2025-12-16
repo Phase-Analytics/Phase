@@ -269,13 +269,13 @@ export function formatDuration(seconds: number | null): string {
 
   const result: string[] = [];
   if (hours > 0) {
-    result.push(`${hours} hr`);
+    result.push(`${hours}hr`);
   }
   if (mins > 0) {
-    result.push(`${mins} m`);
+    result.push(`${mins}m`);
   }
   if (secs > 0) {
-    result.push(`${secs} s`);
+    result.push(`${secs}s`);
   }
 
   return result.join(' ');
