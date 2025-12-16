@@ -1,10 +1,14 @@
-import { PASSWORD_RESET_EMAIL_TEMPLATE } from '@/emails/password-reset';
+import {
+  PASSWORD_RESET_EMAIL_PLAINTEXT,
+  PASSWORD_RESET_EMAIL_TEMPLATE,
+} from '@/emails/password-reset';
 
 type SendEmailParams = {
   to: string;
   subject: string;
   body: string;
   from?: string | { name: string; email: string };
+  replyTo?: string;
 };
 
 type PlunkResponse = {
@@ -32,7 +36,8 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
     to,
     subject,
     body,
-    from = { name: 'Phase Analytics', email: 'no-reply@phase.sh' },
+    from = { name: 'Phase Analytics', email: 'support@phase.sh' },
+    replyTo = 'support@phase.sh',
   } = params;
 
   try {
@@ -45,7 +50,7 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
         Authorization: `Bearer ${secretKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ to, subject, body, from }),
+      body: JSON.stringify({ to, subject, body, from, replyTo }),
       signal: controller.signal,
     });
 
@@ -82,18 +87,22 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
 
 export async function sendPasswordResetEmail(params: {
   to: string;
+  userName: string;
   resetUrl: string;
-  from?: string;
 }): Promise<void> {
   const html = PASSWORD_RESET_EMAIL_TEMPLATE.replaceAll(
-    '{{resetUrl}}',
-    params.resetUrl
-  );
+    '{{userName}}',
+    params.userName
+  ).replaceAll('{{resetUrl}}', params.resetUrl);
+
+  const _plaintext = PASSWORD_RESET_EMAIL_PLAINTEXT.replaceAll(
+    '{{userName}}',
+    params.userName
+  ).replaceAll('{{resetUrl}}', params.resetUrl);
 
   await sendEmail({
     to: params.to,
     subject: 'Reset your password',
     body: html,
-    from: params.from,
   });
 }

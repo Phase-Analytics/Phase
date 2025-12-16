@@ -20,6 +20,7 @@ export const auth = betterAuth({
       try {
         await sendPasswordResetEmail({
           to: userAccount.email,
+          userName: userAccount.name || 'there',
           resetUrl: url,
         });
       } catch (error) {
