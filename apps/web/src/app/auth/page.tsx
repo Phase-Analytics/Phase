@@ -4,8 +4,11 @@ import { GithubIcon, ViewIcon, ViewOffIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useForm } from '@tanstack/react-form';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useQueryState } from 'nuqs';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { PasswordResetDialog } from '@/components/password-reset-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -232,16 +235,15 @@ function LoginForm({ defaultValues, onValuesChange }: LoginFormProps) {
           </form.Subscribe>
 
           <div className="flex justify-end">
-            <button
-              aria-label="Reset your password"
-              className="text-primary text-sm hover:underline"
-              onClick={() => {
-                toast.info('Forgot password functionality coming soon');
-              }}
-              type="button"
-            >
-              Forgot Password?
-            </button>
+            <PasswordResetDialog>
+              <button
+                aria-label="Reset your password"
+                className="text-primary text-sm hover:underline"
+                type="button"
+              >
+                Forgot Password?
+              </button>
+            </PasswordResetDialog>
           </div>
 
           <form.Subscribe
@@ -661,7 +663,273 @@ function SignupForm({ defaultValues, onValuesChange }: SignupFormProps) {
   );
 }
 
+function PasswordResetForm({ token }: { token: string }) {
+  const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const form = useForm({
+    defaultValues: {
+      password: '',
+      confirmPassword: '',
+    },
+    onSubmit: async ({ value }) => {
+      setIsLoading(true);
+      try {
+        await authClient.resetPassword(
+          {
+            newPassword: value.password,
+            token,
+          },
+          {
+            onError: (ctx) => {
+              toast.error(ctx.error.message || 'Failed to reset password');
+            },
+            onSuccess: () => {
+              toast.success('Password reset successfully');
+              router.push('/auth');
+            },
+          }
+        );
+      } catch (error) {
+        console.error('Password reset failed:', error);
+        toast.error('An unexpected error occurred');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+  });
+
+  return (
+    <form
+      aria-label="Password reset form"
+      className="w-full"
+      onSubmit={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        form.handleSubmit();
+      }}
+    >
+      <Card>
+        <CardContent className="space-y-3">
+          <div className="space-y-2 text-center">
+            <h2 className="font-semibold text-lg">Reset Your Password</h2>
+            <p className="text-muted-foreground text-sm">
+              Enter your new password below
+            </p>
+          </div>
+
+          <form.Subscribe selector={(state) => state.submissionAttempts}>
+            {(submissionAttempts) => (
+              <>
+                <form.Field
+                  name="password"
+                  validators={{
+                    onChange: ({ value }) => {
+                      if (!value) {
+                        return 'Password is required';
+                      }
+
+                      if (value.length < 8) {
+                        return 'Password must be at least 8 characters';
+                      }
+
+                      if (value.length > 64) {
+                        return 'Password must be at most 64 characters';
+                      }
+
+                      return;
+                    },
+                  }}
+                >
+                  {(field) => {
+                    const showErrors =
+                      submissionAttempts > 0 &&
+                      field.state.meta.errors.length > 0;
+                    return (
+                      <div className="space-y-2">
+                        <label
+                          className="font-medium text-sm"
+                          htmlFor="reset-password"
+                        >
+                          New Password
+                        </label>
+                        <div className="relative">
+                          <Input
+                            aria-describedby={
+                              showErrors ? 'reset-password-error' : undefined
+                            }
+                            aria-invalid={showErrors}
+                            autoComplete="new-password"
+                            autoFocus
+                            className="pr-10"
+                            id="reset-password"
+                            onBlur={field.handleBlur}
+                            onChange={(event) =>
+                              field.handleChange(event.target.value)
+                            }
+                            placeholder="••••••••"
+                            type={showPassword ? 'text' : 'password'}
+                            value={field.state.value}
+                          />
+                          <button
+                            aria-label={
+                              showPassword ? 'Hide password' : 'Show password'
+                            }
+                            className="absolute top-0 right-0 flex h-full items-center px-3"
+                            onClick={() => setShowPassword(!showPassword)}
+                            type="button"
+                          >
+                            <HugeiconsIcon
+                              className="size-4 text-muted-foreground"
+                              icon={showPassword ? ViewOffIcon : ViewIcon}
+                            />
+                          </button>
+                        </div>
+                        <AutoHeight deps={[showErrors]}>
+                          {showErrors && (
+                            <p
+                              className="text-destructive text-sm"
+                              id="reset-password-error"
+                              role="alert"
+                            >
+                              {field.state.meta.errors[0]}
+                            </p>
+                          )}
+                        </AutoHeight>
+                      </div>
+                    );
+                  }}
+                </form.Field>
+
+                <form.Field
+                  name="confirmPassword"
+                  validators={{
+                    onChangeListenTo: ['password'],
+                    onChange: ({ value, fieldApi }) => {
+                      const password = fieldApi.form.getFieldValue('password');
+
+                      if (!value) {
+                        return 'Please confirm your password';
+                      }
+
+                      if (value !== password) {
+                        return 'Passwords do not match';
+                      }
+
+                      return;
+                    },
+                  }}
+                >
+                  {(field) => {
+                    const showErrors =
+                      submissionAttempts > 0 &&
+                      field.state.meta.errors.length > 0;
+                    return (
+                      <div className="space-y-2">
+                        <label
+                          className="font-medium text-sm"
+                          htmlFor="reset-confirm-password"
+                        >
+                          Confirm Password
+                        </label>
+                        <div className="relative">
+                          <Input
+                            aria-describedby={
+                              showErrors
+                                ? 'reset-confirm-password-error'
+                                : undefined
+                            }
+                            aria-invalid={showErrors}
+                            autoComplete="new-password"
+                            className="pr-10"
+                            id="reset-confirm-password"
+                            onBlur={field.handleBlur}
+                            onChange={(event) =>
+                              field.handleChange(event.target.value)
+                            }
+                            placeholder="••••••••"
+                            type={showConfirmPassword ? 'text' : 'password'}
+                            value={field.state.value}
+                          />
+                          <button
+                            aria-label={
+                              showConfirmPassword
+                                ? 'Hide password'
+                                : 'Show password'
+                            }
+                            className="absolute top-0 right-0 flex h-full items-center px-3"
+                            onClick={() =>
+                              setShowConfirmPassword(!showConfirmPassword)
+                            }
+                            type="button"
+                          >
+                            <HugeiconsIcon
+                              className="size-4 text-muted-foreground"
+                              icon={
+                                showConfirmPassword ? ViewOffIcon : ViewIcon
+                              }
+                            />
+                          </button>
+                        </div>
+                        <AutoHeight deps={[showErrors]}>
+                          {showErrors && (
+                            <p
+                              className="text-destructive text-sm"
+                              id="reset-confirm-password-error"
+                              role="alert"
+                            >
+                              {field.state.meta.errors[0]}
+                            </p>
+                          )}
+                        </AutoHeight>
+                      </div>
+                    );
+                  }}
+                </form.Field>
+              </>
+            )}
+          </form.Subscribe>
+
+          <form.Subscribe
+            selector={(state) =>
+              [
+                state.canSubmit,
+                state.isSubmitting,
+                state.submissionAttempts,
+              ] as const
+            }
+          >
+            {([canSubmit, isSubmitting, submissionAttempts]) => (
+              <Button
+                className="w-full"
+                disabled={
+                  (submissionAttempts > 0 && !canSubmit) ||
+                  isSubmitting ||
+                  isLoading
+                }
+                type="submit"
+              >
+                {isLoading ? (
+                  <>
+                    <Spinner className="mr-2" />
+                    Resetting password
+                  </>
+                ) : (
+                  'Reset Password'
+                )}
+              </Button>
+            )}
+          </form.Subscribe>
+        </CardContent>
+      </Card>
+    </form>
+  );
+}
+
 export default function AuthPage() {
+  const [token] = useQueryState('token');
   const [loginValues, setLoginValues] = useState({
     email: '',
     password: '',
@@ -691,32 +959,36 @@ export default function AuthPage() {
             </h1>
           </div>
 
-          <Tabs className="w-full" defaultValue="login">
-            <TabsList className="w-full">
-              <TabsTrigger className="flex-1" value="login">
-                Login
-              </TabsTrigger>
-              <TabsTrigger className="flex-1" value="signup">
-                Sign Up
-              </TabsTrigger>
-            </TabsList>
+          {token ? (
+            <PasswordResetForm token={token} />
+          ) : (
+            <Tabs className="w-full" defaultValue="login">
+              <TabsList className="w-full">
+                <TabsTrigger className="flex-1" value="login">
+                  Login
+                </TabsTrigger>
+                <TabsTrigger className="flex-1" value="signup">
+                  Sign Up
+                </TabsTrigger>
+              </TabsList>
 
-            <TabsContents>
-              <TabsContent value="login">
-                <LoginForm
-                  defaultValues={loginValues}
-                  onValuesChange={setLoginValues}
-                />
-              </TabsContent>
+              <TabsContents>
+                <TabsContent value="login">
+                  <LoginForm
+                    defaultValues={loginValues}
+                    onValuesChange={setLoginValues}
+                  />
+                </TabsContent>
 
-              <TabsContent value="signup">
-                <SignupForm
-                  defaultValues={signupValues}
-                  onValuesChange={setSignupValues}
-                />
-              </TabsContent>
-            </TabsContents>
-          </Tabs>
+                <TabsContent value="signup">
+                  <SignupForm
+                    defaultValues={signupValues}
+                    onValuesChange={setSignupValues}
+                  />
+                </TabsContent>
+              </TabsContents>
+            </Tabs>
+          )}
         </div>
       </div>
 

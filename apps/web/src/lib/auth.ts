@@ -8,3 +8,10 @@ export const authClient = createAuthClient({
 });
 
 export const { useSession, signIn, signOut, signUp } = authClient;
+
+export async function forgotPassword(email: string, redirectTo: string) {
+  return await authClient.requestPasswordReset({
+    email,
+    redirectTo,
+  });
+}
