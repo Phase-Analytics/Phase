@@ -8,7 +8,45 @@ export const authRouter = new Elysia({ prefix: '/auth' }).post(
   async ({ body, request, set }) => {
     const { email, redirectTo } = body;
 
-    const ip = request.headers.get('x-forwarded-for') || undefined;
+    if (redirectTo) {
+      const webUrl = process.env.WEB_URL;
+      if (!webUrl) {
+        console.error('[Auth] WEB_URL not configured');
+        set.status = HttpStatus.INTERNAL_SERVER_ERROR;
+        return {
+          code: ErrorCode.INTERNAL_SERVER_ERROR,
+          detail: 'Server configuration error',
+        };
+      }
+
+      try {
+        const url = new URL(redirectTo);
+        if (!['http:', 'https:'].includes(url.protocol)) {
+          set.status = HttpStatus.BAD_REQUEST;
+          return {
+            code: ErrorCode.BAD_REQUEST,
+            detail: 'Invalid redirect URL',
+          };
+        }
+        const allowedDomains = [new URL(webUrl).hostname];
+        if (!allowedDomains.includes(url.hostname)) {
+          set.status = HttpStatus.BAD_REQUEST;
+          return {
+            code: ErrorCode.BAD_REQUEST,
+            detail: 'Invalid redirect URL',
+          };
+        }
+      } catch {
+        set.status = HttpStatus.BAD_REQUEST;
+        return {
+          code: ErrorCode.BAD_REQUEST,
+          detail: 'Invalid redirect URL format',
+        };
+      }
+    }
+
+    const forwardedFor = request.headers.get('x-forwarded-for');
+    const ip = forwardedFor?.split(',')[0].trim() || undefined;
 
     const rateLimit = await checkPasswordResetRateLimit(email, ip);
 
@@ -44,11 +82,15 @@ export const authRouter = new Elysia({ prefix: '/auth' }).post(
   {
     body: t.Object({
       email: t.String({ format: 'email' }),
-      redirectTo: t.Optional(t.String()),
+      redirectTo: t.Optional(t.String({ format: 'uri' })),
     }),
     response: {
       200: t.Object({
         message: t.String(),
+      }),
+      400: t.Object({
+        code: t.String(),
+        detail: t.String(),
       }),
       429: t.Object({
         code: t.String(),

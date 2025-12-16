@@ -32,6 +32,9 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
   const { to, subject, body, from = 'Phase <no-reply@phase.sh>' } = params;
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10_000);
+
     const response = await fetch('https://next-api.useplunk.com/v1/send', {
       method: 'POST',
       headers: {
@@ -39,7 +42,16 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ to, subject, body, from }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(
+        `Plunk API returned ${response.status}: ${response.statusText}`
+      );
+    }
 
     const data = (await response.json()) as PlunkResponse;
 

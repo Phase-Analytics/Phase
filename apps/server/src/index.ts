@@ -1,3 +1,4 @@
+import { ErrorCode, HttpStatus } from '@phase/shared';
 import { Elysia } from 'elysia';
 import Redis from 'ioredis';
 import { pool } from '@/db';
@@ -7,6 +8,7 @@ import { initEventBuffer } from '@/lib/event-buffer';
 import { initGeoIP, shutdownGeoIP } from '@/lib/geolocation';
 import { runMigrations } from '@/lib/migrate';
 import { initQuestDB } from '@/lib/questdb';
+import { checkWebApiRateLimit, RATE_LIMIT_STRATEGIES } from '@/lib/rate-limit';
 import { initSessionActivityBuffer } from '@/lib/session-activity-buffer';
 import { sseManager } from '@/lib/sse-manager';
 import { appWebRouter } from '@/routes/app';
@@ -29,6 +31,52 @@ const sdkRoutes = new Elysia({ prefix: '/sdk' })
 
 const webRoutes = new Elysia({ prefix: '/web' })
   .use(webCors)
+  .onBeforeHandle(async ({ request, set, server }) => {
+    const cfConnectingIp = request.headers.get('cf-connecting-ip');
+    const forwardedFor = request.headers.get('x-forwarded-for');
+    const realIp = request.headers.get('x-real-ip');
+    const socketIp = server?.requestIP(request);
+
+    const ip =
+      cfConnectingIp ||
+      forwardedFor?.split(',')[0]?.trim() ||
+      realIp ||
+      (socketIp?.address as string) ||
+      null;
+
+    if (!ip) {
+      return;
+    }
+
+    const rateLimitResult = await checkWebApiRateLimit(ip);
+    const limit = RATE_LIMIT_STRATEGIES.WEB_API.maxAttempts;
+
+    set.headers['X-RateLimit-Limit'] = String(limit);
+    set.headers['X-RateLimit-Remaining'] = String(
+      rateLimitResult.remaining ?? 0
+    );
+
+    if (rateLimitResult.resetAt) {
+      set.headers['X-RateLimit-Reset'] = String(
+        Math.floor(rateLimitResult.resetAt / 1000)
+      );
+    }
+
+    if (!rateLimitResult.allowed) {
+      if (rateLimitResult.resetAt) {
+        const retryAfter = Math.ceil(
+          (rateLimitResult.resetAt - Date.now()) / 1000
+        );
+        set.headers['Retry-After'] = String(Math.max(0, retryAfter));
+      }
+
+      set.status = HttpStatus.TOO_MANY_REQUESTS;
+      return {
+        code: ErrorCode.TOO_MANY_REQUESTS,
+        detail: rateLimitResult.reason || 'Too many requests',
+      };
+    }
+  })
   .use(appWebRouter)
   .use(deviceWebRouter)
   .use(eventWebRouter)
@@ -51,6 +99,10 @@ const app = new Elysia()
         error instanceof Error ? error.message : 'An unexpected error occurred',
     };
   });
+
+if (!process.env.WEB_URL) {
+  throw new Error('WEB_URL environment variable is required');
+}
 
 let eventBuffer: ReturnType<typeof initEventBuffer> | null = null;
 let sessionActivityBuffer: ReturnType<typeof initSessionActivityBuffer> | null =

@@ -21,7 +21,7 @@ export function PasswordResetEmail({ resetUrl }: PasswordResetEmailProps) {
   return (
     <Html lang="en">
       <Head>
-        <title>Reset your password | Phase</title>
+        <title>Reset your password | Phase Analytics</title>
       </Head>
       <Preview>Reset your password for Phase Analytics</Preview>
       <Body style={main}>
