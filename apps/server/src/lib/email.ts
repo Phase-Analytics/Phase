@@ -1,5 +1,4 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { PASSWORD_RESET_EMAIL_TEMPLATE } from '@/emails/password-reset';
 
 type SendEmailParams = {
   to: string;
@@ -86,9 +85,10 @@ export async function sendPasswordResetEmail(params: {
   resetUrl: string;
   from?: string;
 }): Promise<void> {
-  const templatePath = join(__dirname, '../emails/password-reset.html');
-  const template = readFileSync(templatePath, 'utf-8');
-  const html = template.replaceAll('{{resetUrl}}', params.resetUrl);
+  const html = PASSWORD_RESET_EMAIL_TEMPLATE.replaceAll(
+    '{{resetUrl}}',
+    params.resetUrl
+  );
 
   await sendEmail({
     to: params.to,
