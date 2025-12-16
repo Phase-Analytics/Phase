@@ -24,6 +24,7 @@
         "nanoid": "^5.1.6",
         "pg": "^8.16.3",
         "react": "^19.2.3",
+        "react-dom": "^19.2.3",
         "ulid": "^3.0.1",
       },
       "devDependencies": {
@@ -31,6 +32,7 @@
         "@types/bun": "latest",
         "@types/pg": "^8.15.6",
         "@types/react": "^19.1.8",
+        "@types/react-dom": "^19.1.6",
         "@typescript/native-preview": "^7.0.0-dev.20251203.1",
         "bun-types": "latest",
         "drizzle-kit": "^0.31.6",
