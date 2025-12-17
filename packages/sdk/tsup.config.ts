@@ -24,6 +24,5 @@ export default defineConfig({
     'expo-localization',
     'expo-router',
     'expo-file-system',
-    'expo-network',
   ],
 });
