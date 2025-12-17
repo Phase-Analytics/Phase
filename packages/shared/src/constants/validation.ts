@@ -36,5 +36,5 @@ export const EVENT_PARAMS = {
 } as const;
 
 export const BATCH = {
-  MAX_SIZE: 1000,
+  MAX_SIZE: 5000,
 } as const;

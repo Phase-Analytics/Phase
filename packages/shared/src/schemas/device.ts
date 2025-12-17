@@ -38,6 +38,7 @@ export const CreateDeviceRequestSchema = z.object({
     .optional(),
   platform: PlatformSchema.nullable().optional(),
   locale: z.string().max(LOCALE.MAX_LENGTH).nullable().optional(),
+  disableGeolocation: z.boolean().optional(),
 });
 
 export const DeviceListItemSchema = z.object({

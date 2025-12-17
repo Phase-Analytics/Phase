@@ -6,6 +6,7 @@ import {
 } from '@phase/shared';
 import { Elysia } from 'elysia';
 import { processBatch } from '@/lib/batch-processor';
+import { gzipDecompressionPlugin } from '@/lib/gzip-middleware';
 import { sdkAuthPlugin } from '@/lib/middleware';
 
 function getClientIP(request: Request): string {
@@ -18,6 +19,7 @@ function getClientIP(request: Request): string {
 }
 
 export const batchSdkRouter = new Elysia({ prefix: '/batch' })
+  .use(gzipDecompressionPlugin)
   .use(sdkAuthPlugin)
   .post(
     '/',

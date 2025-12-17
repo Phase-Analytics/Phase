@@ -145,7 +145,7 @@ async function processDevices(
           .where(eq(devices.deviceId, payload.deviceId))
           .returning();
       } else {
-        if (!locationFetched && ip) {
+        if (!locationFetched && ip && !payload.disableGeolocation) {
           const location = await getLocationFromIP(ip);
           country = location.countryCode;
           city = location.city;

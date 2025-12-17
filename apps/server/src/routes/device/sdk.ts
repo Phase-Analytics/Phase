@@ -81,7 +81,7 @@ export const deviceSdkRouter = new Elysia({ prefix: '/devices' })
             .where(eq(devices.deviceId, body.deviceId))
             .returning();
         } else {
-          if (ip) {
+          if (ip && !body.disableGeolocation) {
             const location = await getLocationFromIP(ip);
             country = location.countryCode;
             city = location.city;

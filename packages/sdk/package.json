@@ -1,0 +1,88 @@
+{
+  "name": "phase-analytics",
+  "version": "0.0.2",
+  "description": "Privacy first, type-safe analytics SDK for React Native and Expo",
+  "author": "Phase Analytics",
+  "license": "AGPL-3.0-only",
+  "keywords": [
+    "analytics",
+    "expo",
+    "react-native",
+    "typescript",
+    "privacy"
+  ],
+  "sideEffects": false,
+  "exports": {
+    "./expo": {
+      "types": "./dist/expo/index.d.ts",
+      "default": "./dist/expo/index.js"
+    },
+    "./react-native": {
+      "types": "./dist/react-native/index.d.ts",
+      "default": "./dist/react-native/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsgo --noEmit",
+    "dev": "tsup --watch"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^2.1.0",
+    "@react-native-community/netinfo": "^11.4.1",
+    "pako": "^2.1.0",
+    "ulid": "^2.3.0"
+  },
+  "peerDependencies": {
+    "react-native": ">=0.70.0",
+    "react": ">=18.0.0",
+    "expo-application": ">=13.0.0",
+    "expo-constants": ">=14.0.0",
+    "expo-localization": ">=14.0.0",
+    "expo-router": ">=3.0.0",
+    "@react-navigation/native": ">=6.0.0"
+  },
+  "peerDependenciesMeta": {
+    "expo-application": {
+      "optional": true
+    },
+    "expo-constants": {
+      "optional": true
+    },
+    "expo-localization": {
+      "optional": true
+    },
+    "expo-router": {
+      "optional": true
+    },
+    "@react-navigation/native": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@react-navigation/native": "^7.1.25",
+    "@types/pako": "^2.0.4",
+    "@types/react": "^19.1.8",
+    "@types/react-native": "^0.73.0",
+    "expo-router": "^6.0.19",
+    "tsup": "^8.3.5",
+    "typescript": "^5",
+    "@typescript/native-preview": "^7.0.0-dev.20251214.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/phase-analytics/Phase.git"
+  },
+  "homepage": "https://phase.sh",
+  "bugs": {
+    "url": "https://github.com/phase-analytics/Phase/issues"
+  }
+}
