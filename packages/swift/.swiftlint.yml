@@ -1,0 +1,69 @@
+included:
+  - Sources
+
+excluded:
+  - .build
+  - Package.swift
+
+disabled_rules:
+  - trailing_comma
+  - opening_brace
+
+identifier_name:
+  min_length:
+    warning: 2
+    error: 1
+  excluded:
+    - id
+    - to
+    - at
+    - i
+    - x
+    - y
+    - _initialize
+
+line_length:
+  warning: 150
+  error: 200
+  ignores_comments: true
+  ignores_urls: true
+
+opt_in_rules:
+  - empty_count
+  - empty_string
+  - closure_spacing
+  - contains_over_first_not_nil
+  - discouraged_object_literal
+  - explicit_init
+  - first_where
+  - modifier_order
+  - operator_usage_whitespace
+  - overridden_super_call
+  - redundant_nil_coalescing
+  - single_test_class
+  - sorted_first_last
+  - toggle_bool
+  - unavailable_function
+  - unneeded_parentheses_in_closure_argument
+  - vertical_parameter_alignment_on_call
+  - yoda_condition
+
+type_body_length:
+  warning: 300
+  error: 500
+
+file_length:
+  warning: 500
+  error: 1000
+
+function_body_length:
+  warning: 75
+  error: 100
+
+cyclomatic_complexity:
+  warning: 15
+  error: 25
+
+nesting:
+  type_level: 2
+  function_level: 3
