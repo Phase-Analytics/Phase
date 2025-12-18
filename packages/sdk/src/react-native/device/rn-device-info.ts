@@ -42,7 +42,7 @@ function getPlatform(): PlatformType | null {
     if (os === 'ios' || os === 'android') {
       return os;
     }
-    return 'unknown';
+    return null;
   } catch {
     return null;
   }

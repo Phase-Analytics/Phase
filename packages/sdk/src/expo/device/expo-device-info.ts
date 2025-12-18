@@ -20,8 +20,6 @@ function getDeviceType(): DeviceType | null {
 
     if (Constants.deviceType !== undefined) {
       switch (Constants.deviceType) {
-        case 0:
-          return 'unknown';
         case 1:
           return 'phone';
         case 2:
@@ -29,7 +27,7 @@ function getDeviceType(): DeviceType | null {
         case 3:
           return 'desktop';
         default:
-          return 'unknown';
+          return null;
       }
     }
 
@@ -59,7 +57,7 @@ function getPlatform(): PlatformType | null {
     if (os === 'ios' || os === 'android') {
       return os;
     }
-    return 'unknown';
+    return null;
   } catch {
     return null;
   }

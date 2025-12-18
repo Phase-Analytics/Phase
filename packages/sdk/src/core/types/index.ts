@@ -29,8 +29,8 @@ export const VALIDATION = {
   },
 } as const;
 
-export type Platform = 'ios' | 'android' | 'unknown';
-export type DeviceType = 'phone' | 'tablet' | 'desktop' | 'unknown';
+export type Platform = 'ios' | 'android';
+export type DeviceType = 'phone' | 'tablet' | 'desktop';
 
 export type CreateDeviceRequest = {
   deviceId: string;
