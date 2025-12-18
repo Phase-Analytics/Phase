@@ -56,6 +56,37 @@ type PhaseProps = PhaseConfig &
     children: ReactNode;
   };
 
+function formatScreenName(name: string): string {
+  const kebabCase = name.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+  return `/${kebabCase}`;
+}
+
+function NavigationTracker({
+  initialized,
+  currentRouteName,
+}: {
+  initialized: boolean;
+  currentRouteName: string | undefined;
+}): ReactNode {
+  const prevRouteRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!(initialized && currentRouteName)) {
+      return;
+    }
+
+    if (prevRouteRef.current === currentRouteName) {
+      return;
+    }
+
+    prevRouteRef.current = currentRouteName;
+    const instance = getSDK();
+    instance?.trackScreen(formatScreenName(currentRouteName));
+  }, [initialized, currentRouteName]);
+
+  return null;
+}
+
 /**
  * Phase Analytics Provider for React Native
  *
@@ -79,7 +110,7 @@ type PhaseProps = PhaseConfig &
  *   <YourApp />
  * </Phase>
  *
- * // With navigation tracking (requires react-navigation/native)
+ * // With navigation tracking (requires @react-navigation/native)
  * <Phase apiKey="phase_xxx" trackNavigation={true}>
  *   <Stack.Navigator>
  *     <Stack.Screen name="Home" component={HomeScreen} />
@@ -101,8 +132,10 @@ function Phase({
 }: PhaseProps): ReactNode {
   const navigationRef = useNavigationContainerRef();
   const [initialized, setInitialized] = useState(false);
+  const [currentRouteName, setCurrentRouteName] = useState<string | undefined>(
+    undefined
+  );
   const initStarted = useRef(false);
-  const routeNameRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (initStarted.current) {
@@ -136,41 +169,17 @@ function Phase({
     return children;
   }
 
-  const formatScreenName = (name: string): string => {
-    const kebabCase = name.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
-    return `/${kebabCase}`;
-  };
-
   const handleReady = () => {
-    if (initialized) {
-      const currentRoute = navigationRef.getCurrentRoute();
-      routeNameRef.current = currentRoute?.name;
-
-      if (currentRoute?.name) {
-        const instance = getSDK();
-        instance?.trackScreen(formatScreenName(currentRoute.name));
-      }
-    }
-
+    const currentRoute = navigationRef.getCurrentRoute();
+    setCurrentRouteName(currentRoute?.name);
     onReady?.();
   };
 
   const handleStateChange: NavigationContainerProps['onStateChange'] = (
     state
   ) => {
-    if (initialized) {
-      const currentRoute = navigationRef.getCurrentRoute();
-      const previousRouteName = routeNameRef.current;
-      const currentRouteName = currentRoute?.name;
-
-      if (currentRouteName && previousRouteName !== currentRouteName) {
-        const instance = getSDK();
-        instance?.trackScreen(formatScreenName(currentRouteName));
-      }
-
-      routeNameRef.current = currentRouteName;
-    }
-
+    const currentRoute = navigationRef.getCurrentRoute();
+    setCurrentRouteName(currentRoute?.name);
     onStateChange?.(state);
   };
 
@@ -181,6 +190,10 @@ function Phase({
       ref={navigationRef}
       {...navigationProps}
     >
+      <NavigationTracker
+        currentRouteName={currentRouteName}
+        initialized={initialized}
+      />
       {children}
     </NavigationContainer>
   );
