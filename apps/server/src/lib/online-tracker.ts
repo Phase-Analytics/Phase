@@ -2,7 +2,7 @@ import type { OnlineUsers } from '@phase/shared';
 import { sql } from 'drizzle-orm';
 import { db, devices, sessions } from '@/db';
 
-const ACTIVE_SESSION_THRESHOLD_MS = 60_000;
+const ACTIVE_SESSION_THRESHOLD_MS = 20_000;
 
 export async function getOnlineUsers(appId: string): Promise<OnlineUsers> {
   const thresholdDate = new Date(Date.now() - ACTIVE_SESSION_THRESHOLD_MS);

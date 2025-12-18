@@ -219,6 +219,7 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
           now.getTime() - 48 * 60 * 60 * 1000
         );
         const thirtySecondsAgo = new Date(now.getTime() - 30 * 1000);
+        const twentySecondsAgo = new Date(now.getTime() - 20 * 1000);
 
         const deviceIdsSubquery = db
           .select({ deviceId: devices.deviceId })

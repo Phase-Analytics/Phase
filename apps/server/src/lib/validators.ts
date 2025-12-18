@@ -377,8 +377,8 @@ export function formatPaginationResponse(
   };
 }
 
-export async function getActiveSessionsCount(minutes = 5): Promise<number> {
-  const cutoffTime = new Date(Date.now() - minutes * 60 * 1000);
+export async function getActiveSessionsCount(seconds = 20): Promise<number> {
+  const cutoffTime = new Date(Date.now() - seconds * 1000);
 
   const [{ count: activeCount }] = await db
     .select({ count: count() })
