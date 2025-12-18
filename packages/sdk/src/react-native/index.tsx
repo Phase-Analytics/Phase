@@ -79,7 +79,7 @@ type PhaseProps = PhaseConfig &
  *   <YourApp />
  * </Phase>
  *
- * // With navigation tracking (requires @react-navigation/native)
+ * // With navigation tracking (requires react-navigation/native)
  * <Phase apiKey="phase_xxx" trackNavigation={true}>
  *   <Stack.Navigator>
  *     <Stack.Screen name="Home" component={HomeScreen} />
@@ -132,10 +132,14 @@ function Phase({
     };
   }, [apiKey, baseUrl, deviceInfo, logLevel, trackNavigation, userLocale]);
 
-  // If navigation tracking is disabled, just render children
   if (!trackNavigation) {
     return children;
   }
+
+  const formatScreenName = (name: string): string => {
+    const kebabCase = name.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+    return `/${kebabCase}`;
+  };
 
   const handleReady = () => {
     if (initialized) {
@@ -144,7 +148,7 @@ function Phase({
 
       if (currentRoute?.name) {
         const instance = getSDK();
-        instance?.trackScreen(currentRoute.name);
+        instance?.trackScreen(formatScreenName(currentRoute.name));
       }
     }
 
@@ -161,7 +165,7 @@ function Phase({
 
       if (currentRouteName && previousRouteName !== currentRouteName) {
         const instance = getSDK();
-        instance?.trackScreen(currentRouteName);
+        instance?.trackScreen(formatScreenName(currentRouteName));
       }
 
       routeNameRef.current = currentRouteName;

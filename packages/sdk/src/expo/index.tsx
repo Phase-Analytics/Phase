@@ -76,7 +76,6 @@ type PhaseProps = PhaseConfig & {
   children: ReactNode;
 };
 
-// Inner component that uses expo-router hooks
 function NavigationTracker({
   initialized,
 }: {
