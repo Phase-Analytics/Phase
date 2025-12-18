@@ -96,6 +96,13 @@ export class PhaseSDK {
       this.setupNetworkListener();
       this.setupAppStateListener();
 
+      if (isOnline && this.offlineQueue.getSize() > 0) {
+        logger.info('Online at startup, flushing offline queue');
+        this.batchSender.flush().catch(() => {
+          logger.error('Failed to flush offline queue at startup');
+        });
+      }
+
       this.isInitialized = true;
       logger.info('Phase SDK initialized successfully');
     } catch (error) {
