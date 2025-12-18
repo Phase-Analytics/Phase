@@ -7,11 +7,24 @@ internal final class NetworkMonitor: NetworkAdapter {
     private let listeners = ThreadSafeLock<[(UUID, NetworkStateListener)]>([])
 
     init() {
+        setupPathHandler()
         monitor.start(queue: queue)
     }
 
     deinit {
         monitor.cancel()
+    }
+
+    private func setupPathHandler() {
+        monitor.pathUpdateHandler = { [weak self] path in
+            let state = NetworkState(isConnected: path.status == .satisfied)
+
+            let listenersCopy = self?.listeners.withLock { Array($0) } ?? []
+
+            for (_, listenerFn) in listenersCopy {
+                listenerFn(state)
+            }
+        }
     }
 
     func fetchNetworkState() async -> NetworkState {
@@ -27,16 +40,6 @@ internal final class NetworkMonitor: NetworkAdapter {
         let id = UUID()
 
         listeners.withLock { $0.append((id, listener)) }
-
-        monitor.pathUpdateHandler = { [weak self] path in
-            let state = NetworkState(isConnected: path.status == .satisfied)
-
-            self?.listeners.withLock { listeners in
-                for (_, listenerFn) in listeners {
-                    listenerFn(state)
-                }
-            }
-        }
 
         return { [weak self] in
             self?.listeners.withLock { listeners in

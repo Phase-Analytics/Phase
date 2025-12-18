@@ -145,7 +145,6 @@ internal final class HTTPClient: Sendable {
                 do {
                     try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                 } catch {
-                    // Task was cancelled during sleep
                     return .failure(.networkError("Request cancelled"))
                 }
             }

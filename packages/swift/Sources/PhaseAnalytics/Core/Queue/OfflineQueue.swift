@@ -22,6 +22,8 @@ internal actor OfflineQueue {
             let orders = items.map { $0.clientOrder }
             clientOrder = (orders.max() ?? 0) + 1
             logger.debug("Loaded \(items.count) items from offline queue")
+        } else if case .failure(let error) = result {
+            logger.error("Failed to load offline queue from storage", error)
         }
 
         initialized = true

@@ -15,7 +15,7 @@ public final class PhaseSDK: Sendable {
     private let eventManager: ThreadSafeLock<EventManager?>
 
     private let isInitialized: ThreadSafeLock<Bool>
-    private let isInitializing: ThreadSafeLock<Bool>
+    private let initializationTask: ThreadSafeLock<Task<Void, Error>?>
     private let networkUnsubscribe: ThreadSafeLock<UnsubscribeFn?>
     private let appStateObservers: ThreadSafeLock<[Any]>
 
@@ -31,7 +31,7 @@ public final class PhaseSDK: Sendable {
         self.sessionManager = ThreadSafeLock(nil)
         self.eventManager = ThreadSafeLock(nil)
         self.isInitialized = ThreadSafeLock(false)
-        self.isInitializing = ThreadSafeLock(false)
+        self.initializationTask = ThreadSafeLock(nil)
         self.networkUnsubscribe = ThreadSafeLock(nil)
         self.appStateObservers = ThreadSafeLock([])
         self.networkAdapter = ThreadSafeLock(nil)
@@ -87,13 +87,32 @@ public final class PhaseSDK: Sendable {
             return
         }
 
-        if isInitializing.withLock({ $0 }) {
-            logger.debug("SDK initialization already in progress, skipping")
+        // If initialization is already in progress, wait for it to complete
+        if let existingTask = initializationTask.withLock({ $0 }) {
+            logger.debug("SDK initialization already in progress, waiting")
+            try await existingTask.value
             return
         }
 
-        isInitializing.withLock { $0 = true }
-        defer { isInitializing.withLock { $0 = false } }
+        let task = Task<Void, Error> {
+            try await doInitialize(config: config, getDeviceInfo: getDeviceInfo, networkAdapter: networkAdapter)
+        }
+        initializationTask.withLock { $0 = task }
+
+        do {
+            try await task.value
+            initializationTask.withLock { $0 = nil }
+        } catch {
+            initializationTask.withLock { $0 = nil }
+            throw error
+        }
+    }
+
+    private func doInitialize(
+        config: PhaseConfig,
+        getDeviceInfo: @escaping @Sendable () -> DeviceInfo,
+        networkAdapter: NetworkAdapter
+    ) async throws {
 
         guard !config.apiKey.isEmpty, !config.apiKey.trimmingCharacters(in: .whitespaces).isEmpty else {
             logger.error("API key is required. Please provide a valid API key.")
@@ -270,7 +289,6 @@ public final class PhaseSDK: Sendable {
     internal static func formatScreenName(_ name: String) -> String {
         var path = name
 
-        // Remove query string and hash
         if let queryIndex = path.firstIndex(of: "?") {
             path = String(path[..<queryIndex])
         }
@@ -278,32 +296,26 @@ public final class PhaseSDK: Sendable {
             path = String(path[..<hashIndex])
         }
 
-        // CamelCase to kebab-case (for SwiftUI view names like "HomeView")
         if let regex = camelCaseRegex {
             let range = NSRange(path.startIndex..., in: path)
             path = regex.stringByReplacingMatches(in: path, range: range, withTemplate: "$1-$2")
         }
 
-        // Lowercase
         path = path.lowercased()
 
-        // Replace multiple slashes with single slash
         while path.contains("//") {
             path = path.replacingOccurrences(of: "//", with: "/")
         }
 
-        // Replace numeric segments with :id (e.g., /users/123 → /users/:id)
         if let regex = numericSegmentRegex {
             let range = NSRange(path.startIndex..., in: path)
             path = regex.stringByReplacingMatches(in: path, range: range, withTemplate: "/:id")
         }
 
-        // Remove trailing slash
         if path.hasSuffix("/") && path.count > 1 {
             path = String(path.dropLast())
         }
 
-        // Ensure leading slash
         if !path.hasPrefix("/") {
             path = "/" + path
         }
