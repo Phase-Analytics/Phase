@@ -268,7 +268,7 @@ export default function HomePage() {
 
         <a
           className="text-sm text-white/50 transition-colors hover:text-white"
-          href="https://github.com/0xbekis/phase"
+          href="https://github.com/phase-analytics/Phase"
           rel="noopener noreferrer"
           target="_blank"
         >
