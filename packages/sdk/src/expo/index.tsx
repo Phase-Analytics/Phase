@@ -12,8 +12,10 @@ let usePathname: typeof import('expo-router').usePathname | null = null;
 let useSegments: typeof import('expo-router').useSegments | null = null;
 let expoRouterAvailable = false;
 
+const safeRequire = (id: string) => require(id);
+
 try {
-  const expoRouter = require('expo-router');
+  const expoRouter = safeRequire('expo-router');
   usePathname = expoRouter.usePathname;
   useSegments = expoRouter.useSegments;
   expoRouterAvailable = true;

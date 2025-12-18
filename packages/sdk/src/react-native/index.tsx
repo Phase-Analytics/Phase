@@ -16,8 +16,10 @@ let useNavigationContainerRef:
   | null = null;
 let reactNavigationAvailable = false;
 
+const safeRequire = (id: string) => require(id);
+
 try {
-  const reactNavigation = require('@react-navigation/native');
+  const reactNavigation = safeRequire('@react-navigation/native');
   NavigationContainer = reactNavigation.NavigationContainer;
   useNavigationContainerRef = reactNavigation.useNavigationContainerRef;
   reactNavigationAvailable = true;
