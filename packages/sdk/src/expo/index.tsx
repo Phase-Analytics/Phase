@@ -112,11 +112,11 @@ function NavigationTracker({
  * @param deviceInfo Collect device metadata (optional, default: true)
  * @param userLocale Collect locale & geolocation (optional, default: true)
  * @example
- * <Phase apiKey="phase_xxx">
+ * <PhaseProvider apiKey="phase_xxx">
  *   <Stack />
- * </Phase>
+ * </PhaseProvider>
  */
-function Phase({
+function PhaseProvider({
   children,
   apiKey,
   baseUrl,
@@ -169,10 +169,10 @@ function Phase({
  * @param properties Custom device attributes (optional)
  * @example
  * // Basic usage
- * await identify();
+ * await Phase.identify();
  *
  * // After login
- * await identify({ user_id: '123', plan: 'premium' });
+ * await Phase.identify({ user_id: '123', plan: 'premium' });
  */
 async function identify(properties?: DeviceProperties): Promise<void> {
   const instance = getSDK();
@@ -188,7 +188,7 @@ async function identify(properties?: DeviceProperties): Promise<void> {
  * @param name Event name (required, alphanumeric, `_`, `-`, `.`, `/`)
  * @param params Event parameters (optional, primitives only)
  * @example
- * track('purchase', { amount: 99.99, currency: 'USD' });
+ * Phase.track('purchase', { amount: 99.99, currency: 'USD' });
  */
 function track(name: string, params?: EventParams): void {
   const instance = getSDK();
@@ -199,5 +199,22 @@ function track(name: string, params?: EventParams): void {
   instance.track(name, params);
 }
 
-export { Phase, identify, track };
+/**
+ * Phase Analytics SDK
+ *
+ * @example
+ * import { Phase } from '@phase/sdk';
+ *
+ * // Identify device (queued if SDK not ready)
+ * await Phase.identify({ user_id: '123' });
+ *
+ * // Track events (queued if SDK not ready)
+ * Phase.track('purchase', { amount: 99.99 });
+ */
+const Phase = {
+  identify,
+  track,
+};
+
+export { PhaseProvider, Phase };
 export type { DeviceProperties, EventParams, PhaseConfig } from '../core/types';

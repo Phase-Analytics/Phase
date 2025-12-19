@@ -28,6 +28,7 @@ export class PhaseSDK {
   private appStateSubscription: { remove: () => void } | null = null;
   private trackNavigationEvents = true;
   private networkAdapter: NetworkAdapter | null = null;
+  private pendingCalls: Array<() => Promise<void> | void> = [];
 
   async init(
     config: PhaseConfig,
@@ -103,6 +104,8 @@ export class PhaseSDK {
       logger.info(
         'Phase SDK initialized successfully. Call identify() to start tracking.'
       );
+
+      await this.processPendingCalls();
     } catch (error) {
       this.cleanup();
       logger.error('Failed to initialize SDK');
@@ -114,8 +117,17 @@ export class PhaseSDK {
 
   async identify(properties?: DeviceProperties): Promise<void> {
     if (!this.isInitialized) {
-      logger.error('SDK not initialized. Call Phase.init() first.');
-      return;
+      logger.debug('SDK not ready yet, queuing identify() call');
+      return new Promise((resolve, reject) => {
+        this.pendingCalls.push(async () => {
+          try {
+            await this.identify(properties);
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        });
+      });
     }
 
     if (this.isIdentified) {
@@ -136,16 +148,24 @@ export class PhaseSDK {
 
     this.isIdentified = true;
     logger.info('Device identified and session started');
+
+    await this.processPendingCalls();
   }
 
   track(name: string, params?: EventParams): void {
     if (!this.isInitialized) {
-      logger.error('SDK not initialized. Call Phase.init() first.');
+      logger.debug('SDK not ready yet, queuing track() call');
+      this.pendingCalls.push(() => {
+        this.track(name, params);
+      });
       return;
     }
 
     if (!this.isIdentified) {
-      logger.error('Device not identified. Call Phase.identify() first.');
+      logger.debug('Device not identified yet, queuing track() call');
+      this.pendingCalls.push(() => {
+        this.track(name, params);
+      });
       return;
     }
 
@@ -164,12 +184,18 @@ export class PhaseSDK {
     }
 
     if (!this.isInitialized) {
-      logger.error('SDK not initialized. Call Phase.init() first.');
+      logger.debug('SDK not ready yet, queuing trackScreen() call');
+      this.pendingCalls.push(() => {
+        this.trackScreen(name, params);
+      });
       return;
     }
 
     if (!this.isIdentified) {
-      logger.error('Device not identified. Call Phase.identify() first.');
+      logger.debug('Device not identified yet, queuing trackScreen() call');
+      this.pendingCalls.push(() => {
+        this.trackScreen(name, params);
+      });
       return;
     }
 
@@ -229,6 +255,24 @@ export class PhaseSDK {
     );
   }
 
+  private async processPendingCalls(): Promise<void> {
+    if (this.pendingCalls.length === 0) {
+      return;
+    }
+
+    logger.info(`Processing ${this.pendingCalls.length} queued calls`);
+    const calls = [...this.pendingCalls];
+    this.pendingCalls = [];
+
+    for (const call of calls) {
+      try {
+        await call();
+      } catch (error) {
+        logger.error('Failed to process queued call', error);
+      }
+    }
+  }
+
   private cleanup(): void {
     if (this.appStateSubscription) {
       this.appStateSubscription.remove();
@@ -249,5 +293,6 @@ export class PhaseSDK {
     this.eventManager = null;
     this.isInitialized = false;
     this.isIdentified = false;
+    this.pendingCalls = [];
   }
 }

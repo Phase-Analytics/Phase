@@ -19,6 +19,7 @@ public final class PhaseSDK: Sendable {
     private let initializationTask: ThreadSafeLock<Task<Void, Error>?>
     private let networkUnsubscribe: ThreadSafeLock<UnsubscribeFn?>
     private let appStateObservers: ThreadSafeLock<[Any]>
+    private let pendingCalls: ThreadSafeLock<[@Sendable () async -> Void]>
 
     private let networkAdapter: ThreadSafeLock<NetworkAdapter?>
     private let storage: StorageAdapter
@@ -36,6 +37,7 @@ public final class PhaseSDK: Sendable {
         self.initializationTask = ThreadSafeLock(nil)
         self.networkUnsubscribe = ThreadSafeLock(nil)
         self.appStateObservers = ThreadSafeLock([])
+        self.pendingCalls = ThreadSafeLock([])
         self.networkAdapter = ThreadSafeLock(nil)
     }
 
@@ -69,11 +71,19 @@ public final class PhaseSDK: Sendable {
             userLocale: userLocale
         )
 
-        try await _initialize(
-            config: config,
-            getDeviceInfo: getIOSDeviceInfo,
-            networkAdapter: NetworkMonitor()
-        )
+        #if canImport(UIKit)
+            try await _initialize(
+                config: config,
+                getDeviceInfo: getIOSDeviceInfo,
+                networkAdapter: NetworkMonitor()
+            )
+        #else
+            try await _initialize(
+                config: config,
+                getDeviceInfo: { DeviceInfo(deviceType: nil, osVersion: nil, platform: nil, locale: nil) },
+                networkAdapter: NetworkMonitor()
+            )
+        #endif
     }
 
     internal func _initialize(
@@ -103,6 +113,17 @@ public final class PhaseSDK: Sendable {
             initializationTask.withLock { $0 = nil }
         } catch {
             initializationTask.withLock { $0 = nil }
+
+            let pendingToCancel = pendingCalls.withLock { calls in
+                let current = calls
+                calls.removeAll()
+                return current
+            }
+
+            if !pendingToCancel.isEmpty {
+                logger.error("Clearing \(pendingToCancel.count) queued calls due to initialization failure")
+            }
+
             throw error
         }
     }
@@ -173,6 +194,8 @@ public final class PhaseSDK: Sendable {
 
         isInitialized.withLock { $0 = true }
         logger.info("Phase SDK initialized successfully. Call identify() to start tracking.")
+
+        await processPendingCalls()
     }
 
     /// Register device and start session
@@ -189,7 +212,15 @@ public final class PhaseSDK: Sendable {
     /// ```
     public func identify(_ properties: DeviceProperties? = nil) async {
         guard isInitialized.withLock({ $0 }) else {
-            logger.error("SDK not initialized. Call initialize() first.")
+            logger.debug("SDK not ready yet, queuing identify() call")
+            await withCheckedContinuation { continuation in
+                pendingCalls.withLock { calls in
+                    calls.append {
+                        await self.identify(properties)
+                        continuation.resume()
+                    }
+                }
+            }
             return
         }
 
@@ -214,9 +245,13 @@ public final class PhaseSDK: Sendable {
 
         isIdentified.withLock { $0 = true }
         logger.info("Device identified and session started")
+
+        await processPendingCalls()
     }
 
     /// Track custom event
+    ///
+    /// Calls are automatically queued if SDK is not ready yet.
     ///
     /// - Parameters:
     ///   - name: Event name (required, alphanumeric, `_`, `-`, `.`, `/`)
@@ -228,12 +263,22 @@ public final class PhaseSDK: Sendable {
     /// ```
     public func track(_ name: String, params: EventParams? = nil) {
         guard isInitialized.withLock({ $0 }) else {
-            logger.error("SDK not initialized. Call initialize() first.")
+            logger.debug("SDK not ready yet, queuing track() call")
+            pendingCalls.withLock { calls in
+                calls.append {
+                    self.track(name, params: params)
+                }
+            }
             return
         }
 
         guard isIdentified.withLock({ $0 }) else {
-            logger.error("Device not identified. Call identify() first.")
+            logger.debug("Device not identified yet, queuing track() call")
+            pendingCalls.withLock { calls in
+                calls.append {
+                    self.track(name, params: params)
+                }
+            }
             return
         }
 
@@ -259,12 +304,22 @@ public final class PhaseSDK: Sendable {
     /// ```
     public func trackScreen(_ name: String, params: EventParams? = nil) {
         guard isInitialized.withLock({ $0 }) else {
-            logger.error("SDK not initialized. Call initialize() first.")
+            logger.debug("SDK not ready yet, queuing trackScreen() call")
+            pendingCalls.withLock { calls in
+                calls.append {
+                    self.trackScreen(name, params: params)
+                }
+            }
             return
         }
 
         guard isIdentified.withLock({ $0 }) else {
-            logger.error("Device not identified. Call identify() first.")
+            logger.debug("Device not identified yet, queuing trackScreen() call")
+            pendingCalls.withLock { calls in
+                calls.append {
+                    self.trackScreen(name, params: params)
+                }
+            }
             return
         }
 
@@ -306,6 +361,22 @@ public final class PhaseSDK: Sendable {
     public static func trackScreen(_ name: String, _ params: [String: Any]? = nil) {
         let eventParams = params.map { EventParams($0) }
         shared.trackScreen(name, params: eventParams)
+    }
+
+    private func processPendingCalls() async {
+        let calls = pendingCalls.withLock { calls in
+            let current = calls
+            calls.removeAll()
+            return current
+        }
+
+        guard !calls.isEmpty else { return }
+
+        logger.info("Processing \(calls.count) queued calls")
+
+        for call in calls {
+            await call()
+        }
     }
 
     // Cached regex patterns for performance
