@@ -11,7 +11,12 @@ const getContentSecurityPolicy = () => {
       "'self'",
       "'unsafe-eval'",
       "'unsafe-inline'",
-      'https://cdn.databuddy.cc/databuddy.js',
+      'https://cdn.databuddy.cc',
+    ],
+    'script-src-elem': [
+      "'self'",
+      "'unsafe-inline'",
+      'https://cdn.databuddy.cc',
     ],
     'style-src': ["'self'", "'unsafe-inline'"],
     'img-src': ["'self'", 'data:', 'blob:', 'https:'],
