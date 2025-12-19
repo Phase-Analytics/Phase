@@ -1,18 +1,16 @@
 import SwiftUI
 
-/// Phase Analytics Provider for SwiftUI
-///
-/// Wrap your root view with this component to enable analytics.
+/// Phase Analytics provider for SwiftUI
 ///
 /// - Parameters:
-///   - apiKey: Your Phase API key (required, starts with "phase_")
-///   - baseURL: Custom API endpoint for self-hosting (optional, default: "https://api.phase.sh")
+///   - apiKey: Phase API key (required, starts with `phase_`)
+///   - content: App content (required)
+///   - baseURL: Custom API endpoint (optional, default: "https://api.phase.sh")
 ///   - logLevel: Logging level (optional, default: `.none`)
 ///   - deviceInfo: Collect device metadata (optional, default: `true`)
-///   - userLocale: Collect user locale + geolocation (optional, default: `true`)
-///   - content: Your app content (required)
+///   - userLocale: Collect locale & geolocation (optional, default: `true`)
 ///
-/// ## Setup
+/// ## Example
 /// ```swift
 /// @main
 /// struct MyApp: App {
@@ -22,25 +20,6 @@ import SwiftUI
 ///                 ContentView()
 ///             }
 ///         }
-///     }
-/// }
-/// ```
-///
-/// ## Track Events
-/// ```swift
-/// import PhaseAnalytics
-///
-/// Button("Purchase") {
-///     track("purchase", ["amount": 99.99, "currency": "USD"])
-/// }
-/// ```
-///
-/// ## Track Screens
-/// ```swift
-/// struct ProfileView: View {
-///     var body: some View {
-///         Text("Profile")
-///             .phaseScreen("ProfileView", params: ["user_id": "123"])
 ///     }
 /// }
 /// ```
@@ -117,17 +96,13 @@ extension View {
     /// Track screen view when this view appears
     ///
     /// - Parameters:
-    ///   - name: Screen name (will be converted to kebab-case path, e.g. "HomeView" → "/home-view")
-    ///   - params: Additional parameters (optional)
+    ///   - name: Screen name (required, e.g. "HomeView" → "/home-view")
+    ///   - params: Additional parameters (optional, primitives only)
     ///
     /// ## Example
     /// ```swift
-    /// struct ProfileView: View {
-    ///     var body: some View {
-    ///         Text("Profile")
-    ///             .phaseScreen("ProfileView", params: ["user_id": "123"])
-    ///     }
-    /// }
+    /// Text("Profile")
+    ///     .phaseScreen("ProfileView", params: ["user_id": "123"])
     /// ```
     public func phaseScreen(_ name: String, params: [String: Any]? = nil) -> some View {
         modifier(PhaseScreenModifier(screenName: name, params: params))

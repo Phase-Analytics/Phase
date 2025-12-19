@@ -39,19 +39,16 @@ public final class PhaseSDK: Sendable {
         self.networkAdapter = ThreadSafeLock(nil)
     }
 
-    /// Initialize Phase Analytics SDK
-    ///
-    /// Call this once at app startup before tracking events.
-    /// Or use the `Phase` SwiftUI component which calls this automatically.
+    /// Initialize the SDK (required before tracking)
     ///
     /// - Parameters:
-    ///   - apiKey: Your Phase API key (required, starts with "phase_")
-    ///   - baseURL: Custom API endpoint for self-hosting (optional, default: "https://api.phase.sh")
+    ///   - apiKey: Phase API key (required, starts with `phase_`)
+    ///   - baseURL: Custom API endpoint (optional, default: "https://api.phase.sh")
     ///   - logLevel: Logging level (optional, default: `.none`)
     ///   - deviceInfo: Collect device metadata (optional, default: `true`)
-    ///   - userLocale: Collect user locale + geolocation (optional, default: `true`)
+    ///   - userLocale: Collect locale & geolocation (optional, default: `true`)
     ///
-    /// - Throws: `PhaseError.invalidAPIKey` if API key is missing or invalid format
+    /// - Throws: `PhaseError.invalidAPIKey`
     ///
     /// ## Example
     /// ```swift
@@ -178,28 +175,17 @@ public final class PhaseSDK: Sendable {
         logger.info("Phase SDK initialized successfully. Call identify() to start tracking.")
     }
 
-    /// Identify the device and start a tracking session.
+    /// Register device and start session
     ///
-    /// Must be called after SDK initialization and before tracking events.
-    /// Registers the device with the backend and enables event tracking.
-    ///
-    /// - Example:
-    /// ```swift
-    /// try await PhaseSDK.shared.initialize(apiKey: "phase_xxx")
-    /// await PhaseSDK.shared.identify()
-    /// track("app_opened")
-    /// ```
-    /// Identify the current device with optional custom properties
-    ///
-    /// - Parameter properties: Custom device properties (flat key-value pairs)
+    /// - Parameter properties: Custom device attributes (optional, primitives only)
     ///
     /// ## Example
     /// ```swift
-    /// await PhaseSDK.shared.identify([
-    ///     "app_version": "1.2.3",
-    ///     "user_tier": "premium",
-    ///     "notifications_enabled": true
-    /// ])
+    /// // Basic usage
+    /// await PhaseSDK.shared.identify()
+    ///
+    /// // After login
+    /// await PhaseSDK.shared.identify(["user_id": "123", "plan": "premium"])
     /// ```
     public func identify(_ properties: DeviceProperties? = nil) async {
         guard isInitialized.withLock({ $0 }) else {
@@ -230,17 +216,15 @@ public final class PhaseSDK: Sendable {
         logger.info("Device identified and session started")
     }
 
-    /// Track a custom event
+    /// Track custom event
     ///
     /// - Parameters:
-    ///   - name: Event name (1-256 chars, alphanumeric + `.` `/` `-` `_`)
-    ///   - params: Event parameters (optional, max depth 6, max size 50KB)
+    ///   - name: Event name (required, alphanumeric, `_`, `-`, `.`, `/`)
+    ///   - params: Event parameters (optional, primitives only)
     ///
     /// ## Example
     /// ```swift
-    /// PhaseSDK.shared.track("button_click", params: ["button_id": "submit"])
-    /// // or static method:
-    /// PhaseSDK.track("purchase", ["amount": 99.99])
+    /// PhaseSDK.shared.track("purchase", params: ["amount": 99.99, "currency": "USD"])
     /// ```
     public func track(_ name: String, params: EventParams? = nil) {
         guard isInitialized.withLock({ $0 }) else {
@@ -263,13 +247,11 @@ public final class PhaseSDK: Sendable {
         }
     }
 
-    /// Track a screen view
-    ///
-    /// Use this for manual screen tracking. For SwiftUI, prefer `.phaseScreen()` modifier.
+    /// Track screen view (for SwiftUI, prefer `.phaseScreen()` modifier)
     ///
     /// - Parameters:
-    ///   - name: Screen name (will be tracked as-is, use path format like "/home")
-    ///   - params: Additional parameters (optional)
+    ///   - name: Screen name (required, use path format like "/home")
+    ///   - params: Additional parameters (optional, primitives only)
     ///
     /// ## Example
     /// ```swift
@@ -296,33 +278,29 @@ public final class PhaseSDK: Sendable {
         }
     }
 
-    /// Track a custom event (static convenience method)
+    /// Track custom event (static convenience method)
     ///
     /// - Parameters:
-    ///   - name: Event name (1-256 chars, alphanumeric + `.` `/` `-` `_`)
-    ///   - params: Event parameters as dictionary (optional)
+    ///   - name: Event name (required, alphanumeric, `_`, `-`, `.`, `/`)
+    ///   - params: Event parameters (optional, primitives only)
     ///
     /// ## Example
     /// ```swift
-    /// import PhaseAnalytics
-    ///
-    /// track("button_click", ["button_id": "submit"])
+    /// track("purchase", ["amount": 99.99, "currency": "USD"])
     /// ```
     public static func track(_ name: String, _ params: [String: Any]? = nil) {
         let eventParams = params.map { EventParams($0) }
         shared.track(name, params: eventParams)
     }
 
-    /// Track a screen view (static convenience method)
+    /// Track screen view (static convenience method)
     ///
     /// - Parameters:
-    ///   - name: Screen name (use path format like "/home")
-    ///   - params: Additional parameters (optional)
+    ///   - name: Screen name (required, use path format like "/home")
+    ///   - params: Additional parameters (optional, primitives only)
     ///
     /// ## Example
     /// ```swift
-    /// import PhaseAnalytics
-    ///
     /// trackScreen("/profile", ["user_id": "123"])
     /// ```
     public static func trackScreen(_ name: String, _ params: [String: Any]? = nil) {
@@ -450,33 +428,28 @@ public final class PhaseSDK: Sendable {
     }
 }
 
-/// Track a custom event
+/// Track custom event
 ///
 /// - Parameters:
-///   - name: Event name (1-256 chars, alphanumeric + `.` `/` `-` `_`)
-///   - params: Event parameters as dictionary (optional, max depth 6, max size 50KB)
+///   - name: Event name (required, alphanumeric, `_`, `-`, `.`, `/`)
+///   - params: Event parameters (optional, primitives only)
 ///
 /// ## Example
 /// ```swift
-/// import PhaseAnalytics
-///
-/// track("button_click", ["button_id": "submit"])
 /// track("purchase", ["amount": 99.99, "currency": "USD"])
 /// ```
 public func track(_ name: String, _ params: [String: Any]? = nil) {
     PhaseSDK.track(name, params)
 }
 
-/// Track a screen view
+/// Track screen view
 ///
 /// - Parameters:
-///   - name: Screen name (use path format like "/home" or "HomeView")
-///   - params: Additional parameters (optional)
+///   - name: Screen name (required, use path format like "/home")
+///   - params: Additional parameters (optional, primitives only)
 ///
 /// ## Example
 /// ```swift
-/// import PhaseAnalytics
-///
 /// trackScreen("/profile", ["user_id": "123"])
 /// ```
 public func trackScreen(_ name: String, _ params: [String: Any]? = nil) {

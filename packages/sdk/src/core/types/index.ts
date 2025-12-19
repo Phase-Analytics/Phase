@@ -32,20 +32,11 @@ export type Platform = 'ios' | 'android';
 export type DeviceType = 'phone' | 'tablet' | 'desktop';
 
 /**
- * Device properties - flat key-value pairs only (max size 50KB)
- *
- * Only primitive values are allowed: string, number, boolean, or null.
- * Nested objects and arrays are not supported.
- *
+ * Custom device attributes (optional, primitives only)
  * @example
- * ```ts
- * { app_version: '1.2.3', user_tier: 'premium', notifications_enabled: true }
- * ```
+ * { app_version: '1.2.3', user_tier: 'premium', beta: true }
  */
-export type DeviceProperties = Record<
-  string,
-  string | number | boolean | null
->;
+export type DeviceProperties = Record<string, string | number | boolean | null>;
 
 export type CreateDeviceRequest = {
   deviceId: string;
@@ -64,15 +55,9 @@ export type CreateSessionRequest = {
 };
 
 /**
- * Event parameters - flat key-value pairs only (max size 50KB)
- *
- * Only primitive values are allowed: string, number, boolean, or null.
- * Nested objects and arrays are not supported.
- *
+ * Event parameters (optional, primitives only)
  * @example
- * ```ts
- * { user_id: '123', amount: 99.99, is_premium: true, coupon: null }
- * ```
+ * { user_id: '123', amount: 99.99, premium: true }
  */
 export type EventParams = Record<string, string | number | boolean | null>;
 
@@ -182,35 +167,17 @@ export type PingSessionResponse = {
 export type LogLevel = 'debug' | 'info' | 'error' | 'none';
 
 export type PhaseConfig = {
-  /**
-   * Your Phase API key (required, starts with "phase_")
-   * @example "phase_xxx"
-   */
+  /** Phase API key (required, starts with `phase_`) */
   apiKey: string;
-  /**
-   * Custom API endpoint for self-hosting (optional)
-   * @default "https://api.phase.sh"
-   */
+  /** Custom API endpoint (optional, default: "https://api.phase.sh") */
   baseUrl?: string;
-  /**
-   * Logging level: 'debug' | 'info' | 'error' | 'none' (optional)
-   * @default "none"
-   */
+  /** Logging level (optional, default: "none") */
   logLevel?: LogLevel;
-  /**
-   * Auto-track screen navigation (optional)
-   * @default true
-   */
+  /** Auto-track screens (optional, default: false) */
   trackNavigation?: boolean;
-  /**
-   * Collect device metadata (optional)
-   * @default true
-   */
+  /** Collect device metadata (optional, default: true) */
   deviceInfo?: boolean;
-  /**
-   * Collect user locale + geolocation (optional)
-   * @default true
-   */
+  /** Collect locale & geolocation (optional, default: true) */
   userLocale?: boolean;
 };
 

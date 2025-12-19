@@ -479,7 +479,10 @@ export function validateEventParams(
     };
   }
 
-  return { success: true, data: params as Record<string, string | number | boolean | null> };
+  return {
+    success: true,
+    data: params as Record<string, string | number | boolean | null>,
+  };
 }
 
 function validateId(

@@ -149,7 +149,10 @@ export const devices = pgTable(
       table.appId,
       table.firstSeen.desc()
     ),
-    propertiesIdx: index('devices_properties_idx').using('gin', table.properties),
+    propertiesIdx: index('devices_properties_idx').using(
+      'gin',
+      table.properties
+    ),
   })
 );
 

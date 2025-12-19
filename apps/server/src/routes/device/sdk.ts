@@ -77,6 +77,7 @@ export const deviceSdkRouter = new Elysia({ prefix: '/devices' })
               osVersion: body.osVersion ?? existingDevice.osVersion,
               platform: body.platform ?? existingDevice.platform,
               locale: body.locale ?? existingDevice.locale,
+              properties: body.properties ?? existingDevice.properties,
             })
             .where(eq(devices.deviceId, body.deviceId))
             .returning();
@@ -98,6 +99,7 @@ export const deviceSdkRouter = new Elysia({ prefix: '/devices' })
               locale: body.locale ?? null,
               country: country ?? null,
               city: city ?? null,
+              properties: body.properties ?? null,
             })
             .returning();
         }

@@ -31,24 +31,19 @@ public enum LogLevel: String, Sendable {
 
 /// Configuration options for Phase SDK initialization
 public struct PhaseConfig: Sendable {
-    /// Your Phase API key (required, starts with "phase_")
-    /// - Example: `"phase_xxx"`
+    /// Phase API key (required, starts with `phase_`)
     public let apiKey: String
 
-    /// Custom API endpoint for self-hosting
-    /// - Default: `"https://api.phase.sh"`
+    /// Custom API endpoint (optional, default: "https://api.phase.sh")
     public var baseURL: String
 
-    /// Logging verbosity level
-    /// - Default: `.none`
+    /// Logging level (optional, default: `.none`)
     public var logLevel: LogLevel
 
-    /// Collect device metadata (type, OS version, platform)
-    /// - Default: `true`
+    /// Collect device metadata (optional, default: `true`)
     public var deviceInfo: Bool
 
-    /// Collect user locale and enable server-side geolocation
-    /// - Default: `true`
+    /// Collect locale & geolocation (optional, default: `true`)
     public var userLocale: Bool
 
     public init(
@@ -85,18 +80,11 @@ public struct DeviceInfo: Sendable {
     }
 }
 
-/// Event parameters for tracking custom data
-///
-/// Only supports flat key-value pairs with primitive values (String, Int, Double, Bool, or nil).
-/// Nested objects and arrays are not allowed. Maximum 50KB size.
+/// Event parameters (optional, primitives only)
 ///
 /// ## Example
 /// ```swift
 /// track("purchase", ["amount": 99.99, "currency": "USD"])
-///
-/// // Or with EventParams directly:
-/// let params: EventParams = ["item_id": "abc", "quantity": 2, "is_premium": true]
-/// PhaseSDK.shared.track("add_to_cart", params: params)
 /// ```
 public struct EventParams: @unchecked Sendable {
     private let dict: [String: Any]
@@ -108,18 +96,11 @@ public struct EventParams: @unchecked Sendable {
     public var dictionary: [String: Any] { dict }
 }
 
-/// Device properties for identifying devices with custom metadata
-///
-/// Only supports flat key-value pairs with primitive values (String, Int, Double, Bool, or nil).
-/// Nested objects and arrays are not allowed. Maximum 50KB size.
+/// Custom device attributes (optional, primitives only)
 ///
 /// ## Example
 /// ```swift
 /// PhaseSDK.shared.identify(["app_version": "1.2.3", "user_tier": "premium"])
-///
-/// // Or with DeviceProperties directly:
-/// let props: DeviceProperties = ["notifications_enabled": true, "theme": "dark"]
-/// PhaseSDK.shared.identify(props)
 /// ```
 public struct DeviceProperties: @unchecked Sendable {
     private let dict: [String: Any]

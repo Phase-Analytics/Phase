@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { PhaseSDK } from '../core/sdk';
 import { setStorageAdapter } from '../core/storage/storage';
-import type { EventParams, PhaseConfig } from '../core/types';
+import type { DeviceProperties, EventParams, PhaseConfig } from '../core/types';
 import { logger } from '../core/utils/logger';
 import { getRNDeviceInfo } from './device/rn-device-info';
 import { addNetworkListener, fetchNetworkState } from './network/rn-network';
@@ -88,35 +88,20 @@ function NavigationTracker({
 }
 
 /**
- * Phase Analytics Provider for React Native
- *
- * Wrap your app with this component to enable analytics.
- * Set trackNavigation={true} to enable automatic screen tracking (requires @react-navigation/native).
- *
- * @param apiKey - Your Phase API key (required, starts with "phase_")
- * @param children - Your app content or navigation stack
- * @param trackNavigation - Auto-track screen navigation (default: false, requires @react-navigation/native)
- * @param deviceInfo - Collect device metadata (default: true)
- * @param userLocale - Collect user locale + geolocation (optional, default: true)
- * @param baseUrl - Custom API endpoint for self-hosting (optional)
- * @param logLevel - Logging: 'debug' | 'info' | 'error' | 'none' (optional, default: 'none')
- *
- * When trackNavigation={true}, all NavigationContainer props are also supported.
- *
+ * Phase Analytics provider for React Native
+ * @param apiKey Phase API key (required, starts with `phase_`)
+ * @param children App content (required)
+ * @param trackNavigation Auto-track screens (optional, default: false)
+ * @param baseUrl Custom API endpoint (optional, default: "https://api.phase.sh")
+ * @param logLevel Logging level (optional, default: "none")
+ * @param deviceInfo Collect device metadata (optional, default: true)
+ * @param userLocale Collect locale & geolocation (optional, default: true)
  * @example
- * ```tsx
- * // Basic usage - event tracking only
- * <Phase apiKey="phase_xxx">
- *   <YourApp />
- * </Phase>
- *
- * // With navigation tracking (requires @react-navigation/native)
- * <Phase apiKey="phase_xxx" trackNavigation={true}>
+ * <Phase apiKey="phase_xxx" trackNavigation>
  *   <Stack.Navigator>
  *     <Stack.Screen name="Home" component={HomeScreen} />
  *   </Stack.Navigator>
  * </Phase>
- * ```
  */
 function Phase({
   children,
@@ -200,41 +185,30 @@ function Phase({
 }
 
 /**
- * Identify the device and start a tracking session.
- *
- * Must be called after SDK initialization and before tracking events.
- * Registers the device with the backend and enables event tracking.
- *
+ * Register device and start session
+ * @param properties Custom device attributes (optional)
  * @example
- * ```tsx
- * import { identify, track } from 'phase-analytics/react-native';
- *
- * // Call once on app startup
+ * // Basic usage
  * await identify();
- * track('app_opened');
- * ```
+ *
+ * // After user login
+ * await identify({ user_id: '123', plan: 'premium' });
  */
-async function identify(): Promise<void> {
+async function identify(properties?: DeviceProperties): Promise<void> {
   const instance = getSDK();
   if (!instance) {
     logger.error('SDK not initialized. Wrap your app with <Phase>.');
     return;
   }
-  await instance.identify();
+  await instance.identify(properties);
 }
 
 /**
- * Track a custom event
- *
- * @param name - Event name (required, 1-256 chars, alphanumeric + . / - _)
- * @param params - Event parameters (optional, max depth 6, max size 50KB)
- *
+ * Track custom event
+ * @param name Event name (required, alphanumeric, `_`, `-`, `.`, `/`)
+ * @param params Event parameters (optional, primitives only)
  * @example
- * ```tsx
- * import { track } from 'phase-analytics/react-native';
- *
- * track('button_click', { button_id: 'submit' });
- * ```
+ * track('purchase', { amount: 99.99, currency: 'USD' });
  */
 function track(name: string, params?: EventParams): void {
   const instance = getSDK();
@@ -246,4 +220,4 @@ function track(name: string, params?: EventParams): void {
 }
 
 export { Phase, identify, track };
-export type { EventParams, PhaseConfig } from '../core/types';
+export type { DeviceProperties, EventParams, PhaseConfig } from '../core/types';

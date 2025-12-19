@@ -84,13 +84,11 @@ internal struct Validator {
 
         let dict = params.dictionary
 
-        for (key, value) in dict {
-            if !isFlatValue(value) {
-                return .failure(
-                    .validationFailed(
-                        "Param '\(key)' must be a String, Int, Double, Bool, or nil. Nested objects/arrays are not allowed."
-                    ))
-            }
+        for (key, value) in dict where !isFlatValue(value) {
+            return .failure(
+                .validationFailed(
+                    "Param '\(key)' must be a String, Int, Double, Bool, or nil. Nested objects/arrays are not allowed."
+                ))
         }
 
         do {
@@ -113,6 +111,7 @@ internal struct Validator {
             return true
         }
 
-        return value is String || value is Int || value is Double || value is Float || value is Bool || value is Int64 || value is Int32
+        return value is String || value is Int || value is Double || value is Float || value is Bool || value is Int64
+            || value is Int32
     }
 }
