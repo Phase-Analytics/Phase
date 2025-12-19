@@ -1,5 +1,6 @@
 'use client';
 
+import { track } from '@databuddy/sdk';
 import { useForm } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
@@ -67,11 +68,13 @@ function useJoinWaitlist() {
         throw new Error(data.message || 'Something went wrong');
       }
 
-      return data;
+      return { data, email };
     },
-    onSuccess: (data) => {
+    onSuccess: async ({ data }) => {
       toast.success(data.message);
       queryClient.invalidateQueries({ queryKey: waitlistKeys.count() });
+
+      await track('waitlist_join', {});
     },
     onError: (error) => {
       toast.error(

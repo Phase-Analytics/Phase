@@ -7,12 +7,17 @@ const getContentSecurityPolicy = () => {
 
   const policy = {
     'default-src': ["'self'"],
-    'script-src': ["'self'", "'unsafe-eval'", "'unsafe-inline'"],
+    'script-src': [
+      "'self'",
+      "'unsafe-eval'",
+      "'unsafe-inline'",
+      'https://cdn.databuddy.cc/databuddy.js',
+    ],
     'style-src': ["'self'", "'unsafe-inline'"],
     'img-src': ["'self'", 'data:', 'blob:', 'https:'],
     'font-src': ["'self'", 'data:'],
     'media-src': ["'self'", 'https://4q2mmgfazl.ufs.sh'],
-    'connect-src': ["'self'", serverUrl],
+    'connect-src': ["'self'", 'https://basket.databuddy.cc', serverUrl],
     'frame-ancestors': ["'none'"],
     'base-uri': ["'self'"],
     'form-action': ["'self'"],

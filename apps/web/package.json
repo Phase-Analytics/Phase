@@ -9,6 +9,7 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
+    "@databuddy/sdk": "^2.3.1",
     "@faker-js/faker": "^10.1.0",
     "@hugeicons/core-free-icons": "^1.2.1",
     "@hugeicons/react": "^1.1.1",
