@@ -7,6 +7,7 @@ import {
   ComputerIcon,
   Flag02Icon,
   LanguageSquareIcon,
+  PropertyNewIcon,
   SmartPhone01Icon,
   Tablet01Icon,
 } from '@hugeicons/core-free-icons';
@@ -226,6 +227,23 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
               )}
             </div>
           </div>
+
+          {device.properties && Object.keys(device.properties).length > 0 && (
+            <div>
+              <p className="flex items-center gap-1.5 text-muted-foreground text-xs uppercase">
+                <HugeiconsIcon className="size-3.5" icon={PropertyNewIcon} />
+                Properties
+              </p>
+              <div className="mt-1 space-y-2">
+                {Object.entries(device.properties).map(([key, value]) => (
+                  <p className="font-medium text-sm" key={key}>
+                    <span className="text-muted-foreground">{key}:</span>{' '}
+                    <span>{String(value)}</span>
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

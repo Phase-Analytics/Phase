@@ -30,7 +30,48 @@ export function UserDetailCardSkeleton() {
           </div>
         </div>
 
-        <Skeleton className="h-[200px] w-full rounded-md" />
+        <div className="space-y-4">
+          <div>
+            <p className="text-muted-foreground text-xs uppercase">Geo</p>
+            <div className="mt-1 space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Skeleton className="size-4" />
+                <Skeleton className="h-5 w-32" />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Skeleton className="size-4" />
+                <Skeleton className="h-5 w-24" />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-muted-foreground text-xs uppercase">Device</p>
+            <div className="mt-1 space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Skeleton className="size-4" />
+                <Skeleton className="h-5 w-28" />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Skeleton className="size-4" />
+                <Skeleton className="h-5 w-20" />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center gap-1.5">
+              <Skeleton className="size-3.5" />
+              <p className="text-muted-foreground text-xs uppercase">
+                Properties
+              </p>
+            </div>
+            <div className="mt-1 space-y-2">
+              <Skeleton className="h-5 w-full" />
+              <Skeleton className="h-5 w-3/4" />
+            </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
