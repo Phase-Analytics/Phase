@@ -10,8 +10,14 @@ export const DeviceTypeSchema = z.enum([
   'unknown',
 ]);
 
+export const DevicePropertiesSchema = z.record(
+  z.string(),
+  z.union([z.string(), z.number(), z.boolean(), z.null()])
+);
+
 export type Platform = z.infer<typeof PlatformSchema>;
 export type DeviceType = z.infer<typeof DeviceTypeSchema>;
+export type DeviceProperties = z.infer<typeof DevicePropertiesSchema>;
 
 export const DeviceSchema = z.object({
   deviceId: z.string(),
@@ -21,6 +27,7 @@ export const DeviceSchema = z.object({
   locale: z.string().nullable(),
   country: z.string().nullable(),
   city: z.string().nullable(),
+  properties: DevicePropertiesSchema.nullable(),
   firstSeen: z.string().datetime(),
 });
 
@@ -38,6 +45,7 @@ export const CreateDeviceRequestSchema = z.object({
     .optional(),
   platform: PlatformSchema.nullable().optional(),
   locale: z.string().max(LOCALE.MAX_LENGTH).nullable().optional(),
+  properties: DevicePropertiesSchema.optional(),
   disableGeolocation: z.boolean().optional(),
 });
 
@@ -57,6 +65,7 @@ export const DeviceDetailSchema = z.object({
   locale: z.string().nullable(),
   country: z.string().nullable(),
   city: z.string().nullable(),
+  properties: DevicePropertiesSchema.nullable(),
   firstSeen: z.string().datetime(),
   lastActivityAt: z.string().datetime().nullable(),
 });

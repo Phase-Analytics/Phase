@@ -189,7 +189,19 @@ public final class PhaseSDK: Sendable {
     /// await PhaseSDK.shared.identify()
     /// track("app_opened")
     /// ```
-    public func identify() async {
+    /// Identify the current device with optional custom properties
+    ///
+    /// - Parameter properties: Custom device properties (flat key-value pairs)
+    ///
+    /// ## Example
+    /// ```swift
+    /// await PhaseSDK.shared.identify([
+    ///     "app_version": "1.2.3",
+    ///     "user_tier": "premium",
+    ///     "notifications_enabled": true
+    /// ])
+    /// ```
+    public func identify(_ properties: DeviceProperties? = nil) async {
         guard isInitialized.withLock({ $0 }) else {
             logger.error("SDK not initialized. Call initialize() first.")
             return
@@ -211,7 +223,7 @@ public final class PhaseSDK: Sendable {
         let netState = await adapter.fetchNetworkState()
         let isOnline = netState.isConnected
 
-        await devManager.identify(isOnline: isOnline)
+        await devManager.identify(isOnline: isOnline, properties: properties)
         _ = await sessManager.start(isOnline: isOnline)
 
         isIdentified.withLock { $0 = true }

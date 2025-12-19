@@ -67,13 +67,13 @@ internal actor DeviceManager {
         return deviceID!
     }
 
-    func identify(isOnline: Bool) async {
+    func identify(isOnline: Bool, properties: DeviceProperties? = nil) async {
         guard deviceID != nil else {
             logger.error("Device ID not set, call initialize() first")
             return
         }
 
-        await registerDevice(isOnline: isOnline, force: true)
+        await registerDevice(isOnline: isOnline, properties: properties, force: true)
     }
 
     private func shouldUpdateDevice() async -> Bool {
@@ -101,8 +101,8 @@ internal actor DeviceManager {
         return true
     }
 
-    private func registerDevice(isOnline: Bool, force: Bool = false) async {
-        guard let payload = buildDevicePayload() else {
+    private func registerDevice(isOnline: Bool, properties: DeviceProperties? = nil, force: Bool = false) async {
+        guard let payload = buildDevicePayload(properties: properties) else {
             logger.error("Device ID not set, cannot register device")
             return
         }
@@ -132,16 +132,19 @@ internal actor DeviceManager {
         }
     }
 
-    private func buildDevicePayload() -> CreateDeviceRequest? {
+    private func buildDevicePayload(properties: DeviceProperties? = nil) -> CreateDeviceRequest? {
         guard let deviceID = deviceID else { return nil }
 
         let info = getDeviceInfo()
+        let propsDict: [String: AnyCodable]? = properties?.dictionary.mapValues { AnyCodable($0) }
+
         return CreateDeviceRequest(
             deviceId: deviceID,
             deviceType: collectDeviceInfo ? info.deviceType : nil,
             osVersion: collectDeviceInfo ? info.osVersion : nil,
             platform: collectDeviceInfo ? info.platform : nil,
             locale: collectLocale ? info.locale : nil,
+            properties: propsDict,
             disableGeolocation: !collectLocale
         )
     }

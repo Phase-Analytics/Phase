@@ -117,6 +117,7 @@ export const deviceSdkRouter = new Elysia({ prefix: '/devices' })
           locale: device.locale,
           country: device.country,
           city: device.city,
+          properties: device.properties,
           firstSeen: device.firstSeen.toISOString(),
         };
       } catch (error) {

@@ -31,12 +31,29 @@ export const VALIDATION = {
 export type Platform = 'ios' | 'android';
 export type DeviceType = 'phone' | 'tablet' | 'desktop';
 
+/**
+ * Device properties - flat key-value pairs only (max size 50KB)
+ *
+ * Only primitive values are allowed: string, number, boolean, or null.
+ * Nested objects and arrays are not supported.
+ *
+ * @example
+ * ```ts
+ * { app_version: '1.2.3', user_tier: 'premium', notifications_enabled: true }
+ * ```
+ */
+export type DeviceProperties = Record<
+  string,
+  string | number | boolean | null
+>;
+
 export type CreateDeviceRequest = {
   deviceId: string;
   deviceType?: DeviceType | null;
   osVersion?: string | null;
   platform?: Platform | null;
   locale?: string | null;
+  properties?: DeviceProperties;
   disableGeolocation?: boolean;
 };
 

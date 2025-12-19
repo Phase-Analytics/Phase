@@ -865,6 +865,7 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
           locale: device.locale,
           country: device.country,
           city: device.city,
+          properties: device.properties,
           firstSeen: device.firstSeen.toISOString(),
           lastActivityAt: lastActivityAt
             ? (lastActivityAt instanceof Date

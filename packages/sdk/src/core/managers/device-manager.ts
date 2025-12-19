@@ -1,7 +1,12 @@
 import type { HttpClient } from '../client/http-client';
 import type { OfflineQueue } from '../queue/offline-queue';
 import { getItem, setItem } from '../storage/storage';
-import type { CreateDeviceRequest, DeviceInfo, PhaseConfig } from '../types';
+import type {
+  CreateDeviceRequest,
+  DeviceInfo,
+  DeviceProperties,
+  PhaseConfig,
+} from '../types';
 import { STORAGE_KEYS } from '../types';
 import { generateDeviceId } from '../utils/id-generator';
 import { logger } from '../utils/logger';
@@ -75,20 +80,25 @@ export class DeviceManager {
     return this.deviceId;
   }
 
-  async identify(isOnline: boolean): Promise<void> {
+  async identify(
+    isOnline: boolean,
+    properties?: DeviceProperties
+  ): Promise<void> {
     if (!this.deviceId) {
       logger.error('Device ID not set, call initialize() first');
       return;
     }
 
-    await this.registerDevice(isOnline);
+    await this.registerDevice(isOnline, properties);
   }
 
   getDeviceId(): string | null {
     return this.deviceId;
   }
 
-  private buildDevicePayload(): CreateDeviceRequest | null {
+  private buildDevicePayload(
+    properties?: DeviceProperties
+  ): CreateDeviceRequest | null {
     if (!this.deviceId) {
       return null;
     }
@@ -100,12 +110,16 @@ export class DeviceManager {
       osVersion: this.collectDeviceInfo ? deviceInfo.osVersion : null,
       platform: this.collectDeviceInfo ? deviceInfo.platform : null,
       locale: this.collectLocale ? deviceInfo.locale : null,
+      properties,
       disableGeolocation: !this.collectLocale,
     };
   }
 
-  private async registerDevice(isOnline: boolean): Promise<void> {
-    const payload = this.buildDevicePayload();
+  private async registerDevice(
+    isOnline: boolean,
+    properties?: DeviceProperties
+  ): Promise<void> {
+    const payload = this.buildDevicePayload(properties);
     if (!payload) {
       logger.error('Device ID not set, cannot register device');
       return;

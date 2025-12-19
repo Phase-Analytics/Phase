@@ -6,7 +6,12 @@ import { EventManager } from './managers/event-manager';
 import { SessionManager } from './managers/session-manager';
 import { BatchSender } from './queue/batch-sender';
 import { OfflineQueue } from './queue/offline-queue';
-import type { DeviceInfo, EventParams, PhaseConfig } from './types';
+import type {
+  DeviceInfo,
+  DeviceProperties,
+  EventParams,
+  PhaseConfig,
+} from './types';
 import { logger } from './utils/logger';
 
 export class PhaseSDK {
@@ -107,7 +112,21 @@ export class PhaseSDK {
     }
   }
 
-  async identify(): Promise<void> {
+  /**
+   * Identify the current device with optional custom properties
+   *
+   * @param properties - Flat key-value pairs (string, number, boolean, or null only)
+   *
+   * @example
+   * ```ts
+   * Phase.identify({
+   *   app_version: '1.2.3',
+   *   user_tier: 'premium',
+   *   notifications_enabled: true
+   * });
+   * ```
+   */
+  async identify(properties?: DeviceProperties): Promise<void> {
     if (!this.isInitialized) {
       logger.error('SDK not initialized. Call Phase.init() first.');
       return;
@@ -126,7 +145,7 @@ export class PhaseSDK {
     const netState = await this.networkAdapter.fetchNetworkState();
     const isOnline = netState.isConnected ?? false;
 
-    await this.deviceManager.identify(isOnline);
+    await this.deviceManager.identify(isOnline, properties);
     await this.sessionManager.start(isOnline);
 
     this.isIdentified = true;

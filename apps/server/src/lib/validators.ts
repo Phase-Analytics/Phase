@@ -398,6 +398,8 @@ export async function invalidateSessionCache(sessionId: string): Promise<void> {
 
 const MAX_PARAMS_SIZE = 50_000;
 const MAX_PARAM_KEY_LENGTH = 128;
+const MAX_PROPERTIES_SIZE = 50_000;
+const MAX_PROPERTY_KEY_LENGTH = 128;
 
 function isFlatValue(value: unknown): boolean {
   if (value === null) {
@@ -526,6 +528,81 @@ export function validateDeviceId(deviceId: string): ValidationResult<string> {
 
 export function validateSessionId(sessionId: string): ValidationResult<string> {
   return validateId(sessionId, ID_VALIDATION.sessionId);
+}
+
+export function validateDeviceProperties(
+  properties: unknown
+): ValidationResult<Record<string, string | number | boolean | null> | null> {
+  if (properties === null || properties === undefined) {
+    return { success: true, data: null };
+  }
+
+  if (typeof properties !== 'object' || Array.isArray(properties)) {
+    return {
+      success: false,
+      error: {
+        code: ErrorCode.VALIDATION_ERROR,
+        detail: 'Properties must be a flat object with string keys',
+        status: HttpStatus.BAD_REQUEST,
+      },
+    };
+  }
+
+  const entries = Object.entries(properties);
+
+  for (const [key, value] of entries) {
+    if (key.length > MAX_PROPERTY_KEY_LENGTH) {
+      return {
+        success: false,
+        error: {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: `Property key '${key}' exceeds maximum length of ${MAX_PROPERTY_KEY_LENGTH}`,
+          status: HttpStatus.BAD_REQUEST,
+        },
+      };
+    }
+
+    if (!isFlatValue(value)) {
+      return {
+        success: false,
+        error: {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: `Property '${key}' must be a string, number, boolean, or null. Nested objects/arrays are not allowed.`,
+          status: HttpStatus.BAD_REQUEST,
+        },
+      };
+    }
+  }
+
+  let jsonString: string;
+  try {
+    jsonString = JSON.stringify(properties);
+  } catch (_error) {
+    return {
+      success: false,
+      error: {
+        code: ErrorCode.VALIDATION_ERROR,
+        detail: 'Invalid properties: must be valid JSON',
+        status: HttpStatus.BAD_REQUEST,
+      },
+    };
+  }
+
+  if (jsonString.length > MAX_PROPERTIES_SIZE) {
+    return {
+      success: false,
+      error: {
+        code: ErrorCode.VALIDATION_ERROR,
+        detail: `Properties too large: maximum ${MAX_PROPERTIES_SIZE} bytes`,
+        status: HttpStatus.BAD_REQUEST,
+      },
+    };
+  }
+
+  return {
+    success: true,
+    data: properties as Record<string, string | number | boolean | null>,
+  };
 }
 
 export function validateEventName(name: string): ValidationResult<string> {

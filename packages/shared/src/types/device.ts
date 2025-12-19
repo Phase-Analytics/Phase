@@ -3,6 +3,8 @@ import type { PaginationMeta } from './common';
 export type Platform = 'ios' | 'android' | 'unknown';
 export type DeviceType = 'phone' | 'tablet' | 'desktop' | 'unknown';
 
+export type DeviceProperties = Record<string, string | number | boolean | null>;
+
 export type Device = {
   deviceId: string;
   deviceType: DeviceType | null;
@@ -12,6 +14,7 @@ export type Device = {
   locale: string | null;
   country: string | null;
   city: string | null;
+  properties: DeviceProperties | null;
   firstSeen: string;
 };
 
@@ -22,6 +25,7 @@ export type CreateDeviceRequest = {
   platform?: Platform | null;
   appVersion?: string | null;
   locale?: string | null;
+  properties?: DeviceProperties;
 };
 
 export type DeviceListItem = {
@@ -41,6 +45,7 @@ export type DeviceDetail = {
   locale: string | null;
   country: string | null;
   city: string | null;
+  properties: DeviceProperties | null;
   firstSeen: string;
   lastActivityAt: string | null;
 };

@@ -108,6 +108,39 @@ public struct EventParams: @unchecked Sendable {
     public var dictionary: [String: Any] { dict }
 }
 
+/// Device properties for identifying devices with custom metadata
+///
+/// Only supports flat key-value pairs with primitive values (String, Int, Double, Bool, or nil).
+/// Nested objects and arrays are not allowed. Maximum 50KB size.
+///
+/// ## Example
+/// ```swift
+/// PhaseSDK.shared.identify(["app_version": "1.2.3", "user_tier": "premium"])
+///
+/// // Or with DeviceProperties directly:
+/// let props: DeviceProperties = ["notifications_enabled": true, "theme": "dark"]
+/// PhaseSDK.shared.identify(props)
+/// ```
+public struct DeviceProperties: @unchecked Sendable {
+    private let dict: [String: Any]
+
+    public init(_ dict: [String: Any]) {
+        self.dict = dict
+    }
+
+    public var dictionary: [String: Any] { dict }
+}
+
+extension DeviceProperties: ExpressibleByDictionaryLiteral {
+    public init(dictionaryLiteral elements: (String, Any)...) {
+        var dict: [String: Any] = [:]
+        for (key, value) in elements {
+            dict[key] = value
+        }
+        self.init(dict)
+    }
+}
+
 extension EventParams: ExpressibleByDictionaryLiteral {
     public init(dictionaryLiteral elements: (String, Any)...) {
         var dict: [String: Any] = [:]
@@ -124,6 +157,7 @@ public struct CreateDeviceRequest: Codable, Sendable {
     let osVersion: String?
     let platform: Platform?
     let locale: String?
+    let properties: [String: AnyCodable]?
     let disableGeolocation: Bool?
 }
 

@@ -1,5 +1,12 @@
 import { relations, sql } from 'drizzle-orm';
-import { boolean, index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  index,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+} from 'drizzle-orm/pg-core';
 
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
@@ -130,6 +137,10 @@ export const devices = pgTable(
     locale: text('locale'),
     country: text('country'),
     city: text('city'),
+    properties: jsonb('properties').$type<Record<
+      string,
+      string | number | boolean | null
+    > | null>(),
     firstSeen: timestamp('first_seen').defaultNow().notNull(),
   },
   (table) => ({
@@ -138,6 +149,7 @@ export const devices = pgTable(
       table.appId,
       table.firstSeen.desc()
     ),
+    propertiesIdx: index('devices_properties_idx').using('gin', table.properties),
   })
 );
 
