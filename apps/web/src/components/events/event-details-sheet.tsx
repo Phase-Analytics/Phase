@@ -30,42 +30,6 @@ type EventsSheetProps = {
   appId: string;
 };
 
-function flattenObject(
-  obj: unknown,
-  prefix = '',
-  separator = '.'
-): Record<string, string | number | boolean | null> {
-  if (obj === null || obj === undefined) {
-    return {};
-  }
-
-  if (typeof obj !== 'object') {
-    return prefix ? { [prefix]: obj as string | number | boolean } : {};
-  }
-
-  if (Array.isArray(obj)) {
-    return { [prefix]: JSON.stringify(obj) };
-  }
-
-  const result: Record<string, string | number | boolean | null> = {};
-
-  for (const [key, value] of Object.entries(obj)) {
-    const newKey = prefix ? `${prefix}${separator}${key}` : key;
-
-    if (value === null) {
-      result[newKey] = null;
-    } else if (typeof value === 'object' && !Array.isArray(value)) {
-      Object.assign(result, flattenObject(value, newKey, separator));
-    } else if (Array.isArray(value)) {
-      result[newKey] = JSON.stringify(value);
-    } else {
-      result[newKey] = value as string | number | boolean;
-    }
-  }
-
-  return result;
-}
-
 export function EventsSheet({ appId }: EventsSheetProps) {
   const router = useRouter();
   const [eventId, setEventId] = useQueryState('event', parseAsString);
@@ -90,12 +54,11 @@ export function EventsSheet({ appId }: EventsSheetProps) {
     return getGeneratedName(event.deviceId);
   }, [event?.deviceId]);
 
-  const flattenedParams = useMemo(() => {
-    if (!event?.params) {
+  const params = useMemo(() => {
+    if (!event?.params || Object.keys(event.params).length === 0) {
       return null;
     }
-    const flattened = flattenObject(event.params);
-    return Object.keys(flattened).length > 0 ? flattened : null;
+    return event.params;
   }, [event?.params]);
 
   return (
@@ -202,14 +165,14 @@ export function EventsSheet({ appId }: EventsSheetProps) {
               </div>
             </div>
 
-            {flattenedParams && (
+            {params && (
               <div className="space-y-3">
                 <p className="text-muted-foreground text-xs uppercase">
                   Parameters
                 </p>
                 <div className="rounded-md border">
                   <div className="divide-y">
-                    {Object.entries(flattenedParams).map(([key, value]) => (
+                    {Object.entries(params).map(([key, value]) => (
                       <div
                         className="flex items-start justify-between gap-4 px-4 py-3"
                         key={key}

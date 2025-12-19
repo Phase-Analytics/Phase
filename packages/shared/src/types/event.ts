@@ -1,6 +1,6 @@
 import type { PaginationMeta } from './common';
 
-export type EventParams = unknown;
+export type EventParams = Record<string, string | number | boolean | null>;
 
 export type EventListItem = {
   eventId: string;

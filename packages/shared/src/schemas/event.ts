@@ -2,7 +2,10 @@ import { z } from 'zod';
 import { EVENT_NAME, SESSION_ID } from '../constants/validation';
 import { PaginationMetaSchema } from './common';
 
-export const EventParamsSchema = z.any();
+export const EventParamsSchema = z.record(
+  z.string(),
+  z.union([z.string(), z.number(), z.boolean(), z.null()])
+);
 
 export const EventListItemSchema = z.object({
   eventId: z.string(),

@@ -16,7 +16,6 @@ export const VALIDATION = {
   },
   EVENT_PARAMS: {
     MAX_SIZE: 50_000,
-    MAX_DEPTH: 6,
   },
   BATCH: {
     MAX_SIZE: 5000,
@@ -48,10 +47,17 @@ export type CreateSessionRequest = {
 };
 
 /**
- * Event parameters (optional, max depth 6, max size 50KB)
- * @example { button_id: 'submit', screen: 'login' }
+ * Event parameters - flat key-value pairs only (max size 50KB)
+ *
+ * Only primitive values are allowed: string, number, boolean, or null.
+ * Nested objects and arrays are not supported.
+ *
+ * @example
+ * ```ts
+ * { user_id: '123', amount: 99.99, is_premium: true, coupon: null }
+ * ```
  */
-export type EventParams = Record<string, unknown>;
+export type EventParams = Record<string, string | number | boolean | null>;
 
 export type CreateEventRequest = {
   sessionId: string;

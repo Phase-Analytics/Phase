@@ -397,41 +397,59 @@ export async function invalidateSessionCache(sessionId: string): Promise<void> {
 }
 
 const MAX_PARAMS_SIZE = 50_000;
-const MAX_PARAMS_DEPTH = 6;
+const MAX_PARAM_KEY_LENGTH = 128;
 
-function getObjectDepth(obj: unknown, currentDepth = 0): number {
-  if (currentDepth > MAX_PARAMS_DEPTH) {
-    return currentDepth;
+function isFlatValue(value: unknown): boolean {
+  if (value === null) {
+    return true;
   }
 
-  if (obj === null || typeof obj !== 'object') {
-    return currentDepth;
-  }
-
-  if (Array.isArray(obj)) {
-    if (obj.length === 0) {
-      return currentDepth + 1;
-    }
-    return (
-      1 + Math.max(...obj.map((item) => getObjectDepth(item, currentDepth)))
-    );
-  }
-
-  const values = Object.values(obj);
-  if (values.length === 0) {
-    return currentDepth + 1;
-  }
-
-  return (
-    1 + Math.max(...values.map((value) => getObjectDepth(value, currentDepth)))
-  );
+  const type = typeof value;
+  return type === 'string' || type === 'number' || type === 'boolean';
 }
 
 export function validateEventParams(
   params: unknown
-): ValidationResult<unknown> {
+): ValidationResult<Record<string, string | number | boolean | null> | null> {
   if (params === null || params === undefined) {
-    return { success: true, data: params };
+    return { success: true, data: null };
+  }
+
+  if (typeof params !== 'object' || Array.isArray(params)) {
+    return {
+      success: false,
+      error: {
+        code: ErrorCode.VALIDATION_ERROR,
+        detail: 'Params must be a flat object with string keys',
+        status: HttpStatus.BAD_REQUEST,
+      },
+    };
+  }
+
+  const entries = Object.entries(params);
+
+  for (const [key, value] of entries) {
+    if (key.length > MAX_PARAM_KEY_LENGTH) {
+      return {
+        success: false,
+        error: {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: `Param key '${key}' exceeds maximum length of ${MAX_PARAM_KEY_LENGTH}`,
+          status: HttpStatus.BAD_REQUEST,
+        },
+      };
+    }
+
+    if (!isFlatValue(value)) {
+      return {
+        success: false,
+        error: {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: `Param '${key}' must be a string, number, boolean, or null. Nested objects/arrays are not allowed.`,
+          status: HttpStatus.BAD_REQUEST,
+        },
+      };
+    }
   }
 
   let jsonString: string;
@@ -459,19 +477,7 @@ export function validateEventParams(
     };
   }
 
-  const depth = getObjectDepth(params);
-  if (depth > MAX_PARAMS_DEPTH) {
-    return {
-      success: false,
-      error: {
-        code: ErrorCode.VALIDATION_ERROR,
-        detail: `Params nesting too deep: maximum ${MAX_PARAMS_DEPTH} levels`,
-        status: HttpStatus.BAD_REQUEST,
-      },
-    };
-  }
-
-  return { success: true, data: params };
+  return { success: true, data: params as Record<string, string | number | boolean | null> };
 }
 
 function validateId(

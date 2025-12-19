@@ -84,12 +84,13 @@ internal struct Validator {
 
         let dict = params.dictionary
 
-        let depth = getObjectDepth(dict)
-        guard depth <= ValidationConstants.EventParams.maxDepth else {
-            return .failure(
-                .validationFailed(
-                    "Event params exceed maximum depth of \(ValidationConstants.EventParams.maxDepth) (got \(depth))"
-                ))
+        for (key, value) in dict {
+            if !isFlatValue(value) {
+                return .failure(
+                    .validationFailed(
+                        "Param '\(key)' must be a String, Int, Double, Bool, or nil. Nested objects/arrays are not allowed."
+                    ))
+            }
         }
 
         do {
@@ -107,45 +108,11 @@ internal struct Validator {
         return .success(())
     }
 
-    private static func getObjectDepth(
-        _ obj: Any,
-        currentDepth: Int = 1,
-        visited: Set<ObjectIdentifier> = []
-    ) -> Int {
-        if let dict = obj as? [String: Any] {
-            let objId = ObjectIdentifier(dict as AnyObject)
-            if visited.contains(objId) {
-                return currentDepth
-            }
-
-            var newVisited = visited
-            newVisited.insert(objId)
-
-            var maxDepth = currentDepth
-            for value in dict.values {
-                let depth = getObjectDepth(value, currentDepth: currentDepth + 1, visited: newVisited)
-                maxDepth = max(maxDepth, depth)
-            }
-            return maxDepth
+    private static func isFlatValue(_ value: Any) -> Bool {
+        if value is NSNull {
+            return true
         }
 
-        if let array = obj as? [Any] {
-            let objId = ObjectIdentifier(array as AnyObject)
-            if visited.contains(objId) {
-                return currentDepth
-            }
-
-            var newVisited = visited
-            newVisited.insert(objId)
-
-            var maxDepth = currentDepth
-            for item in array {
-                let depth = getObjectDepth(item, currentDepth: currentDepth + 1, visited: newVisited)
-                maxDepth = max(maxDepth, depth)
-            }
-            return maxDepth
-        }
-
-        return currentDepth
+        return value is String || value is Int || value is Double || value is Float || value is Bool || value is Int64 || value is Int32
     }
 }

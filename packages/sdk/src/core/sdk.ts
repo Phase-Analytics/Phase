@@ -133,6 +133,17 @@ export class PhaseSDK {
     logger.info('Device identified and session started');
   }
 
+  /**
+   * Track a custom event
+   *
+   * @param name - Event name (alphanumeric, underscore, hyphen, dot, slash)
+   * @param params - Flat key-value pairs (string, number, boolean, or null only)
+   *
+   * @example
+   * ```ts
+   * Phase.track('purchase', { amount: 99.99, currency: 'USD' });
+   * ```
+   */
   track(name: string, params?: EventParams): void {
     if (!this.isInitialized) {
       logger.error('SDK not initialized. Call Phase.init() first.');
@@ -152,6 +163,17 @@ export class PhaseSDK {
     this.eventManager.track(name, params, false);
   }
 
+  /**
+   * Track a screen view
+   *
+   * @param name - Screen name
+   * @param params - Flat key-value pairs (string, number, boolean, or null only)
+   *
+   * @example
+   * ```ts
+   * Phase.trackScreen('HomeScreen', { tab: 'explore' });
+   * ```
+   */
   trackScreen(name: string, params?: EventParams): void {
     if (!this.trackNavigationEvents) {
       logger.debug('Navigation tracking disabled via privacy config');

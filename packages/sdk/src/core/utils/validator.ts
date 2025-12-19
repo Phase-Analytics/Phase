@@ -9,33 +9,13 @@ export class ValidationError extends Error {
   }
 }
 
-function getObjectDepth(
-  obj: unknown,
-  currentDepth = 1,
-  visited = new WeakSet<object>()
-): number {
-  if (typeof obj !== 'object' || obj === null) {
-    return currentDepth;
+function isFlatValue(value: unknown): boolean {
+  if (value === null) {
+    return true;
   }
 
-  if (visited.has(obj)) {
-    return currentDepth;
-  }
-  visited.add(obj);
-
-  const depths: number[] = [];
-
-  if (Array.isArray(obj)) {
-    for (const item of obj) {
-      depths.push(getObjectDepth(item, currentDepth + 1, visited));
-    }
-  } else {
-    for (const value of Object.values(obj)) {
-      depths.push(getObjectDepth(value, currentDepth + 1, visited));
-    }
-  }
-
-  return depths.length > 0 ? Math.max(...depths) : currentDepth;
+  const type = typeof value;
+  return type === 'string' || type === 'number' || type === 'boolean';
 }
 
 export function validateEventParams(
@@ -45,14 +25,24 @@ export function validateEventParams(
     return { success: true, data: undefined };
   }
 
-  const depth = getObjectDepth(params);
-  if (depth > VALIDATION.EVENT_PARAMS.MAX_DEPTH) {
+  if (typeof params !== 'object' || Array.isArray(params)) {
     return {
       success: false,
       error: new ValidationError(
-        `Event params exceed maximum depth of ${VALIDATION.EVENT_PARAMS.MAX_DEPTH} (got ${depth})`
+        'Event params must be a flat object with string keys'
       ),
     };
+  }
+
+  for (const [key, value] of Object.entries(params)) {
+    if (!isFlatValue(value)) {
+      return {
+        success: false,
+        error: new ValidationError(
+          `Param '${key}' must be a string, number, boolean, or null. Nested objects/arrays are not allowed.`
+        ),
+      };
+    }
   }
 
   try {

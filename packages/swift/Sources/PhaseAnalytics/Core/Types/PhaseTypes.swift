@@ -87,14 +87,15 @@ public struct DeviceInfo: Sendable {
 
 /// Event parameters for tracking custom data
 ///
-/// Supports nested objects up to 6 levels deep and max 50KB size.
+/// Only supports flat key-value pairs with primitive values (String, Int, Double, Bool, or nil).
+/// Nested objects and arrays are not allowed. Maximum 50KB size.
 ///
 /// ## Example
 /// ```swift
 /// track("purchase", ["amount": 99.99, "currency": "USD"])
 ///
 /// // Or with EventParams directly:
-/// let params: EventParams = ["item_id": "abc", "quantity": 2]
+/// let params: EventParams = ["item_id": "abc", "quantity": 2, "is_premium": true]
 /// PhaseSDK.shared.track("add_to_cart", params: params)
 /// ```
 public struct EventParams: @unchecked Sendable {
