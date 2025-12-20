@@ -2,8 +2,10 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
+    paths:
+      - 'packages/sdk/package.json'
   workflow_dispatch:
 
 jobs:
@@ -15,35 +17,69 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.3
 
       - name: Get version
         id: version
         run: |
-          TAG=${GITHUB_REF#refs/tags/}
-          VERSION=${TAG#v}
+          VERSION=$(node -p "require('./packages/sdk/package.json').version")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Check tag
+        id: check_tag
+        run: |
+          if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Tag v${{ steps.version.outputs.version }} already exists, skipping release"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Creating new release for v${{ steps.version.outputs.version }}"
+          fi
+
+      - name: Install dependencies
+        if: steps.check_tag.outputs.exists == 'false'
+        run: bun install --frozen-lockfile
+
+      - name: Build SDK
+        if: steps.check_tag.outputs.exists == 'false'
+        run: bun run --filter phase-analytics build
+
+      - name: Publish to npm
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          cd packages/sdk
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+          bun publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create and push tag
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.version.outputs.tag }}" -m "Release ${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.tag }}"
 
       - name: Create GitHub Release
+        if: steps.check_tag.outputs.exists == 'false'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: Release ${{ steps.version.outputs.tag }}
+          name: phase-analytics ${{ steps.version.outputs.tag }}
           body: |
-            ## What's Changed
+            ## phase-analytics v${{ steps.version.outputs.version }}
 
-            See [CHANGELOG.md](CHANGELOG.md) for details.
+            📦 **npm Package:** https://www.npmjs.com/package/phase-analytics
 
-            ### Manual Setup
-
-            See [README.md](README.md) for detailed installation instructions.
-
-            ## What's Included
-
-            - ✅ Source code
-            - ✅ Docker Compose configuration
-            - ✅ Dockerfiles for all services
-            - ✅ Documentation
+            See [CHANGELOG.md](CHANGELOG.md) for detailed changes.
 
           draft: false
           prerelease: false
