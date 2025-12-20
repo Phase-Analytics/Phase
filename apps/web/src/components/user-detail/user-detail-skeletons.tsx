@@ -32,7 +32,9 @@ export function UserDetailCardSkeleton() {
 
         <div className="space-y-4">
           <div>
-            <p className="text-muted-foreground text-xs uppercase">Geo</p>
+            <p className="text-muted-foreground text-xs uppercase">
+              Geolocation
+            </p>
             <div className="mt-1 space-y-2">
               <div className="flex items-center gap-1.5">
                 <Skeleton className="size-4" />

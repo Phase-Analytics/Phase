@@ -4,12 +4,10 @@ import {
   AndroidIcon,
   AnonymousIcon,
   AppleIcon,
-  ComputerIcon,
   Flag02Icon,
   LanguageSquareIcon,
   PropertyNewIcon,
   SmartPhone01Icon,
-  Tablet01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { parseAsString, useQueryState } from 'nuqs';
@@ -39,32 +37,6 @@ function getPlatformLabel(platform: string | null) {
       return 'Android';
     case 'ios':
       return 'iOS';
-    default:
-      return 'Unknown';
-  }
-}
-
-function getDeviceTypeIcon(deviceType: string | null) {
-  switch (deviceType) {
-    case 'phone':
-      return SmartPhone01Icon;
-    case 'tablet':
-      return Tablet01Icon;
-    case 'desktop':
-      return ComputerIcon;
-    default:
-      return AnonymousIcon;
-  }
-}
-
-function _getDeviceTypeLabel(deviceType: string | null) {
-  switch (deviceType) {
-    case 'phone':
-      return 'Phone';
-    case 'tablet':
-      return 'Tablet';
-    case 'desktop':
-      return 'Desktop';
     default:
       return 'Unknown';
   }
@@ -135,7 +107,9 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
 
         <div className="space-y-4">
           <div>
-            <p className="text-muted-foreground text-xs uppercase">Geo</p>
+            <p className="text-muted-foreground text-xs uppercase">
+              Geolocation
+            </p>
             <div className="mt-1 space-y-2">
               {(() => {
                 const countryLabel = getCountryLabel(device.country);
@@ -220,7 +194,7 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
                 <p className="flex items-center gap-1.5 font-medium text-sm">
                   <HugeiconsIcon
                     className="size-4 text-muted-foreground"
-                    icon={getDeviceTypeIcon(device.model)}
+                    icon={SmartPhone01Icon}
                   />
                   <span>{device.model}</span>
                 </p>
