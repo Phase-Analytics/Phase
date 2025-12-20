@@ -1,6 +1,6 @@
 {
   "name": "phase-analytics",
-  "version": "0.0.14",
+  "version": "0.0.16",
   "description": "Privacy first, type-safe analytics SDK for React Native and Expo",
   "author": "Phase Analytics",
   "license": "AGPL-3.0-only",
@@ -43,7 +43,7 @@
     "@react-native-community/netinfo": ">=11.0.0",
     "expo-file-system": ">=17.0.0",
     "expo-application": ">=5.0.0",
-    "expo-constants": ">=14.0.0",
+    "expo-device": ">=6.0.0",
     "expo-localization": ">=14.0.0",
     "expo-router": ">=3.0.0",
     "@react-navigation/native": ">=6.0.0"

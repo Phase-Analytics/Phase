@@ -10,7 +10,7 @@ export function getRNDeviceInfo(): DeviceInfo {
     deviceType: getDeviceType(),
     osVersion: getOsVersion(),
     platform: getPlatform(),
-    locale: null,
+    locale: getLocale(),
   };
 }
 
@@ -46,4 +46,17 @@ function getPlatform(): PlatformType | null {
   } catch {
     return null;
   }
+}
+
+function getLocale(): string | null {
+  try {
+    const I18nManager = require('react-native').I18nManager;
+    if (I18nManager?.localeIdentifier) {
+      return I18nManager.localeIdentifier;
+    }
+  } catch {
+    // I18nManager not available
+  }
+
+  return null;
 }

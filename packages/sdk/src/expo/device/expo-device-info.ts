@@ -16,10 +16,10 @@ export function getExpoDeviceInfo(): DeviceInfo {
 
 function getDeviceType(): DeviceType | null {
   try {
-    const Constants = require('expo-constants').default;
+    const Device = require('expo-device');
 
-    if (Constants.deviceType !== undefined) {
-      switch (Constants.deviceType) {
+    if (Device.deviceType !== undefined && Device.deviceType !== null) {
+      switch (Device.deviceType) {
         case 1:
           return 'phone';
         case 2:
@@ -30,7 +30,11 @@ function getDeviceType(): DeviceType | null {
           return null;
       }
     }
+  } catch {
+    // fall through to fallback
+  }
 
+  try {
     const { width, height } = Dimensions.get('window');
     const pixelRatio = PixelRatio.get();
     const dipWidth = width / pixelRatio;
@@ -65,9 +69,21 @@ function getPlatform(): PlatformType | null {
 
 function getLocale(): string | null {
   try {
-    const Localization = require('expo-localization');
-    return Localization.locale || Localization.locales?.[0] || null;
+    const { getLocales } = require('expo-localization');
+    const locales = getLocales();
+    return locales?.[0]?.languageTag || null;
   } catch {
-    return null;
+    // expo-localization not available, fall through to fallback
   }
+
+  try {
+    const I18nManager = require('react-native').I18nManager;
+    if (I18nManager?.localeIdentifier) {
+      return I18nManager.localeIdentifier;
+    }
+  } catch {
+    // I18nManager not available
+  }
+
+  return null;
 }
