@@ -23,7 +23,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="font-sans">
       <DocsBodyClass />
-      <RootProvider>
+      <RootProvider theme={{ enabled: true }}>
         <DocsLayout tree={source.pageTree} {...baseOptions}>
           {children}
         </DocsLayout>
