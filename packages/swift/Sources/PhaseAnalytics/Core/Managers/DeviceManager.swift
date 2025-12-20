@@ -88,6 +88,7 @@ internal actor DeviceManager {
             let hasChanged =
                 cached.deviceType != current.deviceType || cached.osVersion != current.osVersion
                 || cached.platform != current.platform || cached.locale != current.locale
+                || cached.model != current.model
                 || cached.disableGeolocation != current.disableGeolocation
 
             if hasChanged {
@@ -137,13 +138,15 @@ internal actor DeviceManager {
 
         let info = getDeviceInfo()
         let propsDict: [String: AnyCodable]? = properties?.dictionary.mapValues { AnyCodable($0) }
+        let model = collectDeviceInfo ? info.model : nil
 
         return CreateDeviceRequest(
             deviceId: deviceID,
-            deviceType: collectDeviceInfo ? info.deviceType : nil,
+            deviceType: collectDeviceInfo && model == nil ? info.deviceType : nil,
             osVersion: collectDeviceInfo ? info.osVersion : nil,
             platform: collectDeviceInfo ? info.platform : nil,
             locale: collectLocale ? info.locale : nil,
+            model: model,
             properties: propsDict,
             disableGeolocation: !collectLocale
         )

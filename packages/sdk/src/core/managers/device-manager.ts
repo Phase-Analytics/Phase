@@ -104,12 +104,15 @@ export class DeviceManager {
     }
 
     const deviceInfo = this.getDeviceInfo();
+    const model = this.collectDeviceInfo ? deviceInfo.model : null;
+
     return {
       deviceId: this.deviceId,
-      deviceType: this.collectDeviceInfo ? deviceInfo.deviceType : null,
+      deviceType: this.collectDeviceInfo && !model ? deviceInfo.deviceType : null,
       osVersion: this.collectDeviceInfo ? deviceInfo.osVersion : null,
       platform: this.collectDeviceInfo ? deviceInfo.platform : null,
       locale: this.collectLocale ? deviceInfo.locale : null,
+      model,
       properties,
       disableGeolocation: !this.collectLocale,
     };

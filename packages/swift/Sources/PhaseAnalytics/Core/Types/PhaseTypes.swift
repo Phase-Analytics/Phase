@@ -141,6 +141,7 @@ public struct CreateDeviceRequest: Codable, Sendable {
     let osVersion: String?
     let platform: Platform?
     let locale: String?
+    let model: String?
     let properties: [String: AnyCodable]?
     let disableGeolocation: Bool?
 }

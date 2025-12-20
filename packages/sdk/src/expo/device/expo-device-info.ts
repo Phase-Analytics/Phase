@@ -71,18 +71,27 @@ function getPlatform(): PlatformType | null {
 function getLocale(): string | null {
   try {
     const { getLocales } = require('expo-localization');
+    console.log('[Phase] getLocales function:', getLocales);
     const locales = getLocales();
-    return locales?.[0]?.languageTag || null;
-  } catch {
+    console.log('[Phase] locales:', locales);
+    const languageTag = locales?.[0]?.languageTag;
+    console.log('[Phase] languageTag:', languageTag);
+    if (languageTag) {
+      return languageTag;
+    }
+  } catch (error) {
+    console.log('[Phase] expo-localization error:', error);
     // expo-localization not available, fall through to fallback
   }
 
   try {
     const I18nManager = require('react-native').I18nManager;
+    console.log('[Phase] I18nManager:', I18nManager);
     if (I18nManager?.localeIdentifier) {
       return I18nManager.localeIdentifier;
     }
-  } catch {
+  } catch (error) {
+    console.log('[Phase] I18nManager error:', error);
     // I18nManager not available
   }
 
@@ -91,9 +100,11 @@ function getLocale(): string | null {
 
 function getModel(): string | null {
   try {
-    const Device = require('expo-device');
-    return Device.modelName || null;
-  } catch {
+    const { modelName } = require('expo-device');
+    console.log('[Phase] modelName:', modelName);
+    return modelName || null;
+  } catch (error) {
+    console.log('[Phase] expo-device error:', error);
     return null;
   }
 }

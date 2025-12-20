@@ -44,6 +44,7 @@ export type CreateDeviceRequest = {
   osVersion?: string | null;
   platform?: Platform | null;
   locale?: string | null;
+  model?: string | null;
   properties?: DeviceProperties;
   disableGeolocation?: boolean;
 };
