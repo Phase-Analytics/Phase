@@ -1,6 +1,6 @@
 {
   "name": "phase-analytics",
-  "version": "0.0.20",
+  "version": "0.0.21",
   "description": "Privacy first, type-safe analytics SDK for React Native and Expo",
   "author": "Phase Analytics",
   "license": "AGPL-3.0-only",

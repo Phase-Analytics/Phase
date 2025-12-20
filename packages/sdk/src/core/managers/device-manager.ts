@@ -108,7 +108,8 @@ export class DeviceManager {
 
     return {
       deviceId: this.deviceId,
-      deviceType: this.collectDeviceInfo && !model ? deviceInfo.deviceType : null,
+      deviceType:
+        this.collectDeviceInfo && !model ? deviceInfo.deviceType : null,
       osVersion: this.collectDeviceInfo ? deviceInfo.osVersion : null,
       platform: this.collectDeviceInfo ? deviceInfo.platform : null,
       locale: this.collectLocale ? deviceInfo.locale : null,
