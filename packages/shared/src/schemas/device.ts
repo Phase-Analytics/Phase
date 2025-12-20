@@ -15,9 +15,36 @@ export const DevicePropertiesSchema = z.record(
   z.union([z.string(), z.number(), z.boolean(), z.null()])
 );
 
+export const PropertyOperatorSchema = z.enum([
+  'eq',
+  'neq',
+  'gt',
+  'lt',
+  'gte',
+  'lte',
+  'contains',
+  'startsWith',
+  'endsWith',
+]);
+
+export const PropertySearchConditionSchema = z.object({
+  key: z.string().min(1).max(128),
+  operator: PropertyOperatorSchema,
+  value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+});
+
+export const PropertySearchFilterSchema = z
+  .array(PropertySearchConditionSchema)
+  .max(10);
+
 export type Platform = z.infer<typeof PlatformSchema>;
 export type DeviceType = z.infer<typeof DeviceTypeSchema>;
 export type DeviceProperties = z.infer<typeof DevicePropertiesSchema>;
+export type PropertyOperator = z.infer<typeof PropertyOperatorSchema>;
+export type PropertySearchCondition = z.infer<
+  typeof PropertySearchConditionSchema
+>;
+export type PropertySearchFilter = z.infer<typeof PropertySearchFilterSchema>;
 
 export const DeviceSchema = z.object({
   deviceId: z.string(),
@@ -180,6 +207,7 @@ export type ListDevicesQuery = {
   startDate?: string;
   endDate?: string;
   platform?: Platform;
+  properties?: string;
   appId: string;
 };
 

@@ -31,11 +31,13 @@ import {
   type BetterAuthSession,
   type BetterAuthUser,
 } from '@/lib/middleware';
+import { buildPropertySearchFilters } from '@/lib/property-search';
 import {
   buildFilters,
   formatPaginationResponse,
   validateDateRange,
   validatePagination,
+  validatePropertySearchFilter,
 } from '@/lib/validators';
 
 type AuthContext = { user: BetterAuthUser; session: BetterAuthSession };
@@ -354,6 +356,27 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
           filters.push(eq(devices.platform, query.platform as Platform));
         }
 
+        if (query.properties) {
+          const propertyFilterValidation = validatePropertySearchFilter(
+            query.properties as string
+          );
+          if (!propertyFilterValidation.success) {
+            set.status = propertyFilterValidation.error.status;
+            return {
+              code: propertyFilterValidation.error.code,
+              detail: propertyFilterValidation.error.detail,
+            };
+          }
+
+          if (propertyFilterValidation.data) {
+            const propertyFilters = buildPropertySearchFilters(
+              devices.properties,
+              propertyFilterValidation.data
+            );
+            filters.push(...propertyFilters);
+          }
+        }
+
         const whereClause = buildFilters({
           filters,
           startDateColumn: devices.firstSeen,
@@ -417,6 +440,7 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
             t.Literal('unknown'),
           ])
         ),
+        properties: t.Optional(t.String()),
       }),
       response: {
         200: DevicesListResponseSchema,

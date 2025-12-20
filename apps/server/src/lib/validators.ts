@@ -3,6 +3,8 @@ import {
   ErrorCode,
   EVENT_NAME,
   HttpStatus,
+  type PropertySearchCondition,
+  PropertySearchFilterSchema,
   SESSION_ID,
 } from '@phase/shared';
 import {
@@ -606,6 +608,56 @@ export function validateDeviceProperties(
     success: true,
     data: properties as Record<string, string | number | boolean | null>,
   };
+}
+
+export function validatePropertySearchFilter(
+  encodedFilter: string | undefined
+): ValidationResult<PropertySearchCondition[] | null> {
+  if (!encodedFilter) {
+    return { success: true, data: null };
+  }
+
+  let decodedJson: string;
+  try {
+    decodedJson = Buffer.from(encodedFilter, 'base64').toString('utf-8');
+  } catch {
+    return {
+      success: false,
+      error: {
+        code: ErrorCode.VALIDATION_ERROR,
+        detail: 'Invalid property filter encoding: must be valid base64',
+        status: HttpStatus.BAD_REQUEST,
+      },
+    };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(decodedJson);
+  } catch {
+    return {
+      success: false,
+      error: {
+        code: ErrorCode.VALIDATION_ERROR,
+        detail: 'Invalid property filter: must be valid JSON',
+        status: HttpStatus.BAD_REQUEST,
+      },
+    };
+  }
+
+  const result = PropertySearchFilterSchema.safeParse(parsed);
+  if (!result.success) {
+    return {
+      success: false,
+      error: {
+        code: ErrorCode.VALIDATION_ERROR,
+        detail: `Invalid property filter: ${result.error.issues[0]?.message || 'validation failed'}`,
+        status: HttpStatus.BAD_REQUEST,
+      },
+    };
+  }
+
+  return { success: true, data: result.data };
 }
 
 export function validateEventName(name: string): ValidationResult<string> {

@@ -5,6 +5,25 @@ export type DeviceType = 'phone' | 'tablet' | 'desktop' | 'unknown';
 
 export type DeviceProperties = Record<string, string | number | boolean | null>;
 
+export type PropertyOperator =
+  | 'eq'
+  | 'neq'
+  | 'gt'
+  | 'lt'
+  | 'gte'
+  | 'lte'
+  | 'contains'
+  | 'startsWith'
+  | 'endsWith';
+
+export type PropertySearchCondition = {
+  key: string;
+  operator: PropertyOperator;
+  value: string | number | boolean | null;
+};
+
+export type PropertySearchFilter = PropertySearchCondition[];
+
 export type Device = {
   deviceId: string;
   deviceType: DeviceType | null;
@@ -125,6 +144,7 @@ export type ListDevicesQuery = {
   startDate?: string;
   endDate?: string;
   platform?: Platform;
+  properties?: string;
   appId: string;
 };
 
