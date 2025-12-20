@@ -62,20 +62,17 @@ public struct PhaseConfig: Sendable {
 }
 
 public struct DeviceInfo: Sendable {
-    public let deviceType: DeviceType?
     public let osVersion: String?
     public let platform: Platform?
     public let locale: String?
     public let model: String?
 
     public init(
-        deviceType: DeviceType?,
         osVersion: String?,
         platform: Platform?,
         locale: String?,
         model: String?
     ) {
-        self.deviceType = deviceType
         self.osVersion = osVersion
         self.platform = platform
         self.locale = locale
@@ -137,7 +134,6 @@ extension EventParams: ExpressibleByDictionaryLiteral {
 
 public struct CreateDeviceRequest: Codable, Sendable {
     let deviceId: String
-    let deviceType: DeviceType?
     let osVersion: String?
     let platform: Platform?
     let locale: String?

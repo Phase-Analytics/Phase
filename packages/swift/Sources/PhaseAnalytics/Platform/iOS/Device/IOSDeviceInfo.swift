@@ -4,12 +4,14 @@ import Foundation
     import UIKit
 
     public func getIOSDeviceInfo() -> DeviceInfo {
+        let model = getModel()
+        let fallbackModel = !model.isEmpty ? model : getDeviceType()?.rawValue
+
         return DeviceInfo(
-            deviceType: getDeviceType(),
             osVersion: getOSVersion(),
             platform: .ios,
             locale: getLocale(),
-            model: getModel()
+            model: fallbackModel
         )
     }
 

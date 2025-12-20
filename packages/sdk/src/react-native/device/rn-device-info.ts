@@ -6,12 +6,14 @@ import type {
 } from '../../core/types';
 
 export function getRNDeviceInfo(): DeviceInfo {
+  const model = getModel();
+  const fallbackModel = model || getDeviceType();
+
   return {
-    deviceType: getDeviceType(),
     osVersion: getOsVersion(),
     platform: getPlatform(),
     locale: getLocale(),
-    model: getModel(),
+    model: fallbackModel,
   };
 }
 

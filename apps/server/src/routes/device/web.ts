@@ -5,7 +5,6 @@ import {
   DeviceOverviewResponseSchema,
   DevicesListResponseSchema,
   DeviceTimeseriesResponseSchema,
-  type DeviceType,
   ErrorCode,
   ErrorResponseSchema,
   HttpStatus,
@@ -51,19 +50,6 @@ function normalizePlatform(
   const lower = platform.toLowerCase();
   if (lower === 'ios' || lower === 'android') {
     return lower as Platform;
-  }
-  return 'unknown';
-}
-
-function normalizeDeviceType(
-  deviceType: string | null | undefined
-): DeviceType | null {
-  if (!deviceType) {
-    return null;
-  }
-  const lower = deviceType.toLowerCase();
-  if (lower === 'phone' || lower === 'tablet' || lower === 'desktop') {
-    return lower as DeviceType;
   }
   return 'unknown';
 }
@@ -618,7 +604,6 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
         set.status = HttpStatus.OK;
         return {
           deviceId: device.deviceId,
-          deviceType: normalizeDeviceType(device.deviceType),
           osVersion: device.osVersion,
           platform: normalizePlatform(device.platform),
           locale: device.locale,

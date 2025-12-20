@@ -40,7 +40,6 @@ export type DeviceProperties = Record<string, string | number | boolean | null>;
 
 export type CreateDeviceRequest = {
   deviceId: string;
-  deviceType?: DeviceType | null;
   osVersion?: string | null;
   platform?: Platform | null;
   locale?: string | null;
@@ -187,7 +186,6 @@ export type Result<T, E = Error> =
   | { success: false; error: E };
 
 export type DeviceInfo = {
-  deviceType: DeviceType | null;
   osVersion: string | null;
   platform: Platform | null;
   locale: string | null;

@@ -48,7 +48,6 @@ export type PropertySearchFilter = z.infer<typeof PropertySearchFilterSchema>;
 
 export const DeviceSchema = z.object({
   deviceId: z.string(),
-  deviceType: DeviceTypeSchema.nullable(),
   osVersion: z.string().nullable(),
   platform: PlatformSchema.nullable(),
   locale: z.string().nullable(),
@@ -65,7 +64,6 @@ export const CreateDeviceRequestSchema = z.object({
     .min(DEVICE_ID.MIN_LENGTH)
     .max(DEVICE_ID.MAX_LENGTH)
     .regex(DEVICE_ID.PATTERN),
-  deviceType: DeviceTypeSchema.nullable().optional(),
   osVersion: z
     .string()
     .max(VERSION.OS_VERSION_MAX_LENGTH)
@@ -88,7 +86,6 @@ export const DeviceListItemSchema = z.object({
 
 export const DeviceDetailSchema = z.object({
   deviceId: z.string(),
-  deviceType: DeviceTypeSchema.nullable(),
   osVersion: z.string().nullable(),
   platform: PlatformSchema.nullable(),
   locale: z.string().nullable(),

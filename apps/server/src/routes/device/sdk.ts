@@ -1,7 +1,6 @@
 import {
   CreateDeviceRequestSchema,
   DeviceSchema,
-  type DeviceType,
   ErrorCode,
   ErrorResponseSchema,
   HttpStatus,
@@ -23,19 +22,6 @@ function normalizePlatform(
   const lower = platform.toLowerCase();
   if (lower === 'ios' || lower === 'android') {
     return lower as Platform;
-  }
-  return 'unknown';
-}
-
-function normalizeDeviceType(
-  deviceType: string | null | undefined
-): DeviceType | null {
-  if (!deviceType) {
-    return null;
-  }
-  const lower = deviceType.toLowerCase();
-  if (lower === 'phone' || lower === 'tablet' || lower === 'desktop') {
-    return lower as DeviceType;
   }
   return 'unknown';
 }
@@ -73,7 +59,6 @@ export const deviceSdkRouter = new Elysia({ prefix: '/devices' })
           [device] = await db
             .update(devices)
             .set({
-              deviceType: body.deviceType ?? existingDevice.deviceType,
               osVersion: body.osVersion ?? existingDevice.osVersion,
               platform: body.platform ?? existingDevice.platform,
               locale: body.locale ?? existingDevice.locale,
@@ -94,7 +79,6 @@ export const deviceSdkRouter = new Elysia({ prefix: '/devices' })
             .values({
               deviceId: body.deviceId,
               appId: app.id,
-              deviceType: body.deviceType ?? null,
               osVersion: body.osVersion ?? null,
               platform: body.platform ?? null,
               locale: body.locale ?? null,
@@ -115,7 +99,6 @@ export const deviceSdkRouter = new Elysia({ prefix: '/devices' })
         set.status = HttpStatus.OK;
         return {
           deviceId: device.deviceId,
-          deviceType: normalizeDeviceType(device.deviceType),
           osVersion: device.osVersion,
           platform: normalizePlatform(device.platform),
           locale: device.locale,

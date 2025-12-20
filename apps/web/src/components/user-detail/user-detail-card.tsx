@@ -57,7 +57,7 @@ function getDeviceTypeIcon(deviceType: string | null) {
   }
 }
 
-function getDeviceTypeLabel(deviceType: string | null) {
+function _getDeviceTypeLabel(deviceType: string | null) {
   switch (deviceType) {
     case 'phone':
       return 'Phone';
@@ -216,20 +216,11 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
                   )}
                 </span>
               </p>
-              {device.deviceType && (
-                <p className="flex items-center gap-1.5 font-medium text-sm">
-                  <HugeiconsIcon
-                    className="size-4 text-muted-foreground"
-                    icon={getDeviceTypeIcon(device.deviceType)}
-                  />
-                  <span>{getDeviceTypeLabel(device.deviceType)}</span>
-                </p>
-              )}
               {device.model && (
                 <p className="flex items-center gap-1.5 font-medium text-sm">
                   <HugeiconsIcon
                     className="size-4 text-muted-foreground"
-                    icon={SmartPhone01Icon}
+                    icon={getDeviceTypeIcon(device.model)}
                   />
                   <span>{device.model}</span>
                 </p>
