@@ -80,6 +80,13 @@ export const DeviceOverviewResponseSchema = z.object({
   activeDevices24h: z.number().min(0),
   platformStats: z.record(z.string(), z.number()),
   countryStats: z.record(z.string(), z.number()),
+  cityStats: z.record(
+    z.string(),
+    z.object({
+      count: z.number(),
+      country: z.string(),
+    })
+  ),
   totalDevicesChange24h: z.number(),
   activeDevicesChange24h: z.number(),
 });

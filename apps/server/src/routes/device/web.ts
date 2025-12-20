@@ -2,9 +2,7 @@ import {
   DeviceActivityTimeseriesResponseSchema,
   DeviceDetailSchema,
   DeviceLiveResponseSchema,
-  DeviceLocationOverviewResponseSchema,
   DeviceOverviewResponseSchema,
-  DevicePlatformOverviewResponseSchema,
   DevicesListResponseSchema,
   DeviceTimeseriesResponseSchema,
   type DeviceType,
@@ -106,6 +104,7 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
           [{ count: activeDevicesYesterday }],
           platformStatsResult,
           countryStatsResult,
+          cityStatsResult,
         ] = await Promise.all([
           db
             .select({ count: count() })
@@ -161,6 +160,16 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
             .from(devices)
             .where(eq(devices.appId, appId))
             .groupBy(devices.country),
+
+          db
+            .select({
+              city: devices.city,
+              country: devices.country,
+              count: count(),
+            })
+            .from(devices)
+            .where(eq(devices.appId, appId))
+            .groupBy(devices.city, devices.country),
         ]);
 
         const totalDevicesNum = Number(totalDevices);
@@ -186,45 +195,34 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
             activeDevicesYesterdayForCalc) *
           100;
 
-        const allPlatformStats: Array<{ platform: string; count: number }> = [];
-
+        const platformStats: Record<string, number> = {
+          ios: 0,
+          android: 0,
+          unknown: 0,
+        };
         for (const row of platformStatsResult) {
           const normalizedPlatform = normalizePlatform(row.platform);
           if (normalizedPlatform) {
-            allPlatformStats.push({
-              platform: normalizedPlatform,
-              count: Number(row.count),
-            });
+            platformStats[normalizedPlatform] = Number(row.count);
           }
         }
-
-        const topPlatforms = allPlatformStats
-          .sort((a, b) => b.count - a.count)
-          .slice(0, 3);
-
-        const platformStats: Record<string, number> = {};
-        for (const { platform, count: countValue } of topPlatforms) {
-          platformStats[platform] = countValue;
-        }
-
-        const allCountryStats: Array<{ country: string; count: number }> = [];
-
-        for (const row of countryStatsResult) {
-          if (row.country !== null) {
-            allCountryStats.push({
-              country: row.country,
-              count: Number(row.count),
-            });
-          }
-        }
-
-        const topCountries = allCountryStats
-          .sort((a, b) => b.count - a.count)
-          .slice(0, 3);
 
         const countryStats: Record<string, number> = {};
-        for (const { country, count: countValue } of topCountries) {
-          countryStats[country] = countValue;
+        for (const row of countryStatsResult) {
+          if (row.country !== null) {
+            countryStats[row.country] = Number(row.count);
+          }
+        }
+
+        const cityStats: Record<string, { count: number; country: string }> =
+          {};
+        for (const row of cityStatsResult) {
+          if (row.city !== null) {
+            cityStats[row.city] = {
+              count: Number(row.count),
+              country: row.country || '',
+            };
+          }
         }
 
         set.status = HttpStatus.OK;
@@ -233,6 +231,7 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
           activeDevices24h: activeDevices24hNum,
           platformStats,
           countryStats,
+          cityStats,
           totalDevicesChange24h: Number(totalDevicesChange24h.toFixed(2)),
           activeDevicesChange24h: Number(activeDevicesChange24h.toFixed(2)),
         };
@@ -253,270 +252,6 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
       }),
       response: {
         200: DeviceOverviewResponseSchema,
-        401: ErrorResponseSchema,
-        403: ErrorResponseSchema,
-        500: ErrorResponseSchema,
-      },
-    }
-  )
-  .get(
-    '/overview/platform',
-    async (ctx) => {
-      const { query, set } = ctx as typeof ctx & AuthContext;
-      try {
-        const appId = query.appId as string;
-
-        const now = new Date();
-        const twentyFourHoursAgo = new Date(
-          now.getTime() - 24 * 60 * 60 * 1000
-        );
-        const fortyEightHoursAgo = new Date(
-          now.getTime() - 48 * 60 * 60 * 1000
-        );
-
-        const deviceIdsSubquery = db
-          .select({ deviceId: devices.deviceId })
-          .from(devices)
-          .where(eq(devices.appId, appId));
-
-        const [
-          [{ count: totalDevices }],
-          [{ count: totalDevicesYesterday }],
-          [{ count: activeDevices24h }],
-          [{ count: activeDevicesYesterday }],
-          platformStatsResult,
-        ] = await Promise.all([
-          db
-            .select({ count: count() })
-            .from(devices)
-            .where(eq(devices.appId, appId)),
-
-          db
-            .select({ count: count() })
-            .from(devices)
-            .where(
-              and(
-                eq(devices.appId, appId),
-                lt(devices.firstSeen, twentyFourHoursAgo)
-              )
-            ),
-
-          db
-            .select({ count: countDistinct(sessions.deviceId) })
-            .from(sessions)
-            .where(
-              and(
-                sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-                gte(sessions.lastActivityAt, twentyFourHoursAgo),
-                lte(sessions.lastActivityAt, now)
-              )
-            ),
-
-          db
-            .select({ count: countDistinct(sessions.deviceId) })
-            .from(sessions)
-            .where(
-              and(
-                sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-                gte(sessions.lastActivityAt, fortyEightHoursAgo),
-                lt(sessions.lastActivityAt, twentyFourHoursAgo)
-              )
-            ),
-
-          db
-            .select({
-              platform: sql<string>`COALESCE(${devices.platform}, 'unknown')`,
-              count: count(),
-            })
-            .from(devices)
-            .where(eq(devices.appId, appId))
-            .groupBy(devices.platform),
-        ]);
-
-        const totalDevicesNum = Number(totalDevices);
-        const totalDevicesYesterdayNum = Number(totalDevicesYesterday);
-        const activeDevices24hNum = Number(activeDevices24h);
-        const activeDevicesYesterdayNum = Number(activeDevicesYesterday);
-
-        const totalDevicesYesterdayForCalc = Math.max(
-          totalDevicesYesterdayNum,
-          1
-        );
-        const totalDevicesChange24h =
-          ((totalDevicesNum - totalDevicesYesterdayNum) /
-            totalDevicesYesterdayForCalc) *
-          100;
-
-        const activeDevicesYesterdayForCalc = Math.max(
-          activeDevicesYesterdayNum,
-          1
-        );
-        const activeDevicesChange24h =
-          ((activeDevices24hNum - activeDevicesYesterdayNum) /
-            activeDevicesYesterdayForCalc) *
-          100;
-
-        const allPlatformStats: Array<{ platform: string; count: number }> = [];
-
-        for (const row of platformStatsResult) {
-          const normalizedPlatform = normalizePlatform(row.platform);
-          if (normalizedPlatform) {
-            allPlatformStats.push({
-              platform: normalizedPlatform,
-              count: Number(row.count),
-            });
-          }
-        }
-
-        const sortedPlatforms = allPlatformStats.sort(
-          (a, b) => b.count - a.count
-        );
-
-        const platformStats: Record<string, number> = {};
-        for (const { platform, count: countValue } of sortedPlatforms) {
-          platformStats[platform] = countValue;
-        }
-
-        set.status = HttpStatus.OK;
-        return {
-          totalDevices: totalDevicesNum,
-          activeDevices24h: activeDevices24hNum,
-          platformStats,
-          totalDevicesChange24h: Number(totalDevicesChange24h.toFixed(2)),
-          activeDevicesChange24h: Number(activeDevicesChange24h.toFixed(2)),
-        };
-      } catch (error) {
-        console.error('[Device.PlatformOverview] Error:', error);
-        set.status = HttpStatus.INTERNAL_SERVER_ERROR;
-        return {
-          code: ErrorCode.INTERNAL_SERVER_ERROR,
-          detail: 'Failed to fetch device platform overview',
-        };
-      }
-    },
-    {
-      requireAuth: true,
-      verifyAppAccess: true,
-      query: t.Object({
-        appId: t.String(),
-      }),
-      response: {
-        200: DevicePlatformOverviewResponseSchema,
-        401: ErrorResponseSchema,
-        403: ErrorResponseSchema,
-        500: ErrorResponseSchema,
-      },
-    }
-  )
-  .get(
-    '/overview/location',
-    async (ctx) => {
-      const { query, set } = ctx as typeof ctx & AuthContext;
-      try {
-        const appId = query.appId as string;
-        const limit = (query.limit as 'top3' | 'all' | undefined) ?? 'top3';
-
-        const [[{ count: totalDevices }], countryStatsResult, cityStatsResult] =
-          await Promise.all([
-            db
-              .select({ count: count() })
-              .from(devices)
-              .where(eq(devices.appId, appId)),
-
-            db
-              .select({
-                country: devices.country,
-                count: count(),
-              })
-              .from(devices)
-              .where(eq(devices.appId, appId))
-              .groupBy(devices.country),
-
-            db
-              .select({
-                city: devices.city,
-                country: devices.country,
-                count: count(),
-              })
-              .from(devices)
-              .where(eq(devices.appId, appId))
-              .groupBy(devices.city, devices.country),
-          ]);
-
-        const totalDevicesNum = Number(totalDevices);
-
-        const allCountryStats: Array<{ country: string; count: number }> = [];
-
-        for (const row of countryStatsResult) {
-          if (row.country !== null) {
-            allCountryStats.push({
-              country: row.country,
-              count: Number(row.count),
-            });
-          }
-        }
-
-        const sortedCountries = allCountryStats.sort(
-          (a, b) => b.count - a.count
-        );
-        const finalCountries =
-          limit === 'top3' ? sortedCountries.slice(0, 3) : sortedCountries;
-
-        const countryStats: Record<string, number> = {};
-        for (const { country, count: countValue } of finalCountries) {
-          countryStats[country] = countValue;
-        }
-
-        const allCityStats: Array<{
-          city: string;
-          country: string;
-          count: number;
-        }> = [];
-
-        for (const row of cityStatsResult) {
-          if (row.city !== null) {
-            allCityStats.push({
-              city: row.city,
-              country: row.country || '',
-              count: Number(row.count),
-            });
-          }
-        }
-
-        const sortedCities = allCityStats.sort((a, b) => b.count - a.count);
-        const finalCities =
-          limit === 'top3' ? sortedCities.slice(0, 3) : sortedCities;
-
-        const cityStats: Record<string, { count: number; country: string }> =
-          {};
-        for (const { city, count: countValue, country } of finalCities) {
-          cityStats[city] = { count: countValue, country };
-        }
-
-        set.status = HttpStatus.OK;
-        return {
-          totalDevices: totalDevicesNum,
-          countryStats,
-          cityStats,
-        };
-      } catch (error) {
-        console.error('[Device.LocationOverview] Error:', error);
-        set.status = HttpStatus.INTERNAL_SERVER_ERROR;
-        return {
-          code: ErrorCode.INTERNAL_SERVER_ERROR,
-          detail: 'Failed to fetch device location overview',
-        };
-      }
-    },
-    {
-      requireAuth: true,
-      verifyAppAccess: true,
-      query: t.Object({
-        appId: t.String(),
-        limit: t.Optional(t.Union([t.Literal('top3'), t.Literal('all')])),
-      }),
-      response: {
-        200: DeviceLocationOverviewResponseSchema,
         401: ErrorResponseSchema,
         403: ErrorResponseSchema,
         500: ErrorResponseSchema,

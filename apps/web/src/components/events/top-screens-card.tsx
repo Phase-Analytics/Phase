@@ -4,11 +4,14 @@ import { ScreenAddToHome02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { Card, CardContent } from '@/components/ui/card';
-import { useTopScreens } from '@/lib/queries';
+import { useTopEvents } from '@/lib/queries';
 
 export function TopScreensCard() {
   const [appId] = useQueryState('app', parseAsString);
-  const { data: topScreens } = useTopScreens(appId || '');
+  const { data: topEvents } = useTopEvents(appId || '');
+  const topScreens = topEvents
+    ? { screens: topEvents.screens }
+    : { screens: [] };
 
   if (!appId) {
     return null;

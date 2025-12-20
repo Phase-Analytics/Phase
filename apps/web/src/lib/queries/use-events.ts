@@ -9,7 +9,6 @@ import type {
   PaginationQueryParams,
   TimeRange,
   TopEventsResponse,
-  TopScreensResponse,
 } from '@/lib/api/types';
 import { cacheConfig } from './query-client';
 import { queryKeys } from './query-keys';
@@ -91,6 +90,7 @@ export function useTopEvents(appId: string, dateRange?: DateRangeParams) {
       if (!appId) {
         return Promise.resolve({
           events: [],
+          screens: [],
           appId: '',
           startDate: null,
           endDate: null,
@@ -98,26 +98,6 @@ export function useTopEvents(appId: string, dateRange?: DateRangeParams) {
       }
       return fetchApi<TopEventsResponse>(
         `/web/events/top${buildQueryString({ ...dateRange, appId })}`
-      );
-    },
-    ...cacheConfig.overview,
-  });
-}
-
-export function useTopScreens(appId: string, dateRange?: DateRangeParams) {
-  return useSuspenseQuery({
-    queryKey: queryKeys.events.topScreens(appId, dateRange),
-    queryFn: () => {
-      if (!appId) {
-        return Promise.resolve({
-          screens: [],
-          appId: '',
-          startDate: null,
-          endDate: null,
-        });
-      }
-      return fetchApi<TopScreensResponse>(
-        `/web/events/screens/top${buildQueryString({ ...dateRange, appId })}`
       );
     },
     ...cacheConfig.overview,

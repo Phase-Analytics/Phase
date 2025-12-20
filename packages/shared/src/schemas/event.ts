@@ -60,6 +60,7 @@ export const TopEventSchema = z.object({
 
 export const TopEventsResponseSchema = z.object({
   events: z.array(TopEventSchema),
+  screens: z.array(TopEventSchema),
   appId: z.string(),
   startDate: z.string().datetime().nullable(),
   endDate: z.string().datetime().nullable(),

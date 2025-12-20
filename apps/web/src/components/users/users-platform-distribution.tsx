@@ -9,7 +9,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useDevicePlatformOverviewResponse } from '@/lib/queries';
+import { useDeviceOverviewResponse } from '@/lib/queries';
 
 function getPlatformIcon(platform: string) {
   switch (platform) {
@@ -35,7 +35,7 @@ function getPlatformLabel(platform: string) {
 
 export function UsersPlatformDistribution() {
   const [appId] = useQueryState('app', parseAsString);
-  const { data: overview } = useDevicePlatformOverviewResponse(appId || '');
+  const { data: overview } = useDeviceOverviewResponse(appId || '');
 
   if (!appId) {
     return null;
@@ -47,7 +47,7 @@ export function UsersPlatformDistribution() {
   >;
   const totalDevices = overview?.totalDevices || 0;
 
-  const platforms = ['android', 'ios'] as const;
+  const platforms = ['android', 'ios', 'unknown'] as const;
   const sortedPlatforms = [...platforms].sort((a, b) => {
     const countA = platformStats[a] || 0;
     const countB = platformStats[b] || 0;

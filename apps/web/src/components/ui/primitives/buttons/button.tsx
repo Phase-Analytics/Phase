@@ -35,7 +35,7 @@ function Button({
       }
     : {};
 
-  return <Component {...motionProps} {...props} />;
+  return <Component suppressHydrationWarning {...motionProps} {...props} />;
 }
 
 export { Button, type ButtonProps };

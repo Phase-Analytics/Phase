@@ -225,7 +225,7 @@ export const eventWebRouter = new Elysia({ prefix: '/events' })
           };
         }
 
-        const topEvents = await getTopEvents({
+        const { events, screens } = await getTopEvents({
           appId,
           startDate: startDate || undefined,
           endDate: endDate || undefined,
@@ -234,7 +234,8 @@ export const eventWebRouter = new Elysia({ prefix: '/events' })
 
         set.status = HttpStatus.OK;
         return {
-          events: topEvents,
+          events,
+          screens,
           appId,
           startDate: startDate || null,
           endDate: endDate || null,

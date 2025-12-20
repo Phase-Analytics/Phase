@@ -23,10 +23,6 @@ export const queryKeys = {
       [...queryKeys.devices.details(), deviceId, appId] as const,
     overview: (appId: string) =>
       [...queryKeys.devices.all, 'overview', appId] as const,
-    platformOverview: (appId: string) =>
-      [...queryKeys.devices.all, 'platform-overview', appId] as const,
-    locationOverview: (appId: string) =>
-      [...queryKeys.devices.all, 'location-overview', appId] as const,
     live: (appId: string) => [...queryKeys.devices.all, 'live', appId] as const,
     timeseries: (appId: string, params?: Record<string, unknown>) =>
       [...queryKeys.devices.all, 'timeseries', appId, params] as const,
@@ -77,8 +73,6 @@ export const queryKeys = {
       [...queryKeys.events.all, 'overview', appId] as const,
     top: (appId: string, filters?: DateRangeParams) =>
       [...queryKeys.events.all, 'top', appId, filters] as const,
-    topScreens: (appId: string, filters?: DateRangeParams) =>
-      [...queryKeys.events.all, 'top-screens', appId, filters] as const,
     timeseries: (appId: string, params?: Record<string, unknown>) =>
       [...queryKeys.events.all, 'timeseries', appId, params] as const,
   },

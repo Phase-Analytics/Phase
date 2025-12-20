@@ -210,14 +210,15 @@ export type GetTopEventsOptions = {
   limit?: number;
 };
 
-export async function getTopEvents(
-  options: GetTopEventsOptions
+async function queryTopEventsByType(
+  options: GetTopEventsOptions,
+  isScreen: boolean
 ): Promise<TopEventQueryResult[]> {
   validateIdentifier(options.appId, 'appId');
 
   const conditions: string[] = [
     `app_id = '${escapeSqlString(options.appId)}'`,
-    'is_screen = false',
+    `is_screen = ${isScreen}`,
   ];
 
   if (options.startDate) {
@@ -233,7 +234,7 @@ export async function getTopEvents(
   const whereClause = `WHERE ${conditions.join(' AND ')}`;
   const limit = sanitizeNumeric(options.limit, 6, 1, 6);
 
-  const topEventsQuery = `
+  const query = `
     SELECT name, COUNT(*) as count
     FROM events
     ${whereClause}
@@ -242,54 +243,24 @@ export async function getTopEvents(
     LIMIT ${limit}
   `;
 
-  return await executeQuery<TopEventQueryResult>(topEventsQuery);
+  return await executeQuery<TopEventQueryResult>(query);
 }
 
-export type TopScreenQueryResult = {
-  name: string;
-  count: number;
-};
+export async function getTopEvents(
+  options: GetTopEventsOptions
+): Promise<{ events: TopEventQueryResult[]; screens: TopEventQueryResult[] }> {
+  const [events, screens] = await Promise.all([
+    queryTopEventsByType(options, false),
+    queryTopEventsByType(options, true),
+  ]);
 
-export type GetTopScreensOptions = {
-  appId: string;
-  startDate?: string;
-  endDate?: string;
-  limit?: number;
-};
+  return { events, screens };
+}
 
 export async function getTopScreens(
-  options: GetTopScreensOptions
-): Promise<TopScreenQueryResult[]> {
-  validateIdentifier(options.appId, 'appId');
-
-  const conditions: string[] = [
-    `app_id = '${escapeSqlString(options.appId)}'`,
-    'is_screen = true',
-  ];
-
-  if (options.startDate) {
-    validateTimestamp(options.startDate, 'startDate');
-    conditions.push(`timestamp >= '${escapeSqlString(options.startDate)}'`);
-  }
-
-  if (options.endDate) {
-    validateTimestamp(options.endDate, 'endDate');
-    conditions.push(`timestamp <= '${escapeSqlString(options.endDate)}'`);
-  }
-
-  const whereClause = `WHERE ${conditions.join(' AND ')}`;
-  const limit = sanitizeNumeric(options.limit, 6, 1, 6);
-
-  const topScreensQuery = `
-    SELECT name, COUNT(*) as count
-    FROM events
-    ${whereClause}
-    GROUP BY name
-    ORDER BY count DESC
-    LIMIT ${limit}
-  `;
-
-  return await executeQuery<TopScreenQueryResult>(topScreensQuery);
+  options: GetTopEventsOptions
+): Promise<TopEventQueryResult[]> {
+  return await queryTopEventsByType(options, true);
 }
 
 export type GetEventByIdOptions = {

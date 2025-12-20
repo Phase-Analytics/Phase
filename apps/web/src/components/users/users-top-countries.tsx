@@ -8,7 +8,7 @@ import 'flag-icons/css/flag-icons.min.css';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useDeviceLocationOverviewResponse } from '@/lib/queries';
+import { useDeviceOverviewResponse } from '@/lib/queries';
 
 const COUNTRY_CODE_REGEX = /^[A-Za-z]{2}$/;
 
@@ -23,7 +23,7 @@ function getCountryLabel(countryCode: string) {
 export function UsersTopCountries() {
   const [appId] = useQueryState('app', parseAsString);
   const [activeTab, setActiveTab] = useState<'country' | 'city'>('country');
-  const { data: overview } = useDeviceLocationOverviewResponse(appId || '');
+  const { data: overview } = useDeviceOverviewResponse(appId || '');
 
   if (!appId) {
     return null;

@@ -6,10 +6,8 @@ import type {
   DeviceActivityTimeseriesResponse,
   DeviceDetail,
   DeviceLiveResponse,
-  DeviceLocationOverviewResponse,
   DeviceMetric,
   DeviceOverviewResponse,
-  DevicePlatformOverviewResponse,
   DevicesListResponse,
   DeviceTimeseriesResponse,
   PaginationQueryParams,
@@ -78,50 +76,11 @@ export function useDeviceOverviewResponse(appId: string) {
           activeDevicesChange24h: 0,
           platformStats: {},
           countryStats: {},
+          cityStats: {},
         });
       }
       return fetchApi<DeviceOverviewResponse>(
         `/web/devices/overview?appId=${appId}`
-      );
-    },
-    ...cacheConfig.overview,
-  });
-}
-
-export function useDevicePlatformOverviewResponse(appId: string) {
-  return useSuspenseQuery({
-    queryKey: queryKeys.devices.platformOverview(appId),
-    queryFn: () => {
-      if (!appId) {
-        return Promise.resolve({
-          totalDevices: 0,
-          totalDevicesChange24h: 0,
-          activeDevices24h: 0,
-          activeDevicesChange24h: 0,
-          platformStats: {},
-        });
-      }
-      return fetchApi<DevicePlatformOverviewResponse>(
-        `/web/devices/overview/platform${buildQueryString({ appId })}`
-      );
-    },
-    ...cacheConfig.overview,
-  });
-}
-
-export function useDeviceLocationOverviewResponse(appId: string) {
-  return useSuspenseQuery({
-    queryKey: queryKeys.devices.locationOverview(appId),
-    queryFn: () => {
-      if (!appId) {
-        return Promise.resolve({
-          totalDevices: 0,
-          countryStats: {},
-          cityStats: {},
-        });
-      }
-      return fetchApi<DeviceLocationOverviewResponse>(
-        `/web/devices/overview/location${buildQueryString({ appId, limit: 'all' })}`
       );
     },
     ...cacheConfig.overview,
