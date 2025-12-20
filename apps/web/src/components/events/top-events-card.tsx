@@ -27,47 +27,55 @@ export function TopEventsCard() {
         </div>
 
         {topEvents?.events && topEvents.events.length > 0 && (
-          <div className="grid gap-x-8 gap-y-3 md:grid-cols-2">
-            {(() => {
-              const totalCount = topEvents.events
-                .filter((e) => e?.count !== undefined)
-                .reduce((sum, e) => sum + (e.count || 0), 0);
+          <div className="h-[220px] overflow-y-auto">
+            <div className="space-y-2 pr-4">
+              {(() => {
+                const totalCount = topEvents.events
+                  .filter((e) => e?.count !== undefined)
+                  .reduce((sum, e) => sum + (e.count || 0), 0);
 
-              return topEvents.events
-                .filter((event) => event?.name && event?.count !== undefined)
-                .map((event) => {
-                  const percentage = totalCount
-                    ? (event.count / totalCount) * 100
-                    : 0;
+                return topEvents.events
+                  .filter((event) => event?.name && event?.count !== undefined)
+                  .map((event) => {
+                    const percentage = totalCount
+                      ? (event.count / totalCount) * 100
+                      : 0;
 
-                  return (
-                    <div className="space-y-1.5" key={event.name}>
-                      <div className="flex items-center justify-between gap-2">
-                        <span
-                          className="truncate font-medium text-sm"
-                          title={event.name}
-                        >
-                          {event.name}
-                        </span>
-                        <div className="flex shrink-0 items-baseline gap-2">
-                          <span className="font-semibold text-sm">
-                            {event.count.toLocaleString()}
-                          </span>
-                          <span className="text-muted-foreground text-xs">
-                            ({percentage.toFixed(1)}%)
-                          </span>
+                    return (
+                      <div className="space-y-1.5" key={event.name}>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <HugeiconsIcon
+                              className="size-3.5 shrink-0 text-muted-foreground"
+                              icon={CursorPointer02Icon}
+                            />
+                            <span
+                              className="truncate font-medium text-sm"
+                              title={event.name}
+                            >
+                              {event.name}
+                            </span>
+                          </div>
+                          <div className="flex shrink-0 items-baseline gap-2">
+                            <span className="font-semibold text-sm">
+                              {event.count.toLocaleString()}
+                            </span>
+                            <span className="text-muted-foreground text-xs">
+                              ({percentage.toFixed(1)}%)
+                            </span>
+                          </div>
+                        </div>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                          <div
+                            className="h-full bg-primary transition-all"
+                            style={{ width: `${percentage}%` }}
+                          />
                         </div>
                       </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                        <div
-                          className="h-full bg-primary transition-all"
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                });
-            })()}
+                    );
+                  });
+              })()}
+            </div>
           </div>
         )}
 

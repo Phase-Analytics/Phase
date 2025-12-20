@@ -54,7 +54,7 @@ export function UsersPlatformDistributionSkeleton() {
         <div className="space-y-3">
           {Array.from({ length: 3 }, (_, i) => `skeleton-platform-${i}`).map(
             (key) => (
-              <Skeleton className="h-9 w-full" key={key} />
+              <Skeleton className="h-10 w-full" key={key} />
             )
           )}
         </div>
@@ -69,10 +69,10 @@ export function UsersTopCountriesSkeleton() {
       <CardContent className="space-y-4 p-4">
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-5 w-48" />
-        <div className="space-y-3">
+        <div className="h-[220px] space-y-2">
           {Array.from({ length: 3 }, (_, i) => `skeleton-country-${i}`).map(
             (key) => (
-              <Skeleton className="h-9 w-full" key={key} />
+              <Skeleton className="h-10 w-full" key={key} />
             )
           )}
         </div>

@@ -232,7 +232,7 @@ async function queryTopEventsByType(
   }
 
   const whereClause = `WHERE ${conditions.join(' AND ')}`;
-  const limit = sanitizeNumeric(options.limit, 6, 1, 6);
+  const limit = sanitizeNumeric(options.limit, 10, 1, 10);
 
   const query = `
     SELECT name, COUNT(*) as count

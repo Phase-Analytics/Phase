@@ -36,6 +36,12 @@ export default function UsersPage() {
           </Suspense>
         </ErrorBoundary>
 
+        <ErrorBoundary>
+          <Suspense fallback={<UsersActivityChartSkeleton />}>
+            <UsersActivityChart />
+          </Suspense>
+        </ErrorBoundary>
+
         <div className="grid gap-4 md:grid-cols-2">
           <ErrorBoundary>
             <Suspense fallback={<UsersPlatformDistributionSkeleton />}>
@@ -49,12 +55,6 @@ export default function UsersPage() {
             </Suspense>
           </ErrorBoundary>
         </div>
-
-        <ErrorBoundary>
-          <Suspense fallback={<UsersActivityChartSkeleton />}>
-            <UsersActivityChart />
-          </Suspense>
-        </ErrorBoundary>
 
         <Card className="py-0">
           <CardContent className="space-y-4 p-4">

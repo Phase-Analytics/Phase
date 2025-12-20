@@ -37,22 +37,24 @@ export default function EventsPage() {
         </ErrorBoundary>
 
         <ErrorBoundary>
-          <Suspense fallback={<TopEventsCardSkeleton />}>
-            <TopEventsCard />
-          </Suspense>
-        </ErrorBoundary>
-
-        <ErrorBoundary>
-          <Suspense fallback={<TopScreensCardSkeleton />}>
-            <TopScreensCard />
-          </Suspense>
-        </ErrorBoundary>
-
-        <ErrorBoundary>
           <Suspense fallback={<EventsActivityChartSkeleton />}>
             <EventsActivityChart />
           </Suspense>
         </ErrorBoundary>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <ErrorBoundary>
+            <Suspense fallback={<TopEventsCardSkeleton />}>
+              <TopEventsCard />
+            </Suspense>
+          </ErrorBoundary>
+
+          <ErrorBoundary>
+            <Suspense fallback={<TopScreensCardSkeleton />}>
+              <TopScreensCard />
+            </Suspense>
+          </ErrorBoundary>
+        </div>
 
         <Card className="py-0">
           <CardContent className="space-y-4 p-4">

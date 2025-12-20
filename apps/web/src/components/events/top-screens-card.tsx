@@ -1,6 +1,6 @@
 'use client';
 
-import { ScreenAddToHome02Icon } from '@hugeicons/core-free-icons';
+import { ViewIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { Card, CardContent } from '@/components/ui/card';
@@ -30,47 +30,57 @@ export function TopScreensCard() {
         </div>
 
         {topScreens?.screens && topScreens.screens.length > 0 && (
-          <div className="grid gap-x-8 gap-y-3 md:grid-cols-2">
-            {(() => {
-              const totalCount = topScreens.screens
-                .filter((s) => s?.count !== undefined)
-                .reduce((sum, s) => sum + (s.count || 0), 0);
+          <div className="h-[220px] overflow-y-auto">
+            <div className="space-y-2 pr-4">
+              {(() => {
+                const totalCount = topScreens.screens
+                  .filter((s) => s?.count !== undefined)
+                  .reduce((sum, s) => sum + (s.count || 0), 0);
 
-              return topScreens.screens
-                .filter((screen) => screen?.name && screen?.count !== undefined)
-                .map((screen) => {
-                  const percentage = totalCount
-                    ? (screen.count / totalCount) * 100
-                    : 0;
+                return topScreens.screens
+                  .filter(
+                    (screen) => screen?.name && screen?.count !== undefined
+                  )
+                  .map((screen) => {
+                    const percentage = totalCount
+                      ? (screen.count / totalCount) * 100
+                      : 0;
 
-                  return (
-                    <div className="space-y-1.5" key={screen.name}>
-                      <div className="flex items-center justify-between gap-2">
-                        <span
-                          className="truncate font-medium text-sm"
-                          title={screen.name}
-                        >
-                          {screen.name}
-                        </span>
-                        <div className="flex shrink-0 items-baseline gap-2">
-                          <span className="font-semibold text-sm">
-                            {screen.count.toLocaleString()}
-                          </span>
-                          <span className="text-muted-foreground text-xs">
-                            ({percentage.toFixed(1)}%)
-                          </span>
+                    return (
+                      <div className="space-y-1.5" key={screen.name}>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <HugeiconsIcon
+                              className="size-3.5 shrink-0 text-muted-foreground"
+                              icon={ViewIcon}
+                            />
+                            <span
+                              className="truncate font-medium text-sm"
+                              title={screen.name}
+                            >
+                              {screen.name}
+                            </span>
+                          </div>
+                          <div className="flex shrink-0 items-baseline gap-2">
+                            <span className="font-semibold text-sm">
+                              {screen.count.toLocaleString()}
+                            </span>
+                            <span className="text-muted-foreground text-xs">
+                              ({percentage.toFixed(1)}%)
+                            </span>
+                          </div>
+                        </div>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                          <div
+                            className="h-full bg-primary transition-all"
+                            style={{ width: `${percentage}%` }}
+                          />
                         </div>
                       </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                        <div
-                          className="h-full bg-primary transition-all"
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                });
-            })()}
+                    );
+                  });
+              })()}
+            </div>
           </div>
         )}
 
@@ -78,7 +88,7 @@ export function TopScreensCard() {
           <div className="flex flex-col items-center justify-center gap-2 py-8">
             <HugeiconsIcon
               className="size-10 text-muted-foreground opacity-40"
-              icon={ScreenAddToHome02Icon}
+              icon={ViewIcon}
             />
             <p className="text-center font-medium text-muted-foreground text-sm">
               No screen data available

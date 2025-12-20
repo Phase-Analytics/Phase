@@ -205,10 +205,10 @@ function track(name: string, params?: EventParams): void {
  * @example
  * import { Phase } from '@phase/sdk';
  *
- * // Identify device (queued if SDK not ready)
+ * // Identify device
  * await Phase.identify({ user_id: '123' });
  *
- * // Track events (queued if SDK not ready)
+ * // Track events
  * Phase.track('purchase', { amount: 99.99 });
  */
 const Phase = {

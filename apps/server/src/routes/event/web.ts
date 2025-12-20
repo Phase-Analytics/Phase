@@ -229,7 +229,7 @@ export const eventWebRouter = new Elysia({ prefix: '/events' })
           appId,
           startDate: startDate || undefined,
           endDate: endDate || undefined,
-          limit: 6,
+          limit: 10,
         });
 
         set.status = HttpStatus.OK;

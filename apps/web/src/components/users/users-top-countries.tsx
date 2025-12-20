@@ -76,8 +76,8 @@ export function UsersTopCountries() {
             : 'User distribution by city'}
         </p>
 
-        <ScrollArea className="h-[130px]">
-          <div className="space-y-3 pr-4">
+        <ScrollArea className="h-[220px]">
+          <div className="space-y-2 pr-4">
             {activeTab === 'country' &&
               sortedCountries.length > 0 &&
               sortedCountries.map(([country, count]) => {
