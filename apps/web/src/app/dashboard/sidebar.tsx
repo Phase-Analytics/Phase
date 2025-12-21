@@ -203,7 +203,7 @@ export function DashboardSidebar() {
       variant="inset"
     >
       {!isMobile && (
-        <SidebarHeader className="py-1">
+        <SidebarHeader className="py-1 group-data-[collapsible=icon]:py-3">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
@@ -256,7 +256,7 @@ export function DashboardSidebar() {
       )}
 
       {isMobile && (
-        <div className="px-2 pb-2">
+        <div className="px-2 py-2">
           <AppSwitcher
             onMobileClose={() => setOpenMobile(false)}
             variant="sidebar"
