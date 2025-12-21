@@ -88,13 +88,13 @@ export const deviceSdkRouter = new Elysia({ prefix: '/devices' })
               properties: body.properties ?? null,
             })
             .returning();
-        }
 
-        sseManager.pushDevice(app.id, {
-          deviceId: device.deviceId,
-          country: device.country,
-          platform: device.platform,
-        });
+          sseManager.pushDevice(app.id, {
+            deviceId: device.deviceId,
+            country: device.country,
+            platform: device.platform,
+          });
+        }
 
         set.status = HttpStatus.OK;
         return {
