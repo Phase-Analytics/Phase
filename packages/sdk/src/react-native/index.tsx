@@ -103,25 +103,63 @@ function onSDKReady(callback: () => void): void {
   }
 }
 
+type NavigationState = {
+  routes?: Array<{
+    name?: string;
+    key?: string;
+    state?: NavigationState;
+  }>;
+  index?: number;
+};
+
 type NavigationRefType = {
   addListener?: (
     event: string,
-    callback: (e: {
-      data?: {
-        state?: {
-          routes?: Array<{ name?: string; key?: string }>;
-          index?: number;
-        };
-      };
-    }) => void
+    callback: (e: { data?: { state?: NavigationState } }) => void
   ) => () => void;
   getCurrentRoute?: () => { name?: string } | undefined;
+  getRootState?: () => NavigationState | undefined;
 };
 
 type PhaseProps = PhaseConfig & {
   children: ReactNode;
   navigationRef?: NavigationRefType;
 };
+
+const CAMEL_CASE_REGEX = /([A-Z])/g;
+const LEADING_DASH_REGEX = /^-/;
+
+function buildPathFromState(state: NavigationState | undefined): string {
+  if (!state) {
+    return '/';
+  }
+
+  const segments: string[] = [];
+
+  function traverse(navState: NavigationState): void {
+    const { routes, index } = navState;
+    if (!routes || typeof index !== 'number' || !routes[index]) {
+      return;
+    }
+
+    const route = routes[index];
+    if (route.name) {
+      const segment = route.name
+        .replace(CAMEL_CASE_REGEX, '-$1')
+        .toLowerCase()
+        .replace(LEADING_DASH_REGEX, '');
+      segments.push(segment);
+    }
+
+    if (route.state) {
+      traverse(route.state);
+    }
+  }
+
+  traverse(state);
+
+  return segments.length > 0 ? `/${segments.join('/')}` : '/';
+}
 
 function NavigationTracker({
   navigationRef,
@@ -142,17 +180,16 @@ function NavigationTracker({
     }
 
     try {
-      if (navigationRef.getCurrentRoute) {
-        const currentRoute = navigationRef.getCurrentRoute();
-        if (currentRoute?.name) {
-          const instance = getSDK();
-          if (instance) {
-            instance.trackScreen(currentRoute.name);
-          }
+      if (navigationRef.getRootState) {
+        const state = navigationRef.getRootState();
+        const path = buildPathFromState(state);
+        const instance = getSDK();
+        if (instance) {
+          instance.trackScreen(path);
         }
       }
     } catch (error) {
-      logger.error('Failed to get current route', error);
+      logger.error('Failed to get initial route', error);
     }
 
     if (!navigationRef.addListener) {
@@ -161,17 +198,12 @@ function NavigationTracker({
 
     try {
       const unsubscribe = navigationRef.addListener('state', (e) => {
-        const routes = e?.data?.state?.routes;
-        const index = e?.data?.state?.index;
+        const state = e?.data?.state;
+        const path = buildPathFromState(state);
 
-        if (routes && typeof index === 'number' && routes[index]) {
-          const routeName = routes[index].name;
-          if (routeName) {
-            const instance = getSDK();
-            if (instance) {
-              instance.trackScreen(routeName);
-            }
-          }
+        const instance = getSDK();
+        if (instance) {
+          instance.trackScreen(path);
         }
       });
 
