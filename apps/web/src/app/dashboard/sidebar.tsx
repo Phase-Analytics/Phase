@@ -74,10 +74,10 @@ const analyticsNavItems: NavItem[] = [
     tooltip: 'Sessions',
   },
   {
-    label: 'Events',
+    label: 'Activity',
     icon: CursorPointer02Icon,
-    path: '/dashboard/analytics/events',
-    tooltip: 'Events',
+    path: '/dashboard/analytics/activity',
+    tooltip: 'Activity',
   },
   {
     label: 'Realtime',

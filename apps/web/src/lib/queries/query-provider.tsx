@@ -1,7 +1,6 @@
 'use client';
 
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { getQueryClient } from './query-client';
 
@@ -33,7 +32,6 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
-      {process.env.NODE_ENV === 'development' && <ReactQueryDevtools />}
     </PersistQueryClientProvider>
   );
 }

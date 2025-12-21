@@ -110,13 +110,13 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
         path: `/dashboard/analytics/sessions?app=${appId}`,
       },
       {
-        id: 'events',
-        name: 'Events',
+        id: 'activity',
+        name: 'Activity',
         description: 'View tracked events and actions',
         category: 'Analytics',
         icon: Blockchain05Icon,
-        keywords: ['events', 'tracking', 'analytics'],
-        path: `/dashboard/analytics/events?app=${appId}`,
+        keywords: ['activity', 'events', 'tracking', 'analytics'],
+        path: `/dashboard/analytics/activity?app=${appId}`,
       },
       {
         id: 'realtime',
