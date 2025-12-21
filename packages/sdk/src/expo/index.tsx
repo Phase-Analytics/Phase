@@ -40,12 +40,6 @@ function initSDK(config: PhaseConfig): Promise<boolean> {
       }
 
       try {
-        require('expo-application');
-      } catch {
-        missingPackages.push('expo-application');
-      }
-
-      try {
         require('expo-localization');
       } catch {
         missingPackages.push('expo-localization');
@@ -200,16 +194,20 @@ function PhaseProvider({
  * await Phase.identify({ user_id: '123', plan: 'premium' });
  */
 async function identify(properties?: DeviceProperties): Promise<void> {
-  if (initializationPromise) {
-    await initializationPromise;
-  }
+  try {
+    if (initializationPromise) {
+      await initializationPromise;
+    }
 
-  const instance = getSDK();
-  if (!instance) {
-    logger.error('SDK not initialized. Wrap your app with <PhaseProvider>.');
-    return;
+    const instance = getSDK();
+    if (!instance) {
+      logger.error('SDK not initialized. Wrap your app with <PhaseProvider>.');
+      return;
+    }
+    await instance.identify(properties);
+  } catch (error) {
+    logger.error('Failed to identify', error);
   }
-  await instance.identify(properties);
 }
 
 /**
@@ -220,16 +218,20 @@ async function identify(properties?: DeviceProperties): Promise<void> {
  * await Phase.track('purchase', { amount: 99.99, currency: 'USD' });
  */
 async function track(name: string, params?: EventParams): Promise<void> {
-  if (initializationPromise) {
-    await initializationPromise;
-  }
+  try {
+    if (initializationPromise) {
+      await initializationPromise;
+    }
 
-  const instance = getSDK();
-  if (!instance) {
-    logger.error('SDK not initialized. Wrap your app with <PhaseProvider>.');
-    return;
+    const instance = getSDK();
+    if (!instance) {
+      logger.error('SDK not initialized. Wrap your app with <PhaseProvider>.');
+      return;
+    }
+    instance.track(name, params);
+  } catch (error) {
+    logger.error('Failed to track event', error);
   }
-  instance.track(name, params);
 }
 
 /**

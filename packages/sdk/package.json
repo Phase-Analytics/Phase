@@ -1,13 +1,13 @@
 {
   "name": "phase-analytics",
-  "version": "0.0.24",
-  "description": "Privacy first, type-safe analytics SDK for React Native and Expo",
+  "version": "0.0.25",
+  "description": "Privacy focused mobile analytics SDK",
   "author": "Phase Analytics",
   "license": "AGPL-3.0-only",
   "keywords": [
+    "mobile",
     "analytics",
     "expo",
-    "react-native",
     "typescript",
     "privacy"
   ],
@@ -16,10 +16,6 @@
     "./expo": {
       "types": "./dist/expo/index.d.ts",
       "default": "./dist/expo/index.js"
-    },
-    "./react-native": {
-      "types": "./dist/react-native/index.d.ts",
-      "default": "./dist/react-native/index.js"
     }
   },
   "files": [
@@ -39,22 +35,13 @@
   "peerDependencies": {
     "react-native": ">=0.70.0",
     "react": ">=18.0.0",
-    "@react-native-async-storage/async-storage": ">=1.0.0",
-    "@react-native-community/netinfo": ">=11.0.0",
     "expo-file-system": ">=17.0.0",
-    "expo-application": ">=5.0.0",
     "expo-device": ">=6.0.0",
     "expo-localization": ">=14.0.0",
     "expo-router": ">=3.0.0"
   },
   "peerDependenciesMeta": {
-    "@react-native-async-storage/async-storage": {
-      "optional": true
-    },
     "expo-file-system": {
-      "optional": true
-    },
-    "expo-application": {
       "optional": true
     },
     "expo-device": {
@@ -70,7 +57,6 @@
   "devDependencies": {
     "@types/pako": "^2.0.4",
     "@types/react": "^19.1.8",
-    "@types/react-native": "^0.73.0",
     "expo-file-system": "^17.0.1",
     "expo-router": "^6.0.19",
     "tsup": "^8.3.5",

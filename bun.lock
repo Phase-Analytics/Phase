@@ -107,7 +107,7 @@
     },
     "packages/sdk": {
       "name": "phase-analytics",
-      "version": "0.0.23",
+      "version": "0.0.25",
       "dependencies": {
         "pako": "^2.1.0",
         "ulidx": "^2.4.1",
@@ -115,7 +115,6 @@
       "devDependencies": {
         "@types/pako": "^2.0.4",
         "@types/react": "^19.1.8",
-        "@types/react-native": "^0.73.0",
         "@typescript/native-preview": "^7.0.0-dev.20251214.1",
         "expo-file-system": "^17.0.1",
         "expo-router": "^6.0.19",
@@ -123,9 +122,6 @@
         "typescript": "^5",
       },
       "peerDependencies": {
-        "@react-native-async-storage/async-storage": ">=1.0.0",
-        "@react-native-community/netinfo": ">=11.0.0",
-        "expo-application": ">=5.0.0",
         "expo-device": ">=6.0.0",
         "expo-file-system": ">=17.0.0",
         "expo-localization": ">=14.0.0",
@@ -134,8 +130,6 @@
         "react-native": ">=0.70.0",
       },
       "optionalPeers": [
-        "@react-native-async-storage/async-storage",
-        "expo-application",
         "expo-device",
         "expo-file-system",
         "expo-localization",
@@ -753,8 +747,6 @@
 
     "@radix-ui/rect": ["@radix-ui/rect@1.1.1", "", {}, "sha512-HPwpGIzkl28mWyZqG52jiqDJ12waP11Pa1lGoiyUkIEuMLBP0oeK/C89esbXrxsky5we7dfd8U58nm0SgAWpVw=="],
 
-    "@react-native-community/netinfo": ["@react-native-community/netinfo@11.4.1", "", { "peerDependencies": { "react-native": ">=0.59" } }, "sha512-B0BYAkghz3Q2V09BF88RA601XursIEA111tnc2JOaN7axJWmNefmfjZqw/KdSxKZp7CZUuPpjBmz/WCR9uaHYg=="],
-
     "@react-native/assets-registry": ["@react-native/assets-registry@0.83.1", "", {}, "sha512-AT7/T6UwQqO39bt/4UL5EXvidmrddXrt0yJa7ENXndAv+8yBzMsZn6fyiax6+ERMt9GLzAECikv3lj22cn2wJA=="],
 
     "@react-native/babel-plugin-codegen": ["@react-native/babel-plugin-codegen@0.81.5", "", { "dependencies": { "@babel/traverse": "^7.25.3", "@react-native/codegen": "0.81.5" } }, "sha512-oF71cIH6je3fSLi6VPjjC3Sgyyn57JLHXs+mHWc9MoCiJJcM4nqsS5J38zv1XQ8d3zOW2JtHro+LF0tagj2bfQ=="],
@@ -1064,8 +1056,6 @@
     "@types/react": ["@types/react@19.1.8", "", { "dependencies": { "csstype": "^3.0.2" } }, "sha512-AwAfQ2Wa5bCx9WP8nZL2uMZWod7J7/JSplxbTmBQ5ms6QpqNYm672H0Vu9ZVKVngQ+ii4R/byguVEUZQyeg44g=="],
 
     "@types/react-dom": ["@types/react-dom@19.1.6", "", { "peerDependencies": { "@types/react": "^19.0.0" } }, "sha512-4hOiT/dwO8Ko0gV1m/TJZYk3y0KBnY9vzDh7W+DH17b2HFSOGgdj33dhihPeuy3l0q23+4e+hoXHV6hCC4dCXw=="],
-
-    "@types/react-native": ["@types/react-native@0.73.0", "", { "dependencies": { "react-native": "*" } }, "sha512-6ZRPQrYM72qYKGWidEttRe6M5DZBEV5F+MHMHqd4TTYx0tfkcdrUFGdef6CCxY0jXU7wldvd/zA/b0A/kTeJmA=="],
 
     "@types/stack-utils": ["@types/stack-utils@2.0.3", "", {}, "sha512-9aEbYZ3TbYMznPdcdr3SmIrLXwC/AKZXQeCf9Pgao5CKb8CyHuEX5jzWPTkvregvhRJHcpRO6BFoGW9ycaOkYw=="],
 
