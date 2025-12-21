@@ -1,6 +1,5 @@
-import { usePathname, useSegments } from 'expo-router';
 import type { ReactNode } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   addNetworkListener,
   fetchNetworkState,
@@ -9,8 +8,8 @@ import { PhaseSDK } from '../core/sdk';
 import { setStorageAdapter } from '../core/storage/storage';
 import type { DeviceProperties, EventParams, PhaseConfig } from '../core/types';
 import { logger } from '../core/utils/logger';
-import { getExpoDeviceInfo } from './device/expo-device-info';
-import { clear, getItem, removeItem, setItem } from './storage/expo-storage';
+import { getRNDeviceInfo } from './device/rn-device-info';
+import { clear, getItem, removeItem, setItem } from './storage/rn-storage';
 
 let sdk: PhaseSDK | null = null;
 let initializationPromise: Promise<boolean> | null = null;
@@ -37,22 +36,28 @@ function initSDK(config: PhaseConfig): Promise<boolean> {
       const missingPackages: string[] = [];
 
       try {
-        require('expo-device');
+        require('react-native-device-info');
       } catch {
-        missingPackages.push('expo-device');
+        missingPackages.push('react-native-device-info');
       }
 
       try {
-        require('expo-localization');
+        require('react-native-localize');
       } catch {
-        missingPackages.push('expo-localization');
+        missingPackages.push('react-native-localize');
+      }
+
+      try {
+        require('@react-native-async-storage/async-storage');
+      } catch {
+        missingPackages.push('@react-native-async-storage/async-storage');
       }
 
       if (missingPackages.length > 0) {
         logger.info(
-          `Optional Expo packages not found: ${missingPackages.join(', ')}\n` +
-            'For better device info, install them:\n' +
-            `  npx expo install ${missingPackages.join(' ')}`
+          `Optional React Native packages not found: ${missingPackages.join(', ')}\n` +
+            'For better device info and storage, install them:\n' +
+            `  npm install ${missingPackages.join(' ')}`
         );
       }
 
@@ -68,7 +73,7 @@ function initSDK(config: PhaseConfig): Promise<boolean> {
         addNetworkListener,
       };
 
-      await ensureSDK().init(config, getExpoDeviceInfo, networkAdapter);
+      await ensureSDK().init(config, getRNDeviceInfo, networkAdapter);
 
       for (const callback of readyCallbacks) {
         callback();
@@ -98,14 +103,31 @@ function onSDKReady(callback: () => void): void {
   }
 }
 
-type PhaseProps = PhaseConfig & {
-  children: ReactNode;
+type NavigationRefType = {
+  addListener?: (
+    event: string,
+    callback: (e: {
+      data?: {
+        state?: {
+          routes?: Array<{ name?: string; key?: string }>;
+          index?: number;
+        };
+      };
+    }) => void
+  ) => () => void;
+  getCurrentRoute?: () => { name?: string } | undefined;
 };
 
-function NavigationTracker(): ReactNode {
-  const pathname = usePathname();
-  const segments = useSegments();
-  const segmentsKey = useMemo(() => segments.join('/'), [segments]);
+type PhaseProps = PhaseConfig & {
+  children: ReactNode;
+  navigationRef?: NavigationRefType;
+};
+
+function NavigationTracker({
+  navigationRef,
+}: {
+  navigationRef?: NavigationRefType;
+}): ReactNode {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -115,35 +137,72 @@ function NavigationTracker(): ReactNode {
   }, []);
 
   useEffect(() => {
-    if (!isReady) {
+    if (!(isReady && navigationRef)) {
       return;
     }
 
-    const instance = getSDK();
-    if (!instance) {
+    try {
+      if (navigationRef.getCurrentRoute) {
+        const currentRoute = navigationRef.getCurrentRoute();
+        if (currentRoute?.name) {
+          const instance = getSDK();
+          if (instance) {
+            instance.trackScreen(currentRoute.name);
+          }
+        }
+      }
+    } catch (error) {
+      logger.error('Failed to get current route', error);
+    }
+
+    if (!navigationRef.addListener) {
       return;
     }
 
-    const screenName = pathname || segmentsKey || 'unknown';
-    instance.trackScreen(screenName);
-  }, [isReady, pathname, segmentsKey]);
+    try {
+      const unsubscribe = navigationRef.addListener('state', (e) => {
+        const routes = e?.data?.state?.routes;
+        const index = e?.data?.state?.index;
+
+        if (routes && typeof index === 'number' && routes[index]) {
+          const routeName = routes[index].name;
+          if (routeName) {
+            const instance = getSDK();
+            if (instance) {
+              instance.trackScreen(routeName);
+            }
+          }
+        }
+      });
+
+      return unsubscribe;
+    } catch (error) {
+      logger.error('Failed to set up navigation listener', error);
+      return;
+    }
+  }, [isReady, navigationRef]);
 
   return null;
 }
 
 /**
- * Phase Analytics provider for Expo Router
+ * Phase Analytics provider for React Native
  * @param apiKey Phase API key (required, starts with `phase_`)
  * @param children App content (required)
  * @param trackNavigation Auto-track screens (optional, default: false)
+ * @param navigationRef Navigation container ref for auto-tracking (optional, required if trackNavigation is true)
  * @param baseUrl Custom API endpoint (optional, default: "https://api.phase.sh")
  * @param logLevel Logging level (optional, info, warn, error, none, default: "none")
  * @param deviceInfo Collect device metadata (optional, default: true)
  * @param userLocale Collect locale & geolocation (optional, default: true)
  * @example
- * <PhaseProvider apiKey="phase_xxx">
- *   <Stack />
- * </PhaseProvider>
+ * const navigationRef = useNavigationContainerRef();
+ *
+ * <NavigationContainer ref={navigationRef}>
+ *   <PhaseProvider apiKey="phase_xxx" trackNavigation={true} navigationRef={navigationRef}>
+ *     <YourApp />
+ *   </PhaseProvider>
+ * </NavigationContainer>
  */
 function PhaseProvider({
   children,
@@ -151,6 +210,7 @@ function PhaseProvider({
   baseUrl,
   logLevel,
   trackNavigation = false,
+  navigationRef,
   deviceInfo,
   userLocale,
 }: PhaseProps): ReactNode {
@@ -180,7 +240,7 @@ function PhaseProvider({
 
   return (
     <>
-      {trackNavigation && <NavigationTracker />}
+      {trackNavigation && <NavigationTracker navigationRef={navigationRef} />}
       {children}
     </>
   );
@@ -241,7 +301,7 @@ async function track(name: string, params?: EventParams): Promise<void> {
  * Phase Analytics SDK
  *
  * @example
- * import { Phase } from 'phase-analytics/expo';
+ * import { Phase } from 'phase-analytics/react-native';
  *
  * // Identify device
  * await Phase.identify({ user_id: '123' });

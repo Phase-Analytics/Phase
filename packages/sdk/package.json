@@ -1,6 +1,6 @@
 {
   "name": "phase-analytics",
-  "version": "0.0.25",
+  "version": "0.0.26",
   "description": "Privacy focused mobile analytics SDK",
   "author": "Phase Analytics",
   "license": "AGPL-3.0-only",
@@ -8,6 +8,7 @@
     "mobile",
     "analytics",
     "expo",
+    "react-native",
     "typescript",
     "privacy"
   ],
@@ -16,6 +17,10 @@
     "./expo": {
       "types": "./dist/expo/index.d.ts",
       "default": "./dist/expo/index.js"
+    },
+    "./react-native": {
+      "types": "./dist/react-native/index.d.ts",
+      "default": "./dist/react-native/index.js"
     }
   },
   "files": [
@@ -33,6 +38,10 @@
     "ulidx": "^2.4.1"
   },
   "peerDependencies": {
+    "@react-native-async-storage/async-storage": ">=1.0.0",
+    "react-native-device-info": ">=10.0.0",
+    "react-native-localize": ">=3.0.0",
+    "@react-navigation/native": ">=6.0.0",
     "react-native": ">=0.70.0",
     "react": ">=18.0.0",
     "@react-native-community/netinfo": ">=11.0.0",
@@ -55,6 +64,18 @@
       "optional": true
     },
     "expo-router": {
+      "optional": true
+    },
+    "@react-native-async-storage/async-storage": {
+      "optional": true
+    },
+    "react-native-device-info": {
+      "optional": true
+    },
+    "react-native-localize": {
+      "optional": true
+    },
+    "@react-navigation/native": {
       "optional": true
     }
   },

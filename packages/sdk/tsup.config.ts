@@ -3,6 +3,7 @@ import { defineConfig } from 'tsup';
 export default defineConfig({
   entry: {
     'expo/index': 'src/expo/index.tsx',
+    'react-native/index': 'src/react-native/index.tsx',
   },
   format: ['cjs'],
   dts: true,
@@ -21,5 +22,10 @@ export default defineConfig({
     'expo-localization',
     'expo-router',
     'expo-file-system',
+    '@react-native-async-storage/async-storage',
+    'react-native-device-info',
+    'react-native-localize',
+    '@react-navigation/native',
+    '@react-native-community/netinfo',
   ],
 });
