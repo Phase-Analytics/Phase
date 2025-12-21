@@ -1,3 +1,4 @@
+import type { ParamListBase } from '@react-navigation/native';
 import {
   NavigationContainer,
   useNavigationContainerRef,
@@ -13,6 +14,8 @@ import { addNetworkListener, fetchNetworkState } from './network/rn-network';
 import { clear, getItem, removeItem, setItem } from './storage/rn-storage';
 
 let sdk: PhaseSDK | null = null;
+let initializationPromise: Promise<boolean> | null = null;
+const readyCallbacks: (() => void)[] = [];
 
 function getSDK(): PhaseSDK | null {
   return sdk;
@@ -25,25 +28,52 @@ function ensureSDK(): PhaseSDK {
   return sdk;
 }
 
-async function initSDK(config: PhaseConfig): Promise<boolean> {
-  try {
-    setStorageAdapter({
-      getItem,
-      setItem,
-      removeItem,
-      clear,
+function initSDK(config: PhaseConfig): Promise<boolean> {
+  if (initializationPromise) {
+    return initializationPromise;
+  }
+
+  initializationPromise = (async () => {
+    try {
+      setStorageAdapter({
+        getItem,
+        setItem,
+        removeItem,
+        clear,
+      });
+
+      const networkAdapter = {
+        fetchNetworkState,
+        addNetworkListener,
+      };
+
+      await ensureSDK().init(config, getRNDeviceInfo, networkAdapter);
+
+      for (const callback of readyCallbacks) {
+        callback();
+      }
+      readyCallbacks.length = 0;
+
+      return true;
+    } catch (error) {
+      logger.error('Initialization failed', error);
+      initializationPromise = null;
+      return false;
+    }
+  })();
+
+  return initializationPromise;
+}
+
+function onSDKReady(callback: () => void): void {
+  if (initializationPromise) {
+    initializationPromise.then((success) => {
+      if (success) {
+        callback();
+      }
     });
-
-    const networkAdapter = {
-      fetchNetworkState,
-      addNetworkListener,
-    };
-
-    await ensureSDK().init(config, getRNDeviceInfo, networkAdapter);
-    return true;
-  } catch (error) {
-    logger.error('Initialization failed', error);
-    return false;
+  } else {
+    readyCallbacks.push(callback);
   }
 }
 
@@ -62,27 +92,57 @@ function formatScreenName(name: string): string {
 }
 
 function NavigationTracker({
-  initialized,
-  currentRouteName,
+  navigationRef,
 }: {
-  initialized: boolean;
-  currentRouteName: string | undefined;
+  navigationRef: ReturnType<typeof useNavigationContainerRef<ParamListBase>>;
 }): ReactNode {
-  const prevRouteRef = useRef<string | undefined>(undefined);
+  const currentRouteNameRef = useRef<string | undefined>(undefined);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    if (!(initialized && currentRouteName)) {
+    onSDKReady(() => {
+      setIsReady(true);
+      try {
+        const currentRoute = navigationRef.getCurrentRoute();
+        if (currentRoute?.name) {
+          currentRouteNameRef.current = currentRoute.name;
+          const instance = getSDK();
+          instance?.trackScreen(formatScreenName(currentRoute.name));
+        }
+      } catch {
+        // Navigation not ready yet
+      }
+    });
+  }, [navigationRef]);
+
+  useEffect(() => {
+    if (!isReady) {
       return;
     }
 
-    if (prevRouteRef.current === currentRouteName) {
-      return;
-    }
+    const listener = () => {
+      try {
+        const currentRoute = navigationRef.getCurrentRoute();
+        const routeName = currentRoute?.name;
 
-    prevRouteRef.current = currentRouteName;
-    const instance = getSDK();
-    instance?.trackScreen(formatScreenName(currentRouteName));
-  }, [initialized, currentRouteName]);
+        if (routeName && currentRouteNameRef.current !== routeName) {
+          currentRouteNameRef.current = routeName;
+          const instance = getSDK();
+          instance?.trackScreen(formatScreenName(routeName));
+        }
+      } catch {
+        // Navigation not ready yet
+      }
+    };
+
+    const unsubscribe = navigationRef.addListener('state' as never, listener);
+
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
+  }, [isReady, navigationRef]);
 
   return null;
 }
@@ -115,11 +175,7 @@ function PhaseProvider({
   onStateChange,
   ...navigationProps
 }: PhaseProps): ReactNode {
-  const navigationRef = useNavigationContainerRef();
-  const [initialized, setInitialized] = useState(false);
-  const [currentRouteName, setCurrentRouteName] = useState<string | undefined>(
-    undefined
-  );
+  const navigationRef = useNavigationContainerRef<ParamListBase>();
   const initStarted = useRef(false);
 
   useEffect(() => {
@@ -137,15 +193,9 @@ function PhaseProvider({
       userLocale,
     };
 
-    let isMounted = true;
-    initSDK(config).then((success) => {
-      if (isMounted) {
-        setInitialized(success);
-      }
-    });
+    initSDK(config);
 
     return () => {
-      isMounted = false;
       initStarted.current = false;
     };
   }, [apiKey, baseUrl, deviceInfo, logLevel, trackNavigation, userLocale]);
@@ -154,31 +204,14 @@ function PhaseProvider({
     return children;
   }
 
-  const handleReady = () => {
-    const currentRoute = navigationRef.getCurrentRoute();
-    setCurrentRouteName(currentRoute?.name);
-    onReady?.();
-  };
-
-  const handleStateChange: NavigationContainerProps['onStateChange'] = (
-    state
-  ) => {
-    const currentRoute = navigationRef.getCurrentRoute();
-    setCurrentRouteName(currentRoute?.name);
-    onStateChange?.(state);
-  };
-
   return (
     <NavigationContainer
-      onReady={handleReady}
-      onStateChange={handleStateChange}
-      ref={navigationRef}
+      onReady={onReady}
+      onStateChange={onStateChange}
+      ref={navigationRef as never}
       {...navigationProps}
     >
-      <NavigationTracker
-        currentRouteName={currentRouteName}
-        initialized={initialized}
-      />
+      <NavigationTracker navigationRef={navigationRef} />
       {children}
     </NavigationContainer>
   );
@@ -195,9 +228,13 @@ function PhaseProvider({
  * await Phase.identify({ user_id: '123', plan: 'premium' });
  */
 async function identify(properties?: DeviceProperties): Promise<void> {
+  if (initializationPromise) {
+    await initializationPromise;
+  }
+
   const instance = getSDK();
   if (!instance) {
-    logger.error('SDK not initialized. Wrap your app with <Phase>.');
+    logger.error('SDK not initialized. Wrap your app with <PhaseProvider>.');
     return;
   }
   await instance.identify(properties);
@@ -210,10 +247,14 @@ async function identify(properties?: DeviceProperties): Promise<void> {
  * @example
  * Phase.track('purchase', { amount: 99.99, currency: 'USD' });
  */
-function track(name: string, params?: EventParams): void {
+async function track(name: string, params?: EventParams): Promise<void> {
+  if (initializationPromise) {
+    await initializationPromise;
+  }
+
   const instance = getSDK();
   if (!instance) {
-    logger.error('SDK not initialized. Wrap your app with <Phase>.');
+    logger.error('SDK not initialized. Wrap your app with <PhaseProvider>.');
     return;
   }
   instance.track(name, params);

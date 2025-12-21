@@ -10,6 +10,8 @@ import { addNetworkListener, fetchNetworkState } from './network/expo-network';
 import { clear, getItem, removeItem, setItem } from './storage/expo-storage';
 
 let sdk: PhaseSDK | null = null;
+let initializationPromise: Promise<boolean> | null = null;
+const readyCallbacks: (() => void)[] = [];
 
 function getSDK(): PhaseSDK | null {
   return sdk;
@@ -22,53 +24,80 @@ function ensureSDK(): PhaseSDK {
   return sdk;
 }
 
-async function initSDK(config: PhaseConfig): Promise<boolean> {
-  try {
-    const missingPackages: string[] = [];
+function initSDK(config: PhaseConfig): Promise<boolean> {
+  if (initializationPromise) {
+    return initializationPromise;
+  }
 
+  initializationPromise = (async () => {
     try {
-      require('expo-device');
-    } catch {
-      missingPackages.push('expo-device');
-    }
+      const missingPackages: string[] = [];
 
-    try {
-      require('expo-application');
-    } catch {
-      missingPackages.push('expo-application');
-    }
+      try {
+        require('expo-device');
+      } catch {
+        missingPackages.push('expo-device');
+      }
 
-    try {
-      require('expo-localization');
-    } catch {
-      missingPackages.push('expo-localization');
-    }
+      try {
+        require('expo-application');
+      } catch {
+        missingPackages.push('expo-application');
+      }
 
-    if (missingPackages.length > 0) {
-      logger.info(
-        `Optional Expo packages not found: ${missingPackages.join(', ')}\n` +
-          'For better device info, install them:\n' +
-          `  npx expo install ${missingPackages.join(' ')}`
-      );
-    }
+      try {
+        require('expo-localization');
+      } catch {
+        missingPackages.push('expo-localization');
+      }
 
-    setStorageAdapter({
-      getItem,
-      setItem,
-      removeItem,
-      clear,
+      if (missingPackages.length > 0) {
+        logger.info(
+          `Optional Expo packages not found: ${missingPackages.join(', ')}\n` +
+            'For better device info, install them:\n' +
+            `  npx expo install ${missingPackages.join(' ')}`
+        );
+      }
+
+      setStorageAdapter({
+        getItem,
+        setItem,
+        removeItem,
+        clear,
+      });
+
+      const networkAdapter = {
+        fetchNetworkState,
+        addNetworkListener,
+      };
+
+      await ensureSDK().init(config, getExpoDeviceInfo, networkAdapter);
+
+      for (const callback of readyCallbacks) {
+        callback();
+      }
+      readyCallbacks.length = 0;
+
+      return true;
+    } catch (error) {
+      logger.error('Initialization failed', error);
+      initializationPromise = null;
+      return false;
+    }
+  })();
+
+  return initializationPromise;
+}
+
+function onSDKReady(callback: () => void): void {
+  if (initializationPromise) {
+    initializationPromise.then((success) => {
+      if (success) {
+        callback();
+      }
     });
-
-    const networkAdapter = {
-      fetchNetworkState,
-      addNetworkListener,
-    };
-
-    await ensureSDK().init(config, getExpoDeviceInfo, networkAdapter);
-    return true;
-  } catch (error) {
-    logger.error('Initialization failed', error);
-    return false;
+  } else {
+    readyCallbacks.push(callback);
   }
 }
 
@@ -76,17 +105,20 @@ type PhaseProps = PhaseConfig & {
   children: ReactNode;
 };
 
-function NavigationTracker({
-  initialized,
-}: {
-  initialized: boolean;
-}): ReactNode {
+function NavigationTracker(): ReactNode {
   const pathname = usePathname();
   const segments = useSegments();
   const segmentsKey = useMemo(() => segments.join('/'), [segments]);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    if (!initialized) {
+    onSDKReady(() => {
+      setIsReady(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isReady) {
       return;
     }
 
@@ -97,7 +129,7 @@ function NavigationTracker({
 
     const screenName = pathname || segmentsKey || 'unknown';
     instance.trackScreen(screenName);
-  }, [initialized, pathname, segmentsKey]);
+  }, [isReady, pathname, segmentsKey]);
 
   return null;
 }
@@ -125,7 +157,6 @@ function PhaseProvider({
   deviceInfo,
   userLocale,
 }: PhaseProps): ReactNode {
-  const [initialized, setInitialized] = useState(false);
   const initStarted = useRef(false);
 
   useEffect(() => {
@@ -143,22 +174,16 @@ function PhaseProvider({
       userLocale,
     };
 
-    let isMounted = true;
-    initSDK(config).then((success) => {
-      if (isMounted) {
-        setInitialized(success);
-      }
-    });
+    initSDK(config);
 
     return () => {
-      isMounted = false;
       initStarted.current = false;
     };
   }, [apiKey, baseUrl, deviceInfo, logLevel, trackNavigation, userLocale]);
 
   return (
     <>
-      {trackNavigation && <NavigationTracker initialized={initialized} />}
+      {trackNavigation && <NavigationTracker />}
       {children}
     </>
   );
@@ -175,9 +200,14 @@ function PhaseProvider({
  * await Phase.identify({ user_id: '123', plan: 'premium' });
  */
 async function identify(properties?: DeviceProperties): Promise<void> {
+  // Wait for SDK initialization if it's in progress
+  if (initializationPromise) {
+    await initializationPromise;
+  }
+
   const instance = getSDK();
   if (!instance) {
-    logger.error('SDK not initialized. Wrap your app with <Phase>.');
+    logger.error('SDK not initialized. Wrap your app with <PhaseProvider>.');
     return;
   }
   await instance.identify(properties);
@@ -190,10 +220,15 @@ async function identify(properties?: DeviceProperties): Promise<void> {
  * @example
  * Phase.track('purchase', { amount: 99.99, currency: 'USD' });
  */
-function track(name: string, params?: EventParams): void {
+async function track(name: string, params?: EventParams): Promise<void> {
+  // Wait for SDK initialization if it's in progress
+  if (initializationPromise) {
+    await initializationPromise;
+  }
+
   const instance = getSDK();
   if (!instance) {
-    logger.error('SDK not initialized. Wrap your app with <Phase>.');
+    logger.error('SDK not initialized. Wrap your app with <PhaseProvider>.');
     return;
   }
   instance.track(name, params);
