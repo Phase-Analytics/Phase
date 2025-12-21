@@ -35,6 +35,7 @@ export type RateLimitConfig = {
 export type RateLimitIdentifier = {
   email?: string;
   ip?: string;
+  deviceId?: string;
 };
 
 export type RateLimitResult = {
@@ -60,7 +61,30 @@ export const RATE_LIMIT_STRATEGIES = {
     ttl: 86_400,
     keyPrefix: 'rate:waitlist',
   } satisfies RateLimitConfig,
+  SDK_API: {
+    maxAttempts: 1000,
+    ttl: 60,
+    keyPrefix: 'rate:sdk',
+  } satisfies RateLimitConfig,
 } as const;
+
+const RATE_LIMIT_LUA_SCRIPT = `
+  local key = KEYS[1]
+  local max_attempts = tonumber(ARGV[1])
+  local ttl = tonumber(ARGV[2])
+
+  local current = redis.call('INCR', key)
+
+  if current == 1 then
+    redis.call('EXPIRE', key, ttl)
+  end
+
+  local remaining_ttl = redis.call('TTL', key)
+  local remaining = math.max(0, max_attempts - current)
+  local allowed = current <= max_attempts
+
+  return {current, remaining, remaining_ttl, allowed and 1 or 0}
+`;
 
 export async function checkRateLimit(
   config: RateLimitConfig,
@@ -72,74 +96,58 @@ export async function checkRateLimit(
     return { allowed: true };
   }
 
-  const { email, ip } = identifiers;
+  const { email, ip, deviceId } = identifiers;
 
-  if (!(email || ip)) {
+  if (!(email || ip || deviceId)) {
     throw new Error(
-      '[RateLimit] At least one identifier (email or ip) is required'
+      '[RateLimit] At least one identifier (email, ip, or deviceId) is required'
     );
   }
 
   try {
-    if (email) {
-      const emailKey = `${config.keyPrefix}:email:${email}`;
-      const emailCount = await redisClient.incr(emailKey);
+    const identifierChecks = [
+      email ? { type: 'email', value: email } : null,
+      ip ? { type: 'ip', value: ip } : null,
+      deviceId ? { type: 'device', value: deviceId } : null,
+    ].filter(Boolean) as Array<{ type: string; value: string }>;
 
-      if (emailCount === 1) {
-        await redisClient.expire(emailKey, config.ttl);
-      }
+    let minRemaining = config.maxAttempts;
+    let maxResetAt: number | undefined;
 
-      if (emailCount > config.maxAttempts) {
-        const ttl = await redisClient.ttl(emailKey);
+    for (const identifier of identifierChecks) {
+      const key = `${config.keyPrefix}:${identifier.type}:${identifier.value}`;
+
+      const result = (await redisClient.eval(
+        RATE_LIMIT_LUA_SCRIPT,
+        1,
+        key,
+        config.maxAttempts.toString(),
+        config.ttl.toString()
+      )) as [number, number, number, number];
+
+      const [_current, remaining, remainingTtl, allowed] = result;
+
+      if (allowed === 0) {
         return {
           allowed: false,
           reason: 'Too many requests',
           remaining: 0,
-          resetAt: ttl > 0 ? Date.now() + ttl * 1000 : undefined,
+          resetAt:
+            remainingTtl > 0 ? Date.now() + remainingTtl * 1000 : undefined,
         };
       }
-    }
 
-    if (ip) {
-      const ipKey = `${config.keyPrefix}:ip:${ip}`;
-      const ipCount = await redisClient.incr(ipKey);
-
-      if (ipCount === 1) {
-        await redisClient.expire(ipKey, config.ttl);
+      minRemaining = Math.min(minRemaining, remaining);
+      if (remainingTtl > 0) {
+        const resetAt = Date.now() + remainingTtl * 1000;
+        maxResetAt = maxResetAt ? Math.max(maxResetAt, resetAt) : resetAt;
       }
-
-      if (ipCount > config.maxAttempts) {
-        const ttl = await redisClient.ttl(ipKey);
-        return {
-          allowed: false,
-          reason: 'Too many requests',
-          remaining: 0,
-          resetAt: ttl > 0 ? Date.now() + ttl * 1000 : undefined,
-        };
-      }
-    }
-
-    let remaining = config.maxAttempts;
-    if (email) {
-      const emailKey = `${config.keyPrefix}:email:${email}`;
-      const emailCount = await redisClient.get(emailKey);
-      remaining = Math.min(
-        remaining,
-        config.maxAttempts - (emailCount ? Number.parseInt(emailCount, 10) : 0)
-      );
-    }
-    if (ip) {
-      const ipKey = `${config.keyPrefix}:ip:${ip}`;
-      const ipCount = await redisClient.get(ipKey);
-      remaining = Math.min(
-        remaining,
-        config.maxAttempts - (ipCount ? Number.parseInt(ipCount, 10) : 0)
-      );
     }
 
     return {
       allowed: true,
-      remaining: Math.max(0, remaining),
+      remaining: Math.max(0, minRemaining),
+      resetAt: maxResetAt,
     };
   } catch (error) {
     console.error('[RateLimit] Error checking rate limit:', error);
@@ -167,6 +175,16 @@ export async function checkWaitlistRateLimit(
   ip: string
 ): Promise<RateLimitResult> {
   return await checkRateLimit(RATE_LIMIT_STRATEGIES.WAITLIST, { ip });
+}
+
+export async function checkSdkApiRateLimit(
+  deviceId: string,
+  ip?: string
+): Promise<RateLimitResult> {
+  return await checkRateLimit(RATE_LIMIT_STRATEGIES.SDK_API, {
+    deviceId,
+    ip,
+  });
 }
 
 export function createRateLimiter(config: RateLimitConfig) {
