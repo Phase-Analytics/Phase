@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { ImageResponse } from 'next/og';
 import { getPageImage, source } from '@/app/docs/docs-source';
@@ -31,11 +32,18 @@ export async function GET(
   { params }: { params: Promise<{ slug: string[] }> }
 ) {
   const [{ slug }, fonts] = await Promise.all([params, loadFonts()]);
-  const page = source.getPage(slug.slice(0, -1));
-  if (!page) {
+
+  const isRoot = slug.length === 1 && slug[0] === 'phase-docs.png';
+  const pageSlug = isRoot ? [] : slug.slice(0, -1);
+  const page = isRoot ? null : source.getPage(pageSlug);
+
+  if (!(isRoot || page)) {
     notFound();
   }
 
+  const title = isRoot
+    ? 'Phase Analytics'
+    : page?.data.title || 'Documentation';
   const padding = 60;
 
   return new ImageResponse(
@@ -100,14 +108,11 @@ export async function GET(
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          <div
-            style={{
-              display: 'flex',
-              width: 80,
-              height: 80,
-              backgroundColor: colors.foreground,
-              borderRadius: 8,
-            }}
+          <Image
+            alt="Phase Logo"
+            height="80"
+            src="https://phase.sh/logo.svg"
+            width="80"
           />
 
           <span
@@ -131,7 +136,7 @@ export async function GET(
               lineHeight: 1.1,
             }}
           >
-            {page.data.title}
+            {title}
           </span>
         </div>
 
@@ -201,7 +206,10 @@ export async function GET(
 }
 
 export function generateStaticParams() {
-  return source.getPages().map((page) => ({
-    slug: getPageImage(page).segments,
-  }));
+  return [
+    { slug: ['phase-docs.png'] },
+    ...source.getPages().map((page) => ({
+      slug: getPageImage(page).segments,
+    })),
+  ];
 }

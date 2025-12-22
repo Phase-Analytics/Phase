@@ -12,10 +12,10 @@ export const metadata: Metadata = {
     default: 'Documentation | Phase Docs',
   },
   openGraph: {
-    images: undefined,
+    images: '/og/docs/phase-docs.png',
   },
   twitter: {
-    images: undefined,
+    images: '/og/docs/phase-docs.png',
   },
 };
 
