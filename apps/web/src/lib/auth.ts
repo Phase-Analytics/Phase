@@ -1,3 +1,4 @@
+import { polarClient } from '@polar-sh/better-auth/client';
 import { createAuthClient } from 'better-auth/react';
 
 export const authClient = createAuthClient({
@@ -5,6 +6,7 @@ export const authClient = createAuthClient({
   fetchOptions: {
     credentials: 'include',
   },
+  plugins: [polarClient()],
 });
 
 export const { useSession, signIn, signOut, signUp } = authClient;
@@ -15,3 +17,8 @@ export async function forgotPassword(email: string, redirectTo: string) {
     redirectTo,
   });
 }
+
+export const polarPortal = {
+  getPortalUrl: () => authClient.customer.portal(),
+  getCustomerState: () => authClient.customer.state(),
+};

@@ -50,7 +50,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { UserSettings } from '@/components/user-settings';
-import { authClient, useSession } from '@/lib/auth';
+import { authClient, polarPortal, useSession } from '@/lib/auth';
 import { getQueryClient } from '@/lib/queries/query-client';
 
 type NavItem = {
@@ -193,6 +193,17 @@ export function DashboardSidebar() {
     await authClient.signOut();
     const queryClient = getQueryClient();
     queryClient.clear();
+  };
+
+  const handleBilling = async () => {
+    try {
+      const response = await polarPortal.getPortalUrl();
+      if ('data' in response && response.data) {
+        window.location.href = response.data.url;
+      }
+    } catch (error) {
+      console.error('Failed to open billing portal:', error);
+    }
   };
 
   return (
@@ -429,7 +440,7 @@ export function DashboardSidebar() {
                     <span className="font-sans">User Settings</span>
                   </DropdownMenuItem>
                 </UserSettings>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={handleBilling}>
                   <HugeiconsIcon
                     className="mr-2 size-4"
                     icon={CreditCardIcon}

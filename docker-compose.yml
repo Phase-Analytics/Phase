@@ -139,7 +139,7 @@ services:
     volumes:
       - geoip-data:/app/geoip
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - PORT=3001
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - BETTER_AUTH_TELEMETRY=0
@@ -151,6 +151,7 @@ services:
       - QUESTDB_HOST=questdb
       - QUESTDB_ILP_PORT=9009
       - GEOIP_DB_PATH=/app/geoip/GeoLite2-City.mmdb
+      - POLAR_ACCESS_TOKEN=${POLAR_ACCESS_TOKEN}
     expose:
       - "3001"
     depends_on:

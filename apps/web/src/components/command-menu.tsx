@@ -27,6 +27,7 @@ type CommandItem = {
   keywords: string[];
   path: string;
   external?: boolean;
+  onSelect?: () => void | Promise<void>;
 };
 
 type CommandMenuProps = {
@@ -132,8 +133,10 @@ export function CommandMenu({ open, onOpenChange, items }: CommandMenuProps) {
   }, [filteredItems.length]);
 
   const handleSelect = useCallback(
-    (item: CommandItem) => {
-      if (item.external) {
+    async (item: CommandItem) => {
+      if (item.onSelect) {
+        await item.onSelect();
+      } else if (item.external) {
         window.open(item.path, '_blank', 'noopener,noreferrer');
       } else {
         router.push(item.path);

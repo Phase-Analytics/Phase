@@ -26,6 +26,7 @@ import { KeybindsDialog } from '@/components/keybinds-dialog';
 import { ThemeTogglerButton } from '@/components/theme-toggler';
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { polarPortal } from '@/lib/auth';
 
 export function DashboardHeader({ children }: { children: ReactNode }) {
   const isMobile = useIsMobile();
@@ -86,6 +87,16 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
           icon: CreditCardIcon,
           keywords: ['billing', 'payment', 'subscription', 'invoice'],
           path: '/billing',
+          onSelect: async () => {
+            try {
+              const response = await polarPortal.getPortalUrl();
+              if ('data' in response && response.data) {
+                window.location.href = response.data.url;
+              }
+            } catch (error) {
+              console.error('Failed to open billing portal:', error);
+            }
+          },
         },
       ];
     }
@@ -202,6 +213,16 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
         icon: CreditCardIcon,
         keywords: ['billing', 'payment', 'subscription', 'invoice'],
         path: '/billing',
+        onSelect: async () => {
+          try {
+            const response = await polarPortal.getPortalUrl();
+            if ('data' in response && response.data) {
+              window.location.href = response.data.url;
+            }
+          } catch (error) {
+            console.error('Failed to open billing portal:', error);
+          }
+        },
       },
     ];
   }, [appId]);
