@@ -152,6 +152,8 @@ services:
       - QUESTDB_ILP_PORT=9009
       - GEOIP_DB_PATH=/app/geoip/GeoLite2-City.mmdb
       - POLAR_ACCESS_TOKEN=${POLAR_ACCESS_TOKEN}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
     expose:
       - "3001"
     depends_on:

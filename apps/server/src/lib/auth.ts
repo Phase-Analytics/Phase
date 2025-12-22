@@ -32,6 +32,12 @@ export const auth = betterAuth({
       use: [portal()],
     }),
   ],
+  socialProviders: {
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID || '',
+      clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
+    },
+  },
   emailAndPassword: {
     disableSignUp: false,
     enabled: true,

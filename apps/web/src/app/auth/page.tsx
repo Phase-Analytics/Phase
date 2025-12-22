@@ -289,6 +289,12 @@ function LoginForm({ defaultValues, onValuesChange }: LoginFormProps) {
           <Button
             aria-label="Sign in with Github"
             className="w-full"
+            onClick={async () => {
+              await authClient.signIn.social({
+                provider: 'github',
+                callbackURL: '/dashboard',
+              });
+            }}
             type="button"
             variant="outline"
           >
@@ -630,6 +636,12 @@ function SignupForm({ defaultValues, onValuesChange }: SignupFormProps) {
           <Button
             aria-label="Sign up with Github"
             className="w-full"
+            onClick={async () => {
+              await authClient.signIn.social({
+                provider: 'github',
+                callbackURL: '/dashboard',
+              });
+            }}
             type="button"
             variant="outline"
           >
