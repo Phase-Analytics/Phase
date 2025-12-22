@@ -169,6 +169,7 @@ export function CreateAppDialog({ children, onSuccess }: CreateAppDialogProps) {
             >
               {([canSubmit, isSubmitting, submissionAttempts]) => (
                 <Button
+                  className="relative"
                   disabled={
                     (submissionAttempts > 0 && !canSubmit) ||
                     createApp.isPending ||
@@ -176,8 +177,12 @@ export function CreateAppDialog({ children, onSuccess }: CreateAppDialogProps) {
                   }
                   type="submit"
                 >
-                  {createApp.isPending && <Spinner className="mr-2 size-4" />}
-                  {createApp.isPending ? 'Creating' : 'Create'}
+                  {createApp.isPending && (
+                    <Spinner className="absolute inset-0 m-auto size-4" />
+                  )}
+                  <span className={createApp.isPending ? 'invisible' : ''}>
+                    Create
+                  </span>
                 </Button>
               )}
             </form.Subscribe>

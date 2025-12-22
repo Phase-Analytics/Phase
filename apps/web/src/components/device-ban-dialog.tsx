@@ -85,13 +85,18 @@ export function DeviceBanDialog({
             Cancel
           </Button>
           <Button
+            className="relative"
             disabled={deleteDevice.isPending}
             onClick={handleBan}
             type="button"
             variant="destructive"
           >
-            {deleteDevice.isPending && <Spinner className="mr-2 size-4" />}
-            {deleteDevice.isPending ? 'Banning' : 'Ban User'}
+            {deleteDevice.isPending && (
+              <Spinner className="absolute inset-0 m-auto size-4" />
+            )}
+            <span className={deleteDevice.isPending ? 'invisible' : ''}>
+              Ban User
+            </span>
           </Button>
         </DialogFooter>
       </DialogContent>

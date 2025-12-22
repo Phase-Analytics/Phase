@@ -75,13 +75,18 @@ export function RotateKeyDialog({ appId, children }: RotateKeyDialogProps) {
             Cancel
           </Button>
           <Button
+            className="relative"
             disabled={rotateKey.isPending}
             onClick={handleRotate}
             type="button"
             variant="destructive"
           >
-            {rotateKey.isPending && <Spinner className="mr-2 size-4" />}
-            {rotateKey.isPending ? 'Rotating' : 'Rotate Key'}
+            {rotateKey.isPending && (
+              <Spinner className="absolute inset-0 m-auto size-4" />
+            )}
+            <span className={rotateKey.isPending ? 'invisible' : ''}>
+              Rotate Key
+            </span>
           </Button>
         </DialogFooter>
       </DialogContent>

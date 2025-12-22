@@ -185,6 +185,7 @@ export function EditAppNameDialog({
             >
               {([canSubmit, isSubmitting, submissionAttempts]) => (
                 <Button
+                  className="relative"
                   disabled={
                     (submissionAttempts > 0 && !canSubmit) ||
                     renameApp.isPending ||
@@ -192,8 +193,12 @@ export function EditAppNameDialog({
                   }
                   type="submit"
                 >
-                  {renameApp.isPending && <Spinner className="mr-2 size-4" />}
-                  {renameApp.isPending ? 'Saving' : 'Save Changes'}
+                  {renameApp.isPending && (
+                    <Spinner className="absolute inset-0 m-auto size-4" />
+                  )}
+                  <span className={renameApp.isPending ? 'invisible' : ''}>
+                    Save Changes
+                  </span>
                 </Button>
               )}
             </form.Subscribe>

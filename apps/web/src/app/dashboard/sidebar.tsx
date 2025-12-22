@@ -219,7 +219,7 @@ export function DashboardSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                className="h-10 hover:bg-transparent! active:bg-transparent! data-highlight:bg-transparent!"
+                className="h-10 cursor-pointer hover:bg-transparent! active:bg-transparent! data-highlight:bg-transparent!"
                 size="lg"
               >
                 <Link href="https://phase.sh" target="_blank">
@@ -244,7 +244,7 @@ export function DashboardSidebar() {
                   <div className="flex items-center group-data-[collapsible=icon]:hidden">
                     <Image
                       alt="Phase"
-                      className="h-12 w-auto dark:hidden"
+                      className="h-14 w-auto dark:hidden"
                       height={100}
                       priority
                       src="/light-typography.svg"
@@ -378,7 +378,12 @@ export function DashboardSidebar() {
         <SidebarMenu>
           {footerNavItems.map((item) => (
             <SidebarMenuItem key={item.label}>
-              <SidebarMenuButton asChild size="sm" tooltip={item.tooltip}>
+              <SidebarMenuButton
+                asChild
+                className="cursor-pointer"
+                size="sm"
+                tooltip={item.tooltip}
+              >
                 <Link
                   href={item.path}
                   onClick={() => {

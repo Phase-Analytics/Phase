@@ -174,6 +174,7 @@ export function DeleteAppDialog({
             >
               {([canSubmit, isSubmitting, submissionAttempts]) => (
                 <Button
+                  className="relative"
                   disabled={
                     (submissionAttempts > 0 && !canSubmit) ||
                     deleteApp.isPending ||
@@ -182,8 +183,12 @@ export function DeleteAppDialog({
                   type="submit"
                   variant="destructive"
                 >
-                  {deleteApp.isPending && <Spinner className="mr-2 size-4" />}
-                  {deleteApp.isPending ? 'Deleting' : 'Delete Application'}
+                  {deleteApp.isPending && (
+                    <Spinner className="absolute inset-0 m-auto size-4" />
+                  )}
+                  <span className={deleteApp.isPending ? 'invisible' : ''}>
+                    Delete Application
+                  </span>
                 </Button>
               )}
             </form.Subscribe>

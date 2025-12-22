@@ -84,13 +84,18 @@ export function RemoveMemberDialog({
             Cancel
           </Button>
           <Button
+            className="relative"
             disabled={removeMember.isPending}
             onClick={handleRemove}
             type="button"
             variant="destructive"
           >
-            {removeMember.isPending && <Spinner className="mr-2 size-4" />}
-            {removeMember.isPending ? 'Removing' : 'Remove Member'}
+            {removeMember.isPending && (
+              <Spinner className="absolute inset-0 m-auto size-4" />
+            )}
+            <span className={removeMember.isPending ? 'invisible' : ''}>
+              Remove Member
+            </span>
           </Button>
         </DialogFooter>
       </DialogContent>

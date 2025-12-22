@@ -37,6 +37,7 @@ type LoginFormProps = {
 function LoginForm({ defaultValues, onValuesChange }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGithubLoading, setIsGithubLoading] = useState(false);
 
   const form = useForm({
     defaultValues: defaultValues || {
@@ -257,7 +258,7 @@ function LoginForm({ defaultValues, onValuesChange }: LoginFormProps) {
           >
             {([canSubmit, isSubmitting, submissionAttempts]) => (
               <Button
-                className="w-full"
+                className="relative w-full"
                 disabled={
                   (submissionAttempts > 0 && !canSubmit) ||
                   isSubmitting ||
@@ -265,14 +266,8 @@ function LoginForm({ defaultValues, onValuesChange }: LoginFormProps) {
                 }
                 type="submit"
               >
-                {isLoading ? (
-                  <>
-                    <Spinner className="mr-2" />
-                    Logging in
-                  </>
-                ) : (
-                  'Login'
-                )}
+                {isLoading && <Spinner className="absolute inset-0 m-auto" />}
+                <span className={isLoading ? 'invisible' : ''}>Login</span>
               </Button>
             )}
           </form.Subscribe>
@@ -288,23 +283,34 @@ function LoginForm({ defaultValues, onValuesChange }: LoginFormProps) {
 
           <Button
             aria-label="Sign in with Github"
-            className="w-full"
+            className="relative w-full"
+            disabled={isGithubLoading || isLoading}
             onClick={async () => {
-              const webUrl = process.env.NEXT_PUBLIC_SERVER_URL?.includes(
-                'localhost'
-              )
-                ? 'http://localhost:3002'
-                : 'https://phase.sh';
-              await authClient.signIn.social({
-                provider: 'github',
-                callbackURL: `${webUrl}/dashboard`,
-              });
+              setIsGithubLoading(true);
+              try {
+                const webUrl = process.env.NEXT_PUBLIC_SERVER_URL?.includes(
+                  'localhost'
+                )
+                  ? 'http://localhost:3002'
+                  : 'https://phase.sh';
+                await authClient.signIn.social({
+                  provider: 'github',
+                  callbackURL: `${webUrl}/dashboard`,
+                });
+              } finally {
+                setIsGithubLoading(false);
+              }
             }}
             type="button"
             variant="outline"
           >
-            <HugeiconsIcon className="mr-2 h-4 w-4" icon={GithubIcon} />
-            Sign in with Github
+            {isGithubLoading && <Spinner className="absolute inset-0 m-auto" />}
+            <span
+              className={`inline-flex items-center ${isGithubLoading ? 'invisible' : ''}`}
+            >
+              <HugeiconsIcon className="mr-2 h-4 w-4" icon={GithubIcon} />
+              Sign in with Github
+            </span>
           </Button>
         </CardContent>
       </Card>
@@ -328,6 +334,7 @@ type SignupFormProps = {
 function SignupForm({ defaultValues, onValuesChange }: SignupFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGithubLoading, setIsGithubLoading] = useState(false);
 
   const form = useForm({
     defaultValues: defaultValues || {
@@ -609,7 +616,7 @@ function SignupForm({ defaultValues, onValuesChange }: SignupFormProps) {
           >
             {([canSubmit, isSubmitting, submissionAttempts]) => (
               <Button
-                className="w-full"
+                className="relative w-full"
                 disabled={
                   (submissionAttempts > 0 && !canSubmit) ||
                   isSubmitting ||
@@ -617,14 +624,8 @@ function SignupForm({ defaultValues, onValuesChange }: SignupFormProps) {
                 }
                 type="submit"
               >
-                {isLoading ? (
-                  <>
-                    <Spinner className="mr-2" />
-                    Signing up
-                  </>
-                ) : (
-                  'Sign Up'
-                )}
+                {isLoading && <Spinner className="absolute inset-0 m-auto" />}
+                <span className={isLoading ? 'invisible' : ''}>Sign Up</span>
               </Button>
             )}
           </form.Subscribe>
@@ -640,23 +641,34 @@ function SignupForm({ defaultValues, onValuesChange }: SignupFormProps) {
 
           <Button
             aria-label="Sign up with Github"
-            className="w-full"
+            className="relative w-full"
+            disabled={isGithubLoading || isLoading}
             onClick={async () => {
-              const webUrl = process.env.NEXT_PUBLIC_SERVER_URL?.includes(
-                'localhost'
-              )
-                ? 'http://localhost:3002'
-                : 'https://phase.sh';
-              await authClient.signIn.social({
-                provider: 'github',
-                callbackURL: `${webUrl}/dashboard`,
-              });
+              setIsGithubLoading(true);
+              try {
+                const webUrl = process.env.NEXT_PUBLIC_SERVER_URL?.includes(
+                  'localhost'
+                )
+                  ? 'http://localhost:3002'
+                  : 'https://phase.sh';
+                await authClient.signIn.social({
+                  provider: 'github',
+                  callbackURL: `${webUrl}/dashboard`,
+                });
+              } finally {
+                setIsGithubLoading(false);
+              }
             }}
             type="button"
             variant="outline"
           >
-            <HugeiconsIcon className="mr-2 h-4 w-4" icon={GithubIcon} />
-            Sign up with Github
+            {isGithubLoading && <Spinner className="absolute inset-0 m-auto" />}
+            <span
+              className={`inline-flex items-center ${isGithubLoading ? 'invisible' : ''}`}
+            >
+              <HugeiconsIcon className="mr-2 h-4 w-4" icon={GithubIcon} />
+              Sign up with Github
+            </span>
           </Button>
         </CardContent>
       </Card>
@@ -925,7 +937,7 @@ function PasswordResetForm({ token }: { token: string }) {
           >
             {([canSubmit, isSubmitting, submissionAttempts]) => (
               <Button
-                className="w-full"
+                className="relative w-full"
                 disabled={
                   (submissionAttempts > 0 && !canSubmit) ||
                   isSubmitting ||
@@ -933,14 +945,10 @@ function PasswordResetForm({ token }: { token: string }) {
                 }
                 type="submit"
               >
-                {isLoading ? (
-                  <>
-                    <Spinner className="mr-2" />
-                    Resetting password
-                  </>
-                ) : (
-                  'Reset Password'
-                )}
+                {isLoading && <Spinner className="absolute inset-0 m-auto" />}
+                <span className={isLoading ? 'invisible' : ''}>
+                  Reset Password
+                </span>
               </Button>
             )}
           </form.Subscribe>

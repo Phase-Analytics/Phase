@@ -167,6 +167,7 @@ export function AddMemberDialog({ appId, children }: AddMemberDialogProps) {
             >
               {([canSubmit, isSubmitting, submissionAttempts]) => (
                 <Button
+                  className="relative"
                   disabled={
                     (submissionAttempts > 0 && !canSubmit) ||
                     addMember.isPending ||
@@ -174,8 +175,12 @@ export function AddMemberDialog({ appId, children }: AddMemberDialogProps) {
                   }
                   type="submit"
                 >
-                  {addMember.isPending && <Spinner className="mr-2 size-4" />}
-                  {addMember.isPending ? 'Adding' : 'Add Member'}
+                  {addMember.isPending && (
+                    <Spinner className="absolute inset-0 m-auto size-4" />
+                  )}
+                  <span className={addMember.isPending ? 'invisible' : ''}>
+                    Add Member
+                  </span>
                 </Button>
               )}
             </form.Subscribe>

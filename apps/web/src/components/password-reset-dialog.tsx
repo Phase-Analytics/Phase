@@ -186,6 +186,7 @@ export function PasswordResetDialog({ children }: PasswordResetDialogProps) {
                 >
                   {([canSubmit, isSubmitting, submissionAttempts]) => (
                     <Button
+                      className="relative"
                       disabled={
                         (submissionAttempts > 0 && !canSubmit) ||
                         resetPasswordMutation.isPending ||
@@ -194,11 +195,15 @@ export function PasswordResetDialog({ children }: PasswordResetDialogProps) {
                       type="submit"
                     >
                       {resetPasswordMutation.isPending && (
-                        <Spinner className="mr-2 size-4" />
+                        <Spinner className="absolute inset-0 m-auto size-4" />
                       )}
-                      {resetPasswordMutation.isPending
-                        ? 'Sending'
-                        : 'Send Reset Link'}
+                      <span
+                        className={
+                          resetPasswordMutation.isPending ? 'invisible' : ''
+                        }
+                      >
+                        Send Reset Link
+                      </span>
                     </Button>
                   )}
                 </form.Subscribe>
