@@ -290,9 +290,12 @@ function LoginForm({ defaultValues, onValuesChange }: LoginFormProps) {
             aria-label="Sign in with Github"
             className="w-full"
             onClick={async () => {
+              const webUrl = process.env.NEXT_PUBLIC_SERVER_URL?.includes('localhost')
+                ? 'http://localhost:3002'
+                : 'https://phase.sh';
               await authClient.signIn.social({
                 provider: 'github',
-                callbackURL: '/dashboard',
+                callbackURL: `${webUrl}/dashboard`,
               });
             }}
             type="button"
@@ -637,9 +640,12 @@ function SignupForm({ defaultValues, onValuesChange }: SignupFormProps) {
             aria-label="Sign up with Github"
             className="w-full"
             onClick={async () => {
+              const webUrl = process.env.NEXT_PUBLIC_SERVER_URL?.includes('localhost')
+                ? 'http://localhost:3002'
+                : 'https://phase.sh';
               await authClient.signIn.social({
                 provider: 'github',
-                callbackURL: '/dashboard',
+                callbackURL: `${webUrl}/dashboard`,
               });
             }}
             type="button"
@@ -1020,13 +1026,7 @@ function AuthContent() {
 
 export default function AuthPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex h-screen w-full items-center justify-center">
-          Loading...
-        </div>
-      }
-    >
+    <Suspense fallback={<div className="h-screen w-full" />}>
       <AuthContent />
     </Suspense>
   );
