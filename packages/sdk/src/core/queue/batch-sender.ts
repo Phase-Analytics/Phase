@@ -4,7 +4,7 @@ import { VALIDATION } from '../types';
 import { logger } from '../utils/logger';
 import type { OfflineQueue } from './offline-queue';
 
-const MAX_RETRY_COUNT = 5;
+const FLUSH_TIMEOUT_MS = 5000;
 
 export class BatchSender {
   private readonly httpClient: HttpClient;
@@ -25,93 +25,63 @@ export class BatchSender {
     this.isFlushing = true;
 
     try {
-      const items = await this.offlineQueue.dequeueAll();
-
-      if (items.length === 0) {
-        return;
-      }
-
-      const deduplicatedItems = this.deduplicateByTimestamp(items);
-      const batches = this.splitIntoBatches(deduplicatedItems);
-
-      for (const batch of batches) {
-        try {
-          const success = await this.sendBatch(batch);
-          if (!success) {
-            await this.requeue(batch);
-          }
-        } catch (error) {
-          logger.error('Batch send error. Re-queueing for retry.', error);
-          await this.requeue(batch);
-        }
-      }
+      await this.flushWithTimeout();
     } finally {
       this.isFlushing = false;
     }
   }
 
-  private async requeue(items: BatchItem[]): Promise<void> {
-    const requeuePromises = items.map(async (item) => {
-      const retryCount = (item.retryCount ?? 0) + 1;
-
-      if (retryCount > MAX_RETRY_COUNT) {
-        logger.error('Max retries exceeded. Dropping item.', {
-          type: item.type,
-          clientOrder: item.clientOrder,
-          retryCount,
-        });
-        return;
-      }
-
-      try {
-        await this.offlineQueue.enqueue({ ...item, retryCount });
-      } catch (error) {
-        logger.error('Failed to re-enqueue item. Data may be lost.', error);
-      }
+  private async flushWithTimeout(): Promise<void> {
+    const timeoutPromise = new Promise<void>((_, reject) => {
+      setTimeout(() => reject(new Error('Flush timeout')), FLUSH_TIMEOUT_MS);
     });
 
-    await Promise.all(requeuePromises);
+    const flushPromise = this.performFlush();
+
+    try {
+      await Promise.race([flushPromise, timeoutPromise]);
+    } catch (error) {
+      logger.error('Flush failed or timed out. Dropping remaining items.', error);
+    }
   }
 
-  private async sendBatch(items: BatchItem[]): Promise<boolean> {
+  private async performFlush(): Promise<void> {
+    const items = await this.offlineQueue.dequeueAll();
+
+    if (items.length === 0) {
+      return;
+    }
+
+    const deduplicatedItems = this.deduplicateByTimestamp(items);
+    const batches = this.splitIntoBatches(deduplicatedItems);
+
+    for (const batch of batches) {
+      try {
+        await this.sendBatch(batch);
+      } catch (error) {
+        logger.error('Batch send error. Dropping batch (fire & forget).', error);
+      }
+    }
+  }
+
+  private async sendBatch(items: BatchItem[]): Promise<void> {
     const itemsWithoutRetryCount = items.map(({ retryCount, ...item }) => item);
     const request: BatchRequest = { items: itemsWithoutRetryCount };
     const result = await this.httpClient.sendBatch(request);
 
     if (!result.success) {
-      logger.error('Batch request failed. Will retry.', result.error);
-      return false;
+      logger.warn('Batch request failed. Dropping batch (fire & forget).', {
+        error: result.error,
+      });
+      return;
     }
 
     const response = result.data;
     if (response.failed && response.failed > 0) {
-      logger.error(
-        `Batch partially failed: ${response.failed}/${(response.processed ?? 0) + response.failed} items`
+      logger.warn(
+        `Batch partially failed: ${response.failed}/${(response.processed ?? 0) + response.failed} items dropped.`
       );
-
-      if (Array.isArray(response.errors)) {
-        const failedItems: BatchItem[] = [];
-
-        for (const error of response.errors) {
-          if (error.clientOrder === undefined) {
-            logger.error('Error missing clientOrder. Cannot re-enqueue.');
-            continue;
-          }
-          const failedItem = items.find(
-            (item) => item.clientOrder === error.clientOrder
-          );
-          if (failedItem) {
-            failedItems.push(failedItem);
-          }
-        }
-
-        if (failedItems.length > 0) {
-          await this.requeue(failedItems);
-        }
-      }
     }
-
-    return true;
   }
 
   private deduplicateByTimestamp(items: BatchItem[]): BatchItem[] {

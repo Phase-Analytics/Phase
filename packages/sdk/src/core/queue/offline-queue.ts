@@ -3,7 +3,7 @@ import type { BatchItem } from '../types';
 import { STORAGE_KEYS } from '../types';
 import { logger } from '../utils/logger';
 
-const MAX_QUEUE_SIZE = 5000;
+const MAX_QUEUE_SIZE = 1000;
 
 export class OfflineQueue {
   private queue: BatchItem[] = [];
