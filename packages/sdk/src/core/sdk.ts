@@ -134,11 +134,6 @@ export class PhaseSDK {
       });
     }
 
-    if (this.isIdentified) {
-      logger.warn('Device already identified. Skipping duplicate call.');
-      return;
-    }
-
     if (!(this.deviceManager && this.sessionManager && this.networkAdapter)) {
       logger.error('SDK components not ready. Initialization may have failed.');
       return;
