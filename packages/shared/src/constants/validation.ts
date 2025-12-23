@@ -1,6 +1,6 @@
 export const APP_NAME = {
   MIN_LENGTH: 3,
-  MAX_LENGTH: 14,
+  MAX_LENGTH: 20,
   PATTERN: /^[a-zA-Z0-9\s-]+$/,
 } as const;
 

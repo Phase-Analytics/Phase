@@ -8,7 +8,7 @@ export const CreateAppRequestSchema = z.object({
     .max(APP_NAME.MAX_LENGTH)
     .regex(APP_NAME.PATTERN, {
       message:
-        'App name must be 3-14 characters and contain only letters, numbers, spaces, and hyphens',
+        'App name must be 3-20 characters and contain only letters, numbers, spaces, and hyphens',
     }),
   image: z.string().url().optional(),
 });
