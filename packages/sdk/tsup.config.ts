@@ -21,7 +21,6 @@ export default defineConfig({
     'expo-device',
     'expo-localization',
     'expo-router',
-    'expo-file-system',
     '@react-native-async-storage/async-storage',
     'react-native-device-info',
     'react-native-localize',

@@ -80,11 +80,13 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: ${{ steps.version.outputs.tag }}
+          name: Release ${{ steps.version.outputs.tag }}
           body: |
-            📦 **npm Package:** https://www.npmjs.com/package/phase-analytics
+            📦 **npm Package:** https://www.npmjs.com/package/phase-analytics/v/${{ steps.version.outputs.version }}
 
-            See [CHANGELOG.md](CHANGELOG.md) for detailed changes.
+            ## What's Changed
+
+            See below for detailed changes.
 
           draft: false
           prerelease: false

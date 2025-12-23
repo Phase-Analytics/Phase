@@ -1,6 +1,6 @@
 import type { HttpClient } from '../client/http-client';
 import type { OfflineQueue } from '../queue/offline-queue';
-import { getItem, setItem } from '../storage/storage';
+import { getItem, removeItem, setItem } from '../storage/storage';
 import type {
   CreateDeviceRequest,
   DeviceInfo,
@@ -20,18 +20,20 @@ export class DeviceManager {
   private readonly getDeviceInfo: () => DeviceInfo;
   private readonly collectDeviceInfo: boolean;
   private readonly collectLocale: boolean;
+  private readonly apiKey: string;
 
   constructor(
     httpClient: HttpClient,
     offlineQueue: OfflineQueue,
     getDeviceInfo: () => DeviceInfo,
-    config?: PhaseConfig
+    config: PhaseConfig
   ) {
     this.httpClient = httpClient;
     this.offlineQueue = offlineQueue;
     this.getDeviceInfo = getDeviceInfo;
     this.collectDeviceInfo = config?.deviceInfo ?? true;
     this.collectLocale = config?.userLocale ?? true;
+    this.apiKey = config.apiKey;
   }
 
   async initialize(): Promise<string> {
@@ -52,10 +54,34 @@ export class DeviceManager {
   }
 
   private async doInitialize(): Promise<string> {
+    const storedApiKeyResult = await getItem<string>(STORAGE_KEYS.API_KEY);
+    const storedApiKey = storedApiKeyResult.success
+      ? storedApiKeyResult.data
+      : null;
+    let shouldResetDevice = false;
+
+    if (storedApiKey && storedApiKey !== this.apiKey) {
+      logger.info('API key changed. Resetting device ID.');
+      shouldResetDevice = true;
+
+      try {
+        await removeItem(STORAGE_KEYS.DEVICE_ID);
+        await removeItem(STORAGE_KEYS.DEVICE_INFO);
+      } catch {
+        logger.error('Failed to clear old device data.');
+      }
+    }
+
+    try {
+      await setItem(STORAGE_KEYS.API_KEY, this.apiKey);
+    } catch {
+      logger.error('Failed to persist API key.');
+    }
+
     const result = await getItem<string>(STORAGE_KEYS.DEVICE_ID);
     const stored = result.success ? result.data : null;
 
-    if (stored) {
+    if (!shouldResetDevice && stored) {
       const validation = validateDeviceId(stored);
       if (validation.success) {
         this.deviceId = stored;

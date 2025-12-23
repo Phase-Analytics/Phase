@@ -1,5 +1,5 @@
-import type { Result } from '../../core/types';
-import { logger } from '../../core/utils/logger';
+import type { Result } from '../types';
+import { logger } from '../utils/logger';
 
 let AsyncStorage: unknown = null;
 
@@ -43,7 +43,12 @@ export async function getItem<T>(key: string): Promise<Result<T | null>> {
         `Corrupted storage data for "${key}". Clearing.`,
         parseError
       );
-      await storage.getItem(storageKey);
+      const removeStorage = AsyncStorage as {
+        removeItem: (key: string) => Promise<void>;
+      } | null;
+      if (removeStorage?.removeItem) {
+        await removeStorage.removeItem(storageKey);
+      }
       return { success: true, data: null };
     }
   } catch (error) {

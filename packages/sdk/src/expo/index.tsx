@@ -6,11 +6,16 @@ import {
   fetchNetworkState,
 } from '../core/network/netinfo-network';
 import { PhaseSDK } from '../core/sdk';
+import {
+  clear,
+  getItem,
+  removeItem,
+  setItem,
+} from '../core/storage/async-storage';
 import { setStorageAdapter } from '../core/storage/storage';
 import type { DeviceProperties, EventParams, PhaseConfig } from '../core/types';
 import { logger } from '../core/utils/logger';
 import { getExpoDeviceInfo } from './device/expo-device-info';
-import { clear, getItem, removeItem, setItem } from './storage/expo-storage';
 
 let sdk: PhaseSDK | null = null;
 let initializationPromise: Promise<boolean> | null = null;
@@ -48,10 +53,16 @@ function initSDK(config: PhaseConfig): Promise<boolean> {
         missingPackages.push('expo-localization');
       }
 
+      try {
+        require('@react-native-async-storage/async-storage');
+      } catch {
+        missingPackages.push('@react-native-async-storage/async-storage');
+      }
+
       if (missingPackages.length > 0) {
         logger.info(
           `Optional Expo packages not found: ${missingPackages.join(', ')}\n` +
-            'For better device info, install them:\n' +
+            'For better device info and storage, install them:\n' +
             `  npx expo install ${missingPackages.join(' ')}`
         );
       }

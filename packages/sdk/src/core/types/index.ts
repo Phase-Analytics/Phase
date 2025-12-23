@@ -196,6 +196,7 @@ export const STORAGE_KEYS = {
   DEVICE_ID: 'phase-analytics/device-id',
   DEVICE_INFO: 'phase-analytics/device-info',
   OFFLINE_QUEUE: 'phase-analytics/offline-queue',
+  API_KEY: 'phase-analytics/api-key',
 } as const;
 
 export type NetworkState = {

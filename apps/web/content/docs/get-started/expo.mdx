@@ -95,35 +95,35 @@ Phase Analytics requires the following Expo packages to function properly:
   <TabsContent value="npm">
     <CodeBlock lang="bash" allowCopy={false}>
 ```bash
-npx expo install expo-file-system expo-device expo-localization expo-router
+npx expo install @react-native-async-storage/async-storage expo-device expo-localization expo-router
 ```
     </CodeBlock>
   </TabsContent>
   <TabsContent value="bun">
     <CodeBlock lang="bash" allowCopy={false}>
 ```bash
-bunx expo install expo-file-system expo-device expo-localization expo-router
+bunx expo install @react-native-async-storage/async-storage expo-device expo-localization expo-router
 ```
     </CodeBlock>
   </TabsContent>
   <TabsContent value="yarn">
     <CodeBlock lang="bash" allowCopy={false}>
 ```bash
-yarn dlx expo install expo-file-system expo-device expo-localization expo-router
+yarn dlx expo install @react-native-async-storage/async-storage expo-device expo-localization expo-router
 ```
     </CodeBlock>
   </TabsContent>
   <TabsContent value="pnpm">
     <CodeBlock lang="bash" allowCopy={false}>
 ```bash
-pnpm dlx expo install expo-file-system expo-device expo-localization expo-router
+pnpm dlx expo install @react-native-async-storage/async-storage expo-device expo-localization expo-router
 ```
     </CodeBlock>
   </TabsContent>
 </Tabs>
 
 These dependencies are **required** for the SDK to work correctly. The SDK uses:
-- `expo-file-system` - Local storage for offline event queuing
+- `@react-native-async-storage/async-storage` - Local storage for offline event queuing
 - `expo-device` - Device information collection
 - `expo-localization` - Locale and timezone detection
 - `expo-router` - Automatic screen tracking
@@ -363,7 +363,7 @@ Event parameters passed to `Phase.track()`:
 
 ### Offline Support
 
-Events are queued locally using `expo-file-system` when offline. The queue automatically syncs when connection is restored.
+Events are queued locally using `@react-native-async-storage/async-storage` when offline. The queue automatically syncs when connection is restored.
 
 ### Privacy
 

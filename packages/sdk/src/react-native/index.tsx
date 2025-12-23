@@ -5,11 +5,16 @@ import {
   fetchNetworkState,
 } from '../core/network/netinfo-network';
 import { PhaseSDK } from '../core/sdk';
+import {
+  clear,
+  getItem,
+  removeItem,
+  setItem,
+} from '../core/storage/async-storage';
 import { setStorageAdapter } from '../core/storage/storage';
 import type { DeviceProperties, EventParams, PhaseConfig } from '../core/types';
 import { logger } from '../core/utils/logger';
 import { getRNDeviceInfo } from './device/rn-device-info';
-import { clear, getItem, removeItem, setItem } from './storage/rn-storage';
 
 let sdk: PhaseSDK | null = null;
 let initializationPromise: Promise<boolean> | null = null;
