@@ -21,4 +21,8 @@ export async function forgotPassword(email: string, redirectTo: string) {
 export const polarPortal = {
   getPortalUrl: () => authClient.customer.portal(),
   getCustomerState: () => authClient.customer.state(),
+  getSubscriptions: (query?: { active?: boolean; limit?: number }) =>
+    authClient.customer.subscriptions.list({
+      query: { active: true, limit: 10, ...query },
+    }),
 };

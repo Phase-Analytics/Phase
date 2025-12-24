@@ -50,7 +50,7 @@ export const auth = betterAuth({
               slug: 'enterprise-yearly',
             },
           ],
-          successUrl: '/dashboard',
+          successUrl: `${process.env.WEB_URL || 'http://localhost:3002'}/dashboard`,
           authenticatedUsersOnly: true,
         }),
       ],

@@ -206,14 +206,12 @@ export function DashboardSidebar() {
       }
 
       try {
-        const response = await polarPortal.getCustomerState();
+        const response = await polarPortal.getSubscriptions();
         if ('data' in response && response.data) {
           // biome-ignore lint/suspicious/noExplicitAny: <>
-          const subscriptions = (response.data as any).subscriptions || [];
-          // biome-ignore lint/suspicious/noExplicitAny: <>
-          const activeSubscription = subscriptions.find((sub: any) =>
-            ['active', 'trialing'].includes(sub.status)
-          );
+          const subscriptions = response.data as any[];
+
+          const activeSubscription = subscriptions[0];
 
           if (activeSubscription) {
             const productId =
