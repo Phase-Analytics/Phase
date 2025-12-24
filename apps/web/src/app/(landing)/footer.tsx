@@ -72,7 +72,7 @@ export function Footer({
               {mainLinks.map((link) => (
                 <li className="mx-2 my-1 shrink-0" key={link.href}>
                   <a
-                    className="text-primary text-sm underline-offset-4 hover:underline"
+                    className="text-primary text-sm underline-offset-4 hover:underline hover:decoration-orange-500"
                     href={link.href}
                     {...(link.href.startsWith('http') && {
                       rel: 'noopener noreferrer',
@@ -90,7 +90,7 @@ export function Footer({
               {legalLinks.map((link) => (
                 <li className="mx-3 my-1 shrink-0" key={link.href}>
                   <a
-                    className="text-muted-foreground text-sm underline-offset-4 hover:underline"
+                    className="text-muted-foreground text-sm underline-offset-4 hover:underline hover:decoration-orange-500"
                     href={link.href}
                     rel="noopener noreferrer"
                     target="_blank"
@@ -104,7 +104,7 @@ export function Footer({
           <div className="mt-6 space-y-2 text-sm leading-6 lg:col-[1/4] lg:row-[1/3] lg:mt-0">
             {status && (
               <a
-                className="flex items-center gap-2 text-sm underline-offset-4 hover:underline"
+                className="flex items-center gap-2 text-sm underline-offset-4 hover:underline hover:decoration-orange-500"
                 href={status.href}
                 rel="noopener noreferrer"
                 target="_blank"
@@ -118,7 +118,7 @@ export function Footer({
             )}
             {email && (
               <a
-                className="flex items-center gap-2 text-sm underline-offset-4 hover:underline"
+                className="flex items-center gap-2 text-sm underline-offset-4 hover:underline hover:decoration-orange-500"
                 href={`mailto:${email.address}`}
               >
                 {email.icon}

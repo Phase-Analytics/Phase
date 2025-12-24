@@ -131,57 +131,65 @@ const AnimatedFlow = ({
       </g>
       <g fill="none" stroke="currentColor" strokeWidth="0.4">
         <g>
-          <rect fill="#18181B" height="11" rx="5" width="42" x="14" y="5" />
-          <UserGroupIcon x="18" y="8" />
+          <rect fill="#18181B" height="13" rx="5" width="46" x="12" y="4" />
+          <UserGroupIcon x="16" y="8" />
           <text
+            dominantBaseline="central"
             fill="#a1a1aa"
-            fontSize="4"
+            fontSize="6"
             fontWeight="500"
             stroke="none"
-            x="28"
-            y="12"
+            textAnchor="middle"
+            x="38"
+            y="10.5"
           >
             {methods[0]}
           </text>
         </g>
         <g>
-          <rect fill="#18181B" height="11" rx="5" width="42" x="60" y="5" />
-          <PlaySquareIcon x="64" y="8" />
+          <rect fill="#18181B" height="13" rx="5" width="46" x="58" y="4" />
+          <PlaySquareIcon x="62" y="8" />
           <text
+            dominantBaseline="central"
             fill="#a1a1aa"
-            fontSize="4"
+            fontSize="6"
             fontWeight="500"
             stroke="none"
-            x="74"
-            y="12"
+            textAnchor="middle"
+            x="84"
+            y="10.5"
           >
             {methods[1]}
           </text>
         </g>
         <g>
-          <rect fill="#18181B" height="11" rx="5" width="42" x="106" y="5" />
-          <CursorPointerIcon x="110" y="8" />
+          <rect fill="#18181B" height="13" rx="5" width="46" x="104" y="4" />
+          <CursorPointerIcon x="108" y="8" />
           <text
+            dominantBaseline="central"
             fill="#a1a1aa"
-            fontSize="4"
+            fontSize="6"
             fontWeight="500"
             stroke="none"
-            x="120"
-            y="12"
+            textAnchor="middle"
+            x="130"
+            y="10.5"
           >
             {methods[2]}
           </text>
         </g>
         <g>
-          <rect fill="#18181B" height="11" rx="5" width="42" x="152" y="5" />
-          <ScreenIcon x="156" y="8" />
+          <rect fill="#18181B" height="13" rx="5" width="46" x="150" y="4" />
+          <ScreenIcon x="154" y="8" />
           <text
+            dominantBaseline="central"
             fill="#a1a1aa"
-            fontSize="4"
+            fontSize="6"
             fontWeight="500"
             stroke="none"
-            x="166"
-            y="12"
+            textAnchor="middle"
+            x="176"
+            y="10.5"
           >
             {methods[3]}
           </text>
@@ -217,7 +225,7 @@ const AnimatedFlow = ({
           />
         </mask>
         <radialGradient fx="1" id="db-blue-grad">
-          <stop offset="0%" stopColor={lightColor || '#00A6F5'} />
+          <stop offset="0%" stopColor={lightColor || '#f97316'} />
           <stop offset="100%" stopColor="transparent" />
         </radialGradient>
       </defs>

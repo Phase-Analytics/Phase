@@ -7,8 +7,7 @@ import {
   useSpring,
   useTransform,
 } from 'framer-motion';
-import type React from 'react';
-import { type ReactNode, useRef, useState } from 'react';
+import React, { type ReactNode, useEffect, useRef, useState } from 'react';
 
 function DefaultMapBackground() {
   const [randomValues] = useState(() => {
@@ -217,6 +216,7 @@ type ExpandCardProps = {
 
 type LocationMapProps = {
   location?: string;
+  statusText?: string;
   coordinates?: string;
   className?: string;
   isExpanded?: boolean;
@@ -242,7 +242,12 @@ export function ExpandCard({
 }: ExpandCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setIsTouchDevice(window.matchMedia('(pointer: coarse)').matches);
+  }, []);
 
   const isExpanded =
     controlledIsExpanded !== undefined
@@ -258,8 +263,13 @@ export function ExpandCard({
   const springRotateX = useSpring(rotateX, { stiffness: 300, damping: 30 });
   const springRotateY = useSpring(rotateY, { stiffness: 300, damping: 30 });
 
+  useEffect(() => {
+    mouseX.set(0);
+    mouseY.set(0);
+  }, [mouseX.set, mouseY.set]);
+
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!containerRef.current) {
+    if (!containerRef.current || isTouchDevice) {
       return;
     }
     const rect = containerRef.current.getBoundingClientRect();
@@ -462,7 +472,7 @@ export function ExpandCard({
               animate={{
                 scaleX: isHovered || isExpanded ? 1 : 0.3,
               }}
-              className="h-px bg-gradient-to-r from-emerald-500/50 via-emerald-400/30 to-transparent"
+              className="h-px bg-gradient-to-r from-orange-500/50 via-orange-400/30 to-transparent"
               initial={{ scaleX: 0, originX: 0 }}
               transition={{ duration: 0.4, ease: 'easeOut' }}
             />
@@ -488,6 +498,7 @@ export function ExpandCard({
 
 export function LocationMap({
   location = 'San Francisco, CA',
+  statusText = 'Live',
   coordinates = '37.7749° N, 122.4194° W',
   className,
   isExpanded,
@@ -519,7 +530,7 @@ export function LocationMap({
       isExpanded={isExpanded}
       onToggle={onToggle}
       statusBadge={{
-        text: 'Live',
+        text: statusText,
         color: '#34D399',
       }}
       triggerIcon={

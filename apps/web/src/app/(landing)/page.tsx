@@ -9,7 +9,6 @@ import {
   MirroringScreenIcon,
   NewTwitterIcon,
   PlaySquareIcon,
-  SparklesIcon,
   UserIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -18,11 +17,11 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { ExpandCard, LocationMap } from '@/components/expand';
 import { LogoCloud } from '@/components/logo-slider';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import AnimatedFlow from './animation';
 import { Footer } from './footer';
 import { Header } from './header';
+import { PricingTable } from './pricing';
 
 export default function HomePage() {
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
@@ -40,21 +39,11 @@ export default function HomePage() {
       >
         <div className="grid w-full items-center gap-12 lg:grid-cols-2 lg:gap-16">
           <div className="flex flex-col justify-center space-y-4">
-            <Badge
-              className="w-fit text-muted-foreground"
-              variant="animated-border"
-            >
-              <span className="inline-flex items-center">
-                <HugeiconsIcon
-                  className="mr-1.5 text-muted-foreground"
-                  icon={SparklesIcon}
-                  size={14}
-                />
-                BETA IS OUT
-              </span>
-            </Badge>
             <h1 className="font-regular font-sans text-4xl tracking-tighter sm:text-5xl lg:text-6xl">
-              Mobile analytics for developers
+              Mobile analytics for{' '}
+              <span className="underline decoration-2 decoration-orange-500 decoration-skip-ink-none underline-offset-[12px]">
+                developers
+              </span>
             </h1>
             <p className="text-md text-muted-foreground leading-relaxed sm:text-xl">
               Track user behavior, measure engagement, and optimize your product
@@ -163,7 +152,7 @@ export default function HomePage() {
 
       <section className="mx-auto w-full max-w-5xl px-4 py-6 lg:px-8">
         <div className="text-center">
-          <p className="mb-6 font-medium text-muted-foreground text-sm uppercase tracking-wider">
+          <p className="mb-6 font-medium text-lg text-muted-foreground uppercase tracking-wider">
             Built with industry-leading technologies
           </p>
           <LogoCloud
@@ -264,7 +253,7 @@ export default function HomePage() {
       >
         <div className="space-y-8">
           <div className="text-center">
-            <h2 className="mb-3 font-semibold text-muted-foreground text-sm uppercase">
+            <h2 className="mb-3 font-semibold text-lg text-muted-foreground uppercase">
               Features
             </h2>
           </div>
@@ -274,6 +263,7 @@ export default function HomePage() {
               isExpanded={expandedCardId === 'geolocation'}
               location="Geolocation"
               onToggle={() => handleCardToggle('geolocation')}
+              statusText="map"
             />
             <ExpandCard
               expandedIcon={
@@ -354,7 +344,7 @@ export default function HomePage() {
               isExpanded={expandedCardId === 'event-tracking'}
               onToggle={() => handleCardToggle('event-tracking')}
               statusBadge={{
-                text: 'Active',
+                text: 'click',
                 color: '#A855F7',
               }}
               triggerIcon={
@@ -381,7 +371,7 @@ export default function HomePage() {
               isExpanded={expandedCardId === 'screen-navigation'}
               onToggle={() => handleCardToggle('screen-navigation')}
               statusBadge={{
-                text: 'Live',
+                text: 'navigation',
                 color: '#EAB308',
               }}
               triggerIcon={
@@ -424,16 +414,49 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section
-        className="mx-auto w-full max-w-5xl px-4 py-16 lg:px-8 lg:py-24"
-        id="pricing"
-      >
-        <div className="text-center">
-          <h2 className="mb-3 font-semibold text-muted-foreground text-sm uppercase">
-            Pricing
-          </h2>
-        </div>
-      </section>
+      <PricingTable
+        features={[
+          { name: 'Unlimited Users', included: 'all' },
+          { name: 'Unlimited Sessions', included: 'all' },
+          { name: 'Realtime Analytics', included: 'all' },
+          { name: 'Geolocation', included: 'all' },
+          { name: 'Unlimited Team Seats', included: 'all' },
+          {
+            name: 'Data Retention',
+            included: 'all',
+            values: { free: '1 Year', starter: '1 Year', pro: '1 Year' },
+          },
+          { name: 'Weekly Reports', included: 'starter' },
+          {
+            name: 'Event Tracking',
+            included: 'all',
+            values: { free: '150K/mo', starter: '5M/mo', pro: '25M/mo' },
+          },
+          {
+            name: 'Support',
+            included: 'all',
+            values: { free: 'Email', starter: 'Email', pro: 'Custom' },
+          },
+        ]}
+        plans={[
+          {
+            name: 'Free',
+            level: 'free',
+            price: { monthly: 0, yearly: 0 },
+          },
+          {
+            name: 'Starter',
+            level: 'starter',
+            price: { monthly: 20, yearly: 200 },
+            popular: true,
+          },
+          {
+            name: 'Enterprise',
+            level: 'pro',
+            price: { monthly: 50, yearly: 500 },
+          },
+        ]}
+      />
 
       <Footer
         brandName="Phase Analytics"

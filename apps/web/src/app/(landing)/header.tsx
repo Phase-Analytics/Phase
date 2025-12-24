@@ -72,7 +72,7 @@ export function Header() {
         <div className="group hidden items-center gap-6 md:flex">
           {links.map((link) => (
             <a
-              className="hover:!opacity-100 text-muted-foreground text-sm underline-offset-4 transition-opacity hover:underline group-hover:opacity-50"
+              className="hover:!opacity-100 text-muted-foreground text-sm underline-offset-4 transition-opacity hover:underline hover:decoration-orange-500 group-hover:opacity-50"
               href={link.href}
               key={link.label}
               {...(link.external && {
@@ -115,7 +115,7 @@ export function Header() {
           <div className="grid gap-y-4">
             {links.map((link) => (
               <a
-                className="text-muted-foreground text-sm underline-offset-4 hover:underline"
+                className="text-muted-foreground text-sm underline-offset-4 hover:underline hover:decoration-orange-500"
                 href={link.href}
                 key={link.label}
                 onClick={() => setOpen(false)}
