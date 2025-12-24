@@ -1,4 +1,5 @@
 'use client';
+import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
@@ -19,6 +20,10 @@ export function Header() {
     {
       label: 'PRICING',
       href: '#pricing',
+    },
+    {
+      label: 'FAQ',
+      href: '#faq',
     },
     {
       label: 'DOCS',
@@ -49,7 +54,7 @@ export function Header() {
       className={cn(
         'sticky top-2 z-50 mx-auto w-full max-w-5xl border-transparent border-b md:rounded-md md:border md:transition-all md:ease-out',
         {
-          'border-border bg-background/95 backdrop-blur-lg supports-[backdrop-filter]:bg-background/50 md:top-4 md:max-w-4xl md:shadow':
+          'border-border bg-background/95 backdrop-blur-lg supports-backdrop-filter:bg-background/50 md:top-4 md:max-w-4xl md:shadow':
             scrolled && !open,
           'border-border bg-background/98': open,
         }
@@ -64,7 +69,7 @@ export function Header() {
         )}
       >
         <Image
-          alt="Phase Analytics"
+          alt="Phase Analytics Logo"
           height={22}
           src="/typography.svg"
           width={90}
@@ -72,7 +77,7 @@ export function Header() {
         <div className="group hidden items-center gap-6 md:flex">
           {links.map((link) => (
             <a
-              className="hover:!opacity-100 text-muted-foreground text-sm underline-offset-4 transition-opacity hover:underline hover:decoration-orange-500 group-hover:opacity-50"
+              className="text-muted-foreground text-sm underline-offset-4 transition-opacity hover:underline hover:decoration-orange-500 hover:opacity-100! group-hover:opacity-50"
               href={link.href}
               key={link.label}
               {...(link.external && {
@@ -84,7 +89,7 @@ export function Header() {
             </a>
           ))}
           <Link href="/dashboard">
-            <Button className="hover:!opacity-100 cursor-pointer transition-opacity group-hover:opacity-50">
+            <Button className="cursor-pointer transition-opacity hover:opacity-100! group-hover:opacity-50">
               GET STARTED
             </Button>
           </Link>
@@ -99,40 +104,37 @@ export function Header() {
         </Button>
       </nav>
 
-      <div
-        className={cn(
-          'fixed top-14 right-0 bottom-0 left-0 z-50 flex flex-col overflow-hidden border-y bg-background/90 md:hidden',
-          open ? 'block' : 'hidden'
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            animate={{ opacity: 1, height: 'auto' }}
+            className="overflow-hidden border-t bg-background/98 md:hidden"
+            exit={{ opacity: 0, height: 0 }}
+            initial={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+          >
+            <div className="flex flex-col gap-y-4 p-4">
+              {links.map((link) => (
+                <a
+                  className="text-muted-foreground text-sm underline-offset-4 hover:underline hover:decoration-orange-500"
+                  href={link.href}
+                  key={link.label}
+                  onClick={() => setOpen(false)}
+                  {...(link.external && {
+                    target: '_blank',
+                    rel: 'noopener noreferrer',
+                  })}
+                >
+                  {link.label}
+                </a>
+              ))}
+              <Link href="/dashboard" onClick={() => setOpen(false)}>
+                <Button className="w-full cursor-pointer">GET STARTED</Button>
+              </Link>
+            </div>
+          </motion.div>
         )}
-      >
-        <div
-          className={cn(
-            'data-[slot=open]:zoom-in-95 data-[slot=closed]:zoom-out-95 ease-out data-[slot=closed]:animate-out data-[slot=open]:animate-in',
-            'flex h-full w-full flex-col gap-y-2 p-4'
-          )}
-          data-slot={open ? 'open' : 'closed'}
-        >
-          <div className="grid gap-y-4">
-            {links.map((link) => (
-              <a
-                className="text-muted-foreground text-sm underline-offset-4 hover:underline hover:decoration-orange-500"
-                href={link.href}
-                key={link.label}
-                onClick={() => setOpen(false)}
-                {...(link.external && {
-                  target: '_blank',
-                  rel: 'noopener noreferrer',
-                })}
-              >
-                {link.label}
-              </a>
-            ))}
-            <Link href="/dashboard" onClick={() => setOpen(false)}>
-              <Button className="w-full cursor-pointer">GET STARTED</Button>
-            </Link>
-          </div>
-        </div>
-      </div>
+      </AnimatePresence>
     </header>
   );
 }

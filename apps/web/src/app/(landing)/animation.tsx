@@ -131,12 +131,12 @@ const AnimatedFlow = ({
       </g>
       <g fill="none" stroke="currentColor" strokeWidth="0.4">
         <g>
-          <rect fill="#18181B" height="13" rx="5" width="46" x="12" y="4" />
-          <UserGroupIcon x="16" y="8" />
+          <rect fill="#18181B" height="12" rx="5" width="44" x="13" y="4.5" />
+          <UserGroupIcon x="17" y="8" />
           <text
             dominantBaseline="central"
             fill="#a1a1aa"
-            fontSize="6"
+            fontSize="5.5"
             fontWeight="500"
             stroke="none"
             textAnchor="middle"
@@ -147,12 +147,12 @@ const AnimatedFlow = ({
           </text>
         </g>
         <g>
-          <rect fill="#18181B" height="13" rx="5" width="46" x="58" y="4" />
-          <PlaySquareIcon x="62" y="8" />
+          <rect fill="#18181B" height="12" rx="5" width="44" x="59" y="4.5" />
+          <PlaySquareIcon x="63" y="8" />
           <text
             dominantBaseline="central"
             fill="#a1a1aa"
-            fontSize="6"
+            fontSize="5.5"
             fontWeight="500"
             stroke="none"
             textAnchor="middle"
@@ -163,12 +163,12 @@ const AnimatedFlow = ({
           </text>
         </g>
         <g>
-          <rect fill="#18181B" height="13" rx="5" width="46" x="104" y="4" />
-          <CursorPointerIcon x="108" y="8" />
+          <rect fill="#18181B" height="12" rx="5" width="44" x="105" y="4.5" />
+          <CursorPointerIcon x="109" y="8" />
           <text
             dominantBaseline="central"
             fill="#a1a1aa"
-            fontSize="6"
+            fontSize="5.5"
             fontWeight="500"
             stroke="none"
             textAnchor="middle"
@@ -179,12 +179,12 @@ const AnimatedFlow = ({
           </text>
         </g>
         <g>
-          <rect fill="#18181B" height="13" rx="5" width="46" x="150" y="4" />
-          <ScreenIcon x="154" y="8" />
+          <rect fill="#18181B" height="12" rx="5" width="44" x="151" y="4.5" />
+          <ScreenIcon x="155" y="8" />
           <text
             dominantBaseline="central"
             fill="#a1a1aa"
-            fontSize="6"
+            fontSize="5.5"
             fontWeight="500"
             stroke="none"
             textAnchor="middle"

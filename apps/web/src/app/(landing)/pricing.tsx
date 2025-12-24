@@ -61,7 +61,7 @@ export function PricingTable({
     <section
       className={cn(
         'bg-background text-foreground',
-        'px-4 py-16 sm:py-24 md:py-32',
+        'px-4 py-8 sm:py-12 md:py-16',
         'fade-bottom overflow-hidden pb-0'
       )}
       id="pricing"
@@ -72,7 +72,7 @@ export function PricingTable({
       >
         <div className="mb-8 text-center">
           <h2 className="mb-3 font-semibold text-lg text-muted-foreground uppercase">
-            Pricing
+            Transparent Pricing
           </h2>
           <p className="text-muted-foreground text-sm">
             Simple pricing, no hidden fees. Start for free.

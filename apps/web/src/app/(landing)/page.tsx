@@ -19,6 +19,7 @@ import { ExpandCard, LocationMap } from '@/components/expand';
 import { LogoCloud } from '@/components/logo-slider';
 import { Button } from '@/components/ui/button';
 import AnimatedFlow from './animation';
+import { FAQ } from './faq';
 import { Footer } from './footer';
 import { Header } from './header';
 import { PricingTable } from './pricing';
@@ -34,14 +35,14 @@ export default function HomePage() {
     <div className="flex min-h-screen flex-col">
       <Header />
       <div
-        className="mx-auto flex w-full max-w-5xl flex-1 items-center px-4 py-12 lg:px-8 lg:py-16"
+        className="mx-auto flex w-full max-w-5xl flex-1 items-center px-4 py-8 lg:px-8 lg:py-12"
         id="hero"
       >
         <div className="grid w-full items-center gap-12 lg:grid-cols-2 lg:gap-16">
           <div className="flex flex-col justify-center space-y-4">
             <h1 className="font-regular font-sans text-4xl tracking-tighter sm:text-5xl lg:text-6xl">
               Mobile analytics for{' '}
-              <span className="underline decoration-2 decoration-orange-500 decoration-skip-ink-none underline-offset-[12px]">
+              <span className="underline decoration-2 decoration-orange-500 decoration-skip-ink-none underline-offset-12">
                 developers
               </span>
             </h1>
@@ -248,13 +249,13 @@ export default function HomePage() {
       </section>
 
       <section
-        className="mx-auto w-full max-w-5xl px-4 py-12 lg:px-8 lg:py-16"
+        className="mx-auto w-full max-w-5xl px-4 py-8 lg:px-8 lg:py-12"
         id="features"
       >
         <div className="space-y-8">
           <div className="text-center">
             <h2 className="mb-3 font-semibold text-lg text-muted-foreground uppercase">
-              Features
+              Privacy-Focused Features
             </h2>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-6">
@@ -458,6 +459,8 @@ export default function HomePage() {
         ]}
       />
 
+      <FAQ />
+
       <Footer
         brandName="Phase Analytics"
         copyright={{
@@ -484,7 +487,7 @@ export default function HomePage() {
         ]}
         logo={
           <Image
-            alt="Phase Analytics"
+            alt="Phase Analytics Typography Logo"
             height={32}
             src="/typography.svg"
             width={120}
@@ -493,6 +496,7 @@ export default function HomePage() {
         mainLinks={[
           { href: '#features', label: 'FEATURES' },
           { href: '#pricing', label: 'PRICING' },
+          { href: '#faq', label: 'FAQ' },
           { href: 'https://phase.sh/docs', label: 'DOCUMENTATION' },
           { href: '/dashboard', label: 'DASHBOARD' },
         ]}

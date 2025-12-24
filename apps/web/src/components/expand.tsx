@@ -266,7 +266,7 @@ export function ExpandCard({
   useEffect(() => {
     mouseX.set(0);
     mouseY.set(0);
-  }, [mouseX.set, mouseY.set]);
+  }, [mouseX, mouseY]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!containerRef.current || isTouchDevice) {
