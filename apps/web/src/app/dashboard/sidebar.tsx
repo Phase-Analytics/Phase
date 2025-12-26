@@ -370,20 +370,6 @@ export function DashboardSidebar() {
                   )}
                 </SidebarMenuItem>
               ))}
-              {comingSoonNavItems.map((item) => (
-                <SidebarMenuItem key={item.label}>
-                  <SidebarMenuButton
-                    className="cursor-not-allowed opacity-50"
-                    tooltip={item.tooltip}
-                  >
-                    <HugeiconsIcon icon={item.icon} />
-                    <span className="font-sans">{item.label}</span>
-                    <span className="ml-auto rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                      SOON
-                    </span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
