@@ -130,7 +130,7 @@ export const adminWebRouter = new Elysia({ prefix: '/admin' })
           .leftJoin(apps, eq(apps.userId, user.id))
           .leftJoin(devices, eq(devices.appId, apps.id))
           .groupBy(user.id, user.email, user.createdAt)
-          .orderBy(user.createdAt);
+          .orderBy(user.createdAt.desc());
 
         set.status = HttpStatus.OK;
         return {

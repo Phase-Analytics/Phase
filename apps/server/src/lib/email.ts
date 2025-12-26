@@ -28,7 +28,15 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
   const secretKey = process.env.PLUNK_SECRET_KEY;
 
   if (!secretKey) {
-    console.warn('PLUNK_SECRET_KEY not configured. Skipping email sending.');
+    const errorMessage =
+      'PLUNK_SECRET_KEY not configured. Email sending is disabled.';
+
+    if (process.env.NODE_ENV === 'production') {
+      console.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    console.warn(`${errorMessage} Skipping email sending in development mode.`);
     return;
   }
 

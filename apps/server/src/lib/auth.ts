@@ -6,26 +6,47 @@ import { db } from '@/db';
 import { account, session, user, verification } from '@/db/schema';
 import { sendPasswordResetEmail } from './email';
 
-if (!process.env.POLAR_ACCESS_TOKEN) {
-  throw new Error('POLAR_ACCESS_TOKEN is not set');
-}
+const IP_ADDRESS_REGEX = /^\d+\.\d+\.\d+\.\d+$/;
 
-const polarClient = new Polar({
-  accessToken: process.env.POLAR_ACCESS_TOKEN,
-  server: 'production',
-});
+const getCookieDomain = (): string | undefined => {
+  if (process.env.NODE_ENV !== 'production') {
+    return;
+  }
 
-export const auth = betterAuth({
-  database: drizzleAdapter(db, {
-    provider: 'pg',
-    schema: {
-      user,
-      session,
-      account,
-      verification,
-    },
-  }),
-  plugins: [
+  const webUrl = process.env.WEB_URL;
+  if (!webUrl) {
+    return;
+  }
+
+  try {
+    const url = new URL(webUrl);
+    const hostname = url.hostname;
+
+    // Skip for localhost or IP addresses
+    if (hostname === 'localhost' || IP_ADDRESS_REGEX.test(hostname)) {
+      return;
+    }
+
+    const parts = hostname.split('.');
+    if (parts.length >= 2) {
+      return `.${parts.slice(-2).join('.')}`;
+    }
+
+    return;
+  } catch {
+    return;
+  }
+};
+
+const plugins: ReturnType<typeof polar>[] = [];
+
+if (process.env.POLAR_ACCESS_TOKEN) {
+  const polarClient = new Polar({
+    accessToken: process.env.POLAR_ACCESS_TOKEN,
+    server: 'production',
+  });
+
+  plugins.push(
     polar({
       client: polarClient,
       createCustomerOnSignUp: true,
@@ -54,14 +75,42 @@ export const auth = betterAuth({
           authenticatedUsersOnly: true,
         }),
       ],
-    }),
-  ],
-  socialProviders: {
-    github: {
-      clientId: process.env.GITHUB_CLIENT_ID || '',
-      clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
+    })
+  );
+} else {
+  console.warn(
+    'POLAR_ACCESS_TOKEN not configured. Polar integration (billing, checkout, portal) is disabled.'
+  );
+}
+
+const socialProviders: Record<
+  string,
+  { clientId: string; clientSecret: string }
+> = {};
+
+if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
+  socialProviders.github = {
+    clientId: process.env.GITHUB_CLIENT_ID,
+    clientSecret: process.env.GITHUB_CLIENT_SECRET,
+  };
+} else {
+  console.warn(
+    'GITHUB_CLIENT_ID or GITHUB_CLIENT_SECRET not configured. GitHub OAuth is disabled.'
+  );
+}
+
+export const auth = betterAuth({
+  database: drizzleAdapter(db, {
+    provider: 'pg',
+    schema: {
+      user,
+      session,
+      account,
+      verification,
     },
-  },
+  }),
+  plugins,
+  socialProviders,
   emailAndPassword: {
     disableSignUp: false,
     enabled: true,
@@ -83,8 +132,7 @@ export const auth = betterAuth({
   baseURL: process.env.SERVER_URL || 'http://localhost:3001',
   trustedOrigins: [
     process.env.WEB_URL || 'http://localhost:3002',
-    'http://localhost:3002',
-    'https://phase.sh',
+    ...(process.env.NODE_ENV !== 'production' ? ['http://localhost:3002'] : []),
   ],
   session: {
     expiresIn: 60 * 60 * 24 * 7,
@@ -101,7 +149,7 @@ export const auth = betterAuth({
     },
     defaultCookieAttributes: {
       sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'none',
-      domain: process.env.NODE_ENV === 'production' ? '.phase.sh' : undefined,
+      domain: getCookieDomain(),
     },
   },
 });

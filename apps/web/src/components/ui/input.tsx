@@ -91,7 +91,7 @@ function Input({
         autoComplete={autoComplete}
         autoCorrect="off"
         className={cn(
-          'peer h-full w-full flex-1 bg-transparent px-3 py-1 text-base caret-primary outline-none selection:bg-primary selection:text-primary-foreground file:inline-flex file:h-7 file:border-0 file:bg-transparent file:font-medium file:text-foreground file:text-sm placeholder:sr-only md:text-sm',
+          'peer h-full w-full flex-1 bg-transparent px-3 py-1 text-base caret-primary outline-none selection:bg-primary selection:text-primary-foreground file:inline-flex file:h-7 file:border-0 file:bg-transparent file:font-medium file:text-foreground file:text-sm md:text-sm',
           'font-normal font-sans text-foreground'
         )}
         defaultValue={defaultValue}
@@ -111,7 +111,6 @@ function Input({
           });
           onFocus?.(event);
         }}
-        placeholder={placeholder}
         spellCheck={false}
         type={type}
         value={value}

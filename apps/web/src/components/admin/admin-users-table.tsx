@@ -75,6 +75,7 @@ export function AdminUsersTable() {
     <DataTable
       columns={columns}
       data={data?.users || []}
+      pageSize={20}
       searchKey="email"
       searchPlaceholder="Search by email..."
     />
