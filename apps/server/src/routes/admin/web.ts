@@ -1,5 +1,5 @@
 import { ErrorCode, HttpStatus } from '@phase/shared';
-import { count, eq, sql } from 'drizzle-orm';
+import { count, desc, eq, sql } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 import { apps, db, devices, sessions, user } from '@/db';
 import { auth } from '@/lib/auth';
@@ -130,7 +130,7 @@ export const adminWebRouter = new Elysia({ prefix: '/admin' })
           .leftJoin(apps, eq(apps.userId, user.id))
           .leftJoin(devices, eq(devices.appId, apps.id))
           .groupBy(user.id, user.email, user.createdAt)
-          .orderBy(user.createdAt.desc());
+          .orderBy(desc(user.createdAt));
 
         set.status = HttpStatus.OK;
         return {

@@ -22,7 +22,6 @@ const getCookieDomain = (): string | undefined => {
     const url = new URL(webUrl);
     const hostname = url.hostname;
 
-    // Skip for localhost or IP addresses
     if (hostname === 'localhost' || IP_ADDRESS_REGEX.test(hostname)) {
       return;
     }
