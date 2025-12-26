@@ -94,7 +94,7 @@ const analyticsNavItems: NavItem[] = [
   },
 ];
 
-const comingSoonNavItems = [
+const _comingSoonNavItems = [
   {
     label: 'Segments',
     icon: Layers01Icon,
