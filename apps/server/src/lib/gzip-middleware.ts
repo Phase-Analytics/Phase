@@ -57,10 +57,6 @@ export const gzipDecompressionPlugin = new Elysia({
       }
 
       text = new TextDecoder().decode(decompressed);
-
-      console.log(
-        `[GzipMiddleware] Decompressed ${compressed.byteLength} → ${decompressed.byteLength} bytes`
-      );
     } catch (error) {
       console.error('[GzipMiddleware] Decompression failed:', error);
       throw new Error('Failed to decompress gzip content');

@@ -47,7 +47,6 @@ export class SessionActivityBuffer {
 
   private setupGracefulShutdown(): void {
     const shutdown = async () => {
-      console.log('[SessionActivityBuffer] Graceful shutdown initiated');
       await this.flushAndClose();
       process.exit(0);
     };
@@ -121,10 +120,6 @@ export class SessionActivityBuffer {
       return;
     }
 
-    console.log(
-      `[SessionActivityBuffer] Started with ${this.flushIntervalMs}ms interval`
-    );
-
     this.flushTimer = setInterval(() => {
       this.flush().catch((error) => {
         console.error('[SessionActivityBuffer] Scheduled flush error:', error);
@@ -136,7 +131,6 @@ export class SessionActivityBuffer {
     if (this.flushTimer) {
       clearInterval(this.flushTimer);
       this.flushTimer = null;
-      console.log('[SessionActivityBuffer] Stopped');
     }
   }
 
@@ -171,18 +165,8 @@ export class SessionActivityBuffer {
       return;
     }
 
-    const startTime = Date.now();
-    console.log(
-      `[SessionActivityBuffer] Flushing ${snapshot.size} session updates (${this.pendingBuffer.size} pending)`
-    );
-
     try {
       await this.writeBatchToDatabase(snapshot);
-
-      const duration = Date.now() - startTime;
-      console.log(
-        `[SessionActivityBuffer] Flushed ${snapshot.size} sessions in ${duration}ms`
-      );
 
       for (const [sessionId, activity] of this.pendingBuffer.entries()) {
         const existing = this.activeBuffer.get(sessionId);
@@ -252,15 +236,10 @@ export class SessionActivityBuffer {
     this.isShuttingDown = true;
     this.stop();
 
-    console.log(
-      '[SessionActivityBuffer] Flushing remaining data before shutdown'
-    );
-
     let retries = 3;
     while (retries > 0) {
       try {
         await this.flush();
-        console.log('[SessionActivityBuffer] Shutdown flush completed');
         break;
       } catch (error) {
         retries--;

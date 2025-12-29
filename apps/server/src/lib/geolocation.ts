@@ -13,13 +13,11 @@ class GeoIPManager {
 
   async initialize() {
     await this.loadDatabase();
-    console.log('✅ [GeoIP] Manager initialized');
   }
 
   private async loadDatabase() {
     try {
       this.reader = await open<CityResponse>(GEOIP_DB_PATH);
-      console.log('✅ [GeoIP] Database loaded');
     } catch (error) {
       console.error('❌ [GeoIP] Failed to load database:', error);
       this.reader = null;
@@ -58,7 +56,6 @@ class GeoIPManager {
 
   shutdown() {
     this.reader = null;
-    console.log('✅ [GeoIP] Shutdown complete');
   }
 }
 
