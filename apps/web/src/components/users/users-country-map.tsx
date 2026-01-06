@@ -57,10 +57,17 @@ export function UsersCountryMap({
   }, []);
 
   useEffect(() => {
+  useEffect(() => {
     fetch('/countries.json')
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load countries data');
+        return res.json();
+      })
       .then((data: Record<string, CountryData>) => setCountriesData(data))
-      .catch(() => setCountriesData(null));
+      .catch((err) => {
+        console.error('Failed to load countries data:', err);
+        setCountriesData(null);
+      });
   }, []);
 
   const isDark = mounted ? resolvedTheme === 'dark' : false;
