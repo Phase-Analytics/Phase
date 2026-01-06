@@ -8,16 +8,16 @@ import {
   UsersActivityChart,
   UsersActivityChartSkeleton,
 } from '@/components/users/users-activity-chart';
+import { UsersCountryMapCard } from '@/components/users/users-country-map-card';
+import { UsersDistributionCard } from '@/components/users/users-distribution-card';
 import { UsersOverviewCards } from '@/components/users/users-overview-cards';
-import { UsersPlatformDistribution } from '@/components/users/users-platform-distribution';
 import {
+  UsersCountryMapSkeleton,
+  UsersDistributionCardSkeleton,
   UsersOverviewCardsSkeleton,
-  UsersPlatformDistributionSkeleton,
   UsersTableSkeleton,
-  UsersTopCountriesSkeleton,
 } from '@/components/users/users-skeletons';
 import { UsersTable } from '@/components/users/users-table';
-import { UsersTopCountries } from '@/components/users/users-top-countries';
 
 export default function UsersPage() {
   return (
@@ -44,14 +44,14 @@ export default function UsersPage() {
 
         <div className="grid gap-4 md:grid-cols-2">
           <ErrorBoundary>
-            <Suspense fallback={<UsersPlatformDistributionSkeleton />}>
-              <UsersPlatformDistribution />
+            <Suspense fallback={<UsersDistributionCardSkeleton />}>
+              <UsersDistributionCard />
             </Suspense>
           </ErrorBoundary>
 
           <ErrorBoundary>
-            <Suspense fallback={<UsersTopCountriesSkeleton />}>
-              <UsersTopCountries />
+            <Suspense fallback={<UsersCountryMapSkeleton />}>
+              <UsersCountryMapCard />
             </Suspense>
           </ErrorBoundary>
         </div>

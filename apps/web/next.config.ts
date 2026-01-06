@@ -50,6 +50,7 @@ const getContentSecurityPolicy = () => {
       'wss://nexus-websocket-b.intercom.io',
       'https://*.intercom.io',
       'https://*.intercomcdn.com',
+      'https://cdn.jsdelivr.net',
     ],
     'frame-src': [
       "'self'",

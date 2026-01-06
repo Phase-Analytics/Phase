@@ -97,7 +97,6 @@ export function PricingTable({
                 gridTemplateColumns: '140px repeat(3, 1fr)',
               }}
             >
-              {/* Plan Headers */}
               <div className="bg-zinc-50 p-4 dark:bg-zinc-900" />
               {plans.map((plan, index) => (
                 <button
@@ -150,7 +149,6 @@ export function PricingTable({
                 </button>
               ))}
 
-              {/* Feature Rows */}
               {features.map((feature) => (
                 <React.Fragment key={feature.name}>
                   <div className="whitespace-nowrap p-4 font-medium text-sm">

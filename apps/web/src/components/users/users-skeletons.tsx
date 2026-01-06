@@ -45,32 +45,26 @@ export function UsersOverviewCardsSkeleton() {
   );
 }
 
-export function UsersPlatformDistributionSkeleton() {
-  return (
-    <Card className="py-0">
-      <CardContent className="space-y-4 p-4">
-        <Skeleton className="h-8 w-40" />
-        <Skeleton className="h-5 w-56" />
-        <div className="space-y-3">
-          {Array.from({ length: 3 }, (_, i) => `skeleton-platform-${i}`).map(
-            (key) => (
-              <Skeleton className="h-10 w-full" key={key} />
-            )
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-export function UsersTopCountriesSkeleton() {
+export function UsersCountryMapSkeleton() {
   return (
     <Card className="py-0">
       <CardContent className="space-y-4 p-4">
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-5 w-48" />
-        <div className="h-[220px] space-y-2">
-          {Array.from({ length: 3 }, (_, i) => `skeleton-country-${i}`).map(
+        <Skeleton className="h-[220px] w-full rounded-lg" />
+      </CardContent>
+    </Card>
+  );
+}
+
+export function UsersDistributionCardSkeleton() {
+  return (
+    <Card className="py-0">
+      <CardContent className="space-y-4 p-4">
+        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-5 w-48" />
+        <div className="h-[220px] space-y-3">
+          {Array.from({ length: 4 }, (_, i) => `skeleton-dist-${i}`).map(
             (key) => (
               <Skeleton className="h-10 w-full" key={key} />
             )

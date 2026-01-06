@@ -1,6 +1,11 @@
 'use client';
 
-import { Flag02Icon } from '@hugeicons/core-free-icons';
+import {
+  AndroidIcon,
+  AnonymousIcon,
+  AppleIcon,
+  Flag02Icon,
+} from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useState } from 'react';
@@ -12,6 +17,28 @@ import { useDeviceOverviewResponse } from '@/lib/queries';
 
 const COUNTRY_CODE_REGEX = /^[A-Za-z]{2}$/;
 
+function getPlatformIcon(platform: string) {
+  switch (platform) {
+    case 'android':
+      return AndroidIcon;
+    case 'ios':
+      return AppleIcon;
+    default:
+      return AnonymousIcon;
+  }
+}
+
+function getPlatformLabel(platform: string) {
+  switch (platform) {
+    case 'android':
+      return 'Android';
+    case 'ios':
+      return 'iOS';
+    default:
+      return 'Unknown';
+  }
+}
+
 function getCountryLabel(countryCode: string) {
   return (
     new Intl.DisplayNames(['en'], {
@@ -20,20 +47,34 @@ function getCountryLabel(countryCode: string) {
   );
 }
 
-export function UsersTopCountries() {
+export function UsersDistributionCard() {
   const [appId] = useQueryState('app', parseAsString);
-  const [activeTab, setActiveTab] = useState<'country' | 'city'>('country');
+  const [activeTab, setActiveTab] = useState<'platform' | 'country' | 'city'>(
+    'platform'
+  );
   const { data: overview } = useDeviceOverviewResponse(appId || '');
 
   if (!appId) {
     return null;
   }
 
+  const platformStats = (overview?.platformStats || {}) as Record<
+    string,
+    number
+  >;
   const countryStats = (overview?.countryStats || {}) as Record<string, number>;
   const cityStats = (overview?.cityStats || {}) as Record<
     string,
     { count: number; country: string }
   >;
+  const totalDevices = overview?.totalDevices || 0;
+
+  const platforms = ['android', 'ios', 'unknown'] as const;
+  const sortedPlatforms = [...platforms].sort((a, b) => {
+    const countA = platformStats[a] || 0;
+    const countB = platformStats[b] || 0;
+    return countB - countA;
+  });
 
   const sortedCountries = Object.entries(countryStats)
     .filter(([, count]) => count > 0)
@@ -43,41 +84,92 @@ export function UsersTopCountries() {
     .filter(([, data]) => data.count > 0)
     .sort(([, a], [, b]) => b.count - a.count);
 
-  const totalDevices = overview?.totalDevices || 0;
+  function getDescription() {
+    switch (activeTab) {
+      case 'platform':
+        return 'User distribution across platforms';
+      case 'country':
+        return 'User distribution by country';
+      case 'city':
+        return 'User distribution by city';
+      default:
+        return 'User distribution';
+    }
+  }
 
   return (
     <Card className="py-0">
       <CardContent className="space-y-4 p-4">
         <Tabs
-          onValueChange={(v) => setActiveTab(v as 'country' | 'city')}
+          onValueChange={(v) =>
+            setActiveTab(v as 'platform' | 'country' | 'city')
+          }
           value={activeTab}
         >
           <TabsList className="h-8">
             <TabsTrigger
               className="text-muted-foreground text-xs uppercase"
+              value="platform"
+            >
+              <span>Platforms</span>
+            </TabsTrigger>
+            <TabsTrigger
+              className="text-muted-foreground text-xs uppercase"
               value="country"
             >
-              <span className="sm:hidden">Countries</span>
-              <span className="hidden sm:inline">Countries</span>
+              <span>Countries</span>
             </TabsTrigger>
             <TabsTrigger
               className="text-muted-foreground text-xs uppercase"
               value="city"
             >
-              <span className="sm:hidden">Cities</span>
-              <span className="hidden sm:inline">Cities</span>
+              <span>Cities</span>
             </TabsTrigger>
           </TabsList>
         </Tabs>
 
-        <p className="text-muted-foreground text-sm">
-          {activeTab === 'country'
-            ? 'User distribution by country'
-            : 'User distribution by city'}
-        </p>
+        <p className="text-muted-foreground text-sm">{getDescription()}</p>
 
         <ScrollArea className="h-[220px]">
-          <div className="space-y-2 pr-4">
+          <div className="space-y-3 pr-4">
+            {activeTab === 'platform' &&
+              sortedPlatforms.map((platform) => {
+                const countNum = platformStats[platform] || 0;
+                const percentage = totalDevices
+                  ? (countNum / totalDevices) * 100
+                  : 0;
+
+                return (
+                  <div className="space-y-1.5" key={platform}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <HugeiconsIcon
+                          className="size-4 text-muted-foreground"
+                          icon={getPlatformIcon(platform)}
+                        />
+                        <span className="font-medium text-sm">
+                          {getPlatformLabel(platform)}
+                        </span>
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="font-semibold text-sm">
+                          {countNum.toLocaleString()}
+                        </span>
+                        <span className="text-muted-foreground text-xs">
+                          ({percentage.toFixed(1)}%)
+                        </span>
+                      </div>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                      <div
+                        className="h-full bg-primary transition-all"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+
             {activeTab === 'country' &&
               sortedCountries.length > 0 &&
               sortedCountries.map(([country, count]) => {
