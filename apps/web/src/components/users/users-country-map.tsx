@@ -57,10 +57,11 @@ export function UsersCountryMap({
   }, []);
 
   useEffect(() => {
-  useEffect(() => {
     fetch('/countries.json')
       .then((res) => {
-        if (!res.ok) throw new Error('Failed to load countries data');
+        if (!res.ok) {
+          throw new Error('Failed to load countries data');
+        }
         return res.json();
       })
       .then((data: Record<string, CountryData>) => setCountriesData(data))
