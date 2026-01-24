@@ -12,7 +12,7 @@ export const VALIDATION = {
   EVENT_NAME: {
     MIN_LENGTH: 1,
     MAX_LENGTH: 256,
-    PATTERN: /^[\w./-]+$/,
+    PATTERN: /^[\w./ -]+$/,
   },
   EVENT_PARAMS: {
     MAX_SIZE: 50_000,
@@ -197,6 +197,7 @@ export const STORAGE_KEYS = {
   DEVICE_INFO: 'phase-analytics/device-info',
   OFFLINE_QUEUE: 'phase-analytics/offline-queue',
   API_KEY: 'phase-analytics/api-key',
+  SESSION_STARTED_AT: 'phase-analytics/session-started-at',
 } as const;
 
 export type NetworkState = {

@@ -1,12 +1,15 @@
 import type { HttpClient } from '../client/http-client';
 import type { OfflineQueue } from '../queue/offline-queue';
+import { getItem, setItem } from '../storage/storage';
 import type { CreateSessionRequest, PingSessionRequest } from '../types';
+import { STORAGE_KEYS } from '../types';
 import { generateSessionId } from '../utils/id-generator';
 import { logger } from '../utils/logger';
 import { validateSessionId } from '../utils/validator';
 
 const PING_INTERVAL_MS = 5000;
 const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
+const MAX_SESSION_AGE_MS = 60 * 60 * 1000; // 1 hour
 
 export class SessionManager {
   private sessionId: string | null = null;
@@ -61,11 +64,22 @@ export class SessionManager {
       }
     }
 
+    const startedAt = new Date().toISOString();
     const payload: CreateSessionRequest = {
       sessionId: this.sessionId,
       deviceId: this.deviceId,
-      startedAt: new Date().toISOString(),
+      startedAt,
     };
+
+    const persistResult = await setItem(
+      STORAGE_KEYS.SESSION_STARTED_AT,
+      startedAt
+    );
+    if (!persistResult.success) {
+      logger.warn(
+        'Failed to persist session start time. Session age checks may not work correctly.'
+      );
+    }
 
     if (isOnline) {
       const result = await this.httpClient.createSession(payload);
@@ -93,6 +107,27 @@ export class SessionManager {
   async resume(): Promise<void> {
     if (!this.sessionId) {
       return;
+    }
+
+    const sessionStartedResult = await getItem<string>(
+      STORAGE_KEYS.SESSION_STARTED_AT
+    );
+    if (sessionStartedResult.success && sessionStartedResult.data) {
+      const sessionStartTime = new Date(sessionStartedResult.data).getTime();
+      const sessionAge = Date.now() - sessionStartTime;
+
+      if (sessionAge > MAX_SESSION_AGE_MS) {
+        logger.info('Session too old, starting new session', {
+          sessionAge: Math.round(sessionAge / 1000),
+          maxAge: Math.round(MAX_SESSION_AGE_MS / 1000),
+        });
+
+        this.sessionId = null;
+        this.pausedAt = null;
+
+        await this.start(this.isOnline);
+        return;
+      }
     }
 
     if (this.pausedAt) {

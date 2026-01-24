@@ -19,7 +19,7 @@ export const SESSION_ID = {
 export const EVENT_NAME = {
   MIN_LENGTH: 1,
   MAX_LENGTH: 256,
-  PATTERN: /^[\w./-]+$/,
+  PATTERN: /^[\w./ -]+$/,
 } as const;
 
 export const VERSION = {

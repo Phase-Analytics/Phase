@@ -690,7 +690,7 @@ export function validateEventName(name: string): ValidationResult<string> {
       success: false,
       error: {
         code: ErrorCode.VALIDATION_ERROR,
-        detail: `${config.fieldName} contains invalid characters (only alphanumeric, underscore, hyphen, dot, and slash allowed)`,
+        detail: `${config.fieldName} contains invalid characters (only alphanumeric, underscore, hyphen, dot, slash, and space allowed)`,
         status: HttpStatus.BAD_REQUEST,
       },
     };

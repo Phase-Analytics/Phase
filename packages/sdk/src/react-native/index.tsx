@@ -312,7 +312,7 @@ async function identify(properties?: DeviceProperties): Promise<void> {
 
 /**
  * Track custom event
- * @param name Event name (required, alphanumeric, `_`, `-`, `.`, `/`)
+ * @param name Event name (required, alphanumeric, `_`, `-`, `.`, `/`, space)
  * @param params Event parameters (optional, primitives only)
  * @example
  * await Phase.track('purchase', { amount: 99.99, currency: 'USD' });

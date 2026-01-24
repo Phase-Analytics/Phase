@@ -66,7 +66,6 @@ export const gzipDecompressionPlugin = new Elysia({
       throw new Error('Failed to decompress gzip content');
     }
 
-    // Parse JSON outside decompression try-catch to avoid misreporting parsing errors
     if (contentType?.includes('application/json')) {
       try {
         return JSON.parse(text);

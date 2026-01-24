@@ -30,7 +30,9 @@ export class EventManager {
   track(name: string, params?: EventParams, isScreen = false): void {
     const nameValidation = validateEventName(name);
     if (!nameValidation.success) {
-      logger.error('Invalid event name. Use alphanumeric, _, -, ., or /');
+      logger.error(
+        'Invalid event name. Use alphanumeric, _, -, ., /, or space'
+      );
       return;
     }
 
