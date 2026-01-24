@@ -477,6 +477,19 @@ async function processEvents(
         continue;
       }
 
+      const timeSinceSessionStart =
+        clientTimestamp.getTime() - sessionData.session.startedAt.getTime();
+      const MAX_SESSION_DURATION = 24 * 60 * 60 * 1000;
+      if (timeSinceSessionStart > MAX_SESSION_DURATION) {
+        errors.push({
+          clientOrder,
+          code: ErrorCode.VALIDATION_ERROR,
+          detail:
+            'Event timestamp too far from session start (max 24h session duration)',
+        });
+        continue;
+      }
+
       if (clientTimestamp < sessionData.session.startedAt) {
         errors.push({
           clientOrder,
@@ -684,6 +697,20 @@ async function processPings(
           clientOrder,
           code: ErrorCode.VALIDATION_ERROR,
           detail: 'Session is too old, please start a new session',
+        });
+        continue;
+      }
+
+      // Additional check: Reject pings that are too far in the future relative to session start
+      const timeSinceSessionStart =
+        clientTimestamp.getTime() - sessionData.session.startedAt.getTime();
+      const MAX_SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+      if (timeSinceSessionStart > MAX_SESSION_DURATION) {
+        errors.push({
+          clientOrder,
+          code: ErrorCode.VALIDATION_ERROR,
+          detail:
+            'Ping timestamp too far from session start (max 24h session duration)',
         });
         continue;
       }

@@ -72,6 +72,18 @@ export const eventSdkRouter = new Elysia({ prefix: '/events' })
           };
         }
 
+        const timeSinceSessionStart =
+          clientTimestamp.getTime() - session.startedAt.getTime();
+        const MAX_SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+        if (timeSinceSessionStart > MAX_SESSION_DURATION) {
+          set.status = HttpStatus.BAD_REQUEST;
+          return {
+            code: ErrorCode.VALIDATION_ERROR,
+            detail:
+              'Event timestamp too far from session start (max 24h session duration)',
+          };
+        }
+
         const bufferedActivity = getSessionActivityBuffer().getLastActivityAt(
           session.sessionId
         );
