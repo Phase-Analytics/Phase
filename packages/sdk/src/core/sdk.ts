@@ -74,7 +74,8 @@ export class PhaseSDK {
 
       this.httpClient = new HttpClient(
         config.apiKey,
-        config.baseUrl ?? 'https://api.phase.sh'
+        config.baseUrl ?? 'https://api.phase.sh',
+        config.debugData ?? false
       );
       this.offlineQueue = new OfflineQueue();
       await this.offlineQueue.initialize();

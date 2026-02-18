@@ -30,13 +30,13 @@ export function getRNDeviceInfo(): DeviceInfo {
     platform: getPlatform(),
     locale: getLocale(),
     model: fallbackModel,
+    appVersion: getAppVersion(),
   };
 }
 
 function getDeviceType(): DeviceType | null {
   const deviceInfo = RNDeviceInfo as Record<string, unknown> | null;
 
-  // Try getDeviceTypeSync or getDeviceType (sync version)
   if (
     deviceInfo?.getDeviceTypeSync &&
     typeof deviceInfo.getDeviceTypeSync === 'function'
@@ -156,6 +156,23 @@ function getModel(): string | null {
       }
     } catch {
       // getDeviceId failed
+    }
+  }
+
+  return null;
+}
+
+function getAppVersion(): string | null {
+  const deviceInfo = RNDeviceInfo as Record<string, unknown> | null;
+
+  if (deviceInfo?.getVersion && typeof deviceInfo.getVersion === 'function') {
+    try {
+      const version = deviceInfo.getVersion() as string;
+      if (version) {
+        return version;
+      }
+    } catch {
+      // getVersion failed
     }
   }
 

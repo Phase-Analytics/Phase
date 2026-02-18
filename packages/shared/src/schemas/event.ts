@@ -12,6 +12,7 @@ export const EventListItemSchema = z.object({
   name: z.string(),
   deviceId: z.string(),
   isScreen: z.boolean(),
+  isDebug: z.boolean(),
   timestamp: z.string().datetime(),
 });
 
@@ -22,6 +23,7 @@ export const EventSchema = z.object({
   name: z.string(),
   params: EventParamsSchema.nullable(),
   isScreen: z.boolean(),
+  isDebug: z.boolean(),
   timestamp: z.string().datetime(),
 });
 

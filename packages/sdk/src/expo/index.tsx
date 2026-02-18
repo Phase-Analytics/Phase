@@ -54,6 +54,12 @@ function initSDK(config: PhaseConfig): Promise<boolean> {
       }
 
       try {
+        require('expo-application');
+      } catch {
+        missingPackages.push('expo-application');
+      }
+
+      try {
         require('@react-native-async-storage/async-storage');
       } catch {
         missingPackages.push('@react-native-async-storage/async-storage');
@@ -147,9 +153,10 @@ function NavigationTracker(): ReactNode {
  * @param apiKey Phase API key (required, starts with `phase_`)
  * @param children App content (required)
  * @param trackNavigation Auto-track screens (optional, default: false)
+ * @param debugData Mark identify/events as debug data (optional, default: false)
  * @param baseUrl Custom API endpoint (optional, default: "https://api.phase.sh")
  * @param logLevel Logging level (optional, info, warn, error, none, default: "none")
- * @param deviceInfo Collect device metadata (optional, default: true)
+ * @param deviceInfo Collect device metadata (optional, default: true, includes app version as `app_version`)
  * @param userLocale Collect locale & geolocation (optional, default: true)
  * @example
  * <PhaseProvider apiKey="phase_xxx">
@@ -162,6 +169,7 @@ function PhaseProvider({
   baseUrl,
   logLevel,
   trackNavigation = false,
+  debugData,
   deviceInfo,
   userLocale,
 }: PhaseProps): ReactNode {
@@ -178,6 +186,7 @@ function PhaseProvider({
       baseUrl,
       logLevel,
       trackNavigation,
+      debugData,
       deviceInfo,
       userLocale,
     };
@@ -187,7 +196,15 @@ function PhaseProvider({
     return () => {
       initStarted.current = false;
     };
-  }, [apiKey, baseUrl, deviceInfo, logLevel, trackNavigation, userLocale]);
+  }, [
+    apiKey,
+    baseUrl,
+    debugData,
+    deviceInfo,
+    logLevel,
+    trackNavigation,
+    userLocale,
+  ]);
 
   return (
     <>

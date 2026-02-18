@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useMemo } from 'react';
 import { ClientDate } from '@/components/client-date';
+import { DebugDataBadge } from '@/components/debug-data-badge';
 import { CopyButton } from '@/components/ui/copy-button';
 import {
   Sheet,
@@ -109,6 +110,7 @@ export function EventsSheet({ appId }: EventsSheetProps) {
                   <p className="font-medium text-sm">
                     {event.isScreen ? `View ${event.name}` : event.name}
                   </p>
+                  {event.isDebug && <DebugDataBadge />}
                 </div>
               </div>
 

@@ -130,6 +130,7 @@ export class DeviceManager {
     }
 
     const deviceInfo = this.getDeviceInfo();
+    const mergedProperties = this.buildProperties(properties, deviceInfo);
 
     return {
       deviceId: this.deviceId,
@@ -137,8 +138,35 @@ export class DeviceManager {
       platform: this.collectDeviceInfo ? deviceInfo.platform : null,
       locale: this.collectLocale ? deviceInfo.locale : null,
       model: this.collectDeviceInfo ? deviceInfo.model : null,
-      properties,
+      properties: mergedProperties,
       disableGeolocation: !this.collectLocale,
+    };
+  }
+
+  private buildProperties(
+    properties: DeviceProperties | undefined,
+    deviceInfo: DeviceInfo
+  ): DeviceProperties | undefined {
+    if (!this.collectDeviceInfo) {
+      return properties;
+    }
+
+    const appVersion = deviceInfo.appVersion?.trim();
+    if (!appVersion) {
+      return properties;
+    }
+
+    const autoProperties: DeviceProperties = {
+      app_version: appVersion,
+    };
+
+    if (!properties) {
+      return autoProperties;
+    }
+
+    return {
+      ...autoProperties,
+      ...properties,
     };
   }
 

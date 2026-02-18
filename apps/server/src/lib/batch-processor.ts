@@ -141,6 +141,12 @@ async function processDevices(
             platform: payload.platform ?? existingDevice.platform,
             locale: payload.locale ?? existingDevice.locale,
             model: payload.model ?? existingDevice.model,
+            properties: payload.properties
+              ? {
+                  ...(existingDevice.properties ?? {}),
+                  ...payload.properties,
+                }
+              : existingDevice.properties,
           })
           .where(eq(devices.deviceId, payload.deviceId))
           .returning();
@@ -347,7 +353,8 @@ type ValidatedEvent = {
 async function processEvents(
   items: BatchEventItem[],
   appId: string,
-  processedSessionIds: Set<string>
+  processedSessionIds: Set<string>,
+  isDebugData: boolean
 ): Promise<ProcessResult> {
   const results: BatchResultItem[] = [];
   const errors: BatchError[] = [];
@@ -541,6 +548,7 @@ async function processEvents(
       name: e.name,
       params: e.params,
       isScreen: e.isScreen,
+      isDebug: isDebugData,
       timestamp: e.timestamp.toISOString(),
     }));
 
@@ -566,6 +574,7 @@ async function processEvents(
         deviceId: event.deviceId,
         name: event.name,
         isScreen: event.isScreen,
+        isDebug: isDebugData,
         timestamp: event.timestamp.toISOString(),
         country: event.country,
         platform: event.platform,
@@ -750,7 +759,8 @@ async function processPings(
 export async function processBatch(
   items: BatchItem[],
   appId: string,
-  ip: string
+  ip: string,
+  isDebugData: boolean
 ): Promise<BatchResponse> {
   const sorted = sortBatchItems(items);
 
@@ -788,7 +798,8 @@ export async function processBatch(
     const eventResult = await processEvents(
       sorted.events,
       appId,
-      processedSessionIds
+      processedSessionIds,
+      isDebugData
     );
     allResults.push(...eventResult.results);
     allErrors.push(...eventResult.errors);

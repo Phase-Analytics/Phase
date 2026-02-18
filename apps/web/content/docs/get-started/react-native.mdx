@@ -206,6 +206,11 @@ The `PhaseProvider` component accepts the following props:
       type: 'boolean',
       default: 'false',
     },
+    debugData: {
+      description: 'Mark identify/events as debug data',
+      type: 'boolean',
+      default: 'false',
+    },
     baseUrl: {
       description: 'Custom API endpoint for self-hosted deployments',
       type: 'string',
@@ -217,7 +222,7 @@ The `PhaseProvider` component accepts the following props:
       default: '"none"',
     },
     deviceInfo: {
-      description: 'Collect device metadata (model, OS version, platform)',
+      description: 'Collect device metadata (model, OS version, platform, app version as `app_version`)',
       type: 'boolean',
       default: 'true',
     },

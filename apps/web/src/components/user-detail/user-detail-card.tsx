@@ -67,6 +67,26 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
     return getGeneratedName(device.deviceId);
   }, [device?.deviceId]);
 
+  const appVersion = useMemo(() => {
+    const raw = device?.properties?.app_version;
+    if (raw === null || raw === undefined) {
+      return null;
+    }
+
+    const value = String(raw).trim();
+    return value.length > 0 ? value : null;
+  }, [device?.properties]);
+
+  const customProperties = useMemo(() => {
+    if (!device?.properties) {
+      return [];
+    }
+
+    return Object.entries(device.properties).filter(
+      ([key]) => key !== 'app_version'
+    );
+  }, [device?.properties]);
+
   if (!(appId && device)) {
     return null;
   }
@@ -198,16 +218,22 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
                   <span>{device.model}</span>
                 </p>
               )}
+              {appVersion && (
+                <p className="font-medium text-sm">
+                  <span className="text-muted-foreground">App Version:</span>{' '}
+                  <span>{appVersion}</span>
+                </p>
+              )}
             </div>
           </div>
 
-          {device.properties && Object.keys(device.properties).length > 0 && (
+          {customProperties.length > 0 && (
             <div>
               <p className="flex items-center gap-1.5 text-muted-foreground text-xs uppercase">
                 Properties
               </p>
               <div className="mt-1 space-y-2">
-                {Object.entries(device.properties).map(([key, value]) => (
+                {customProperties.map(([key, value]) => (
                   <p className="font-medium text-sm" key={key}>
                     <span className="text-muted-foreground">{key}:</span>{' '}
                     <span>{String(value)}</span>

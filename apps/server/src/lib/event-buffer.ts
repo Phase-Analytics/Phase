@@ -8,6 +8,7 @@ export type BufferedEvent = {
   name: string;
   params: Record<string, string | number | boolean | null> | null;
   isScreen: boolean;
+  isDebug: boolean;
   timestamp: string;
 };
 
@@ -73,6 +74,9 @@ export class EventBuffer {
     }
     if (!event.name || typeof event.name !== 'string') {
       return 'Invalid name';
+    }
+    if (typeof event.isDebug !== 'boolean') {
+      return 'Invalid isDebug';
     }
     if (!event.timestamp || Number.isNaN(new Date(event.timestamp).getTime())) {
       return 'Invalid timestamp';
@@ -298,6 +302,7 @@ export class EventBuffer {
           `event_id="${escapeILPString(event.eventId)}"`,
           paramsField,
           `is_screen=${event.isScreen ? 't' : 'f'}`,
+          `is_debug=${event.isDebug ? 't' : 'f'}`,
         ]
           .filter(Boolean)
           .join(',');

@@ -23,7 +23,7 @@ Privacy-first mobile analytics for React Native and Expo applications.
 bun add phase-analytics
 
 # Install required peer dependencies
-bunx expo install @react-native-async-storage/async-storage @react-native-community/netinfo expo-device expo-localization expo-router
+bunx expo install @react-native-async-storage/async-storage @react-native-community/netinfo expo-application expo-device expo-localization expo-router
 ```
 
 ### For React Native Projects
@@ -162,9 +162,10 @@ Both `PhaseProvider` components accept the following props:
 |------|------|---------|-------------|
 | `apiKey` | `string` | **Required** | Your Phase API key (starts with `phase_`) |
 | `trackNavigation` | `boolean` | `false` | Automatically track screen views |
+| `debugData` | `boolean` | `false` | Mark identify/events as debug data |
 | `baseUrl` | `string` | `"https://api.phase.sh"` | Custom API endpoint for self-hosted deployments |
 | `logLevel` | `"info" \| "warn" \| "error" \| "none"` | `"none"` | Console logging level for debugging |
-| `deviceInfo` | `boolean` | `true` | Collect device metadata (model, OS version, platform) |
+| `deviceInfo` | `boolean` | `true` | Collect device metadata (model, OS version, platform, app version as `app_version`) |
 | `userLocale` | `boolean` | `true` | Collect user locale and timezone information |
 
 ## Privacy

@@ -108,6 +108,7 @@ export type EventQueryResult = {
   name: string;
   params: string | null;
   is_screen: boolean;
+  is_debug: boolean | null;
   timestamp: string;
 };
 
@@ -118,6 +119,7 @@ export type EventDetailResult = {
   name: string;
   params: string | null;
   is_screen: boolean;
+  is_debug: boolean | null;
   timestamp: string;
 };
 
@@ -174,7 +176,7 @@ export async function getEvents(
     offset > 0 ? `LIMIT ${offset},${offset + limit}` : `LIMIT ${limit}`;
 
   const eventsQuery = `
-    SELECT event_id, session_id, device_id, name, params, is_screen, to_str(timestamp, 'yyyy-MM-ddTHH:mm:ss.SSSUUUZ') as timestamp
+    SELECT event_id, session_id, device_id, name, params, is_screen, coalesce(is_debug, false) as is_debug, to_str(timestamp, 'yyyy-MM-ddTHH:mm:ss.SSSUUUZ') as timestamp
     FROM events
     ${whereClause}
     ORDER BY timestamp DESC
@@ -275,7 +277,7 @@ export async function getEventById(
   validateIdentifier(options.appId, 'appId');
 
   const query = `
-    SELECT event_id, session_id, device_id, name, params, is_screen, to_str(timestamp, 'yyyy-MM-ddTHH:mm:ss.SSSUUUZ') as timestamp
+    SELECT event_id, session_id, device_id, name, params, is_screen, coalesce(is_debug, false) as is_debug, to_str(timestamp, 'yyyy-MM-ddTHH:mm:ss.SSSUUUZ') as timestamp
     FROM events
     WHERE event_id = '${escapeSqlString(options.eventId)}'
     AND app_id = '${escapeSqlString(options.appId)}'
@@ -377,6 +379,7 @@ export async function initQuestDB(): Promise<void> {
           name SYMBOL CAPACITY 256 CACHE,
           params STRING,
           is_screen BOOLEAN,
+          is_debug BOOLEAN,
           timestamp TIMESTAMP
         ) TIMESTAMP(timestamp) PARTITION BY DAY WAL DEDUP UPSERT KEYS(timestamp, event_id)
       `;
@@ -395,6 +398,25 @@ export async function initQuestDB(): Promise<void> {
         const errorText = await eventsResponse.text();
         throw new Error(
           `Failed to create events table: ${eventsResponse.status} - ${errorText}`
+        );
+      }
+
+      const addDebugColumnQuery =
+        'ALTER TABLE events ADD COLUMN IF NOT EXISTS is_debug BOOLEAN';
+      const addDebugResponse = await fetch(
+        `${url}?query=${encodeURIComponent(addDebugColumnQuery)}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!addDebugResponse.ok) {
+        const errorText = await addDebugResponse.text();
+        console.warn(
+          `[QuestDB] Could not ensure is_debug column exists: ${addDebugResponse.status} - ${errorText}`
         );
       }
 
