@@ -40,10 +40,16 @@ export const deviceSdkRouter = new Elysia({ prefix: '/devices' })
 
         let country: string | null = null;
         let city: string | null = null;
-
         const existingDevice = await db.query.devices.findFirst({
           where: (table, { eq: eqFn }) => eqFn(table.deviceId, body.deviceId),
         });
+
+        const mergedProperties = body.properties
+          ? {
+              ...(existingDevice?.properties ?? {}),
+              ...body.properties,
+            }
+          : existingDevice?.properties;
 
         let device: typeof devices.$inferSelect;
 
@@ -63,7 +69,7 @@ export const deviceSdkRouter = new Elysia({ prefix: '/devices' })
               platform: body.platform ?? existingDevice.platform,
               locale: body.locale ?? existingDevice.locale,
               model: body.model ?? existingDevice.model,
-              properties: body.properties ?? existingDevice.properties,
+              properties: mergedProperties,
             })
             .where(eq(devices.deviceId, body.deviceId))
             .returning();

@@ -7,6 +7,7 @@ import type {
 
 let ExpoDevice: unknown = null;
 let ExpoLocalization: unknown = null;
+let ExpoApplication: unknown = null;
 
 try {
   ExpoDevice = require('expo-device');
@@ -20,6 +21,12 @@ try {
   // expo-localization not available
 }
 
+try {
+  ExpoApplication = require('expo-application');
+} catch {
+  // expo-application not available
+}
+
 export function getExpoDeviceInfo(): DeviceInfo {
   const model = getModel();
   const fallbackModel = model || getDeviceType();
@@ -29,6 +36,7 @@ export function getExpoDeviceInfo(): DeviceInfo {
     platform: getPlatform(),
     locale: getLocale(),
     model: fallbackModel,
+    appVersion: getAppVersion(),
   };
 }
 
@@ -111,6 +119,17 @@ function getModel(): string | null {
   const device = ExpoDevice as Record<string, unknown> | null;
   if (device?.modelName && typeof device.modelName === 'string') {
     return device.modelName;
+  }
+  return null;
+}
+
+function getAppVersion(): string | null {
+  const application = ExpoApplication as Record<string, unknown> | null;
+  if (
+    application?.nativeApplicationVersion &&
+    typeof application.nativeApplicationVersion === 'string'
+  ) {
+    return application.nativeApplicationVersion;
   }
   return null;
 }

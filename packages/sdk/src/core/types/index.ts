@@ -190,6 +190,7 @@ export type DeviceInfo = {
   platform: Platform | null;
   locale: string | null;
   model: string | null;
+  appVersion: string | null;
 };
 
 export const STORAGE_KEYS = {

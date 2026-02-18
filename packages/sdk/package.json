@@ -1,6 +1,6 @@
 {
   "name": "phase-analytics",
-  "version": "0.0.33",
+  "version": "0.0.34",
   "description": "Privacy focused mobile analytics SDK",
   "author": "Phase Analytics",
   "license": "AGPL-3.0-only",
@@ -46,6 +46,7 @@
     "react": ">=18.0.0",
     "@react-native-community/netinfo": ">=11.0.0",
     "expo-device": ">=6.0.0",
+    "expo-application": ">=5.0.0",
     "expo-localization": ">=14.0.0",
     "expo-router": ">=3.0.0"
   },
@@ -54,6 +55,9 @@
       "optional": true
     },
     "expo-device": {
+      "optional": true
+    },
+    "expo-application": {
       "optional": true
     },
     "expo-localization": {

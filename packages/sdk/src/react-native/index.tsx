@@ -230,7 +230,7 @@ function NavigationTracker({
  * @param navigationRef Navigation container ref for auto-tracking (optional, required if trackNavigation is true)
  * @param baseUrl Custom API endpoint (optional, default: "https://api.phase.sh")
  * @param logLevel Logging level (optional, info, warn, error, none, default: "none")
- * @param deviceInfo Collect device metadata (optional, default: true)
+ * @param deviceInfo Collect device metadata (optional, default: true, includes app version as `app_version`)
  * @param userLocale Collect locale & geolocation (optional, default: true)
  * @example
  * const navigationRef = useNavigationContainerRef();

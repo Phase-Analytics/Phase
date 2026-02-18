@@ -141,6 +141,12 @@ async function processDevices(
             platform: payload.platform ?? existingDevice.platform,
             locale: payload.locale ?? existingDevice.locale,
             model: payload.model ?? existingDevice.model,
+            properties: payload.properties
+              ? {
+                  ...(existingDevice.properties ?? {}),
+                  ...payload.properties,
+                }
+              : existingDevice.properties,
           })
           .where(eq(devices.deviceId, payload.deviceId))
           .returning();
