@@ -108,6 +108,7 @@ export type EventQueryResult = {
   name: string;
   params: string | null;
   is_screen: boolean;
+  is_debug: boolean | null;
   timestamp: string;
 };
 
@@ -118,6 +119,7 @@ export type EventDetailResult = {
   name: string;
   params: string | null;
   is_screen: boolean;
+  is_debug: boolean | null;
   timestamp: string;
 };
 
@@ -174,7 +176,7 @@ export async function getEvents(
     offset > 0 ? `LIMIT ${offset},${offset + limit}` : `LIMIT ${limit}`;
 
   const eventsQuery = `
-    SELECT event_id, session_id, device_id, name, params, is_screen, to_str(timestamp, 'yyyy-MM-ddTHH:mm:ss.SSSUUUZ') as timestamp
+    SELECT event_id, session_id, device_id, name, params, is_screen, coalesce(is_debug, false) as is_debug, to_str(timestamp, 'yyyy-MM-ddTHH:mm:ss.SSSUUUZ') as timestamp
     FROM events
     ${whereClause}
     ORDER BY timestamp DESC
@@ -275,7 +277,7 @@ export async function getEventById(
   validateIdentifier(options.appId, 'appId');
 
   const query = `
-    SELECT event_id, session_id, device_id, name, params, is_screen, to_str(timestamp, 'yyyy-MM-ddTHH:mm:ss.SSSUUUZ') as timestamp
+    SELECT event_id, session_id, device_id, name, params, is_screen, coalesce(is_debug, false) as is_debug, to_str(timestamp, 'yyyy-MM-ddTHH:mm:ss.SSSUUUZ') as timestamp
     FROM events
     WHERE event_id = '${escapeSqlString(options.eventId)}'
     AND app_id = '${escapeSqlString(options.appId)}'

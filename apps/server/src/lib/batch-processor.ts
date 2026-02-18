@@ -574,6 +574,7 @@ async function processEvents(
         deviceId: event.deviceId,
         name: event.name,
         isScreen: event.isScreen,
+        isDebug: isDebugData,
         timestamp: event.timestamp.toISOString(),
         country: event.country,
         platform: event.platform,

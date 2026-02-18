@@ -9,6 +9,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { parseAsInteger, parseAsString, useQueryState } from 'nuqs';
 import { ClientDate } from '@/components/client-date';
+import { DebugDataBadge } from '@/components/debug-data-badge';
 import { EventsSheet } from '@/components/events/event-details-sheet';
 import { DataTableServer } from '@/components/ui/data-table-server';
 import { getGeneratedName, UserAvatar } from '@/components/user-profile';
@@ -20,6 +21,7 @@ type Event = {
   name: string;
   deviceId: string;
   isScreen: boolean;
+  isDebug: boolean;
   timestamp: string;
 };
 
@@ -63,6 +65,7 @@ const columns: ColumnDef<Event>[] = [
           <span className="truncate font-medium text-primary text-sm">
             {displayName}
           </span>
+          {row.original.isDebug && <DebugDataBadge className="shrink-0" />}
         </div>
       );
     },

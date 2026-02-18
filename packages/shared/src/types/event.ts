@@ -7,6 +7,7 @@ export type EventListItem = {
   name: string;
   deviceId: string;
   isScreen: boolean;
+  isDebug: boolean;
   timestamp: string;
 };
 
@@ -17,6 +18,7 @@ export type Event = {
   name: string;
   params: EventParams | null;
   isScreen: boolean;
+  isDebug: boolean;
   timestamp: string;
 };
 

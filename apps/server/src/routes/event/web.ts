@@ -150,6 +150,7 @@ export const eventWebRouter = new Elysia({ prefix: '/events' })
             name: event.name,
             deviceId: event.device_id,
             isScreen: Boolean(event.is_screen),
+            isDebug: Boolean(event.is_debug),
             timestamp,
           };
         });
@@ -528,6 +529,7 @@ export const eventWebRouter = new Elysia({ prefix: '/events' })
           name: event.name,
           params: parsedParams,
           isScreen: event.is_screen,
+          isDebug: Boolean(event.is_debug),
           timestamp,
         };
       } catch (error) {

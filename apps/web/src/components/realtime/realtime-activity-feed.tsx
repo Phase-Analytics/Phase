@@ -14,6 +14,7 @@ import { useMemo, useState } from 'react';
 import 'flag-icons/css/flag-icons.min.css';
 import type { ActivityItem } from '@/app/dashboard/analytics/realtime/page';
 import { ClientDate } from '@/components/client-date';
+import { DebugDataBadge } from '@/components/debug-data-badge';
 import { EventsSheet } from '@/components/events/event-details-sheet';
 import { SessionDetailsDialog } from '@/components/sessions/session-details-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -117,6 +118,9 @@ export function RealtimeActivityFeed({
                       ? `View ${activity.name}`
                       : activity.name}
                   </span>
+                  {activity.type === 'event' && activity.isDebug && (
+                    <DebugDataBadge className="shrink-0" />
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between gap-1.5 text-xs">
