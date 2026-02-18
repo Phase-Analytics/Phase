@@ -162,6 +162,7 @@ Both `PhaseProvider` components accept the following props:
 |------|------|---------|-------------|
 | `apiKey` | `string` | **Required** | Your Phase API key (starts with `phase_`) |
 | `trackNavigation` | `boolean` | `false` | Automatically track screen views |
+| `debugData` | `boolean` | `false` | Mark identify/events as debug data |
 | `baseUrl` | `string` | `"https://api.phase.sh"` | Custom API endpoint for self-hosted deployments |
 | `logLevel` | `"info" \| "warn" \| "error" \| "none"` | `"none"` | Console logging level for debugging |
 | `deviceInfo` | `boolean` | `true` | Collect device metadata (model, OS version, platform, app version as `app_version`) |

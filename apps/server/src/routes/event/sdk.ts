@@ -23,7 +23,7 @@ export const eventSdkRouter = new Elysia({ prefix: '/events' })
   .use(sdkAuthPlugin)
   .post(
     '/',
-    async ({ body, set, app }) => {
+    async ({ body, set, app, sdkDebugData }) => {
       try {
         const sessionValidation = await validateSession(body.sessionId, app.id);
         if (!sessionValidation.success) {
@@ -108,6 +108,7 @@ export const eventSdkRouter = new Elysia({ prefix: '/events' })
           name: eventName,
           params: body.params ?? null,
           isScreen: body.isScreen,
+          isDebug: sdkDebugData,
           timestamp: clientTimestamp.toISOString(),
         });
 

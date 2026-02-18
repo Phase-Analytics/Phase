@@ -175,6 +175,8 @@ export type PhaseConfig = {
   logLevel?: LogLevel;
   /** Auto-track screens (optional, default: false) */
   trackNavigation?: boolean;
+  /** Mark identify/events as debug data (optional, default: false) */
+  debugData?: boolean;
   /** Collect device metadata (optional, default: true) */
   deviceInfo?: boolean;
   /** Collect locale & geolocation (optional, default: true) */

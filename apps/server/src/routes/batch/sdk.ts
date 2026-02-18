@@ -25,7 +25,7 @@ export const batchSdkRouter = new Elysia({ prefix: '/batch' })
   .use(sdkAuthPlugin)
   .post(
     '/',
-    async ({ body, app, request, set }) => {
+    async ({ body, app, request, set, sdkDebugData }) => {
       try {
         const validation = shouldRejectBatch(body.items);
 
@@ -51,7 +51,7 @@ export const batchSdkRouter = new Elysia({ prefix: '/batch' })
         }
 
         const ip = getClientIP(request);
-        const result = await processBatch(body.items, app.id, ip);
+        const result = await processBatch(body.items, app.id, ip, sdkDebugData);
 
         if (result.failed > 0 && result.processed === 0) {
           set.status = HttpStatus.BAD_REQUEST;

@@ -377,6 +377,7 @@ export async function initQuestDB(): Promise<void> {
           name SYMBOL CAPACITY 256 CACHE,
           params STRING,
           is_screen BOOLEAN,
+          is_debug BOOLEAN,
           timestamp TIMESTAMP
         ) TIMESTAMP(timestamp) PARTITION BY DAY WAL DEDUP UPSERT KEYS(timestamp, event_id)
       `;
@@ -395,6 +396,25 @@ export async function initQuestDB(): Promise<void> {
         const errorText = await eventsResponse.text();
         throw new Error(
           `Failed to create events table: ${eventsResponse.status} - ${errorText}`
+        );
+      }
+
+      const addDebugColumnQuery =
+        'ALTER TABLE events ADD COLUMN IF NOT EXISTS is_debug BOOLEAN';
+      const addDebugResponse = await fetch(
+        `${url}?query=${encodeURIComponent(addDebugColumnQuery)}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!addDebugResponse.ok) {
+        const errorText = await addDebugResponse.text();
+        console.warn(
+          `[QuestDB] Could not ensure is_debug column exists: ${addDebugResponse.status} - ${errorText}`
         );
       }
 

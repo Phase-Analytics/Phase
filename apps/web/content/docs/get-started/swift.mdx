@@ -150,8 +150,13 @@ The `Phase` view and `initialize()` method accept the following parameters:
       type: 'LogLevel (.info | .warn | .error | .none)',
       default: '.none',
     },
+    debugData: {
+      description: 'Mark identify/events as debug data',
+      type: 'Bool',
+      default: 'false',
+    },
     deviceInfo: {
-      description: 'Collect device metadata (model, OS version, platform)',
+      description: 'Collect device metadata (model, OS version, platform, app version as `app_version`)',
       type: 'Bool',
       default: 'true',
     },
@@ -195,7 +200,7 @@ struct ContentView: View {
 **Privacy by default:**
 - No personal data is collected without explicit properties
 - Device ID is auto-generated and stored locally
-- Only technical metadata is collected (OS version, platform, locale)
+- Only technical metadata is collected (OS version, platform, locale, app version)
 
 **Adding custom properties:**
 

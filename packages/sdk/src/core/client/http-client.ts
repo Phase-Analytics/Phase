@@ -22,10 +22,27 @@ const REQUEST_TIMEOUT_MS = 30_000;
 export class HttpClient {
   private readonly apiKey: string;
   private readonly baseUrl: string;
+  private readonly debugData: boolean;
 
-  constructor(apiKey: string, baseUrl = 'https://api.phase.sh') {
+  constructor(
+    apiKey: string,
+    baseUrl = 'https://api.phase.sh',
+    debugData = false
+  ) {
     this.apiKey = apiKey;
     this.baseUrl = baseUrl;
+    this.debugData = debugData;
+  }
+
+  private buildHeaders(
+    extraHeaders?: Record<string, string>
+  ): Record<string, string> {
+    return {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${this.apiKey}`,
+      ...(this.debugData ? { 'x-phase-debug-data': '1' } : {}),
+      ...(extraHeaders ?? {}),
+    };
   }
 
   private async request<T>(
@@ -47,10 +64,7 @@ export class HttpClient {
       try {
         const response = await fetch(url, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${this.apiKey}`,
-          },
+          headers: this.buildHeaders(),
           body: jsonString,
           signal: controller.signal,
         });
@@ -186,11 +200,9 @@ export class HttpClient {
       try {
         const response = await fetch(url, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+          headers: this.buildHeaders({
             'Content-Encoding': 'gzip',
-            Authorization: `Bearer ${this.apiKey}`,
-          },
+          }),
           body: compressed,
           signal: controller.signal,
         });

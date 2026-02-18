@@ -27,6 +27,15 @@ export type App = typeof appsTable.$inferSelect;
 
 export const sessionPlugin = new ElysiaClass({ name: 'session' });
 
+function parseDebugDataHeader(value: string | null): boolean {
+  if (!value) {
+    return false;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  return normalized === '1' || normalized === 'true';
+}
+
 class SdkAuthError extends Error {
   statusCode: number;
   errorCode: string;
@@ -97,6 +106,9 @@ export const sdkAuthPlugin = new ElysiaClass({ name: 'sdkAuth' })
       return {
         app,
         sdkUserId: app.userId,
+        sdkDebugData: parseDebugDataHeader(
+          request.headers.get('x-phase-debug-data')
+        ),
       };
     } catch (error) {
       if (error instanceof SdkAuthError) {
