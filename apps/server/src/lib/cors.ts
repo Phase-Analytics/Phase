@@ -73,7 +73,7 @@ export const publicCors = new Elysia({ name: 'public-cors' }).use(
 
 export const publicApiCors = new Elysia({ name: 'public-api-cors' }).use(
   cors({
-    origin: '*',
+    origin: true,
     methods: ['GET', 'POST', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     exposeHeaders: [
