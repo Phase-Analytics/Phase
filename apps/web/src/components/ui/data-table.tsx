@@ -42,6 +42,7 @@ type DataTableProps<TData, TValue> = {
   searchPlaceholder?: string;
   pageSize?: number;
   onRowClick?: (row: TData) => void;
+  hideSearchClearButton?: boolean;
 };
 
 export function DataTable<TData, TValue>({
@@ -51,6 +52,7 @@ export function DataTable<TData, TValue>({
   searchPlaceholder = 'Search',
   pageSize = 10,
   onRowClick,
+  hideSearchClearButton = false,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -90,20 +92,22 @@ export function DataTable<TData, TValue>({
               (table.getColumn(searchKey)?.getFilterValue() as string) ?? ''
             }
           />
-          <Button
-            className="flex-shrink-0"
-            disabled={
-              !table.getColumn(searchKey)?.getFilterValue() ||
-              (table.getColumn(searchKey)?.getFilterValue() as string) === ''
-            }
-            onClick={() => table.getColumn(searchKey)?.setFilterValue('')}
-            size="sm"
-            type="button"
-            variant="secondary"
-          >
-            <HugeiconsIcon icon={Search01Icon} />
-            <span className="hidden sm:inline">Clear</span>
-          </Button>
+          {!hideSearchClearButton && (
+            <Button
+              className="flex-shrink-0"
+              disabled={
+                !table.getColumn(searchKey)?.getFilterValue() ||
+                (table.getColumn(searchKey)?.getFilterValue() as string) === ''
+              }
+              onClick={() => table.getColumn(searchKey)?.setFilterValue('')}
+              size="sm"
+              type="button"
+              variant="secondary"
+            >
+              <HugeiconsIcon icon={Search01Icon} />
+              <span className="hidden sm:inline">Clear</span>
+            </Button>
+          )}
         </div>
       )}
 

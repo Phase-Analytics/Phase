@@ -53,18 +53,17 @@ export function RevokePublicApiTokenDialog({
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Revoke public API token</DialogTitle>
+          <DialogTitle>Revoke API key</DialogTitle>
           <DialogDescription>
-            Revoke{' '}
-            <span className="font-medium text-foreground">{tokenName}</span>.
-            Any scripts or services using this token will stop working on their
+            Revoke <span className="font-medium text-foreground">{tokenName}</span>.
+            Any scripts or services using this key will stop working on their
             next request.
           </DialogDescription>
         </DialogHeader>
 
         {revokeToken.error && (
           <p className="text-destructive text-sm">
-            {revokeToken.error.message || 'Failed to revoke token'}
+            {revokeToken.error.message || 'Failed to revoke key'}
           </p>
         )}
 
@@ -88,7 +87,7 @@ export function RevokePublicApiTokenDialog({
               <Spinner className="absolute inset-0 m-auto size-4" />
             )}
             <span className={revokeToken.isPending ? 'invisible' : ''}>
-              Revoke token
+              Revoke key
             </span>
           </Button>
         </DialogFooter>

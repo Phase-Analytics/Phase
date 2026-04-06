@@ -1,6 +1,6 @@
 ---
 title: Errors and Limits
-description: Handle API errors and build within the current Public Analytics API limits.
+description: Handle API errors and build within the current API limits.
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
@@ -23,8 +23,9 @@ Phase returns structured error responses.
 ## Status codes
 
 - `400 Bad Request` for invalid parameters or unsupported query shapes.
-- `401 Unauthorized` for missing, malformed, expired, revoked, or invalid tokens.
-- `403 Forbidden` for tokens that cannot access the requested app or resource.
+- `401 Unauthorized` for missing, malformed, expired, revoked, or invalid API keys.
+- `403 Forbidden` for keys that cannot access the requested app or resource.
+- `422 Unprocessable Entity` for enum or query validation failures.
 - `429 Too Many Requests` when the rate limit is exceeded.
 - `500 Internal Server Error` for unexpected server errors.
 

@@ -37,15 +37,6 @@ export function PublicApiTokenTable({
       ),
     },
     {
-      accessorKey: 'tokenPrefix',
-      header: 'Prefix',
-      cell: ({ row }) => (
-        <p className="font-mono text-muted-foreground text-sm">
-          {row.original.tokenPrefix}••••••
-        </p>
-      ),
-    },
-    {
       accessorKey: 'createdAt',
       header: 'Created',
       cell: ({ row }) => (
@@ -115,10 +106,13 @@ export function PublicApiTokenTable({
       <CardContent className="space-y-4 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h3 className="font-semibold text-sm">Public API tokens</h3>
+            <h3 className="font-semibold text-sm">API Keys</h3>
             <p className="text-muted-foreground text-sm">
-              Manage separate read-only credentials for external dashboards,
-              scripts, and curated reporting integrations.
+              Manage read-only keys for external dashboards, scripts, and
+              curated reporting integrations.
+            </p>
+            <p className="mt-1 font-mono text-muted-foreground text-xs">
+              App ID: {appId}
             </p>
           </div>
           <Tooltip>
@@ -126,13 +120,13 @@ export function PublicApiTokenTable({
               <span tabIndex={isOwner ? undefined : 0}>
                 <CreatePublicApiTokenDialog appId={appId} disabled={!isOwner}>
                   <Button disabled={!isOwner} type="button">
-                    Create token
+                    Create key
                   </Button>
                 </CreatePublicApiTokenDialog>
               </span>
             </TooltipTrigger>
             <TooltipContent>
-              {isOwner ? 'Create token' : 'Owner only'}
+              {isOwner ? 'Create key' : 'Owner only'}
             </TooltipContent>
           </Tooltip>
         </div>
@@ -147,9 +141,10 @@ export function PublicApiTokenTable({
           <DataTable
             columns={columns}
             data={tokens ?? []}
+            hideSearchClearButton
             pageSize={10}
             searchKey="name"
-            searchPlaceholder="Search tokens..."
+            searchPlaceholder="Search keys..."
           />
         )}
       </CardContent>

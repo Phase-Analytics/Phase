@@ -1,7 +1,5 @@
 import { InformationCircleIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
 export function PublicApiIntroCard() {
@@ -16,23 +14,16 @@ export function PublicApiIntroCard() {
             />
           </div>
           <div className="space-y-1">
-            <h3 className="font-semibold text-sm">Public Analytics API</h3>
+            <h3 className="font-semibold text-sm">Private API</h3>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Create separate read-only tokens for external dashboards, scripts,
-              and integrations. Public API tokens are distinct from your SDK API
-              key: the SDK key sends analytics data, while Public API tokens
-              read curated analytics reports.
+              Create separate read-only keys for external dashboards, scripts,
+              and integrations. API keys are distinct from your SDK key: the
+              SDK key sends analytics data, while API keys read curated
+              analytics reports.
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <Button asChild size="sm" variant="outline">
-            <Link href="/docs/public-api/overview" target="_blank">
-              Read Public API docs
-            </Link>
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );

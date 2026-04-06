@@ -475,7 +475,7 @@ export const appWebRouter = new Elysia({ prefix: '/apps' })
         set.status = HttpStatus.INTERNAL_SERVER_ERROR;
         return {
           code: ErrorCode.INTERNAL_SERVER_ERROR,
-          detail: 'Failed to list public API tokens',
+          detail: 'Failed to list API keys',
         };
       }
     },
@@ -523,7 +523,7 @@ export const appWebRouter = new Elysia({ prefix: '/apps' })
           set.status = HttpStatus.FORBIDDEN;
           return {
             code: ErrorCode.FORBIDDEN,
-            detail: 'Only the app owner can create public API tokens',
+            detail: 'Only the app owner can create API keys',
           };
         }
 
@@ -557,7 +557,7 @@ export const appWebRouter = new Elysia({ prefix: '/apps' })
         set.status = HttpStatus.INTERNAL_SERVER_ERROR;
         return {
           code: ErrorCode.INTERNAL_SERVER_ERROR,
-          detail: 'Failed to create public API token',
+          detail: 'Failed to create API key',
         };
       }
     },
@@ -606,7 +606,7 @@ export const appWebRouter = new Elysia({ prefix: '/apps' })
           set.status = HttpStatus.FORBIDDEN;
           return {
             code: ErrorCode.FORBIDDEN,
-            detail: 'Only the app owner can revoke public API tokens',
+            detail: 'Only the app owner can revoke API keys',
           };
         }
 
@@ -619,7 +619,7 @@ export const appWebRouter = new Elysia({ prefix: '/apps' })
           set.status = HttpStatus.NOT_FOUND;
           return {
             code: ErrorCode.NOT_FOUND,
-            detail: 'Public API token not found',
+            detail: 'API key not found',
           };
         }
 
@@ -634,7 +634,7 @@ export const appWebRouter = new Elysia({ prefix: '/apps' })
         set.status = HttpStatus.INTERNAL_SERVER_ERROR;
         return {
           code: ErrorCode.INTERNAL_SERVER_ERROR,
-          detail: 'Failed to revoke public API token',
+          detail: 'Failed to revoke API key',
         };
       }
     },

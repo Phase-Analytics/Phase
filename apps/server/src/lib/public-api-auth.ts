@@ -40,7 +40,7 @@ export const publicApiAuthPlugin = new ElysiaClass({ name: 'publicApiAuth' })
       throw new PublicApiAuthError(
         HttpStatus.UNAUTHORIZED,
         ErrorCode.UNAUTHORIZED,
-        'Authorization header is required. Use: Authorization: Bearer <public_api_token>'
+        'Authorization header is required. Use: Authorization: Bearer <api_key>'
       );
     }
 
@@ -49,7 +49,7 @@ export const publicApiAuthPlugin = new ElysiaClass({ name: 'publicApiAuth' })
       throw new PublicApiAuthError(
         HttpStatus.UNAUTHORIZED,
         ErrorCode.UNAUTHORIZED,
-        'Invalid authorization format. Use: Bearer <public_api_token>'
+        'Invalid authorization format. Use: Bearer <api_key>'
       );
     }
 
@@ -88,7 +88,7 @@ export const publicApiAuthPlugin = new ElysiaClass({ name: 'publicApiAuth' })
       throw new PublicApiAuthError(
         HttpStatus.UNAUTHORIZED,
         ErrorCode.UNAUTHORIZED,
-        'Invalid, expired, revoked, or unauthorized public API token'
+        'Invalid, expired, revoked, or unauthorized API key'
       );
     }
 

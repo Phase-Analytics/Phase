@@ -7,7 +7,6 @@ import {
   ViewOffIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import Link from 'next/link';
 import { useQueryState } from 'nuqs';
 import { useEffect, useRef, useState } from 'react';
 import { useScramble } from 'use-scramble';
@@ -141,12 +140,6 @@ function SdkApiKeyCard({
             </p>
 
             <div className="flex flex-wrap items-center gap-2">
-              <Button asChild size="sm" type="button" variant="outline">
-                <Link href="https://phase.sh/docs" target="_blank">
-                  Read Documentation
-                </Link>
-              </Button>
-
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span tabIndex={isOwner ? undefined : 0}>
@@ -209,10 +202,10 @@ export default function ApiKeysPage() {
               <div className="flex-1 space-y-1">
                 <h3 className="font-semibold text-sm">About credentials</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">
-                  SDK API keys are designed for client-side ingestion and send
-                  analytics data to Phase. Public API tokens are separate,
-                  read-only credentials for external scripts, dashboards, and
-                  curated reporting access.
+                  SDK keys are designed for client-side ingestion and send
+                  analytics data to Phase. API keys are separate, read-only
+                  credentials for external scripts, dashboards, and curated
+                  reporting access.
                 </p>
               </div>
             </CardContent>
@@ -220,9 +213,9 @@ export default function ApiKeysPage() {
 
           <div className="space-y-3">
             <div>
-              <h2 className="font-semibold text-base">SDK API</h2>
+              <h2 className="font-semibold text-base">SDK Key</h2>
               <p className="text-muted-foreground text-sm">
-                Manage ingestion access without reusing your Public API tokens.
+                Manage ingestion access with your SDK token.
               </p>
             </div>
             <SdkApiKeyCard appId={resolvedAppId} isOwner={isOwner} />
@@ -230,10 +223,9 @@ export default function ApiKeysPage() {
 
           <div className="space-y-3">
             <div>
-              <h2 className="font-semibold text-base">Public API</h2>
+              <h2 className="font-semibold text-base">API Key</h2>
               <p className="text-muted-foreground text-sm">
-                Manage read-only external access without reusing your SDK
-                ingestion key.
+                Manage read-only external access without reusing your SDK key.
               </p>
             </div>
             <PublicApiIntroCard />

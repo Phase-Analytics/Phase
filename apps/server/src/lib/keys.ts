@@ -17,7 +17,7 @@ export function generateAppId(): string {
 }
 
 export function generatePublicApiToken(): string {
-  return `phase_public_${nanoid()}`;
+  return `phase_private_${nanoid()}`;
 }
 
 export function hashPublicApiToken(token: string): string {

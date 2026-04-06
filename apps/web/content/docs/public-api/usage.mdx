@@ -1,0 +1,280 @@
+---
+title: Usage
+description: Create a private API key and query Phase analytics reports.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { CodeBlock } from 'fumadocs-ui/components/codeblock';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
+Use the Phase API to read analytics reports from your own scripts, dashboards, and backend services.
+
+<Callout type="info">
+API keys are app-scoped and read-only. Create them in <strong>Application → API Keys</strong> in the Phase dashboard.
+</Callout>
+
+## Base URL
+
+<CodeBlock lang="txt" allowCopy={true}>
+```txt
+https://api.phase.sh/public-api/v1
+```
+</CodeBlock>
+
+## Create an API key
+
+<Steps>
+  <Step>
+    Open your app in the dashboard and go to <strong>Application → API Keys</strong>.
+  </Step>
+  <Step>
+    Create a new key, choose an expiration, and copy it immediately.
+  </Step>
+  <Step>
+    Send it as a bearer token in the `Authorization` header.
+  </Step>
+</Steps>
+
+Keys start with `phase_private_`.
+
+## First request
+
+<Tabs defaultValue="curl" groupId="api-first-request" persist>
+  <TabsList>
+    <TabsTrigger value="curl">cURL</TabsTrigger>
+    <TabsTrigger value="fetch">fetch</TabsTrigger>
+  </TabsList>
+  <TabsContent value="curl">
+    <CodeBlock lang="bash" allowCopy={true}>
+```bash
+curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/events/overview" \
+  -H "Authorization: Bearer phase_private_your_key"
+```
+    </CodeBlock>
+  </TabsContent>
+  <TabsContent value="fetch">
+    <CodeBlock lang="ts" allowCopy={true}>
+```ts
+const response = await fetch(
+  'https://api.phase.sh/public-api/v1/apps/<app_id>/reports/events/overview',
+  {
+    headers: {
+      Authorization: 'Bearer phase_private_your_key',
+    },
+  }
+);
+
+const data = await response.json();
+console.log(data);
+```
+    </CodeBlock>
+  </TabsContent>
+</Tabs>
+
+## Example response
+
+<CodeBlock lang="json" allowCopy={true}>
+```json
+{
+  "totalEvents": 216,
+  "events24h": 0,
+  "totalEventsChange24h": 0,
+  "events24hChange": 0,
+  "meta": {
+    "generatedAt": "2026-04-06T15:02:52.814Z",
+    "consistency": "eventual",
+    "identityModel": "user"
+  }
+}
+```
+</CodeBlock>
+
+## Common query parameters
+
+<TypeTable
+  type={{
+    startDate: {
+      description: 'Inclusive start date in ISO 8601 format.',
+      type: 'string',
+    },
+    endDate: {
+      description: 'Inclusive end date in ISO 8601 format.',
+      type: 'string',
+    },
+    metric: {
+      description: 'Metric name for timeseries endpoints.',
+      type: 'string',
+    },
+    dimension: {
+      description: 'Dimension name for breakdown endpoints.',
+      type: 'string',
+    },
+    limit: {
+      description: 'Maximum number of rows for breakdown endpoints.',
+      type: 'number',
+    },
+  }}
+/>
+
+## Available reports
+
+### Events
+
+- `GET /apps/:appId/reports/events/overview`
+- `GET /apps/:appId/reports/events/timeseries`
+- `GET /apps/:appId/reports/events/breakdown`
+
+Supported breakdown dimensions:
+- `eventName`
+- `screenName`
+
+Example:
+
+<CodeBlock lang="bash" allowCopy={true}>
+```bash
+curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/events/breakdown?dimension=eventName&startDate=2026-01-15T00:00:00.000Z&endDate=2026-02-15T23:59:59.999Z&limit=10" \
+  -H "Authorization: Bearer phase_private_your_key"
+```
+</CodeBlock>
+
+Sample rows:
+
+<CodeBlock lang="json" allowCopy={true}>
+```json
+{
+  "dimension": "eventName",
+  "metric": "eventCount",
+  "rows": [
+    { "value": "artwork_swipe_batch", "count": 43 },
+    { "value": "onboard_step", "count": 12 },
+    { "value": "like_artwork", "count": 10 }
+  ],
+  "meta": {
+    "generatedAt": "2026-04-06T15:02:52.814Z",
+    "consistency": "eventual",
+    "identityModel": "user"
+  }
+}
+```
+</CodeBlock>
+
+### Sessions
+
+- `GET /apps/:appId/reports/sessions/overview`
+- `GET /apps/:appId/reports/sessions/timeseries`
+- `GET /apps/:appId/reports/sessions/breakdown`
+
+Supported timeseries metrics:
+- `sessionCount`
+- `avgSessionDuration`
+- `bounceRate`
+
+Supported breakdown dimensions:
+- `platform`
+- `country`
+- `city`
+
+Example:
+
+<CodeBlock lang="bash" allowCopy={true}>
+```bash
+curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/sessions/overview" \
+  -H "Authorization: Bearer phase_private_your_key"
+```
+</CodeBlock>
+
+Sample response:
+
+<CodeBlock lang="json" allowCopy={true}>
+```json
+{
+  "totalSessions": 48,
+  "averageSessionDuration": 3360.8427291666667,
+  "activeSessions24h": 0,
+  "bounceRate": 45.83,
+  "totalSessionsChange24h": 0,
+  "activeSessions24hChange": 0,
+  "meta": {
+    "generatedAt": "2026-04-06T15:02:52.814Z",
+    "consistency": "eventual",
+    "identityModel": "user"
+  }
+}
+```
+</CodeBlock>
+
+### Users
+
+- `GET /apps/:appId/reports/users/overview`
+- `GET /apps/:appId/reports/users/timeseries`
+- `GET /apps/:appId/reports/users/breakdown`
+
+Supported timeseries metrics:
+- `activeUsers`
+- `totalUsers`
+- `newUsers`
+
+Supported breakdown dimensions:
+- `platform`
+- `country`
+- `city`
+
+Example:
+
+<CodeBlock lang="bash" allowCopy={true}>
+```bash
+curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/users/overview" \
+  -H "Authorization: Bearer phase_private_your_key"
+```
+</CodeBlock>
+
+Sample response:
+
+<CodeBlock lang="json" allowCopy={true}>
+```json
+{
+  "totalUsers": 11,
+  "activeUsers24h": 0,
+  "newUsers24h": 0,
+  "platformStats": {
+    "ios": 11,
+    "android": 0,
+    "unknown": 0
+  },
+  "countryStats": {
+    "TR": 9,
+    "NG": 1,
+    "DE": 1
+  },
+  "cityStats": {
+    "Ankara": { "count": 6, "country": "TR" },
+    "Çankaya": { "count": 2, "country": "TR" }
+  },
+  "totalUsersChange24h": 0,
+  "activeUsers24hChange": 0,
+  "newUsers24hChange": 0,
+  "meta": {
+    "generatedAt": "2026-04-06T15:02:52.814Z",
+    "consistency": "eventual",
+    "identityModel": "user"
+  }
+}
+```
+</CodeBlock>
+
+## Key lifetime
+
+When you create a key in the dashboard, choose one of these expiration options:
+
+- 1 week
+- 1 month
+- 1 year
+- Never
+
+## Security guidance
+
+<Callout type="warn">
+Do not use API keys in mobile apps, browser bundles, or any other untrusted client. Use them from your own backend, jobs, or internal tooling.
+</Callout>

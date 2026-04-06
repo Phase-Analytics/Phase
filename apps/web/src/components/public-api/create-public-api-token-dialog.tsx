@@ -95,7 +95,7 @@ export function CreatePublicApiTokenDialog({
     const trimmedName = name.trim();
 
     if (!trimmedName) {
-      setLocalError('Token name is required');
+      setLocalError('Key name is required');
       return;
     }
 
@@ -123,7 +123,7 @@ export function CreatePublicApiTokenDialog({
         {children || (
           <Button disabled={disabled} type="button">
             <HugeiconsIcon className="mr-2 size-4" icon={AddSquareIcon} />
-            Create Token
+            Create Key
           </Button>
         )}
       </DialogTrigger>
@@ -131,7 +131,7 @@ export function CreatePublicApiTokenDialog({
         {createdToken ? (
           <>
             <DialogHeader>
-              <DialogTitle>Copy your token now</DialogTitle>
+              <DialogTitle>Copy your key now</DialogTitle>
               <DialogDescription>
                 This secret is only shown once. Store it securely before closing
                 this dialog.
@@ -142,12 +142,12 @@ export function CreatePublicApiTokenDialog({
               <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-4">
                 <p className="font-medium text-sm">One-time reveal</p>
                 <p className="mt-1 text-muted-foreground text-sm">
-                  You will not be able to view this token again after closing.
+                  You will not be able to view this key again after closing.
                 </p>
               </div>
 
               <div className="space-y-2">
-                <p className="font-medium text-sm">Public API token</p>
+                <p className="font-medium text-sm">API key</p>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                   <div className="flex-1 overflow-hidden rounded-lg border bg-muted/40 px-3 py-2 font-mono text-sm">
                     <div className="overflow-x-auto whitespace-nowrap">
@@ -162,16 +162,10 @@ export function CreatePublicApiTokenDialog({
                 </div>
               </div>
 
-              <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
-                <p className="font-medium text-sm">Token details</p>
-                <p className="text-muted-foreground text-sm">
-                  {createdToken.name}
-                </p>
-                <p className="text-muted-foreground text-sm">
-                  Prefix: phase_public_
-                </p>
-                <p className="text-muted-foreground text-sm">
-                  Access: Read-only
+              <div className="rounded-lg border bg-muted/20 p-3">
+                <p className="font-medium text-sm">App ID</p>
+                <p className="mt-1 font-mono text-muted-foreground text-sm">
+                  {appId}
                 </p>
               </div>
             </div>
@@ -185,9 +179,9 @@ export function CreatePublicApiTokenDialog({
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>Create Public API token</DialogTitle>
+              <DialogTitle>Create API key</DialogTitle>
               <DialogDescription>
-                Generate a read-only token for external dashboards, scripts, and
+                Generate a read-only key for external dashboards, scripts, and
                 integrations.
               </DialogDescription>
             </DialogHeader>
@@ -198,13 +192,13 @@ export function CreatePublicApiTokenDialog({
                   className="font-medium text-sm"
                   htmlFor="public-api-token-name"
                 >
-                  Token name
+                  Key name
                 </label>
                 <Input
                   id="public-api-token-name"
                   maxLength={100}
                   onChange={(event) => setName(event.target.value)}
-                  placeholder="Production reporting"
+                  placeholder="Production"
                   value={name}
                 />
               </div>
@@ -213,7 +207,7 @@ export function CreatePublicApiTokenDialog({
                 <div>
                   <p className="font-medium text-sm">Expiration</p>
                   <p className="text-muted-foreground text-sm">
-                    Choose how long this token should remain valid.
+                    Choose how long this key should remain valid.
                   </p>
                 </div>
 
@@ -262,7 +256,7 @@ export function CreatePublicApiTokenDialog({
                   <Spinner className="absolute inset-0 m-auto size-4" />
                 )}
                 <span className={createToken.isPending ? 'invisible' : ''}>
-                  Create token
+                  Create key
                 </span>
               </Button>
             </DialogFooter>

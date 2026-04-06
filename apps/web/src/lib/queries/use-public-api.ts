@@ -50,10 +50,10 @@ export function useCreatePublicApiToken() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.apps.publicApiTokens(variables.appId),
       });
-      toast.success('Public API token created');
+      toast.success('API key created');
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to create public API token');
+      toast.error(error.message || 'Failed to create API key');
     },
   });
 }
@@ -69,10 +69,10 @@ export function useRevokePublicApiToken() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.apps.publicApiTokens(variables.appId),
       });
-      toast.success('Public API token revoked');
+      toast.success('API key revoked');
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to revoke public API token');
+      toast.error(error.message || 'Failed to revoke API key');
     },
   });
 }
