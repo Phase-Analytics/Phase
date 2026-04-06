@@ -1,25 +1,15 @@
+import type { ColumnDef } from '@tanstack/react-table';
 import { ClientDate } from '@/components/client-date';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { DataTable } from '@/components/ui/data-table';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type {
-  CreatePublicApiTokenResponse,
-  PublicApiToken,
-} from '@/lib/api/types';
+import type { PublicApiToken } from '@/lib/api/types';
 import { CreatePublicApiTokenDialog } from './create-public-api-token-dialog';
 import { RevokePublicApiTokenDialog } from './revoke-public-api-token-dialog';
 
@@ -28,28 +18,98 @@ type PublicApiTokenTableProps = {
   tokens?: PublicApiToken[];
   isLoading?: boolean;
   isOwner: boolean;
-  onCreated?: (token: CreatePublicApiTokenResponse) => void;
 };
-
-function getStatusVariant(status: PublicApiToken['status']) {
-  if (status === 'active') {
-    return 'success' as const;
-  }
-
-  if (status === 'revoked') {
-    return 'destructive' as const;
-  }
-
-  return 'outline' as const;
-}
 
 export function PublicApiTokenTable({
   appId,
   tokens,
   isLoading,
   isOwner,
-  onCreated,
 }: PublicApiTokenTableProps) {
+  const columns: ColumnDef<PublicApiToken>[] = [
+    {
+      accessorKey: 'name',
+      header: 'Name',
+      cell: ({ row }) => (
+        <div className="space-y-1">
+          <p className="font-medium text-sm">{row.original.name}</p>
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'tokenPrefix',
+      header: 'Prefix',
+      cell: ({ row }) => (
+        <p className="font-mono text-muted-foreground text-sm">
+          {row.original.tokenPrefix}••••••
+        </p>
+      ),
+    },
+    {
+      accessorKey: 'createdAt',
+      header: 'Created',
+      cell: ({ row }) => (
+        <div className="text-muted-foreground text-sm">
+          <ClientDate date={row.original.createdAt} format="datetime-long" />
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'lastUsedAt',
+      header: 'Last used',
+      cell: ({ row }) => (
+        <div className="text-muted-foreground text-sm">
+          {row.original.lastUsedAt ? (
+            <ClientDate date={row.original.lastUsedAt} format="datetime-long" />
+          ) : (
+            'Never'
+          )}
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'expiresAt',
+      header: 'Expires',
+      cell: ({ row }) => (
+        <div className="text-muted-foreground text-sm">
+          {row.original.expiresAt ? (
+            <ClientDate date={row.original.expiresAt} format="datetime-long" />
+          ) : (
+            'No expiry'
+          )}
+        </div>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }) => {
+        const token = row.original;
+        const isRevokable = isOwner && token.status !== 'revoked';
+
+        if (isRevokable) {
+          return (
+            <RevokePublicApiTokenDialog
+              appId={appId}
+              tokenId={token.id}
+              tokenName={token.name}
+            >
+              <Button size="sm" type="button" variant="destructive">
+                Revoke
+              </Button>
+            </RevokePublicApiTokenDialog>
+          );
+        }
+
+        return (
+          <span className="text-muted-foreground text-sm">
+            {token.status === 'revoked' ? 'Revoked' : 'Owner only'}
+          </span>
+        );
+      },
+    },
+  ];
+
   return (
     <Card className="py-0">
       <CardContent className="space-y-4 p-4">
@@ -64,11 +124,7 @@ export function PublicApiTokenTable({
           <Tooltip>
             <TooltipTrigger asChild>
               <span tabIndex={isOwner ? undefined : 0}>
-                <CreatePublicApiTokenDialog
-                  appId={appId}
-                  disabled={!isOwner}
-                  onCreated={onCreated}
-                >
+                <CreatePublicApiTokenDialog appId={appId} disabled={!isOwner}>
                   <Button disabled={!isOwner} type="button">
                     Create token
                   </Button>
@@ -82,113 +138,19 @@ export function PublicApiTokenTable({
         </div>
 
         {isLoading ? (
-          <div className="space-y-2">
+          <div className="space-y-2 rounded-md border p-3">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Last used</TableHead>
-                  <TableHead>Expires</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tokens?.length ? (
-                  tokens.map((token) => {
-                    const isRevokable = isOwner && token.status !== 'revoked';
-
-                    return (
-                      <TableRow key={token.id}>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <p className="font-medium text-sm">{token.name}</p>
-                            <p className="font-mono text-muted-foreground text-xs">
-                              {token.tokenPrefix}••••••
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            className="rounded-full capitalize"
-                            variant={getStatusVariant(token.status)}
-                          >
-                            {token.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
-                          <ClientDate
-                            date={token.createdAt}
-                            format="datetime-long"
-                          />
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
-                          {token.lastUsedAt ? (
-                            <ClientDate
-                              date={token.lastUsedAt}
-                              format="datetime-long"
-                            />
-                          ) : (
-                            'Never'
-                          )}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
-                          {token.expiresAt ? (
-                            <ClientDate
-                              date={token.expiresAt}
-                              format="datetime-long"
-                            />
-                          ) : (
-                            'No expiry'
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {isRevokable ? (
-                            <RevokePublicApiTokenDialog
-                              appId={appId}
-                              tokenId={token.id}
-                              tokenName={token.name}
-                            >
-                              <Button
-                                size="sm"
-                                type="button"
-                                variant="destructive"
-                              >
-                                Revoke
-                              </Button>
-                            </RevokePublicApiTokenDialog>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">
-                              {token.status === 'revoked'
-                                ? 'Revoked'
-                                : 'Owner only'}
-                            </span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      className="py-8 text-center text-muted-foreground"
-                      colSpan={6}
-                    >
-                      No public API tokens yet. Create one to enable read-only
-                      access from external systems.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          <DataTable
+            columns={columns}
+            data={tokens ?? []}
+            pageSize={10}
+            searchKey="name"
+            searchPlaceholder="Search tokens..."
+          />
         )}
       </CardContent>
     </Card>

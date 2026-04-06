@@ -7,12 +7,12 @@ import {
   ViewOffIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
+import Link from 'next/link';
 import { useQueryState } from 'nuqs';
 import { useEffect, useRef, useState } from 'react';
 import { useScramble } from 'use-scramble';
 import { ClientDate } from '@/components/client-date';
 import { PublicApiIntroCard } from '@/components/public-api/public-api-intro-card';
-import { PublicApiQuickstartCard } from '@/components/public-api/public-api-quickstart-card';
 import { PublicApiTokenTable } from '@/components/public-api/public-api-token-table';
 import { RequireApp } from '@/components/require-app';
 import { RotateKeyDialog } from '@/components/rotate-key-dialog';
@@ -25,7 +25,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { CreatePublicApiTokenResponse } from '@/lib/api/types';
 import { useApp, useAppKeys, usePublicApiTokens } from '@/lib/queries';
 
 function SdkApiKeyCard({
@@ -78,20 +77,11 @@ function SdkApiKeyCard({
   return (
     <Card className="py-0">
       <CardContent className="space-y-4 p-4">
-        <div>
-          <h2 className="font-semibold text-muted-foreground text-sm uppercase">
-            SDK API Key
-          </h2>
-          <p className="text-muted-foreground text-sm">
-            Use this key to send analytics data from your application to Phase.
-          </p>
-        </div>
-
         {keysLoading ? (
           <div className="space-y-3">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-4 w-48" />
-            <Skeleton className="h-9 w-32" />
+            <Skeleton className="h-9 w-48" />
           </div>
         ) : (
           <div className="space-y-3">
@@ -150,7 +140,13 @@ function SdkApiKeyCard({
               )}
             </p>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button asChild size="sm" type="button" variant="outline">
+                <Link href="https://phase.sh/docs" target="_blank">
+                  Read Documentation
+                </Link>
+              </Button>
+
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span tabIndex={isOwner ? undefined : 0}>
@@ -187,8 +183,6 @@ export default function ApiKeysPage() {
   const { data: app, isPending: appLoading } = useApp(resolvedAppId);
   const { data: publicApiTokens, isPending: publicApiTokensLoading } =
     usePublicApiTokens(resolvedAppId);
-  const [createdToken, setCreatedToken] =
-    useState<CreatePublicApiTokenResponse | null>(null);
 
   const isOwner = app?.role === 'owner';
 
@@ -224,7 +218,15 @@ export default function ApiKeysPage() {
             </CardContent>
           </Card>
 
-          <SdkApiKeyCard appId={resolvedAppId} isOwner={isOwner} />
+          <div className="space-y-3">
+            <div>
+              <h2 className="font-semibold text-base">SDK API</h2>
+              <p className="text-muted-foreground text-sm">
+                Manage ingestion access without reusing your Public API tokens.
+              </p>
+            </div>
+            <SdkApiKeyCard appId={resolvedAppId} isOwner={isOwner} />
+          </div>
 
           <div className="space-y-3">
             <div>
@@ -237,24 +239,12 @@ export default function ApiKeysPage() {
             <PublicApiIntroCard />
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
-            <div className="space-y-6">
-              <PublicApiTokenTable
-                appId={resolvedAppId}
-                isLoading={appLoading || publicApiTokensLoading}
-                isOwner={isOwner}
-                onCreated={setCreatedToken}
-                tokens={publicApiTokens?.tokens}
-              />
-            </div>
-
-            <div className="space-y-6">
-              <PublicApiQuickstartCard
-                appId={resolvedAppId}
-                createdToken={createdToken}
-              />
-            </div>
-          </div>
+          <PublicApiTokenTable
+            appId={resolvedAppId}
+            isLoading={appLoading || publicApiTokensLoading}
+            isOwner={isOwner}
+            tokens={publicApiTokens?.tokens}
+          />
         </div>
       </div>
     </RequireApp>

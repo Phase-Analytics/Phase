@@ -31,7 +31,6 @@ const expirationOptions: Array<{ value: ExpirationPreset; label: string }> = [
 type CreatePublicApiTokenDialogProps = {
   appId: string;
   disabled?: boolean;
-  onCreated?: (token: CreatePublicApiTokenResponse) => void;
   children?: React.ReactNode;
 };
 
@@ -59,7 +58,6 @@ function getExpiryIso(preset: ExpirationPreset): string | null {
 export function CreatePublicApiTokenDialog({
   appId,
   disabled,
-  onCreated,
   children,
 }: CreatePublicApiTokenDialogProps) {
   const createToken = useCreatePublicApiToken();
@@ -114,7 +112,6 @@ export function CreatePublicApiTokenDialog({
       {
         onSuccess: (data) => {
           setCreatedToken(data);
-          onCreated?.(data);
         },
       }
     );
@@ -207,16 +204,6 @@ export function CreatePublicApiTokenDialog({
                   placeholder="Production reporting"
                   value={name}
                 />
-              </div>
-
-              <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
-                <div>
-                  <p className="font-medium text-sm">Access</p>
-                  <p className="text-muted-foreground text-sm">
-                    Every Public API token is read-only. Scope selection is not
-                    required.
-                  </p>
-                </div>
               </div>
 
               <div className="space-y-3 rounded-lg border bg-muted/20 p-3">

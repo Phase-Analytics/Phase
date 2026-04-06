@@ -6,12 +6,12 @@ import { Card, CardContent } from '@/components/ui/card';
 
 export function PublicApiIntroCard() {
   return (
-    <Card className="border-indigo-500/40 bg-indigo-500/5 py-0">
+    <Card className="border-blue-500/50 bg-blue-500/5 py-0">
       <CardContent className="space-y-4 p-4">
         <div className="flex gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
             <HugeiconsIcon
-              className="size-5 text-indigo-600 dark:text-indigo-400"
+              className="size-5 text-blue-600 dark:text-blue-400"
               icon={InformationCircleIcon}
             />
           </div>
