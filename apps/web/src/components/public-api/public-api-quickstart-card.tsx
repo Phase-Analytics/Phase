@@ -17,9 +17,6 @@ export function PublicApiQuickstartCard({
 }: PublicApiQuickstartCardProps) {
   const token = createdToken?.token || 'phase_pat_your_token';
 
-  const capabilitiesCurl = `curl -X GET "${API_BASE}/public-api/v1/apps/${appId}/capabilities" \\
-  -H "Authorization: Bearer ${token}"`;
-
   const eventsOverviewCurl = `curl -X GET "${API_BASE}/public-api/v1/apps/${appId}/reports/events/overview" \\
   -H "Authorization: Bearer ${token}"`;
 
@@ -36,9 +33,9 @@ export function PublicApiQuickstartCard({
           <div>
             <h3 className="font-semibold text-sm">Quickstart</h3>
             <p className="text-muted-foreground text-sm">
-              Start with capability discovery, then call a curated report
-              endpoint. If you just created a token, these examples use it for
-              the current session.
+              Use your token with the curated report endpoints below. If you
+              just created a token, these examples use it for the current
+              session.
             </p>
           </div>
 
@@ -50,11 +47,6 @@ export function PublicApiQuickstartCard({
         </div>
 
         <div className="space-y-3">
-          <Code code={capabilitiesCurl}>
-            <CodeHeader copyButton>Get capabilities</CodeHeader>
-            <CodeBlock lang="bash" />
-          </Code>
-
           <Code code={eventsOverviewCurl}>
             <CodeHeader copyButton>Event overview</CodeHeader>
             <CodeBlock lang="bash" />
@@ -75,15 +67,15 @@ export function PublicApiQuickstartCard({
           <p className="font-medium text-sm">Notes</p>
           <ul className="mt-2 list-disc space-y-1 pl-4 text-muted-foreground text-sm">
             <li>
-              The current external MVP focuses on curated reports and
-              capabilities.
+              Public API tokens are read-only and separate from your SDK
+              ingestion key.
             </li>
             <li>
               Device metrics remain device-based; they are not user metrics.
             </li>
             <li>
-              Unsupported GA-style freeform queries are intentionally out of
-              scope.
+              Choose an expiration that matches how long the integration should
+              stay active.
             </li>
           </ul>
         </div>

@@ -1,4 +1,4 @@
-import { ErrorCode, HttpStatus, type PublicApiScope } from '@phase/shared';
+import { ErrorCode, HttpStatus } from '@phase/shared';
 import { and, eq, isNull, or, sql } from 'drizzle-orm';
 import { Elysia as ElysiaClass } from 'elysia';
 import { apps, db, publicApiTokens } from '@/db';
@@ -107,34 +107,6 @@ export const publicApiAuthPlugin = new ElysiaClass({ name: 'publicApiAuth' })
     return {
       publicApiApp: result.app,
       publicApiToken: result.token,
-      publicApiScopes: result.token.scopes as PublicApiScope[],
     };
   })
-  .macro(({ onBeforeHandle }) => ({
-    requirePublicScope(scope: PublicApiScope | PublicApiScope[]) {
-      const requiredScopes = Array.isArray(scope) ? scope : [scope];
-
-      onBeforeHandle(
-        ({
-          publicApiScopes,
-          set,
-        }: {
-          publicApiScopes: PublicApiScope[];
-          set: { status: number };
-        }) => {
-          const hasScope = requiredScopes.some((requiredScope) =>
-            publicApiScopes.includes(requiredScope)
-          );
-
-          if (!hasScope) {
-            set.status = HttpStatus.FORBIDDEN;
-            return {
-              code: ErrorCode.FORBIDDEN,
-              detail: 'This token does not have the required scope',
-            };
-          }
-        }
-      );
-    },
-  }))
   .as('scoped');

@@ -6,7 +6,6 @@ import { fetchApi } from '@/lib/api/client';
 import type {
   CreatePublicApiTokenRequest,
   CreatePublicApiTokenResponse,
-  PublicApiCapabilitiesResponse,
   PublicApiToken,
 } from '@/lib/api/types';
 import { useSession } from '@/lib/auth';
@@ -16,21 +15,6 @@ import { queryKeys } from './query-keys';
 type PublicApiTokensResponse = {
   tokens: PublicApiToken[];
 };
-
-export function usePublicApiCapabilities(appId: string) {
-  const { data: session } = useSession();
-
-  return useQuery({
-    queryKey: queryKeys.apps.publicApiCapabilities(appId),
-    queryFn: () =>
-      fetchApi<PublicApiCapabilitiesResponse>(
-        `/web/apps/${appId}/public-api/capabilities`
-      ),
-    ...cacheConfig.static,
-    refetchOnMount: false,
-    enabled: !!session && Boolean(appId),
-  });
-}
 
 export function usePublicApiTokens(appId: string) {
   const { data: session } = useSession();

@@ -19,7 +19,7 @@ Typical fields:
   - malformed bearer token
   - invalid, expired, revoked, or unauthorized token
 - `403 Forbidden`
-  - token is valid, but missing the required scope
+  - token is valid, but cannot access the requested app or resource
 - `400 Bad Request`
   - invalid query parameters
   - unsupported dimension or metric combination
@@ -45,13 +45,6 @@ Examples include:
 - maximum report date range
 - maximum breakdown size
 - maximum raw page size
-
-Use the capabilities endpoint to inspect the current limits for an app:
-
-```bash
-curl -X GET "https://api.phase.sh/public-api/v1/apps/<app_id>/capabilities" \
-  -H "Authorization: Bearer phase_pat_your_token"
-```
 
 ## Eventual consistency
 

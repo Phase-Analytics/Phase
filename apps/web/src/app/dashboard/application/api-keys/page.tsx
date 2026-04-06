@@ -11,7 +11,6 @@ import { useQueryState } from 'nuqs';
 import { useEffect, useRef, useState } from 'react';
 import { useScramble } from 'use-scramble';
 import { ClientDate } from '@/components/client-date';
-import { PublicApiCapabilitiesCard } from '@/components/public-api/public-api-capabilities-card';
 import { PublicApiIntroCard } from '@/components/public-api/public-api-intro-card';
 import { PublicApiQuickstartCard } from '@/components/public-api/public-api-quickstart-card';
 import { PublicApiTokenTable } from '@/components/public-api/public-api-token-table';
@@ -27,12 +26,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { CreatePublicApiTokenResponse } from '@/lib/api/types';
-import {
-  useApp,
-  useAppKeys,
-  usePublicApiCapabilities,
-  usePublicApiTokens,
-} from '@/lib/queries';
+import { useApp, useAppKeys, usePublicApiTokens } from '@/lib/queries';
 
 function SdkApiKeyCard({
   appId,
@@ -191,8 +185,6 @@ export default function ApiKeysPage() {
   const resolvedAppId = appId || '';
 
   const { data: app, isPending: appLoading } = useApp(resolvedAppId);
-  const { data: publicApiCapabilities, isPending: capabilitiesLoading } =
-    usePublicApiCapabilities(resolvedAppId);
   const { data: publicApiTokens, isPending: publicApiTokensLoading } =
     usePublicApiTokens(resolvedAppId);
   const [createdToken, setCreatedToken] =
@@ -257,10 +249,6 @@ export default function ApiKeysPage() {
             </div>
 
             <div className="space-y-6">
-              <PublicApiCapabilitiesCard
-                capabilities={publicApiCapabilities}
-                isLoading={appLoading || capabilitiesLoading}
-              />
               <PublicApiQuickstartCard
                 appId={resolvedAppId}
                 createdToken={createdToken}

@@ -21,7 +21,6 @@ import type {
   PublicApiToken,
 } from '@/lib/api/types';
 import { CreatePublicApiTokenDialog } from './create-public-api-token-dialog';
-import { PublicApiScopeBadges } from './public-api-scope-badges';
 import { RevokePublicApiTokenDialog } from './revoke-public-api-token-dialog';
 
 type PublicApiTokenTableProps = {
@@ -82,13 +81,6 @@ export function PublicApiTokenTable({
           </Tooltip>
         </div>
 
-        {isOwner ? null : (
-          <div className="rounded-lg border bg-muted/20 p-3 text-muted-foreground text-sm">
-            Members can inspect token metadata, but only app owners can create
-            or revoke Public API tokens.
-          </div>
-        )}
-
         {isLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-10 w-full" />
@@ -101,7 +93,6 @@ export function PublicApiTokenTable({
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Scopes</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead>Last used</TableHead>
@@ -123,9 +114,6 @@ export function PublicApiTokenTable({
                               {token.tokenPrefix}••••••
                             </p>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <PublicApiScopeBadges scopes={token.scopes} />
                         </TableCell>
                         <TableCell>
                           <Badge
@@ -191,7 +179,7 @@ export function PublicApiTokenTable({
                   <TableRow>
                     <TableCell
                       className="py-8 text-center text-muted-foreground"
-                      colSpan={7}
+                      colSpan={6}
                     >
                       No public API tokens yet. Create one to enable read-only
                       access from external systems.

@@ -21,26 +21,7 @@ export function PublicApiIntroCard() {
               Create separate read-only tokens for external dashboards, scripts,
               and integrations. Public API tokens are distinct from your SDK API
               key: the SDK key sends analytics data, while Public API tokens
-              read curated reports and capability metadata.
-            </p>
-          </div>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-lg border bg-background/60 p-3">
-            <p className="font-medium text-sm">Current MVP surface</p>
-            <p className="mt-1 text-muted-foreground text-sm">
-              Capabilities discovery plus curated event, session, and device
-              reports.
-            </p>
-          </div>
-          <div className="rounded-lg border bg-background/60 p-3">
-            <p className="font-medium text-sm">
-              What is intentionally not here
-            </p>
-            <p className="mt-1 text-muted-foreground text-sm">
-              No GA-style freeform query builder, no funnel/retention reports,
-              and no event parameter breakdowns yet.
+              read curated analytics reports.
             </p>
           </div>
         </div>

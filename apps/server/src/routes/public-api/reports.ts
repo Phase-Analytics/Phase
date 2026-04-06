@@ -50,7 +50,6 @@ export const publicApiReportsRouter = new Elysia({
       }
     },
     {
-      requirePublicScope: 'reports:read',
       params: t.Object({ appId: t.String() }),
       response: {
         200: PublicApiEventOverviewResponseSchema,
@@ -97,7 +96,6 @@ export const publicApiReportsRouter = new Elysia({
       }
     },
     {
-      requirePublicScope: 'reports:read',
       params: t.Object({ appId: t.String() }),
       query: t.Object({
         startDate: t.Optional(t.String()),
@@ -153,7 +151,6 @@ export const publicApiReportsRouter = new Elysia({
       }
     },
     {
-      requirePublicScope: 'reports:read',
       params: t.Object({ appId: t.String() }),
       query: t.Object({
         dimension: t.Union([t.Literal('eventName'), t.Literal('screenName')]),
@@ -190,7 +187,6 @@ export const publicApiReportsRouter = new Elysia({
       }
     },
     {
-      requirePublicScope: 'reports:read',
       params: t.Object({ appId: t.String() }),
       response: {
         200: PublicApiSessionOverviewResponseSchema,
@@ -239,7 +235,6 @@ export const publicApiReportsRouter = new Elysia({
       }
     },
     {
-      requirePublicScope: 'reports:read',
       params: t.Object({ appId: t.String() }),
       query: t.Object({
         startDate: t.Optional(t.String()),
@@ -281,7 +276,6 @@ export const publicApiReportsRouter = new Elysia({
       }
     },
     {
-      requirePublicScope: 'reports:read',
       params: t.Object({ appId: t.String() }),
       response: {
         200: PublicApiDeviceOverviewResponseSchema,
@@ -330,7 +324,6 @@ export const publicApiReportsRouter = new Elysia({
       }
     },
     {
-      requirePublicScope: 'reports:read',
       params: t.Object({ appId: t.String() }),
       query: t.Object({
         startDate: t.Optional(t.String()),
@@ -375,7 +368,6 @@ export const publicApiReportsRouter = new Elysia({
       }
     },
     {
-      requirePublicScope: 'reports:read',
       params: t.Object({ appId: t.String() }),
       query: t.Object({
         dimension: t.Union([

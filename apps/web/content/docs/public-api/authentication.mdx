@@ -26,25 +26,20 @@ The token is only shown once.
 Send the token as a bearer token:
 
 ```bash
-curl -X GET "https://api.phase.sh/public-api/v1/apps/<app_id>/capabilities" \
+curl -X GET "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/events/overview" \
   -H "Authorization: Bearer phase_pat_your_token"
 ```
 
-## Scopes
-
-Public API tokens can be scoped.
-
-The current external MVP uses:
-
-- `reports:read`
-
-Additional read scopes exist in the broader product plan, but the current public slice is intentionally focused on curated reports and capabilities.
-
-A request fails with `403` if the token does not include the required scope.
-
 ## Expiry and revocation
 
-Tokens may have an optional expiration time and can be revoked from the dashboard.
+When creating a token in the dashboard, choose one of the built-in expiration options:
+
+- 1 week
+- 1 month
+- 1 year
+- Never
+
+Tokens can also be revoked at any time from the dashboard.
 
 After revocation, any clients using the token will fail on subsequent requests.
 

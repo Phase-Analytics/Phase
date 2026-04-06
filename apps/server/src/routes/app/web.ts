@@ -12,7 +12,6 @@ import {
   ErrorCode,
   ErrorResponseSchema,
   HttpStatus,
-  PublicApiCapabilitiesResponseSchema,
   type PublicApiToken as PublicApiTokenResponse,
   PublicApiTokensResponseSchema,
   UpdateAppRequestSchema,
@@ -34,9 +33,16 @@ import {
   type BetterAuthSession,
   type BetterAuthUser,
 } from '@/lib/middleware';
-import { getPublicApiCapabilities } from '@/lib/public-api-capabilities';
 
 type AuthContext = { user: BetterAuthUser; session: BetterAuthSession };
+
+const DEFAULT_PUBLIC_API_SCOPES = [
+  'reports:read',
+  'events:read',
+  'sessions:read',
+  'devices:read',
+  'realtime:read',
+] as const;
 
 function serializePublicApiToken(
   token: typeof publicApiTokens.$inferSelect
@@ -58,13 +64,6 @@ function serializePublicApiToken(
     id: token.id,
     name: token.name,
     tokenPrefix: token.tokenPrefix,
-    scopes: token.scopes as Array<
-      | 'reports:read'
-      | 'events:read'
-      | 'sessions:read'
-      | 'devices:read'
-      | 'realtime:read'
-    >,
     expiresAt: token.expiresAt?.toISOString() ?? null,
     lastUsedAt: token.lastUsedAt?.toISOString() ?? null,
     revokedAt: token.revokedAt?.toISOString() ?? null,
@@ -427,68 +426,6 @@ export const appWebRouter = new Elysia({ prefix: '/apps' })
   )
 
   .get(
-    '/:id/public-api/capabilities',
-    async (ctx) => {
-      const { params, user, set } = ctx as typeof ctx & AuthContext;
-      try {
-        if (!user?.id) {
-          set.status = HttpStatus.UNAUTHORIZED;
-          return {
-            code: ErrorCode.UNAUTHORIZED,
-            detail: 'User authentication required',
-          };
-        }
-
-        const app = await db.query.apps.findFirst({
-          where: (table, { eq: eqFn }) => eqFn(table.id, params.id),
-        });
-
-        if (!app) {
-          set.status = HttpStatus.NOT_FOUND;
-          return {
-            code: ErrorCode.NOT_FOUND,
-            detail: 'App not found',
-          };
-        }
-
-        const hasAccess =
-          app.userId === user.id || app.memberIds?.includes(user.id);
-
-        if (!hasAccess) {
-          set.status = HttpStatus.FORBIDDEN;
-          return {
-            code: ErrorCode.FORBIDDEN,
-            detail: 'Access denied',
-          };
-        }
-
-        set.status = HttpStatus.OK;
-        return getPublicApiCapabilities(params.id);
-      } catch (error) {
-        console.error('[App.GetPublicApiCapabilities] Error:', error);
-        set.status = HttpStatus.INTERNAL_SERVER_ERROR;
-        return {
-          code: ErrorCode.INTERNAL_SERVER_ERROR,
-          detail: 'Failed to get public API capabilities',
-        };
-      }
-    },
-    {
-      requireAuth: true,
-      params: t.Object({
-        id: t.String(),
-      }),
-      response: {
-        200: PublicApiCapabilitiesResponseSchema,
-        401: ErrorResponseSchema,
-        403: ErrorResponseSchema,
-        404: ErrorResponseSchema,
-        500: ErrorResponseSchema,
-      },
-    }
-  )
-
-  .get(
     '/:id/public-api/tokens',
     async (ctx) => {
       const { params, user, set } = ctx as typeof ctx & AuthContext;
@@ -605,7 +542,7 @@ export const appWebRouter = new Elysia({ prefix: '/apps' })
             name: body.name,
             tokenHash,
             tokenPrefix,
-            scopes: body.scopes,
+            scopes: [...DEFAULT_PUBLIC_API_SCOPES],
             expiresAt,
           })
           .returning();

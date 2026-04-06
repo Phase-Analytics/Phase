@@ -1,13 +1,5 @@
 import { z } from 'zod';
 
-export const PublicApiScopeSchema = z.enum([
-  'reports:read',
-  'events:read',
-  'sessions:read',
-  'devices:read',
-  'realtime:read',
-]);
-
 export const PublicApiTokenStatusSchema = z.enum([
   'active',
   'expired',
@@ -18,7 +10,6 @@ export const PublicApiTokenSchema = z.object({
   id: z.string(),
   name: z.string().min(1).max(100),
   tokenPrefix: z.string(),
-  scopes: z.array(PublicApiScopeSchema),
   expiresAt: z.string().datetime().nullable(),
   lastUsedAt: z.string().datetime().nullable(),
   revokedAt: z.string().datetime().nullable(),
@@ -32,7 +23,6 @@ export const PublicApiTokensResponseSchema = z.object({
 
 export const CreatePublicApiTokenRequestSchema = z.object({
   name: z.string().min(1).max(100),
-  scopes: z.array(PublicApiScopeSchema).min(1).max(5),
   expiresAt: z.string().datetime().nullable().optional(),
 });
 
@@ -51,64 +41,6 @@ export const PublicApiLimitsSchema = z.object({
   maxBreakdownLimit: z.number().int().positive(),
   maxBatchSize: z.number().int().positive(),
   maxRawPageSize: z.number().int().positive(),
-});
-
-export const PublicApiCapabilitiesResponseSchema = z.object({
-  appId: z.string(),
-  identityModel: z.literal('device'),
-  retention: z.object({
-    eventsDaysApprox: z.number().int().positive(),
-  }),
-  semantics: z.object({
-    bounceRate: z.string(),
-    onlineDevicesWindowSeconds: z.number().int().positive(),
-    activeDevicesWindowSeconds: z.number().int().positive(),
-    consistency: z.literal('eventual'),
-  }),
-  limits: PublicApiLimitsSchema,
-  domains: z.object({
-    events: z.object({
-      reports: z.array(z.enum(['overview', 'timeseries', 'breakdown'])),
-      metrics: z.array(z.literal('eventCount')),
-      dimensions: z.array(z.enum(['eventName', 'screenName', 'date'])),
-      filters: z.array(
-        z.enum(['startDate', 'endDate', 'sessionId', 'deviceId', 'eventName'])
-      ),
-    }),
-    sessions: z.object({
-      reports: z.array(z.enum(['overview', 'timeseries'])),
-      metrics: z.array(
-        z.enum([
-          'sessionCount',
-          'avgSessionDuration',
-          'bounceRate',
-          'activeSessions24h',
-        ])
-      ),
-      dimensions: z.array(z.literal('date')),
-      filters: z.array(z.enum(['startDate', 'endDate', 'deviceId'])),
-    }),
-    devices: z.object({
-      reports: z.array(z.enum(['overview', 'timeseries', 'breakdown'])),
-      metrics: z.array(
-        z.enum([
-          'deviceCount',
-          'activeDevices',
-          'activeDevices24h',
-          'activeDevices60s',
-          'totalDevices',
-        ])
-      ),
-      dimensions: z.array(z.enum(['platform', 'country', 'city', 'date'])),
-      filters: z.array(
-        z.enum(['startDate', 'endDate', 'platform', 'properties'])
-      ),
-    }),
-    realtime: z.object({
-      reports: z.array(z.enum(['snapshot', 'stream'])),
-      metrics: z.array(z.enum(['onlineDevices20s', 'activeDevices60s'])),
-    }),
-  }),
 });
 
 export const PublicApiEventOverviewResponseSchema = z.object({
@@ -238,16 +170,12 @@ export const PublicApiDeviceBreakdownResponseSchema = z.object({
   meta: PublicApiMetaSchema,
 });
 
-export type PublicApiScope = z.infer<typeof PublicApiScopeSchema>;
 export type PublicApiToken = z.infer<typeof PublicApiTokenSchema>;
 export type CreatePublicApiTokenRequest = z.infer<
   typeof CreatePublicApiTokenRequestSchema
 >;
 export type CreatePublicApiTokenResponse = z.infer<
   typeof CreatePublicApiTokenResponseSchema
->;
-export type PublicApiCapabilitiesResponse = z.infer<
-  typeof PublicApiCapabilitiesResponseSchema
 >;
 export type PublicApiEventBreakdownDimension = z.infer<
   typeof PublicApiEventBreakdownDimensionSchema

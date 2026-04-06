@@ -4,7 +4,6 @@ import { AddSquareIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { CopyButton } from '@/components/ui/copy-button';
 import {
   Dialog,
@@ -17,18 +16,16 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
-import type {
-  CreatePublicApiTokenResponse,
-  PublicApiScope,
-} from '@/lib/api/types';
+import type { CreatePublicApiTokenResponse } from '@/lib/api/types';
 import { useCreatePublicApiToken } from '@/lib/queries';
-import { PublicApiScopeBadges } from './public-api-scope-badges';
 
-const availableScopes: Array<{ value: PublicApiScope; label: string }> = [
-  {
-    value: 'reports:read',
-    label: 'Read the current curated report surface and capability metadata',
-  },
+type ExpirationPreset = '1w' | '1m' | '1y' | 'never';
+
+const expirationOptions: Array<{ value: ExpirationPreset; label: string }> = [
+  { value: '1w', label: '1 week' },
+  { value: '1m', label: '1 month' },
+  { value: '1y', label: '1 year' },
+  { value: 'never', label: 'Never' },
 ];
 
 type CreatePublicApiTokenDialogProps = {
@@ -37,6 +34,27 @@ type CreatePublicApiTokenDialogProps = {
   onCreated?: (token: CreatePublicApiTokenResponse) => void;
   children?: React.ReactNode;
 };
+
+function getExpiryIso(preset: ExpirationPreset): string | null {
+  if (preset === 'never') {
+    return null;
+  }
+
+  const now = new Date();
+
+  if (preset === '1w') {
+    now.setDate(now.getDate() + 7);
+    return now.toISOString();
+  }
+
+  if (preset === '1m') {
+    now.setMonth(now.getMonth() + 1);
+    return now.toISOString();
+  }
+
+  now.setFullYear(now.getFullYear() + 1);
+  return now.toISOString();
+}
 
 export function CreatePublicApiTokenDialog({
   appId,
@@ -47,36 +65,22 @@ export function CreatePublicApiTokenDialog({
   const createToken = useCreatePublicApiToken();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
-  const [expiresAt, setExpiresAt] = useState('');
-  const [selectedScopes, setSelectedScopes] = useState<PublicApiScope[]>([
-    'reports:read',
-  ]);
+  const [expirationPreset, setExpirationPreset] =
+    useState<ExpirationPreset>('1m');
   const [createdToken, setCreatedToken] =
     useState<CreatePublicApiTokenResponse | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const isSubmitDisabled =
-    createToken.isPending ||
-    name.trim().length === 0 ||
-    selectedScopes.length === 0;
+  const isSubmitDisabled = createToken.isPending || name.trim().length === 0;
 
-  const expiryIso = useMemo(() => {
-    if (!expiresAt) {
-      return null;
-    }
-
-    const parsed = new Date(expiresAt);
-    if (Number.isNaN(parsed.getTime())) {
-      return null;
-    }
-
-    return parsed.toISOString();
-  }, [expiresAt]);
+  const expiresAt = useMemo(
+    () => getExpiryIso(expirationPreset),
+    [expirationPreset]
+  );
 
   const resetState = () => {
     setName('');
-    setExpiresAt('');
-    setSelectedScopes(['reports:read']);
+    setExpirationPreset('1m');
     setCreatedToken(null);
     setLocalError(null);
     createToken.reset();
@@ -89,31 +93,11 @@ export function CreatePublicApiTokenDialog({
     }
   };
 
-  const toggleScope = (scope: PublicApiScope, checked: boolean) => {
-    setSelectedScopes((current) => {
-      if (checked) {
-        return current.includes(scope) ? current : [...current, scope];
-      }
-
-      return current.filter((entry) => entry !== scope);
-    });
-  };
-
   const handleCreate = () => {
     const trimmedName = name.trim();
 
     if (!trimmedName) {
       setLocalError('Token name is required');
-      return;
-    }
-
-    if (selectedScopes.length === 0) {
-      setLocalError('Select at least one scope');
-      return;
-    }
-
-    if (expiresAt && !expiryIso) {
-      setLocalError('Expiration must be a valid date and time');
       return;
     }
 
@@ -124,8 +108,7 @@ export function CreatePublicApiTokenDialog({
         appId,
         data: {
           name: trimmedName,
-          scopes: selectedScopes,
-          expiresAt: expiryIso,
+          expiresAt,
         },
       },
       {
@@ -187,7 +170,9 @@ export function CreatePublicApiTokenDialog({
                 <p className="text-muted-foreground text-sm">
                   {createdToken.name}
                 </p>
-                <PublicApiScopeBadges scopes={createdToken.scopes} />
+                <p className="text-muted-foreground text-sm">
+                  Access: Read-only
+                </p>
               </div>
             </div>
 
@@ -224,53 +209,38 @@ export function CreatePublicApiTokenDialog({
                 />
               </div>
 
-              <div className="space-y-2">
-                <label
-                  className="font-medium text-sm"
-                  htmlFor="public-api-token-expiry"
-                >
-                  Expiration (optional)
-                </label>
-                <Input
-                  id="public-api-token-expiry"
-                  onChange={(event) => setExpiresAt(event.target.value)}
-                  type="datetime-local"
-                  value={expiresAt}
-                />
+              <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
+                <div>
+                  <p className="font-medium text-sm">Access</p>
+                  <p className="text-muted-foreground text-sm">
+                    Every Public API token is read-only. Scope selection is not
+                    required.
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
                 <div>
-                  <p className="font-medium text-sm">Scopes</p>
+                  <p className="font-medium text-sm">Expiration</p>
                   <p className="text-muted-foreground text-sm">
-                    The current external MVP focuses on curated reports and the
-                    capabilities endpoint. Additional scope groups will appear
-                    when more public surfaces ship.
+                    Choose how long this token should remain valid.
                   </p>
                 </div>
-                <div className="space-y-3">
-                  {availableScopes.map((scope) => {
-                    const checked = selectedScopes.includes(scope.value);
+
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {expirationOptions.map((option) => {
+                    const isActive = expirationPreset === option.value;
+
                     return (
-                      <label
-                        className="flex items-start gap-3"
-                        htmlFor={`scope-${scope.value}`}
-                        key={scope.value}
+                      <Button
+                        className="justify-start"
+                        key={option.value}
+                        onClick={() => setExpirationPreset(option.value)}
+                        type="button"
+                        variant={isActive ? 'default' : 'outline'}
                       >
-                        <Checkbox
-                          checked={checked}
-                          id={`scope-${scope.value}`}
-                          onCheckedChange={(value) =>
-                            toggleScope(scope.value, value === true)
-                          }
-                        />
-                        <div className="space-y-1">
-                          <p className="font-medium text-sm">{scope.value}</p>
-                          <p className="text-muted-foreground text-sm">
-                            {scope.label}
-                          </p>
-                        </div>
-                      </label>
+                        {option.label}
+                      </Button>
                     );
                   })}
                 </div>
