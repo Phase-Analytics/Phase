@@ -168,6 +168,9 @@ export function CreatePublicApiTokenDialog({
                   {createdToken.name}
                 </p>
                 <p className="text-muted-foreground text-sm">
+                  Prefix: phase_public_
+                </p>
+                <p className="text-muted-foreground text-sm">
                   Access: Read-only
                 </p>
               </div>

@@ -1,51 +1,102 @@
 ---
 title: Authentication
-description: Authenticate against the Phase Public Analytics API with app-scoped read-only tokens.
+description: Authenticate Public Analytics API requests with app-scoped bearer tokens.
 ---
 
-## Public API tokens
+import { Callout } from 'fumadocs-ui/components/callout';
+import { CodeBlock } from 'fumadocs-ui/components/codeblock';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from 'fumadocs-ui/components/tabs';
 
-Public API requests use **app-scoped read-only bearer tokens**.
+Use a Public API token for every request. Public API tokens are separate from your SDK API key.
 
-These tokens are separate from your SDK API key:
+- **SDK API key** sends analytics data to Phase.
+- **Public API token** reads analytics data from Phase.
 
-- SDK API key → sends analytics data to Phase
-- Public API token → reads analytics data from Phase
+## Get a token
 
-## Creating a token
+<Steps>
 
-1. Open your app in the Phase dashboard
-2. Go to **Application → API Keys**
-3. Create a Public API token
-4. Copy the token immediately
+<Step>
 
-The token is only shown once.
+### Open API Keys
 
-## Authorization header
+Open your app in the Phase dashboard and go to <strong>Application → API Keys</strong>.
 
-Send the token as a bearer token:
+</Step>
 
+<Step>
+
+### Create a Public API token
+
+Create a token, choose an expiration, and copy it immediately.
+
+Public API tokens are shown once and start with `phase_public_`.
+
+</Step>
+
+<Step>
+
+### Send the token as a bearer token
+
+<Tabs defaultValue="curl" groupId="public-api-auth" persist>
+  <TabsList>
+    <TabsTrigger value="curl">cURL</TabsTrigger>
+    <TabsTrigger value="fetch">fetch</TabsTrigger>
+  </TabsList>
+  <TabsContent value="curl">
+    <CodeBlock lang="bash" allowCopy={true}>
 ```bash
-curl -X GET "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/events/overview" \
-  -H "Authorization: Bearer phase_pat_your_token"
+curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/events/overview" \
+  -H "Authorization: Bearer phase_public_your_token"
 ```
+    </CodeBlock>
+  </TabsContent>
+  <TabsContent value="fetch">
+    <CodeBlock lang="ts" allowCopy={true}>
+```ts
+const response = await fetch(
+  'https://api.phase.sh/public-api/v1/apps/<app_id>/reports/events/overview',
+  {
+    headers: {
+      Authorization: 'Bearer phase_public_your_token',
+    },
+  }
+);
 
-## Expiry and revocation
+if (!response.ok) {
+  throw new Error(`Request failed with ${response.status}`);
+}
 
-When creating a token in the dashboard, choose one of the built-in expiration options:
+const data = await response.json();
+console.log(data);
+```
+    </CodeBlock>
+  </TabsContent>
+</Tabs>
+
+</Step>
+
+</Steps>
+
+## Token lifetime
+
+When you create a token in the dashboard, choose one of these expiration options:
 
 - 1 week
 - 1 month
 - 1 year
 - Never
 
-Tokens can also be revoked at any time from the dashboard.
+You can revoke a token at any time from the dashboard. Revoked tokens stop working on the next request.
 
-After revocation, any clients using the token will fail on subsequent requests.
+## Security guidance
 
-## Security notes
+<Callout type="warn">
+Do not use Public API tokens in mobile apps, browser bundles, or any other untrusted client. Use them from your own backend, jobs, or internal tooling.
+</Callout>
 
-- Store tokens securely
-- Do not embed Public API tokens in untrusted client applications
-- Rotate or revoke tokens if you suspect misuse
-- The dashboard stores only a hash of the token at rest
+- Store tokens in environment variables or your secret manager.
+- Rotate or revoke tokens if you suspect misuse.
+- Copy the token when it is created. The plain token is not shown again.
+- Phase stores only a hash of the token at rest.

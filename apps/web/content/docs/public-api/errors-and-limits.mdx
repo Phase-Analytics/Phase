@@ -1,51 +1,76 @@
 ---
 title: Errors and Limits
-description: Understand guardrails, limits, and error handling in the Phase Public Analytics API.
+description: Handle API errors and build within the current Public Analytics API limits.
 ---
 
-## Error format
+import { Callout } from 'fumadocs-ui/components/callout';
+import { CodeBlock } from 'fumadocs-ui/components/codeblock';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
-Phase returns structured API errors.
+## Error response format
 
-Typical fields:
+Phase returns structured error responses.
 
-- `code`
-- `detail`
+<CodeBlock lang="json" allowCopy={true}>
+```json
+{
+  "code": "VALIDATION_ERROR",
+  "detail": "Date range cannot exceed 90 days"
+}
+```
+</CodeBlock>
 
-## Common status codes
+## Status codes
 
-- `401 Unauthorized`
-  - missing token
-  - malformed bearer token
-  - invalid, expired, revoked, or unauthorized token
-- `403 Forbidden`
-  - token is valid, but cannot access the requested app or resource
-- `400 Bad Request`
-  - invalid query parameters
-  - unsupported dimension or metric combination
-  - date range exceeds current limits
-- `429 Too Many Requests`
-  - rate limit exceeded
+- `400 Bad Request` for invalid parameters or unsupported query shapes.
+- `401 Unauthorized` for missing, malformed, expired, revoked, or invalid tokens.
+- `403 Forbidden` for tokens that cannot access the requested app or resource.
+- `429 Too Many Requests` when the rate limit is exceeded.
+- `500 Internal Server Error` for unexpected server errors.
 
 ## Rate limit headers
 
-Public API responses may include:
+When rate limiting applies, responses may include these headers:
 
-- `X-RateLimit-Limit`
-- `X-RateLimit-Remaining`
-- `X-RateLimit-Reset`
-- `Retry-After`
+<TypeTable
+  type={{
+    'X-RateLimit-Limit': {
+      description: 'The request limit for the current window.',
+      type: 'string',
+    },
+    'X-RateLimit-Remaining': {
+      description: 'The remaining requests in the current window.',
+      type: 'string',
+    },
+    'X-RateLimit-Reset': {
+      description: 'Unix timestamp for when the current window resets.',
+      type: 'string',
+    },
+    'Retry-After': {
+      description: 'Seconds until another request should be attempted.',
+      type: 'string',
+    },
+  }}
+/>
 
-## Current guardrails
+## Request limits
 
-Current v1 limits are intentionally conservative.
+The current API limits are:
 
-Examples include:
+- Maximum report range: **90 days**
+- Maximum breakdown size: **50 rows**
+- Default breakdown size: **10 rows**
+- Maximum raw page size: **50**
 
-- maximum report date range
-- maximum breakdown size
-- maximum raw page size
+<Callout type="info">
+Build your client with these limits in mind. If a request exceeds a guardrail, handle the error and retry with a smaller date range or result size.
+</Callout>
 
-## Eventual consistency
+## Consistency
 
-Phase analytics responses are eventually consistent. If you need to understand the current reporting semantics, read the metadata returned in report responses and capabilities.
+Phase analytics responses are eventually consistent.
+
+- Recently ingested data may take a short time to appear in reports.
+- Every report response includes a `meta` object.
+- `meta.generatedAt` tells you when the response was created.
+- `meta.identityModel` is always `device`.
