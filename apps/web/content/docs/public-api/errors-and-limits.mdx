@@ -15,7 +15,7 @@ Phase returns structured error responses.
 ```json
 {
   "code": "VALIDATION_ERROR",
-  "detail": "Date range cannot exceed 90 days"
+  "detail": "Date range cannot exceed 365 days"
 }
 ```
 </CodeBlock>
@@ -58,7 +58,7 @@ When rate limiting applies, responses may include these headers:
 
 The current API limits are:
 
-- Maximum report range: **90 days**
+- Maximum report range: **365 days**
 - Maximum breakdown size: **50 rows**
 - Default breakdown size: **10 rows**
 - Maximum raw page size: **50**

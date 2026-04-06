@@ -101,7 +101,7 @@ export const publicApiAuthPlugin = new ElysiaClass({ name: 'publicApiAuth' })
         .set({ lastUsedAt: new Date() })
         .where(eq(publicApiTokens.id, result.token.id));
     } catch (error) {
-      console.error('[Public API Auth] Failed to update lastUsedAt:', error);
+      console.error('[API Auth] Failed to update lastUsedAt:', error);
     }
 
     return {

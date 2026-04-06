@@ -228,7 +228,6 @@ export default function ApiKeysPage() {
                 Manage read-only external access without reusing your SDK key.
               </p>
             </div>
-            <PublicApiIntroCard />
           </div>
 
           <PublicApiTokenTable
@@ -237,6 +236,8 @@ export default function ApiKeysPage() {
             isOwner={isOwner}
             tokens={publicApiTokens?.tokens}
           />
+
+          <PublicApiIntroCard />
         </div>
       </div>
     </RequireApp>

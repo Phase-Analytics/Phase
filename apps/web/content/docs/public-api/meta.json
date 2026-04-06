@@ -1,5 +1,5 @@
 {
   "title": "API",
-  "icon": "ServerStack03Icon",
+  "icon": "ApiIcon",
   "pages": ["usage", "errors-and-limits"]
 }

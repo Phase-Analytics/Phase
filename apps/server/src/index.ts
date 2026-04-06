@@ -3,13 +3,7 @@ import { Elysia } from 'elysia';
 import Redis from 'ioredis';
 import { pool } from '@/db';
 import { auth } from '@/lib/auth';
-import {
-  authCors,
-  publicApiCors,
-  publicCors,
-  sdkCors,
-  webCors,
-} from '@/lib/cors';
+import { authCors, publicCors, sdkCors, webCors } from '@/lib/cors';
 import { initEventBuffer } from '@/lib/event-buffer';
 import { initGeoIP, shutdownGeoIP } from '@/lib/geolocation';
 import { hashPublicApiToken } from '@/lib/keys';
@@ -161,7 +155,6 @@ const publicRoutes = new Elysia({ prefix: '/public' })
   .use(waitlistPublicRouter);
 
 const publicApiRoutes = new Elysia({ prefix: '/public-api' })
-  .use(publicApiCors)
   .onBeforeHandle(async ({ request, set, server }) => {
     const ip = extractClientIP(request, server);
     const bearerToken = extractBearerToken(request);
