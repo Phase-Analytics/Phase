@@ -1,9 +1,8 @@
 ---
 title: Reports
-description: Query events, sessions, and devices with the Phase Public Analytics API.
+description: Query events, sessions, and users with the Phase Public Analytics API.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
 import { CodeBlock } from 'fumadocs-ui/components/codeblock';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from 'fumadocs-ui/components/tabs';
 import { TypeTable } from 'fumadocs-ui/components/type-table';
@@ -127,15 +126,30 @@ curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/sessions/timeseri
 ```
 </CodeBlock>
 
-## Devices
+### Breakdown
 
-### Overview
+Supported dimensions:
 
-Use this endpoint for total devices, active devices, and location/platform summaries.
+- `platform`
+- `country`
+- `city`
 
 <CodeBlock lang="bash" allowCopy={true}>
 ```bash
-curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/devices/overview" \
+curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/sessions/breakdown?dimension=platform&limit=10" \
+  -H "Authorization: Bearer phase_public_your_token"
+```
+</CodeBlock>
+
+## Users
+
+### Overview
+
+Use this endpoint for total users, active users, new users, and location/platform summaries.
+
+<CodeBlock lang="bash" allowCopy={true}>
+```bash
+curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/users/overview" \
   -H "Authorization: Bearer phase_public_your_token"
 ```
 </CodeBlock>
@@ -144,12 +158,13 @@ curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/devices/overview"
 
 Supported metrics:
 
-- `activeDevices`
-- `totalDevices`
+- `activeUsers`
+- `totalUsers`
+- `newUsers`
 
 <CodeBlock lang="bash" allowCopy={true}>
 ```bash
-curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/devices/timeseries?metric=activeDevices&startDate=2026-04-01T00:00:00.000Z&endDate=2026-04-06T23:59:59.000Z" \
+curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/users/timeseries?metric=activeUsers&startDate=2026-04-01T00:00:00.000Z&endDate=2026-04-06T23:59:59.000Z" \
   -H "Authorization: Bearer phase_public_your_token"
 ```
 </CodeBlock>
@@ -164,7 +179,7 @@ Supported dimensions:
 
 <CodeBlock lang="bash" allowCopy={true}>
 ```bash
-curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/devices/breakdown?dimension=platform&limit=10" \
+curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/users/breakdown?dimension=platform&limit=10" \
   -H "Authorization: Bearer phase_public_your_token"
 ```
 </CodeBlock>
@@ -177,11 +192,11 @@ curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/devices/breakdown
   "data": [
     {
       "date": "2026-04-01",
-      "eventCount": 142
+      "activeUsers": 142
     },
     {
       "date": "2026-04-02",
-      "eventCount": 156
+      "activeUsers": 156
     }
   ],
   "period": {
@@ -191,12 +206,8 @@ curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/devices/breakdown
   "meta": {
     "generatedAt": "2026-04-06T12:00:00.000Z",
     "consistency": "eventual",
-    "identityModel": "device"
+    "identityModel": "user"
   }
 }
 ```
 </CodeBlock>
-
-<Callout type="info">
-Report responses are device-based. For example, `activeDevices` is a device metric, not a user metric.
-</Callout>

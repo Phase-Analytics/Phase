@@ -2,27 +2,29 @@ import {
   ErrorCode,
   ErrorResponseSchema,
   HttpStatus,
-  PublicApiDeviceBreakdownResponseSchema,
-  PublicApiDeviceOverviewResponseSchema,
-  PublicApiDeviceTimeseriesResponseSchema,
   PublicApiEventBreakdownResponseSchema,
   PublicApiEventOverviewResponseSchema,
   PublicApiEventTimeseriesResponseSchema,
+  PublicApiSessionBreakdownResponseSchema,
   PublicApiSessionOverviewResponseSchema,
   PublicApiSessionTimeseriesResponseSchema,
+  PublicApiUserBreakdownResponseSchema,
+  PublicApiUserOverviewResponseSchema,
+  PublicApiUserTimeseriesResponseSchema,
 } from '@phase/shared';
 import { Elysia, t } from 'elysia';
 import { publicApiAuthPlugin } from '@/lib/public-api-auth';
 import { getPublicApiMeta } from '@/lib/public-api-capabilities';
 import {
-  getPublicDeviceBreakdown,
-  getPublicDeviceOverview,
-  getPublicDeviceTimeseries,
   getPublicEventBreakdown,
   getPublicEventOverview,
   getPublicEventTimeseries,
+  getPublicSessionBreakdown,
   getPublicSessionOverview,
   getPublicSessionTimeseries,
+  getPublicUserBreakdown,
+  getPublicUserOverview,
+  getPublicUserTimeseries,
   validatePublicReportDateRange,
 } from '@/lib/public-api-reports';
 
@@ -257,36 +259,7 @@ export const publicApiReportsRouter = new Elysia({
     }
   )
   .get(
-    '/devices/overview',
-    async ({ params, set }) => {
-      try {
-        const result = await getPublicDeviceOverview(params.appId);
-        set.status = HttpStatus.OK;
-        return {
-          ...result,
-          meta: getPublicApiMeta(),
-        };
-      } catch (error) {
-        console.error('[PublicAPI.Devices.Overview] Error:', error);
-        set.status = HttpStatus.INTERNAL_SERVER_ERROR;
-        return {
-          code: ErrorCode.INTERNAL_SERVER_ERROR,
-          detail: 'Failed to fetch device overview',
-        };
-      }
-    },
-    {
-      params: t.Object({ appId: t.String() }),
-      response: {
-        200: PublicApiDeviceOverviewResponseSchema,
-        401: ErrorResponseSchema,
-        403: ErrorResponseSchema,
-        500: ErrorResponseSchema,
-      },
-    }
-  )
-  .get(
-    '/devices/timeseries',
+    '/sessions/breakdown',
     async ({ params, query, set }) => {
       try {
         const dateValidation = validatePublicReportDateRange(
@@ -301,8 +274,98 @@ export const publicApiReportsRouter = new Elysia({
           };
         }
 
-        const metric = query.metric ?? 'activeDevices';
-        const result = await getPublicDeviceTimeseries({
+        const rows = await getPublicSessionBreakdown({
+          appId: params.appId,
+          dimension: query.dimension,
+          startDate: query.startDate,
+          endDate: query.endDate,
+          limit: query.limit ? Number.parseInt(query.limit, 10) : undefined,
+        });
+
+        set.status = HttpStatus.OK;
+        return {
+          dimension: query.dimension,
+          metric: 'sessionCount',
+          rows,
+          meta: getPublicApiMeta(),
+        };
+      } catch (error) {
+        console.error('[PublicAPI.Sessions.Breakdown] Error:', error);
+        set.status = HttpStatus.INTERNAL_SERVER_ERROR;
+        return {
+          code: ErrorCode.INTERNAL_SERVER_ERROR,
+          detail: 'Failed to fetch session breakdown',
+        };
+      }
+    },
+    {
+      params: t.Object({ appId: t.String() }),
+      query: t.Object({
+        dimension: t.Union([
+          t.Literal('platform'),
+          t.Literal('country'),
+          t.Literal('city'),
+        ]),
+        startDate: t.Optional(t.String()),
+        endDate: t.Optional(t.String()),
+        limit: t.Optional(t.String()),
+      }),
+      response: {
+        200: PublicApiSessionBreakdownResponseSchema,
+        400: ErrorResponseSchema,
+        401: ErrorResponseSchema,
+        403: ErrorResponseSchema,
+        500: ErrorResponseSchema,
+      },
+    }
+  )
+  .get(
+    '/users/overview',
+    async ({ params, set }) => {
+      try {
+        const result = await getPublicUserOverview(params.appId);
+        set.status = HttpStatus.OK;
+        return {
+          ...result,
+          meta: getPublicApiMeta(),
+        };
+      } catch (error) {
+        console.error('[PublicAPI.Users.Overview] Error:', error);
+        set.status = HttpStatus.INTERNAL_SERVER_ERROR;
+        return {
+          code: ErrorCode.INTERNAL_SERVER_ERROR,
+          detail: 'Failed to fetch user overview',
+        };
+      }
+    },
+    {
+      params: t.Object({ appId: t.String() }),
+      response: {
+        200: PublicApiUserOverviewResponseSchema,
+        401: ErrorResponseSchema,
+        403: ErrorResponseSchema,
+        500: ErrorResponseSchema,
+      },
+    }
+  )
+  .get(
+    '/users/timeseries',
+    async ({ params, query, set }) => {
+      try {
+        const dateValidation = validatePublicReportDateRange(
+          query.startDate,
+          query.endDate
+        );
+        if (!dateValidation.success) {
+          set.status = dateValidation.error.status;
+          return {
+            code: dateValidation.error.code,
+            detail: dateValidation.error.detail,
+          };
+        }
+
+        const metric = query.metric ?? 'activeUsers';
+        const result = await getPublicUserTimeseries({
           appId: params.appId,
           startDate: query.startDate,
           endDate: query.endDate,
@@ -315,11 +378,11 @@ export const publicApiReportsRouter = new Elysia({
           meta: getPublicApiMeta(),
         };
       } catch (error) {
-        console.error('[PublicAPI.Devices.Timeseries] Error:', error);
+        console.error('[PublicAPI.Users.Timeseries] Error:', error);
         set.status = HttpStatus.INTERNAL_SERVER_ERROR;
         return {
           code: ErrorCode.INTERNAL_SERVER_ERROR,
-          detail: 'Failed to fetch device timeseries',
+          detail: 'Failed to fetch user timeseries',
         };
       }
     },
@@ -329,11 +392,15 @@ export const publicApiReportsRouter = new Elysia({
         startDate: t.Optional(t.String()),
         endDate: t.Optional(t.String()),
         metric: t.Optional(
-          t.Union([t.Literal('activeDevices'), t.Literal('totalDevices')])
+          t.Union([
+            t.Literal('activeUsers'),
+            t.Literal('totalUsers'),
+            t.Literal('newUsers'),
+          ])
         ),
       }),
       response: {
-        200: PublicApiDeviceTimeseriesResponseSchema,
+        200: PublicApiUserTimeseriesResponseSchema,
         400: ErrorResponseSchema,
         401: ErrorResponseSchema,
         403: ErrorResponseSchema,
@@ -342,10 +409,10 @@ export const publicApiReportsRouter = new Elysia({
     }
   )
   .get(
-    '/devices/breakdown',
+    '/users/breakdown',
     async ({ params, query, set }) => {
       try {
-        const rows = await getPublicDeviceBreakdown({
+        const rows = await getPublicUserBreakdown({
           appId: params.appId,
           dimension: query.dimension,
           limit: query.limit ? Number.parseInt(query.limit, 10) : undefined,
@@ -354,16 +421,16 @@ export const publicApiReportsRouter = new Elysia({
         set.status = HttpStatus.OK;
         return {
           dimension: query.dimension,
-          metric: 'deviceCount',
+          metric: 'userCount',
           rows,
           meta: getPublicApiMeta(),
         };
       } catch (error) {
-        console.error('[PublicAPI.Devices.Breakdown] Error:', error);
+        console.error('[PublicAPI.Users.Breakdown] Error:', error);
         set.status = HttpStatus.INTERNAL_SERVER_ERROR;
         return {
           code: ErrorCode.INTERNAL_SERVER_ERROR,
-          detail: 'Failed to fetch device breakdown',
+          detail: 'Failed to fetch user breakdown',
         };
       }
     },
@@ -378,7 +445,7 @@ export const publicApiReportsRouter = new Elysia({
         limit: t.Optional(t.String()),
       }),
       response: {
-        200: PublicApiDeviceBreakdownResponseSchema,
+        200: PublicApiUserBreakdownResponseSchema,
         400: ErrorResponseSchema,
         401: ErrorResponseSchema,
         403: ErrorResponseSchema,

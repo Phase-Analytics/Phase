@@ -1,9 +1,10 @@
 import type {
   Platform,
-  PublicApiDeviceBreakdownDimension,
-  PublicApiDeviceTimeseriesMetric,
   PublicApiEventBreakdownDimension,
+  PublicApiSessionBreakdownDimension,
   PublicApiSessionTimeseriesMetric,
+  PublicApiUserBreakdownDimension,
+  PublicApiUserTimeseriesMetric,
 } from '@phase/shared';
 import { ErrorCode, HttpStatus } from '@phase/shared';
 import { and, count, countDistinct, eq, gte, lt, lte, sql } from 'drizzle-orm';
@@ -34,6 +35,16 @@ function normalizePlatform(
   }
 
   return 'unknown';
+}
+
+function getBreakdownLimit(limit?: number) {
+  return Math.max(
+    1,
+    Math.min(
+      Math.floor(limit ?? PUBLIC_API_DEFAULT_BREAKDOWN_LIMIT),
+      PUBLIC_API_MAX_BREAKDOWN_LIMIT
+    )
+  );
 }
 
 export function validatePublicReportDateRange(
@@ -95,13 +106,7 @@ export async function getPublicEventBreakdown(options: {
   endDate?: string;
   limit?: number;
 }) {
-  const limit = Math.max(
-    1,
-    Math.min(
-      Math.floor(options.limit ?? PUBLIC_API_DEFAULT_BREAKDOWN_LIMIT),
-      PUBLIC_API_MAX_BREAKDOWN_LIMIT
-    )
-  );
+  const limit = getBreakdownLimit(options.limit);
 
   if (options.dimension === 'eventName') {
     const { events } = await getTopEvents({
@@ -386,7 +391,83 @@ export async function getPublicSessionTimeseries(options: {
   };
 }
 
-export async function getPublicDeviceOverview(appId: string) {
+export async function getPublicSessionBreakdown(options: {
+  appId: string;
+  dimension: PublicApiSessionBreakdownDimension;
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+}) {
+  const limit = getBreakdownLimit(options.limit);
+  const filters = [eq(devices.appId, options.appId)];
+
+  if (options.startDate) {
+    filters.push(gte(sessions.startedAt, new Date(options.startDate)));
+  }
+
+  if (options.endDate) {
+    filters.push(lte(sessions.startedAt, new Date(options.endDate)));
+  }
+
+  if (options.dimension === 'platform') {
+    const rows = await db
+      .select({
+        value: sql<string>`COALESCE(${devices.platform}, 'unknown')`,
+        count: count(),
+      })
+      .from(sessions)
+      .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
+      .where(and(...filters))
+      .groupBy(devices.platform)
+      .orderBy(sql`count DESC`)
+      .limit(limit);
+
+    return rows.map((row) => ({
+      value: normalizePlatform(row.value) || 'unknown',
+      count: Number(row.count),
+    }));
+  }
+
+  if (options.dimension === 'country') {
+    const rows = await db
+      .select({
+        value: sql<string>`COALESCE(${devices.country}, 'unknown')`,
+        count: count(),
+      })
+      .from(sessions)
+      .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
+      .where(and(...filters))
+      .groupBy(devices.country)
+      .orderBy(sql`count DESC`)
+      .limit(limit);
+
+    return rows.map((row) => ({
+      value: row.value,
+      count: Number(row.count),
+    }));
+  }
+
+  const rows = await db
+    .select({
+      value: sql<string>`COALESCE(${devices.city}, 'unknown')`,
+      country: sql<string>`COALESCE(${devices.country}, '')`,
+      count: count(),
+    })
+    .from(sessions)
+    .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
+    .where(and(...filters))
+    .groupBy(devices.city, devices.country)
+    .orderBy(sql`count DESC`)
+    .limit(limit);
+
+  return rows.map((row) => ({
+    value: row.value,
+    count: Number(row.count),
+    country: row.country,
+  }));
+}
+
+export async function getPublicUserOverview(appId: string) {
   const now = new Date();
   const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
@@ -397,10 +478,12 @@ export async function getPublicDeviceOverview(appId: string) {
     .where(eq(devices.appId, appId));
 
   const [
-    [{ count: totalDevices }],
-    [{ count: totalDevicesYesterday }],
-    [{ count: activeDevices24h }],
-    [{ count: activeDevicesYesterday }],
+    [{ count: totalUsers }],
+    [{ count: totalUsersYesterday }],
+    [{ count: newUsers24h }],
+    [{ count: newUsersYesterday }],
+    [{ count: activeUsers24h }],
+    [{ count: activeUsersYesterday }],
     platformStatsResult,
     countryStatsResult,
     cityStatsResult,
@@ -412,6 +495,28 @@ export async function getPublicDeviceOverview(appId: string) {
       .from(devices)
       .where(
         and(eq(devices.appId, appId), lt(devices.firstSeen, twentyFourHoursAgo))
+      ),
+
+    db
+      .select({ count: count() })
+      .from(devices)
+      .where(
+        and(
+          eq(devices.appId, appId),
+          gte(devices.firstSeen, twentyFourHoursAgo),
+          lte(devices.firstSeen, now)
+        )
+      ),
+
+    db
+      .select({ count: count() })
+      .from(devices)
+      .where(
+        and(
+          eq(devices.appId, appId),
+          gte(devices.firstSeen, fortyEightHoursAgo),
+          lt(devices.firstSeen, twentyFourHoursAgo)
+        )
       ),
 
     db
@@ -465,21 +570,27 @@ export async function getPublicDeviceOverview(appId: string) {
       .groupBy(devices.city, devices.country),
   ]);
 
-  const totalDevicesNum = Number(totalDevices);
-  const totalDevicesYesterdayNum = Number(totalDevicesYesterday);
-  const activeDevices24hNum = Number(activeDevices24h);
-  const activeDevicesYesterdayNum = Number(activeDevicesYesterday);
+  const totalUsersNum = Number(totalUsers);
+  const totalUsersYesterdayNum = Number(totalUsersYesterday);
+  const newUsers24hNum = Number(newUsers24h);
+  const newUsersYesterdayNum = Number(newUsersYesterday);
+  const activeUsers24hNum = Number(activeUsers24h);
+  const activeUsersYesterdayNum = Number(activeUsersYesterday);
 
-  const totalDevicesYesterdayForCalc = Math.max(totalDevicesYesterdayNum, 1);
-  const totalDevicesChange24h =
-    ((totalDevicesNum - totalDevicesYesterdayNum) /
-      totalDevicesYesterdayForCalc) *
+  const totalUsersYesterdayForCalc = Math.max(totalUsersYesterdayNum, 1);
+  const totalUsersChange24h =
+    ((totalUsersNum - totalUsersYesterdayNum) / totalUsersYesterdayForCalc) *
     100;
 
-  const activeDevicesYesterdayForCalc = Math.max(activeDevicesYesterdayNum, 1);
-  const activeDevicesChange24h =
-    ((activeDevices24hNum - activeDevicesYesterdayNum) /
-      activeDevicesYesterdayForCalc) *
+  const activeUsersYesterdayForCalc = Math.max(activeUsersYesterdayNum, 1);
+  const activeUsers24hChange =
+    ((activeUsers24hNum - activeUsersYesterdayNum) /
+      activeUsersYesterdayForCalc) *
+    100;
+
+  const newUsersYesterdayForCalc = Math.max(newUsersYesterdayNum, 1);
+  const newUsers24hChange =
+    ((newUsers24hNum - newUsersYesterdayNum) / newUsersYesterdayForCalc) *
     100;
 
   const platformStats: Record<string, number> = {
@@ -512,31 +623,33 @@ export async function getPublicDeviceOverview(appId: string) {
   }
 
   return {
-    totalDevices: totalDevicesNum,
-    activeDevices24h: activeDevices24hNum,
+    totalUsers: totalUsersNum,
+    activeUsers24h: activeUsers24hNum,
+    newUsers24h: newUsers24hNum,
     platformStats,
     countryStats,
     cityStats,
-    totalDevicesChange24h: Number(totalDevicesChange24h.toFixed(2)),
-    activeDevicesChange24h: Number(activeDevicesChange24h.toFixed(2)),
+    totalUsersChange24h: Number(totalUsersChange24h.toFixed(2)),
+    activeUsers24hChange: Number(activeUsers24hChange.toFixed(2)),
+    newUsers24hChange: Number(newUsers24hChange.toFixed(2)),
   };
 }
 
-export async function getPublicDeviceTimeseries(options: {
+export async function getPublicUserTimeseries(options: {
   appId: string;
   startDate?: string;
   endDate?: string;
-  metric: PublicApiDeviceTimeseriesMetric;
+  metric: PublicApiUserTimeseriesMetric;
 }) {
   const now = new Date();
   const defaultStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const start = options.startDate ? new Date(options.startDate) : defaultStart;
   const end = options.endDate ? new Date(options.endDate) : now;
 
-  if (options.metric === 'activeDevices') {
+  if (options.metric === 'activeUsers') {
     const result = await db.execute<{
       date: string;
-      activeDevices: number;
+      activeUsers: number;
     }>(sql`
       WITH date_series AS (
         SELECT DATE(generate_series(
@@ -547,7 +660,7 @@ export async function getPublicDeviceTimeseries(options: {
       )
       SELECT
         ds.date::text,
-        COALESCE(COUNT(DISTINCT s.device_id), 0)::int as "activeDevices"
+        COALESCE(COUNT(DISTINCT s.device_id), 0)::int as "activeUsers"
       FROM date_series ds
       LEFT JOIN (
         SELECT s.device_id, s.last_activity_at
@@ -563,7 +676,43 @@ export async function getPublicDeviceTimeseries(options: {
     return {
       data: result.rows.map((row) => ({
         date: row.date,
-        activeDevices: Number(row.activeDevices),
+        activeUsers: Number(row.activeUsers),
+      })),
+      period: {
+        startDate: start.toISOString(),
+        endDate: end.toISOString(),
+      },
+    };
+  }
+
+  if (options.metric === 'newUsers') {
+    const result = await db.execute<{
+      date: string;
+      newUsers: number;
+    }>(sql`
+      WITH date_series AS (
+        SELECT DATE(generate_series(
+          ${start}::timestamp,
+          ${end}::timestamp,
+          '1 day'::interval
+        )) as date
+      )
+      SELECT
+        ds.date::text,
+        COALESCE(COUNT(d.device_id), 0)::int as "newUsers"
+      FROM date_series ds
+      LEFT JOIN devices d
+        ON DATE(d.first_seen) = ds.date
+        AND d.app_id = ${options.appId}
+      WHERE ds.date <= CURRENT_DATE
+      GROUP BY ds.date
+      ORDER BY ds.date
+    `);
+
+    return {
+      data: result.rows.map((row) => ({
+        date: row.date,
+        newUsers: Number(row.newUsers),
       })),
       period: {
         startDate: start.toISOString(),
@@ -574,7 +723,7 @@ export async function getPublicDeviceTimeseries(options: {
 
   const result = await db.execute<{
     date: string;
-    totalDevices: number;
+    totalUsers: number;
   }>(sql`
     WITH date_series AS (
       SELECT DATE(generate_series(
@@ -591,7 +740,7 @@ export async function getPublicDeviceTimeseries(options: {
           WHERE d.app_id = ${options.appId}
             AND DATE(d.first_seen) <= ds.date),
         0
-      ) as "totalDevices"
+      ) as "totalUsers"
     FROM date_series ds
     WHERE ds.date <= CURRENT_DATE
     ORDER BY ds.date
@@ -600,7 +749,7 @@ export async function getPublicDeviceTimeseries(options: {
   return {
     data: result.rows.map((row) => ({
       date: row.date,
-      totalDevices: Number(row.totalDevices),
+      totalUsers: Number(row.totalUsers),
     })),
     period: {
       startDate: start.toISOString(),
@@ -609,18 +758,12 @@ export async function getPublicDeviceTimeseries(options: {
   };
 }
 
-export async function getPublicDeviceBreakdown(options: {
+export async function getPublicUserBreakdown(options: {
   appId: string;
-  dimension: PublicApiDeviceBreakdownDimension;
+  dimension: PublicApiUserBreakdownDimension;
   limit?: number;
 }) {
-  const limit = Math.max(
-    1,
-    Math.min(
-      Math.floor(options.limit ?? PUBLIC_API_DEFAULT_BREAKDOWN_LIMIT),
-      PUBLIC_API_MAX_BREAKDOWN_LIMIT
-    )
-  );
+  const limit = getBreakdownLimit(options.limit);
 
   if (options.dimension === 'platform') {
     const rows = await db

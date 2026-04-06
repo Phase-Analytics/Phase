@@ -33,7 +33,7 @@ export const CreatePublicApiTokenResponseSchema = PublicApiTokenSchema.extend({
 export const PublicApiMetaSchema = z.object({
   generatedAt: z.string().datetime(),
   consistency: z.literal('eventual'),
-  identityModel: z.literal('device'),
+  identityModel: z.literal('user'),
 });
 
 export const PublicApiLimitsSchema = z.object({
@@ -114,9 +114,29 @@ export const PublicApiSessionTimeseriesResponseSchema = z.object({
   meta: PublicApiMetaSchema,
 });
 
-export const PublicApiDeviceOverviewResponseSchema = z.object({
-  totalDevices: z.number().min(0),
-  activeDevices24h: z.number().min(0),
+export const PublicApiSessionBreakdownDimensionSchema = z.enum([
+  'platform',
+  'country',
+  'city',
+]);
+
+export const PublicApiSessionBreakdownResponseSchema = z.object({
+  dimension: PublicApiSessionBreakdownDimensionSchema,
+  metric: z.literal('sessionCount'),
+  rows: z.array(
+    z.object({
+      value: z.string(),
+      count: z.number().min(0),
+      country: z.string().optional(),
+    })
+  ),
+  meta: PublicApiMetaSchema,
+});
+
+export const PublicApiUserOverviewResponseSchema = z.object({
+  totalUsers: z.number().min(0),
+  activeUsers24h: z.number().min(0),
+  newUsers24h: z.number().min(0),
   platformStats: z.record(z.string(), z.number().min(0)),
   countryStats: z.record(z.string(), z.number().min(0)),
   cityStats: z.record(
@@ -126,24 +146,27 @@ export const PublicApiDeviceOverviewResponseSchema = z.object({
       country: z.string(),
     })
   ),
-  totalDevicesChange24h: z.number(),
-  activeDevicesChange24h: z.number(),
+  totalUsersChange24h: z.number(),
+  activeUsers24hChange: z.number(),
+  newUsers24hChange: z.number(),
   meta: PublicApiMetaSchema,
 });
 
-export const PublicApiDeviceTimeseriesMetricSchema = z.enum([
-  'activeDevices',
-  'totalDevices',
+export const PublicApiUserTimeseriesMetricSchema = z.enum([
+  'activeUsers',
+  'totalUsers',
+  'newUsers',
 ]);
 
-export const PublicApiDeviceTimeseriesDataPointSchema = z.object({
+export const PublicApiUserTimeseriesDataPointSchema = z.object({
   date: z.string(),
-  activeDevices: z.number().min(0).optional(),
-  totalDevices: z.number().min(0).optional(),
+  activeUsers: z.number().min(0).optional(),
+  totalUsers: z.number().min(0).optional(),
+  newUsers: z.number().min(0).optional(),
 });
 
-export const PublicApiDeviceTimeseriesResponseSchema = z.object({
-  data: z.array(PublicApiDeviceTimeseriesDataPointSchema),
+export const PublicApiUserTimeseriesResponseSchema = z.object({
+  data: z.array(PublicApiUserTimeseriesDataPointSchema),
   period: z.object({
     startDate: z.string().datetime(),
     endDate: z.string().datetime(),
@@ -151,15 +174,15 @@ export const PublicApiDeviceTimeseriesResponseSchema = z.object({
   meta: PublicApiMetaSchema,
 });
 
-export const PublicApiDeviceBreakdownDimensionSchema = z.enum([
+export const PublicApiUserBreakdownDimensionSchema = z.enum([
   'platform',
   'country',
   'city',
 ]);
 
-export const PublicApiDeviceBreakdownResponseSchema = z.object({
-  dimension: PublicApiDeviceBreakdownDimensionSchema,
-  metric: z.literal('deviceCount'),
+export const PublicApiUserBreakdownResponseSchema = z.object({
+  dimension: PublicApiUserBreakdownDimensionSchema,
+  metric: z.literal('userCount'),
   rows: z.array(
     z.object({
       value: z.string(),
@@ -183,9 +206,12 @@ export type PublicApiEventBreakdownDimension = z.infer<
 export type PublicApiSessionTimeseriesMetric = z.infer<
   typeof PublicApiSessionTimeseriesMetricSchema
 >;
-export type PublicApiDeviceTimeseriesMetric = z.infer<
-  typeof PublicApiDeviceTimeseriesMetricSchema
+export type PublicApiSessionBreakdownDimension = z.infer<
+  typeof PublicApiSessionBreakdownDimensionSchema
 >;
-export type PublicApiDeviceBreakdownDimension = z.infer<
-  typeof PublicApiDeviceBreakdownDimensionSchema
+export type PublicApiUserTimeseriesMetric = z.infer<
+  typeof PublicApiUserTimeseriesMetricSchema
+>;
+export type PublicApiUserBreakdownDimension = z.infer<
+  typeof PublicApiUserBreakdownDimensionSchema
 >;

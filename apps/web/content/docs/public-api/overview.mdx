@@ -5,7 +5,7 @@ description: Read Phase analytics reports with app-scoped public API tokens.
 
 import { Callout } from 'fumadocs-ui/components/callout';
 import { CodeBlock } from 'fumadocs-ui/components/codeblock';
-import { Tab, Tabs, TabsContent, TabsList, TabsTrigger } from 'fumadocs-ui/components/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from 'fumadocs-ui/components/tabs';
 
 Use the Public Analytics API to read Phase report data from your own scripts, dashboards, and backend services.
 
@@ -34,7 +34,8 @@ The current API surface includes these report endpoints:
 - **Sessions**
   - overview
   - timeseries
-- **Devices**
+  - breakdown
+- **Users**
   - overview
   - timeseries
   - breakdown
@@ -87,7 +88,7 @@ console.log(data);
   "meta": {
     "generatedAt": "2026-04-06T12:00:00.000Z",
     "consistency": "eventual",
-    "identityModel": "device"
+    "identityModel": "user"
   }
 }
 ```
@@ -99,11 +100,7 @@ Every report response includes a `meta` object.
 
 - `generatedAt` tells you when the response was produced.
 - `consistency` is `eventual`.
-- `identityModel` is `device`.
-
-<Callout type="warn">
-Phase reports are device-based. Device metrics are not renamed to users.
-</Callout>
+- `identityModel` is `user`.
 
 ## Available endpoints
 
@@ -117,12 +114,13 @@ Phase reports are device-based. Device metrics are not renamed to users.
 
 - `GET /apps/:appId/reports/sessions/overview`
 - `GET /apps/:appId/reports/sessions/timeseries`
+- `GET /apps/:appId/reports/sessions/breakdown`
 
-### Devices
+### Users
 
-- `GET /apps/:appId/reports/devices/overview`
-- `GET /apps/:appId/reports/devices/timeseries`
-- `GET /apps/:appId/reports/devices/breakdown`
+- `GET /apps/:appId/reports/users/overview`
+- `GET /apps/:appId/reports/users/timeseries`
+- `GET /apps/:appId/reports/users/breakdown`
 
 ## Next steps
 

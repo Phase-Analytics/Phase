@@ -11,6 +11,6 @@ export function getPublicApiMeta() {
   return {
     generatedAt: new Date().toISOString(),
     consistency: 'eventual' as const,
-    identityModel: 'device' as const,
+    identityModel: 'user' as const,
   };
 }
