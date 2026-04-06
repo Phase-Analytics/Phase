@@ -66,6 +66,11 @@ export const RATE_LIMIT_STRATEGIES = {
     ttl: 60,
     keyPrefix: 'rate:sdk',
   } satisfies RateLimitConfig,
+  PUBLIC_API: {
+    maxAttempts: 300,
+    ttl: 60,
+    keyPrefix: 'rate:public-api',
+  } satisfies RateLimitConfig,
 } as const;
 
 const RATE_LIMIT_LUA_SCRIPT = `
@@ -183,6 +188,16 @@ export async function checkSdkApiRateLimit(
 ): Promise<RateLimitResult> {
   return await checkRateLimit(RATE_LIMIT_STRATEGIES.SDK_API, {
     deviceId,
+    ip,
+  });
+}
+
+export async function checkPublicApiRateLimit(
+  tokenId: string,
+  ip?: string
+): Promise<RateLimitResult> {
+  return await checkRateLimit(RATE_LIMIT_STRATEGIES.PUBLIC_API, {
+    deviceId: tokenId,
     ip,
   });
 }

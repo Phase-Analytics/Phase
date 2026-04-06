@@ -1,0 +1,11 @@
+{
+  "title": "Public API",
+  "icon": "ServerStack03Icon",
+  "pages": [
+    "overview",
+    "authentication",
+    "capabilities",
+    "reports",
+    "errors-and-limits"
+  ]
+}

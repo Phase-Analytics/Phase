@@ -1,0 +1,58 @@
+---
+title: Errors and Limits
+description: Understand guardrails, limits, and error handling in the Phase Public Analytics API.
+---
+
+## Error format
+
+Phase returns structured API errors.
+
+Typical fields:
+
+- `code`
+- `detail`
+
+## Common status codes
+
+- `401 Unauthorized`
+  - missing token
+  - malformed bearer token
+  - invalid, expired, revoked, or unauthorized token
+- `403 Forbidden`
+  - token is valid, but missing the required scope
+- `400 Bad Request`
+  - invalid query parameters
+  - unsupported dimension or metric combination
+  - date range exceeds current limits
+- `429 Too Many Requests`
+  - rate limit exceeded
+
+## Rate limit headers
+
+Public API responses may include:
+
+- `X-RateLimit-Limit`
+- `X-RateLimit-Remaining`
+- `X-RateLimit-Reset`
+- `Retry-After`
+
+## Current guardrails
+
+Current v1 limits are intentionally conservative.
+
+Examples include:
+
+- maximum report date range
+- maximum breakdown size
+- maximum raw page size
+
+Use the capabilities endpoint to inspect the current limits for an app:
+
+```bash
+curl -X GET "https://api.phase.sh/public-api/v1/apps/<app_id>/capabilities" \
+  -H "Authorization: Bearer phase_pat_your_token"
+```
+
+## Eventual consistency
+
+Phase analytics responses are eventually consistent. If you need to understand the current reporting semantics, read the metadata returned in report responses and capabilities.

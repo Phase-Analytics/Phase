@@ -70,3 +70,20 @@ export const publicCors = new Elysia({ name: 'public-cors' }).use(
     credentials: false,
   })
 );
+
+export const publicApiCors = new Elysia({ name: 'public-api-cors' }).use(
+  cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposeHeaders: [
+      'Content-Length',
+      'X-RateLimit-Limit',
+      'X-RateLimit-Remaining',
+      'X-RateLimit-Reset',
+      'Retry-After',
+    ],
+    maxAge: 600,
+    credentials: false,
+  })
+);

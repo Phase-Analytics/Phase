@@ -1,4 +1,11 @@
 {
   "title": "Documentation",
-  "pages": ["index", "get-started", "concepts", "privacy", "self-host"]
+  "pages": [
+    "index",
+    "get-started",
+    "concepts",
+    "public-api",
+    "privacy",
+    "self-host"
+  ]
 }

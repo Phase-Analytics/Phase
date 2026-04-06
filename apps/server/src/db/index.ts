@@ -5,6 +5,7 @@ import {
   account,
   apps,
   devices,
+  publicApiTokens,
   session,
   sessions,
   user,
@@ -38,6 +39,7 @@ const schema = {
   verification,
   apps,
   devices,
+  publicApiTokens,
   sessions,
   waitlist,
 };
@@ -67,6 +69,7 @@ export {
   account,
   apps,
   devices,
+  publicApiTokens,
   session,
   sessions,
   user,

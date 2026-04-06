@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from 'node:crypto';
 import { customAlphabet } from 'nanoid';
 
 const nanoid = customAlphabet(
@@ -13,4 +14,20 @@ export function generateAppKey(): string {
 
 export function generateAppId(): string {
   return numericNanoid();
+}
+
+export function generatePublicApiToken(): string {
+  return `phase_pat_${nanoid()}`;
+}
+
+export function hashPublicApiToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+export function getPublicApiTokenPrefix(token: string): string {
+  return token.slice(0, Math.min(token.length, 18));
+}
+
+export function generatePublicApiTokenId(): string {
+  return randomUUID();
 }

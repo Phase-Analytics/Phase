@@ -124,6 +124,36 @@ export const apps = pgTable(
   })
 );
 
+export const publicApiTokens = pgTable(
+  'public_api_tokens',
+  {
+    id: text('id').primaryKey(),
+    appId: text('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'cascade' }),
+    createdByUserId: text('created_by_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    tokenHash: text('token_hash').notNull().unique(),
+    tokenPrefix: text('token_prefix').notNull(),
+    scopes: text('scopes').array().notNull().default(sql`'{}'::text[]`),
+    expiresAt: timestamp('expires_at'),
+    lastUsedAt: timestamp('last_used_at'),
+    revokedAt: timestamp('revoked_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    appIdIdx: index('public_api_tokens_app_id_idx').on(table.appId),
+    createdByUserIdIdx: index('public_api_tokens_created_by_user_id_idx').on(
+      table.createdByUserId
+    ),
+    createdAtIdx: index('public_api_tokens_created_at_idx').on(
+      table.createdAt.desc()
+    ),
+  })
+);
+
 export const devices = pgTable(
   'devices',
   {
@@ -188,6 +218,7 @@ export const appRelations = relations(apps, ({ one, many }) => ({
     references: [user.id],
   }),
   devices: many(devices),
+  publicApiTokens: many(publicApiTokens),
 }));
 
 export const deviceRelations = relations(devices, ({ one, many }) => ({
@@ -205,6 +236,20 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
   }),
 }));
 
+export const publicApiTokensRelations = relations(
+  publicApiTokens,
+  ({ one }) => ({
+    app: one(apps, {
+      fields: [publicApiTokens.appId],
+      references: [apps.id],
+    }),
+    createdByUser: one(user, {
+      fields: [publicApiTokens.createdByUserId],
+      references: [user.id],
+    }),
+  })
+);
+
 export type User = typeof user.$inferSelect;
 export type NewUser = typeof user.$inferInsert;
 
@@ -219,6 +264,9 @@ export type NewVerification = typeof verification.$inferInsert;
 
 export type App = typeof apps.$inferSelect;
 export type NewApp = typeof apps.$inferInsert;
+
+export type PublicApiToken = typeof publicApiTokens.$inferSelect;
+export type NewPublicApiToken = typeof publicApiTokens.$inferInsert;
 
 export type Device = typeof devices.$inferSelect;
 export type NewDevice = typeof devices.$inferInsert;

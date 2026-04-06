@@ -6,6 +6,7 @@ export * from './device';
 export * from './event';
 export * from './health';
 export * from './ping';
+export * from './public-api';
 export * from './realtime';
 export * from './session';
 export * from './waitlist';

@@ -7,23 +7,71 @@ import {
   AppsListResponseSchema,
   AppTeamResponseSchema,
   CreateAppRequestSchema,
+  CreatePublicApiTokenRequestSchema,
+  CreatePublicApiTokenResponseSchema,
   ErrorCode,
   ErrorResponseSchema,
   HttpStatus,
+  PublicApiCapabilitiesResponseSchema,
+  type PublicApiToken as PublicApiTokenResponse,
+  PublicApiTokensResponseSchema,
   UpdateAppRequestSchema,
 } from '@phase/shared';
 import { eq, or, sql } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
-import { apps, db } from '@/db';
+import { apps, db, publicApiTokens } from '@/db';
 import { auth } from '@/lib/auth';
-import { generateAppId, generateAppKey } from '@/lib/keys';
+import {
+  generateAppId,
+  generateAppKey,
+  generatePublicApiToken,
+  generatePublicApiTokenId,
+  getPublicApiTokenPrefix,
+  hashPublicApiToken,
+} from '@/lib/keys';
 import {
   authPlugin,
   type BetterAuthSession,
   type BetterAuthUser,
 } from '@/lib/middleware';
+import { getPublicApiCapabilities } from '@/lib/public-api-capabilities';
 
 type AuthContext = { user: BetterAuthUser; session: BetterAuthSession };
+
+function serializePublicApiToken(
+  token: typeof publicApiTokens.$inferSelect
+): PublicApiTokenResponse {
+  const now = Date.now();
+  const isRevoked = Boolean(token.revokedAt);
+  const isExpired = Boolean(
+    token.expiresAt && token.expiresAt.getTime() <= now
+  );
+
+  let status: PublicApiTokenResponse['status'] = 'active';
+  if (isRevoked) {
+    status = 'revoked';
+  } else if (isExpired) {
+    status = 'expired';
+  }
+
+  return {
+    id: token.id,
+    name: token.name,
+    tokenPrefix: token.tokenPrefix,
+    scopes: token.scopes as Array<
+      | 'reports:read'
+      | 'events:read'
+      | 'sessions:read'
+      | 'devices:read'
+      | 'realtime:read'
+    >,
+    expiresAt: token.expiresAt?.toISOString() ?? null,
+    lastUsedAt: token.lastUsedAt?.toISOString() ?? null,
+    revokedAt: token.revokedAt?.toISOString() ?? null,
+    createdAt: token.createdAt.toISOString(),
+    status,
+  };
+}
 
 export const appWebRouter = new Elysia({ prefix: '/apps' })
   .derive(async ({ request }) => {
@@ -370,6 +418,297 @@ export const appWebRouter = new Elysia({ prefix: '/apps' })
       }),
       response: {
         200: AppTeamResponseSchema,
+        401: ErrorResponseSchema,
+        403: ErrorResponseSchema,
+        404: ErrorResponseSchema,
+        500: ErrorResponseSchema,
+      },
+    }
+  )
+
+  .get(
+    '/:id/public-api/capabilities',
+    async (ctx) => {
+      const { params, user, set } = ctx as typeof ctx & AuthContext;
+      try {
+        if (!user?.id) {
+          set.status = HttpStatus.UNAUTHORIZED;
+          return {
+            code: ErrorCode.UNAUTHORIZED,
+            detail: 'User authentication required',
+          };
+        }
+
+        const app = await db.query.apps.findFirst({
+          where: (table, { eq: eqFn }) => eqFn(table.id, params.id),
+        });
+
+        if (!app) {
+          set.status = HttpStatus.NOT_FOUND;
+          return {
+            code: ErrorCode.NOT_FOUND,
+            detail: 'App not found',
+          };
+        }
+
+        const hasAccess =
+          app.userId === user.id || app.memberIds?.includes(user.id);
+
+        if (!hasAccess) {
+          set.status = HttpStatus.FORBIDDEN;
+          return {
+            code: ErrorCode.FORBIDDEN,
+            detail: 'Access denied',
+          };
+        }
+
+        set.status = HttpStatus.OK;
+        return getPublicApiCapabilities(params.id);
+      } catch (error) {
+        console.error('[App.GetPublicApiCapabilities] Error:', error);
+        set.status = HttpStatus.INTERNAL_SERVER_ERROR;
+        return {
+          code: ErrorCode.INTERNAL_SERVER_ERROR,
+          detail: 'Failed to get public API capabilities',
+        };
+      }
+    },
+    {
+      requireAuth: true,
+      params: t.Object({
+        id: t.String(),
+      }),
+      response: {
+        200: PublicApiCapabilitiesResponseSchema,
+        401: ErrorResponseSchema,
+        403: ErrorResponseSchema,
+        404: ErrorResponseSchema,
+        500: ErrorResponseSchema,
+      },
+    }
+  )
+
+  .get(
+    '/:id/public-api/tokens',
+    async (ctx) => {
+      const { params, user, set } = ctx as typeof ctx & AuthContext;
+      try {
+        if (!user?.id) {
+          set.status = HttpStatus.UNAUTHORIZED;
+          return {
+            code: ErrorCode.UNAUTHORIZED,
+            detail: 'User authentication required',
+          };
+        }
+
+        const app = await db.query.apps.findFirst({
+          where: (table, { eq: eqFn }) => eqFn(table.id, params.id),
+        });
+
+        if (!app) {
+          set.status = HttpStatus.NOT_FOUND;
+          return {
+            code: ErrorCode.NOT_FOUND,
+            detail: 'App not found',
+          };
+        }
+
+        const hasAccess =
+          app.userId === user.id || app.memberIds?.includes(user.id);
+
+        if (!hasAccess) {
+          set.status = HttpStatus.FORBIDDEN;
+          return {
+            code: ErrorCode.FORBIDDEN,
+            detail: 'Access denied',
+          };
+        }
+
+        const tokens = await db.query.publicApiTokens.findMany({
+          where: (table, { eq: eqFn }) => eqFn(table.appId, params.id),
+          orderBy: (table, { desc }) => [desc(table.createdAt)],
+        });
+
+        set.status = HttpStatus.OK;
+        return {
+          tokens: tokens.map(serializePublicApiToken),
+        };
+      } catch (error) {
+        console.error('[App.ListPublicApiTokens] Error:', error);
+        set.status = HttpStatus.INTERNAL_SERVER_ERROR;
+        return {
+          code: ErrorCode.INTERNAL_SERVER_ERROR,
+          detail: 'Failed to list public API tokens',
+        };
+      }
+    },
+    {
+      requireAuth: true,
+      params: t.Object({
+        id: t.String(),
+      }),
+      response: {
+        200: PublicApiTokensResponseSchema,
+        401: ErrorResponseSchema,
+        403: ErrorResponseSchema,
+        404: ErrorResponseSchema,
+        500: ErrorResponseSchema,
+      },
+    }
+  )
+
+  .post(
+    '/:id/public-api/tokens',
+    async (ctx) => {
+      const { params, body, user, set } = ctx as typeof ctx & AuthContext;
+      try {
+        if (!user?.id) {
+          set.status = HttpStatus.UNAUTHORIZED;
+          return {
+            code: ErrorCode.UNAUTHORIZED,
+            detail: 'User authentication required',
+          };
+        }
+
+        const app = await db.query.apps.findFirst({
+          where: (table, { eq: eqFn }) => eqFn(table.id, params.id),
+        });
+
+        if (!app) {
+          set.status = HttpStatus.NOT_FOUND;
+          return {
+            code: ErrorCode.NOT_FOUND,
+            detail: 'App not found',
+          };
+        }
+
+        if (app.userId !== user.id) {
+          set.status = HttpStatus.FORBIDDEN;
+          return {
+            code: ErrorCode.FORBIDDEN,
+            detail: 'Only the app owner can create public API tokens',
+          };
+        }
+
+        const token = generatePublicApiToken();
+        const tokenId = generatePublicApiTokenId();
+        const tokenHash = hashPublicApiToken(token);
+        const tokenPrefix = getPublicApiTokenPrefix(token);
+        const expiresAt = body.expiresAt ? new Date(body.expiresAt) : null;
+
+        const [createdToken] = await db
+          .insert(publicApiTokens)
+          .values({
+            id: tokenId,
+            appId: params.id,
+            createdByUserId: user.id,
+            name: body.name,
+            tokenHash,
+            tokenPrefix,
+            scopes: body.scopes,
+            expiresAt,
+          })
+          .returning();
+
+        set.status = HttpStatus.CREATED;
+        return {
+          ...serializePublicApiToken(createdToken),
+          token,
+        };
+      } catch (error) {
+        console.error('[App.CreatePublicApiToken] Error:', error);
+        set.status = HttpStatus.INTERNAL_SERVER_ERROR;
+        return {
+          code: ErrorCode.INTERNAL_SERVER_ERROR,
+          detail: 'Failed to create public API token',
+        };
+      }
+    },
+    {
+      requireAuth: true,
+      params: t.Object({
+        id: t.String(),
+      }),
+      body: CreatePublicApiTokenRequestSchema,
+      response: {
+        201: CreatePublicApiTokenResponseSchema,
+        401: ErrorResponseSchema,
+        403: ErrorResponseSchema,
+        404: ErrorResponseSchema,
+        500: ErrorResponseSchema,
+      },
+    }
+  )
+
+  .delete(
+    '/:id/public-api/tokens/:tokenId',
+    async (ctx) => {
+      const { params, user, set } = ctx as typeof ctx & AuthContext;
+      try {
+        if (!user?.id) {
+          set.status = HttpStatus.UNAUTHORIZED;
+          return {
+            code: ErrorCode.UNAUTHORIZED,
+            detail: 'User authentication required',
+          };
+        }
+
+        const app = await db.query.apps.findFirst({
+          where: (table, { eq: eqFn }) => eqFn(table.id, params.id),
+        });
+
+        if (!app) {
+          set.status = HttpStatus.NOT_FOUND;
+          return {
+            code: ErrorCode.NOT_FOUND,
+            detail: 'App not found',
+          };
+        }
+
+        if (app.userId !== user.id) {
+          set.status = HttpStatus.FORBIDDEN;
+          return {
+            code: ErrorCode.FORBIDDEN,
+            detail: 'Only the app owner can revoke public API tokens',
+          };
+        }
+
+        const existingToken = await db.query.publicApiTokens.findFirst({
+          where: (table, { and: andFn, eq: eqFn }) =>
+            andFn(eqFn(table.id, params.tokenId), eqFn(table.appId, params.id)),
+        });
+
+        if (!existingToken) {
+          set.status = HttpStatus.NOT_FOUND;
+          return {
+            code: ErrorCode.NOT_FOUND,
+            detail: 'Public API token not found',
+          };
+        }
+
+        await db
+          .update(publicApiTokens)
+          .set({ revokedAt: new Date() })
+          .where(eq(publicApiTokens.id, params.tokenId));
+
+        set.status = HttpStatus.NO_CONTENT;
+      } catch (error) {
+        console.error('[App.RevokePublicApiToken] Error:', error);
+        set.status = HttpStatus.INTERNAL_SERVER_ERROR;
+        return {
+          code: ErrorCode.INTERNAL_SERVER_ERROR,
+          detail: 'Failed to revoke public API token',
+        };
+      }
+    },
+    {
+      requireAuth: true,
+      params: t.Object({
+        id: t.String(),
+        tokenId: t.String(),
+      }),
+      response: {
+        204: t.Void(),
         401: ErrorResponseSchema,
         403: ErrorResponseSchema,
         404: ErrorResponseSchema,

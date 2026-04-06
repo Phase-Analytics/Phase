@@ -1,0 +1,82 @@
+---
+title: Public Analytics API
+description: Read-only external access to curated Phase analytics reports and capability metadata.
+---
+
+Phase Public Analytics API gives you read-only, app-scoped access to curated analytics data for external dashboards, scripts, and integrations.
+
+## What it is
+
+Public API v1 is a **capability-driven** read API. It is inspired by analytics APIs like Google Analytics Data API, but it intentionally only exposes the reporting surfaces that Phase currently supports.
+
+That means Public API v1 is built around:
+
+- app-scoped bearer tokens
+- capability discovery
+- curated report endpoints
+- honest device-based semantics
+- a deliberately small external MVP surface
+
+## What it is not
+
+Public API v1 is **not** a freeform analytics query engine.
+
+V1 does not support:
+
+- arbitrary metric + dimension composition
+- event parameter filtering or grouping
+- funnels
+- retention or cohort analysis
+- acquisition / attribution reporting
+- user identity stitching
+
+## Identity model
+
+Phase Public API v1 is **device-based**.
+
+When you read device metrics, they remain device metrics. They are not renamed to users.
+
+## Capability discovery
+
+Before integrating, start with the capabilities endpoint:
+
+```bash
+curl -X GET "https://api.phase.sh/public-api/v1/apps/<app_id>/capabilities" \
+  -H "Authorization: Bearer phase_pat_your_token"
+```
+
+This returns the supported report families, metrics, dimensions, filters, semantics, and limits for the app.
+
+## Report families
+
+Current v1 report families:
+
+- Events
+  - overview
+  - timeseries
+  - breakdown
+- Sessions
+  - overview
+  - timeseries
+- Devices
+  - overview
+  - timeseries
+  - breakdown
+
+## Example endpoints
+
+```bash
+GET /public-api/v1/apps/:appId/capabilities
+GET /public-api/v1/apps/:appId/reports/events/overview
+GET /public-api/v1/apps/:appId/reports/events/timeseries
+GET /public-api/v1/apps/:appId/reports/events/breakdown
+GET /public-api/v1/apps/:appId/reports/sessions/overview
+GET /public-api/v1/apps/:appId/reports/sessions/timeseries
+GET /public-api/v1/apps/:appId/reports/devices/overview
+GET /public-api/v1/apps/:appId/reports/devices/timeseries
+GET /public-api/v1/apps/:appId/reports/devices/breakdown
+```
+
+## Consistency
+
+Phase uses an eventually consistent analytics pipeline. Responses include metadata so clients can understand that the reporting surface is not a strict realtime warehouse.

@@ -9,6 +9,10 @@ export const queryKeys = {
     detail: (appId: string) => [...queryKeys.apps.details(), appId] as const,
     keys: (appId: string) => [...queryKeys.apps.all, 'keys', appId] as const,
     team: (appId: string) => [...queryKeys.apps.all, 'team', appId] as const,
+    publicApiCapabilities: (appId: string) =>
+      [...queryKeys.apps.all, 'public-api', 'capabilities', appId] as const,
+    publicApiTokens: (appId: string) =>
+      [...queryKeys.apps.all, 'public-api', 'tokens', appId] as const,
   },
 
   devices: {

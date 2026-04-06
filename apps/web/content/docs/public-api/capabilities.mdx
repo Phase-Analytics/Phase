@@ -1,0 +1,68 @@
+---
+title: Capabilities
+description: Discover the supported Public API surface before issuing report requests.
+---
+
+The Public Analytics API is intentionally capability-driven.
+
+Before you build against it, ask Phase what the current app supports:
+
+```bash
+curl -X GET "https://api.phase.sh/public-api/v1/apps/<app_id>/capabilities" \
+  -H "Authorization: Bearer phase_pat_your_token"
+```
+
+## Why this endpoint matters
+
+Phase Public API v1 is **not** a freeform analytics query engine.
+
+Instead of assuming every metric, dimension, and filter combination is valid, clients should first inspect:
+
+- supported report families
+- supported metrics
+- supported dimensions
+- supported filters
+- current limits
+- reporting semantics
+
+## What you get back
+
+A capabilities response includes:
+
+- `identityModel`
+- `retention`
+- `semantics`
+- `limits`
+- `domains`
+
+### Example concepts
+
+#### Identity model
+Phase v1 is device-based.
+
+That means device metrics remain device metrics; they are not re-labeled as users.
+
+#### Semantics
+The response also explains reporting semantics such as:
+
+- bounce rate definition
+- consistency mode
+- current retention hints
+
+#### Limits
+Typical limits include:
+
+- maximum report range
+- maximum breakdown size
+- maximum raw page size
+
+## Current MVP expectation
+
+In the current MVP, the public external surface focuses on:
+
+- capabilities discovery
+- curated event reports
+- curated session reports
+- curated device reports
+
+If a surface is not listed in capabilities, do not assume it is available.

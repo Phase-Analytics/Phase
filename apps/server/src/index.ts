@@ -3,12 +3,20 @@ import { Elysia } from 'elysia';
 import Redis from 'ioredis';
 import { pool } from '@/db';
 import { auth } from '@/lib/auth';
-import { authCors, publicCors, sdkCors, webCors } from '@/lib/cors';
+import {
+  authCors,
+  publicApiCors,
+  publicCors,
+  sdkCors,
+  webCors,
+} from '@/lib/cors';
 import { initEventBuffer } from '@/lib/event-buffer';
 import { initGeoIP, shutdownGeoIP } from '@/lib/geolocation';
+import { hashPublicApiToken } from '@/lib/keys';
 import { runMigrations } from '@/lib/migrate';
 import { initQuestDB } from '@/lib/questdb';
 import {
+  checkPublicApiRateLimit,
   checkSdkApiRateLimit,
   checkWebApiRateLimit,
   RATE_LIMIT_STRATEGIES,
@@ -24,6 +32,7 @@ import { deviceSdkRouter, deviceWebRouter } from '@/routes/device';
 import { eventSdkRouter, eventWebRouter } from '@/routes/event';
 import health from '@/routes/health';
 import { pingSdkRouter } from '@/routes/ping';
+import { publicApiRouter } from '@/routes/public-api';
 import { realtimeWebRouter } from '@/routes/realtime';
 import { sessionSdkRouter, sessionWebRouter } from '@/routes/session';
 import { waitlistPublicRouter } from '@/routes/waitlist';
@@ -43,6 +52,20 @@ function extractClientIP(request: Request, server?: unknown): string | null {
     (socketIp?.address as string) ||
     null
   );
+}
+
+function extractBearerToken(request: Request): string | null {
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader) {
+    return null;
+  }
+
+  const [scheme, token] = authHeader.split(' ');
+  if (scheme?.toLowerCase() !== 'bearer' || !token) {
+    return null;
+  }
+
+  return token;
 }
 
 function handleRateLimitResponse(
@@ -137,6 +160,28 @@ const publicRoutes = new Elysia({ prefix: '/public' })
   .use(publicCors)
   .use(waitlistPublicRouter);
 
+const publicApiRoutes = new Elysia({ prefix: '/public-api' })
+  .use(publicApiCors)
+  .onBeforeHandle(async ({ request, set, server }) => {
+    const ip = extractClientIP(request, server);
+    const bearerToken = extractBearerToken(request);
+    const tokenIdentifier = bearerToken
+      ? hashPublicApiToken(bearerToken)
+      : ip || 'anonymous';
+
+    const rateLimitResult = await checkPublicApiRateLimit(
+      tokenIdentifier,
+      ip || undefined
+    );
+
+    return handleRateLimitResponse(
+      rateLimitResult,
+      RATE_LIMIT_STRATEGIES.PUBLIC_API.maxAttempts,
+      set
+    );
+  })
+  .use(publicApiRouter);
+
 const app = new Elysia()
   .use(authCors)
   .use(authRouter)
@@ -145,6 +190,7 @@ const app = new Elysia()
   .use(sdkRoutes)
   .use(webRoutes)
   .use(publicRoutes)
+  .use(publicApiRoutes)
   .onError(({ error, set }) => {
     console.error('[Server] Unhandled error:', error);
     set.status = 500;

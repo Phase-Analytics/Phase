@@ -1,0 +1,115 @@
+---
+title: Reports
+description: Use curated report endpoints in the Phase Public Analytics API.
+---
+
+## Reports-first design
+
+Public API v1 exposes curated report endpoints instead of a freeform query language.
+
+The current external MVP is intentionally reports-first:
+
+- capabilities discovery
+- curated event reports
+- curated session reports
+- curated device reports
+
+## Events
+
+### Overview
+
+```bash
+curl -X GET "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/events/overview" \
+  -H "Authorization: Bearer phase_pat_your_token"
+```
+
+### Timeseries
+
+```bash
+curl -X GET "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/events/timeseries?startDate=2026-04-01T00:00:00.000Z&endDate=2026-04-06T23:59:59.000Z" \
+  -H "Authorization: Bearer phase_pat_your_token"
+```
+
+### Breakdown
+
+Supported dimensions in v1:
+
+- `eventName`
+- `screenName`
+
+```bash
+curl -X GET "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/events/breakdown?dimension=eventName&limit=10" \
+  -H "Authorization: Bearer phase_pat_your_token"
+```
+
+## Sessions
+
+### Overview
+
+```bash
+curl -X GET "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/sessions/overview" \
+  -H "Authorization: Bearer phase_pat_your_token"
+```
+
+### Timeseries
+
+Supported metrics in v1:
+
+- `sessionCount`
+- `avgSessionDuration`
+- `bounceRate`
+
+```bash
+curl -X GET "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/sessions/timeseries?metric=sessionCount" \
+  -H "Authorization: Bearer phase_pat_your_token"
+```
+
+## Devices
+
+### Overview
+
+```bash
+curl -X GET "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/devices/overview" \
+  -H "Authorization: Bearer phase_pat_your_token"
+```
+
+### Timeseries
+
+Supported metrics in v1:
+
+- `activeDevices`
+- `totalDevices`
+
+```bash
+curl -X GET "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/devices/timeseries?metric=activeDevices" \
+  -H "Authorization: Bearer phase_pat_your_token"
+```
+
+### Breakdown
+
+Supported dimensions in v1:
+
+- `platform`
+- `country`
+- `city`
+
+```bash
+curl -X GET "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/devices/breakdown?dimension=platform&limit=10" \
+  -H "Authorization: Bearer phase_pat_your_token"
+```
+
+## Response metadata
+
+Report responses include metadata describing the reporting semantics.
+
+Typical metadata fields include:
+
+- `generatedAt`
+- `consistency`
+- `identityModel`
+
+## Semantics to keep in mind
+
+- Device metrics are device metrics, not user metrics
+- Bounce rate is based on sessions shorter than 10 seconds
+- Event parameter breakdowns are not supported in v1

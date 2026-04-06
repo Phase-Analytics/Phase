@@ -11,6 +11,10 @@ import { useQueryState } from 'nuqs';
 import { useEffect, useRef, useState } from 'react';
 import { useScramble } from 'use-scramble';
 import { ClientDate } from '@/components/client-date';
+import { PublicApiCapabilitiesCard } from '@/components/public-api/public-api-capabilities-card';
+import { PublicApiIntroCard } from '@/components/public-api/public-api-intro-card';
+import { PublicApiQuickstartCard } from '@/components/public-api/public-api-quickstart-card';
+import { PublicApiTokenTable } from '@/components/public-api/public-api-token-table';
 import { RequireApp } from '@/components/require-app';
 import { RotateKeyDialog } from '@/components/rotate-key-dialog';
 import { Button } from '@/components/ui/button';
@@ -22,18 +26,26 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useApp, useAppKeys } from '@/lib/queries';
+import type { CreatePublicApiTokenResponse } from '@/lib/api/types';
+import {
+  useApp,
+  useAppKeys,
+  usePublicApiCapabilities,
+  usePublicApiTokens,
+} from '@/lib/queries';
 
-export default function ApiKeysPage() {
-  const [appId] = useQueryState('app');
-  const { data: app, isPending: appLoading } = useApp(appId || '');
-  const { data: keysData, isPending: keysLoading } = useAppKeys(appId || '');
+function SdkApiKeyCard({
+  appId,
+  isOwner,
+}: {
+  appId: string;
+  isOwner: boolean;
+}) {
+  const { data: keysData, isPending: keysLoading } = useAppKeys(appId);
   const [isKeyVisible, setIsKeyVisible] = useState(false);
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const isFirstRender = useRef(true);
 
-  const isOwner = app?.role === 'owner';
-  const showLoading = appLoading || keysLoading;
   const apiKey = keysData?.key || '';
   const keyLength = apiKey.length || 32;
   const maskedKey = '•'.repeat(keyLength);
@@ -70,12 +82,132 @@ export default function ApiKeysPage() {
   };
 
   return (
+    <Card className="py-0">
+      <CardContent className="space-y-4 p-4">
+        <div>
+          <h2 className="font-semibold text-muted-foreground text-sm uppercase">
+            SDK API Key
+          </h2>
+          <p className="text-muted-foreground text-sm">
+            Use this key to send analytics data from your application to Phase.
+          </p>
+        </div>
+
+        {keysLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-9 w-32" />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="flex-1 overflow-hidden rounded-lg border bg-muted/50 px-3 py-2 text-sm">
+                <div
+                  className="overflow-x-auto whitespace-nowrap"
+                  ref={shouldAnimate ? ref : staticRef}
+                >
+                  {!shouldAnimate && displayText}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={handleToggleVisibility}
+                      size="icon-sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      <HugeiconsIcon
+                        className="size-4"
+                        icon={isKeyVisible ? ViewOffIcon : ViewIcon}
+                      />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isKeyVisible ? 'Hide API key' : 'Show API key'}
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <CopyButton
+                        content={apiKey}
+                        size="sm"
+                        variant="outline"
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>Copy API key</TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
+
+            <p className="text-muted-foreground text-sm">
+              Last rotated:{' '}
+              {keysData?.keyRotatedAt ? (
+                <ClientDate
+                  date={keysData.keyRotatedAt}
+                  format="datetime-long"
+                />
+              ) : (
+                'Never'
+              )}
+            </p>
+
+            <div className="flex items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={isOwner ? undefined : 0}>
+                    <RotateKeyDialog appId={appId}>
+                      <Button
+                        disabled={!isOwner}
+                        size="sm"
+                        type="button"
+                        variant="destructive"
+                      >
+                        <HugeiconsIcon
+                          className="mr-1.5 size-3"
+                          icon={RotateTopRightIcon}
+                        />
+                        Rotate Key
+                      </Button>
+                    </RotateKeyDialog>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Owner only</TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function ApiKeysPage() {
+  const [appId] = useQueryState('app');
+  const resolvedAppId = appId || '';
+
+  const { data: app, isPending: appLoading } = useApp(resolvedAppId);
+  const { data: publicApiCapabilities, isPending: capabilitiesLoading } =
+    usePublicApiCapabilities(resolvedAppId);
+  const { data: publicApiTokens, isPending: publicApiTokensLoading } =
+    usePublicApiTokens(resolvedAppId);
+  const [createdToken, setCreatedToken] =
+    useState<CreatePublicApiTokenResponse | null>(null);
+
+  const isOwner = app?.role === 'owner';
+
+  return (
     <RequireApp>
       <div className="flex flex-1 flex-col gap-6">
         <div>
           <h1 className="font-bold font-sans text-2xl">API Keys</h1>
           <p className="font-sans text-muted-foreground text-sm">
-            Manage your application API keys
+            Manage your application credentials for ingestion and read-only
+            access.
           </p>
         </div>
 
@@ -89,118 +221,52 @@ export default function ApiKeysPage() {
                 />
               </div>
               <div className="flex-1 space-y-1">
-                <h3 className="font-semibold text-sm">About API Keys</h3>
+                <h3 className="font-semibold text-sm">About credentials</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">
-                  API keys are used by your applications to communicate with
-                  Phase. They are safe to use on the client side and do not need
-                  to be hidden. If you suspect abuse or unauthorized usage, you
-                  can rotate your key at any time.
+                  SDK API keys are designed for client-side ingestion and send
+                  analytics data to Phase. Public API tokens are separate,
+                  read-only credentials for external scripts, dashboards, and
+                  curated reporting access.
                 </p>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="py-0">
-            <CardContent className="space-y-4 p-4">
-              <div>
-                <h2 className="font-semibold text-muted-foreground text-sm uppercase">
-                  SDK API Key
-                </h2>
-                <p className="text-muted-foreground text-sm">
-                  Use this key to authenticate your application
-                </p>
-              </div>
+          <SdkApiKeyCard appId={resolvedAppId} isOwner={isOwner} />
 
-              {showLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-4 w-48" />
-                  <Skeleton className="h-9 w-32" />
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <div className="flex-1 overflow-hidden rounded-lg border bg-muted/50 px-3 py-2 text-sm">
-                      <div
-                        className="overflow-x-auto whitespace-nowrap"
-                        ref={shouldAnimate ? ref : staticRef}
-                      >
-                        {!shouldAnimate && displayText}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            onClick={handleToggleVisibility}
-                            size="icon-sm"
-                            type="button"
-                            variant="outline"
-                          >
-                            <HugeiconsIcon
-                              className="size-4"
-                              icon={isKeyVisible ? ViewOffIcon : ViewIcon}
-                            />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {isKeyVisible ? 'Hide API key' : 'Show API key'}
-                        </TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div>
-                            <CopyButton
-                              content={apiKey}
-                              size="sm"
-                              variant="outline"
-                            />
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>Copy API key</TooltipContent>
-                      </Tooltip>
-                    </div>
-                  </div>
+          <div className="space-y-3">
+            <div>
+              <h2 className="font-semibold text-base">Public API</h2>
+              <p className="text-muted-foreground text-sm">
+                Manage read-only external access without reusing your SDK
+                ingestion key.
+              </p>
+            </div>
+            <PublicApiIntroCard />
+          </div>
 
-                  <p className="text-muted-foreground text-sm">
-                    Last rotated:{' '}
-                    {keysData?.keyRotatedAt ? (
-                      <ClientDate
-                        date={keysData.keyRotatedAt}
-                        format="datetime-long"
-                      />
-                    ) : (
-                      'Never'
-                    )}
-                  </p>
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
+            <div className="space-y-6">
+              <PublicApiTokenTable
+                appId={resolvedAppId}
+                isLoading={appLoading || publicApiTokensLoading}
+                isOwner={isOwner}
+                onCreated={setCreatedToken}
+                tokens={publicApiTokens?.tokens}
+              />
+            </div>
 
-                  <div className="flex items-center gap-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span tabIndex={isOwner ? undefined : 0}>
-                          <RotateKeyDialog appId={appId || ''}>
-                            <Button
-                              disabled={!isOwner}
-                              size="sm"
-                              type="button"
-                              variant="destructive"
-                            >
-                              <HugeiconsIcon
-                                className="mr-1.5 size-3"
-                                icon={RotateTopRightIcon}
-                              />
-                              Rotate Key
-                            </Button>
-                          </RotateKeyDialog>
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>Owner only</TooltipContent>
-                    </Tooltip>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            <div className="space-y-6">
+              <PublicApiCapabilitiesCard
+                capabilities={publicApiCapabilities}
+                isLoading={appLoading || capabilitiesLoading}
+              />
+              <PublicApiQuickstartCard
+                appId={resolvedAppId}
+                createdToken={createdToken}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </RequireApp>
