@@ -182,10 +182,10 @@ const publicApiRoutes = new Elysia({ prefix: '/public-api' })
   })
   .use(publicApiRouter);
 
+const authRoutes = new Elysia().use(authCors).use(authRouter).mount(auth.handler);
+
 const app = new Elysia()
-  .use(authCors)
-  .use(authRouter)
-  .mount(auth.handler)
+  .use(authRoutes)
   .use(health)
   .use(sdkRoutes)
   .use(webRoutes)
