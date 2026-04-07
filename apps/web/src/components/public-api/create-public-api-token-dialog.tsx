@@ -162,11 +162,19 @@ export function CreatePublicApiTokenDialog({
                 </div>
               </div>
 
-              <div className="rounded-lg border bg-muted/20 p-3">
-                <p className="font-medium text-sm">App ID</p>
-                <p className="mt-1 font-mono text-muted-foreground text-sm">
-                  {appId}
-                </p>
+              <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
+                <div>
+                  <p className="font-medium text-sm">App ID</p>
+                  <p className="mt-1 font-mono text-muted-foreground text-sm">
+                    {appId}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-medium text-sm">Key prefix</p>
+                  <p className="mt-1 font-mono text-muted-foreground text-sm">
+                    phase_public_
+                  </p>
+                </div>
               </div>
             </div>
 

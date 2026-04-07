@@ -5,15 +5,21 @@ description: Create an API key and query Phase analytics reports.
 
 import { Callout } from 'fumadocs-ui/components/callout';
 import { CodeBlock } from 'fumadocs-ui/components/codeblock';
-import { Step, Steps } from 'fumadocs-ui/components/steps';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from 'fumadocs-ui/components/tabs';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs, TabsContent, TabsList, TabsTrigger } from 'fumadocs-ui/components/tabs';
 
 Use the Phase API to read analytics reports from your own scripts, dashboards, and backend services.
 
 <Callout type="info">
-API keys are app-scoped and read-only. Create them in <strong>Application → API Keys</strong> in the Phase dashboard.
+API keys are app-scoped and read-only.
 </Callout>
+
+## Get your API key
+
+1. Sign in to [Phase Dashboard](https://phase.sh/dashboard).
+2. Create a new project or select an existing one.
+3. Open **Application → API Keys**.
+4. Copy your API key. Keys for this API start with `phase_public_`.
+5. Copy the **App ID** from the same screen. You need it in every request path.
 
 ## Base URL
 
@@ -22,22 +28,6 @@ API keys are app-scoped and read-only. Create them in <strong>Application → AP
 https://api.phase.sh/public-api/v1
 ```
 </CodeBlock>
-
-## Quick start
-
-<Steps>
-  <Step>
-    Open your app in the dashboard and go to <strong>Application → API Keys</strong>.
-  </Step>
-  <Step>
-    Create a new key, choose an expiration, and copy it immediately.
-  </Step>
-  <Step>
-    Call a report endpoint with your app ID and the key in the `Authorization` header.
-  </Step>
-</Steps>
-
-Keys start with `phase_private_`.
 
 ## First request
 
@@ -50,7 +40,7 @@ Keys start with `phase_private_`.
     <CodeBlock lang="bash" allowCopy={true}>
 ```bash
 curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/events/overview" \
-  -H "Authorization: Bearer phase_private_your_key"
+  -H "Authorization: Bearer phase_public_your_key"
 ```
     </CodeBlock>
   </TabsContent>
@@ -61,10 +51,14 @@ const response = await fetch(
   'https://api.phase.sh/public-api/v1/apps/<app_id>/reports/events/overview',
   {
     headers: {
-      Authorization: 'Bearer phase_private_your_key',
+      Authorization: 'Bearer phase_public_your_key',
     },
   }
 );
+
+if (!response.ok) {
+  throw new Error(`Request failed with ${response.status}`);
+}
 
 const data = await response.json();
 console.log(data);
@@ -91,198 +85,85 @@ console.log(data);
 ```
 </CodeBlock>
 
-## Request reference
+## Request format
 
-### Path parameters
+### Path parameter
 
-<TypeTable
-  type={{
-    appId: {
-      description: 'The app ID shown in the dashboard API Keys screen.',
-      type: 'string',
-      required: true,
-    },
-  }}
-/>
+- `appId`
+  - Type: `string`
+  - Required: yes
+  - Value: the App ID shown in **Application → API Keys**
 
-### Headers
+### Header
 
-<TypeTable
-  type={{
-    Authorization: {
-      description: 'Bearer API key header. Example: `Bearer phase_private_your_key`.',
-      type: 'string',
-      required: true,
-    },
-  }}
-/>
+- `Authorization`
+  - Type: `string`
+  - Required: yes
+  - Format: `Bearer phase_public_your_key`
+  - Value: your API key
 
 ### Query parameters
 
-<TypeTable
-  type={{
-    startDate: {
-      description: 'Inclusive start date in ISO 8601 format for timeseries and date-filtered breakdowns.',
-      type: 'string',
-      required: false,
-    },
-    endDate: {
-      description: 'Inclusive end date in ISO 8601 format for timeseries and date-filtered breakdowns.',
-      type: 'string',
-      required: false,
-    },
-    metric: {
-      description: 'Used by timeseries endpoints. Supported values depend on the endpoint.',
-      type: 'string',
-      required: false,
-    },
-    dimension: {
-      description: 'Used by breakdown endpoints. Supported values depend on the endpoint.',
-      type: 'string',
-      required: false,
-    },
-    limit: {
-      description: 'Maximum number of rows returned by a breakdown endpoint.',
-      type: 'number',
-      required: false,
-      default: '10',
-    },
-  }}
-/>
+- `startDate`
+  - Type: `string`
+  - Required: no
+  - Format: ISO 8601 timestamp
+  - Example: `2026-01-15T00:00:00.000Z`
+  - Used by: timeseries endpoints and date-filtered breakdown endpoints
 
-## Report reference
+- `endDate`
+  - Type: `string`
+  - Required: no
+  - Format: ISO 8601 timestamp
+  - Example: `2026-02-15T23:59:59.999Z`
+  - Used by: timeseries endpoints and date-filtered breakdown endpoints
 
-### Events
+- `metric`
+  - Type: `string`
+  - Required: no
+  - Used by: timeseries endpoints
+  - Allowed values depend on the endpoint:
+    - Sessions: `sessionCount`, `avgSessionDuration`, `bounceRate`
+    - Users: `activeUsers`, `totalUsers`, `newUsers`
 
-<TypeTable
-  type={{
-    'GET /apps/:appId/reports/events/overview': {
-      description: 'Returns headline event totals and 24h change values.',
-      type: 'overview',
-    },
-    'GET /apps/:appId/reports/events/timeseries': {
-      description: 'Returns daily event counts. Supports `startDate` and `endDate`.',
-      type: 'timeseries',
-    },
-    'GET /apps/:appId/reports/events/breakdown': {
-      description: 'Returns event counts grouped by `eventName` or `screenName`. Supports `dimension`, `limit`, `startDate`, and `endDate`.',
-      type: 'breakdown',
-    },
-  }}
-/>
+- `dimension`
+  - Type: `string`
+  - Required: no
+  - Used by: breakdown endpoints
+  - Allowed values depend on the endpoint:
+    - Events: `eventName`, `screenName`
+    - Sessions: `platform`, `country`, `city`
+    - Users: `platform`, `country`, `city`
 
-### Sessions
+- `limit`
+  - Type: `number`
+  - Required: no
+  - Used by: breakdown endpoints
+  - Range: `1` to `50`
+  - Default: `10`
 
-<TypeTable
-  type={{
-    'GET /apps/:appId/reports/sessions/overview': {
-      description: 'Returns total sessions, active sessions, average session duration, and bounce rate.',
-      type: 'overview',
-    },
-    'GET /apps/:appId/reports/sessions/timeseries': {
-      description: 'Returns daily session metrics. Supported `metric` values: `sessionCount`, `avgSessionDuration`, `bounceRate`.',
-      type: 'timeseries',
-    },
-    'GET /apps/:appId/reports/sessions/breakdown': {
-      description: 'Returns session counts grouped by `platform`, `country`, or `city`. Supports `dimension`, `limit`, `startDate`, and `endDate`.',
-      type: 'breakdown',
-    },
-  }}
-/>
+<Callout type="info">
+The maximum supported date range is 365 days.
+</Callout>
 
-### Users
+## Events
 
-<TypeTable
-  type={{
-    'GET /apps/:appId/reports/users/overview': {
-      description: 'Returns total users, active users, new users, and platform/location summaries.',
-      type: 'overview',
-    },
-    'GET /apps/:appId/reports/users/timeseries': {
-      description: 'Returns daily user metrics. Supported `metric` values: `activeUsers`, `totalUsers`, `newUsers`.',
-      type: 'timeseries',
-    },
-    'GET /apps/:appId/reports/users/breakdown': {
-      description: 'Returns user counts grouped by `platform`, `country`, or `city`. Supports `dimension` and `limit`.',
-      type: 'breakdown',
-    },
-  }}
-/>
+Use event reports for headline counts, daily trends, and top events or screens.
 
-## Event examples
+### Endpoints
 
-### Event overview
+- `GET /apps/:appId/reports/events/overview`
+  - Returns total events, 24h events, and change values.
 
-<Tabs defaultValue="curl" groupId="events-overview" persist>
-  <TabsList>
-    <TabsTrigger value="curl">cURL</TabsTrigger>
-    <TabsTrigger value="fetch">fetch</TabsTrigger>
-  </TabsList>
-  <TabsContent value="curl">
-    <CodeBlock lang="bash" allowCopy={true}>
-```bash
-curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/events/overview" \
-  -H "Authorization: Bearer phase_private_your_key"
-```
-    </CodeBlock>
-  </TabsContent>
-  <TabsContent value="fetch">
-    <CodeBlock lang="ts" allowCopy={true}>
-```ts
-const response = await fetch(
-  'https://api.phase.sh/public-api/v1/apps/<app_id>/reports/events/overview',
-  {
-    headers: {
-      Authorization: 'Bearer phase_private_your_key',
-    },
-  }
-);
+- `GET /apps/:appId/reports/events/timeseries`
+  - Returns daily event counts.
+  - Supports `startDate` and `endDate`.
 
-const data = await response.json();
-```
-    </CodeBlock>
-  </TabsContent>
-</Tabs>
+- `GET /apps/:appId/reports/events/breakdown`
+  - Returns event counts grouped by `eventName` or `screenName`.
+  - Supports `dimension`, `startDate`, `endDate`, and `limit`.
 
-### Event timeseries
-
-<Tabs defaultValue="curl" groupId="events-timeseries" persist>
-  <TabsList>
-    <TabsTrigger value="curl">cURL</TabsTrigger>
-    <TabsTrigger value="fetch">fetch</TabsTrigger>
-  </TabsList>
-  <TabsContent value="curl">
-    <CodeBlock lang="bash" allowCopy={true}>
-```bash
-curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/events/timeseries?startDate=2026-01-15T00:00:00.000Z&endDate=2026-02-15T23:59:59.999Z" \
-  -H "Authorization: Bearer phase_private_your_key"
-```
-    </CodeBlock>
-  </TabsContent>
-  <TabsContent value="fetch">
-    <CodeBlock lang="ts" allowCopy={true}>
-```ts
-const params = new URLSearchParams({
-  startDate: '2026-01-15T00:00:00.000Z',
-  endDate: '2026-02-15T23:59:59.999Z',
-});
-
-const response = await fetch(
-  `https://api.phase.sh/public-api/v1/apps/<app_id>/reports/events/timeseries?${params}`,
-  {
-    headers: {
-      Authorization: 'Bearer phase_private_your_key',
-    },
-  }
-);
-
-const data = await response.json();
-```
-    </CodeBlock>
-  </TabsContent>
-</Tabs>
-
-### Event breakdown
+### Example: event breakdown
 
 <Tabs defaultValue="curl" groupId="events-breakdown" persist>
   <TabsList>
@@ -293,7 +174,7 @@ const data = await response.json();
     <CodeBlock lang="bash" allowCopy={true}>
 ```bash
 curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/events/breakdown?dimension=eventName&startDate=2026-01-15T00:00:00.000Z&endDate=2026-02-15T23:59:59.999Z&limit=10" \
-  -H "Authorization: Bearer phase_private_your_key"
+  -H "Authorization: Bearer phase_public_your_key"
 ```
     </CodeBlock>
   </TabsContent>
@@ -311,7 +192,7 @@ const response = await fetch(
   `https://api.phase.sh/public-api/v1/apps/<app_id>/reports/events/breakdown?${params}`,
   {
     headers: {
-      Authorization: 'Bearer phase_private_your_key',
+      Authorization: 'Bearer phase_public_your_key',
     },
   }
 );
@@ -322,42 +203,25 @@ const data = await response.json();
   </TabsContent>
 </Tabs>
 
-## Session examples
+## Sessions
 
-### Session overview
+Use session reports for totals, duration, bounce rate, and session distribution by platform or location.
 
-<Tabs defaultValue="curl" groupId="sessions-overview" persist>
-  <TabsList>
-    <TabsTrigger value="curl">cURL</TabsTrigger>
-    <TabsTrigger value="fetch">fetch</TabsTrigger>
-  </TabsList>
-  <TabsContent value="curl">
-    <CodeBlock lang="bash" allowCopy={true}>
-```bash
-curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/sessions/overview" \
-  -H "Authorization: Bearer phase_private_your_key"
-```
-    </CodeBlock>
-  </TabsContent>
-  <TabsContent value="fetch">
-    <CodeBlock lang="ts" allowCopy={true}>
-```ts
-const response = await fetch(
-  'https://api.phase.sh/public-api/v1/apps/<app_id>/reports/sessions/overview',
-  {
-    headers: {
-      Authorization: 'Bearer phase_private_your_key',
-    },
-  }
-);
+### Endpoints
 
-const data = await response.json();
-```
-    </CodeBlock>
-  </TabsContent>
-</Tabs>
+- `GET /apps/:appId/reports/sessions/overview`
+  - Returns total sessions, active sessions, average session duration, and bounce rate.
 
-### Session timeseries
+- `GET /apps/:appId/reports/sessions/timeseries`
+  - Returns daily session metrics.
+  - Supported `metric` values: `sessionCount`, `avgSessionDuration`, `bounceRate`.
+  - Supports `startDate`, `endDate`, and `metric`.
+
+- `GET /apps/:appId/reports/sessions/breakdown`
+  - Returns session counts grouped by `platform`, `country`, or `city`.
+  - Supports `dimension`, `startDate`, `endDate`, and `limit`.
+
+### Example: session timeseries
 
 <Tabs defaultValue="curl" groupId="sessions-timeseries" persist>
   <TabsList>
@@ -368,7 +232,7 @@ const data = await response.json();
     <CodeBlock lang="bash" allowCopy={true}>
 ```bash
 curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/sessions/timeseries?metric=sessionCount&startDate=2026-01-15T00:00:00.000Z&endDate=2026-02-15T23:59:59.999Z" \
-  -H "Authorization: Bearer phase_private_your_key"
+  -H "Authorization: Bearer phase_public_your_key"
 ```
     </CodeBlock>
   </TabsContent>
@@ -385,7 +249,7 @@ const response = await fetch(
   `https://api.phase.sh/public-api/v1/apps/<app_id>/reports/sessions/timeseries?${params}`,
   {
     headers: {
-      Authorization: 'Bearer phase_private_your_key',
+      Authorization: 'Bearer phase_public_your_key',
     },
   }
 );
@@ -396,49 +260,25 @@ const data = await response.json();
   </TabsContent>
 </Tabs>
 
-### Session breakdown
+## Users
 
-<Tabs defaultValue="curl" groupId="sessions-breakdown" persist>
-  <TabsList>
-    <TabsTrigger value="curl">cURL</TabsTrigger>
-    <TabsTrigger value="fetch">fetch</TabsTrigger>
-  </TabsList>
-  <TabsContent value="curl">
-    <CodeBlock lang="bash" allowCopy={true}>
-```bash
-curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/sessions/breakdown?dimension=country&startDate=2026-01-15T00:00:00.000Z&endDate=2026-02-15T23:59:59.999Z&limit=10" \
-  -H "Authorization: Bearer phase_private_your_key"
-```
-    </CodeBlock>
-  </TabsContent>
-  <TabsContent value="fetch">
-    <CodeBlock lang="ts" allowCopy={true}>
-```ts
-const params = new URLSearchParams({
-  dimension: 'country',
-  startDate: '2026-01-15T00:00:00.000Z',
-  endDate: '2026-02-15T23:59:59.999Z',
-  limit: '10',
-});
+Use user reports for totals, active users, new users, and user distribution by platform or location.
 
-const response = await fetch(
-  `https://api.phase.sh/public-api/v1/apps/<app_id>/reports/sessions/breakdown?${params}`,
-  {
-    headers: {
-      Authorization: 'Bearer phase_private_your_key',
-    },
-  }
-);
+### Endpoints
 
-const data = await response.json();
-```
-    </CodeBlock>
-  </TabsContent>
-</Tabs>
+- `GET /apps/:appId/reports/users/overview`
+  - Returns total users, active users, new users, and summary breakdowns.
 
-## User examples
+- `GET /apps/:appId/reports/users/timeseries`
+  - Returns daily user metrics.
+  - Supported `metric` values: `activeUsers`, `totalUsers`, `newUsers`.
+  - Supports `startDate`, `endDate`, and `metric`.
 
-### User overview
+- `GET /apps/:appId/reports/users/breakdown`
+  - Returns user counts grouped by `platform`, `country`, or `city`.
+  - Supports `dimension` and `limit`.
+
+### Example: user overview
 
 <Tabs defaultValue="curl" groupId="users-overview" persist>
   <TabsList>
@@ -449,7 +289,7 @@ const data = await response.json();
     <CodeBlock lang="bash" allowCopy={true}>
 ```bash
 curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/users/overview" \
-  -H "Authorization: Bearer phase_private_your_key"
+  -H "Authorization: Bearer phase_public_your_key"
 ```
     </CodeBlock>
   </TabsContent>
@@ -460,84 +300,7 @@ const response = await fetch(
   'https://api.phase.sh/public-api/v1/apps/<app_id>/reports/users/overview',
   {
     headers: {
-      Authorization: 'Bearer phase_private_your_key',
-    },
-  }
-);
-
-const data = await response.json();
-```
-    </CodeBlock>
-  </TabsContent>
-</Tabs>
-
-### User timeseries
-
-<Tabs defaultValue="curl" groupId="users-timeseries" persist>
-  <TabsList>
-    <TabsTrigger value="curl">cURL</TabsTrigger>
-    <TabsTrigger value="fetch">fetch</TabsTrigger>
-  </TabsList>
-  <TabsContent value="curl">
-    <CodeBlock lang="bash" allowCopy={true}>
-```bash
-curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/users/timeseries?metric=activeUsers&startDate=2026-01-15T00:00:00.000Z&endDate=2026-02-15T23:59:59.999Z" \
-  -H "Authorization: Bearer phase_private_your_key"
-```
-    </CodeBlock>
-  </TabsContent>
-  <TabsContent value="fetch">
-    <CodeBlock lang="ts" allowCopy={true}>
-```ts
-const params = new URLSearchParams({
-  metric: 'activeUsers',
-  startDate: '2026-01-15T00:00:00.000Z',
-  endDate: '2026-02-15T23:59:59.999Z',
-});
-
-const response = await fetch(
-  `https://api.phase.sh/public-api/v1/apps/<app_id>/reports/users/timeseries?${params}`,
-  {
-    headers: {
-      Authorization: 'Bearer phase_private_your_key',
-    },
-  }
-);
-
-const data = await response.json();
-```
-    </CodeBlock>
-  </TabsContent>
-</Tabs>
-
-### User breakdown
-
-<Tabs defaultValue="curl" groupId="users-breakdown" persist>
-  <TabsList>
-    <TabsTrigger value="curl">cURL</TabsTrigger>
-    <TabsTrigger value="fetch">fetch</TabsTrigger>
-  </TabsList>
-  <TabsContent value="curl">
-    <CodeBlock lang="bash" allowCopy={true}>
-```bash
-curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/users/breakdown?dimension=city&limit=10" \
-  -H "Authorization: Bearer phase_private_your_key"
-```
-    </CodeBlock>
-  </TabsContent>
-  <TabsContent value="fetch">
-    <CodeBlock lang="ts" allowCopy={true}>
-```ts
-const params = new URLSearchParams({
-  dimension: 'city',
-  limit: '10',
-});
-
-const response = await fetch(
-  `https://api.phase.sh/public-api/v1/apps/<app_id>/reports/users/breakdown?${params}`,
-  {
-    headers: {
-      Authorization: 'Bearer phase_private_your_key',
+      Authorization: 'Bearer phase_public_your_key',
     },
   }
 );
@@ -552,31 +315,9 @@ const data = await response.json();
 
 Every report response includes a `meta` object.
 
-<TypeTable
-  type={{
-    generatedAt: {
-      description: 'The server-side timestamp when the response was generated.',
-      type: 'string',
-    },
-    consistency: {
-      description: 'The reporting consistency model. Current value: `eventual`.',
-      type: 'string',
-    },
-    identityModel: {
-      description: 'The public reporting identity label. Current value: `user`.',
-      type: 'string',
-    },
-  }}
-/>
-
-## Key lifetime
-
-When you create a key in the dashboard, choose one of these expiration options:
-
-- 1 week
-- 1 month
-- 1 year
-- Never
+- `generatedAt` is the server-side timestamp for the response.
+- `consistency` is currently `eventual`.
+- `identityModel` is currently `user`.
 
 ## Security guidance
 
