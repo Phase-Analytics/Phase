@@ -2,8 +2,8 @@ import { GeistSans } from 'geist/font/sans';
 import type { Metadata } from 'next';
 import { JetBrains_Mono } from 'next/font/google';
 import './global.css';
-import { Databuddy } from '@databuddy/sdk/react';
 import { IntercomMessenger } from '@/components/intercom';
+import { OpenPanelAnalytics } from '@/components/openpanel';
 import { ServiceWorkerRegister } from '@/components/sw-register';
 import { baseMetadata } from '@/lib/seo';
 import { ThemeProvider } from '@/lib/theme-provider';
@@ -29,11 +29,7 @@ export default function RootLayout({
         <ServiceWorkerRegister />
         <ThemeProvider>{children}</ThemeProvider>
         <IntercomMessenger />
-        <Databuddy
-          clientId="e8284a26-a393-45f6-9190-3eb0df5b74a5"
-          trackOutgoingLinks={true}
-          trackWebVitals={true}
-        />
+        <OpenPanelAnalytics />
       </body>
     </html>
   );

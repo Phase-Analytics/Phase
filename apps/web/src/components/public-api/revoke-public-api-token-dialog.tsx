@@ -55,7 +55,8 @@ export function RevokePublicApiTokenDialog({
         <DialogHeader>
           <DialogTitle>Revoke API key</DialogTitle>
           <DialogDescription>
-            Revoke <span className="font-medium text-foreground">{tokenName}</span>.
+            Revoke{' '}
+            <span className="font-medium text-foreground">{tokenName}</span>.
             Any scripts or services using this key will stop working on their
             next request.
           </DialogDescription>

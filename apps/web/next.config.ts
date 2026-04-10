@@ -11,14 +11,12 @@ const getContentSecurityPolicy = () => {
       "'self'",
       "'unsafe-eval'",
       "'unsafe-inline'",
-      'https://cdn.databuddy.cc',
       'https://widget.intercom.io',
       'https://js.intercomcdn.com',
     ],
     'script-src-elem': [
       "'self'",
       "'unsafe-inline'",
-      'https://cdn.databuddy.cc',
       'https://widget.intercom.io',
       'https://js.intercomcdn.com',
     ],
@@ -41,7 +39,7 @@ const getContentSecurityPolicy = () => {
     ],
     'connect-src': [
       "'self'",
-      'https://basket.databuddy.cc',
+      'https://openpanel.mirac.dev/api',
       serverUrl,
       'https://api-iam.intercom.io',
       'https://nexus-websocket-a.intercom.io',

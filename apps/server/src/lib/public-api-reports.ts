@@ -590,8 +590,7 @@ export async function getPublicUserOverview(appId: string) {
 
   const newUsersYesterdayForCalc = Math.max(newUsersYesterdayNum, 1);
   const newUsers24hChange =
-    ((newUsers24hNum - newUsersYesterdayNum) / newUsersYesterdayForCalc) *
-    100;
+    ((newUsers24hNum - newUsersYesterdayNum) / newUsersYesterdayForCalc) * 100;
 
   const platformStats: Record<string, number> = {
     ios: 0,
