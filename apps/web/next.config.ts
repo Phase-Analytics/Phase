@@ -39,7 +39,7 @@ const getContentSecurityPolicy = () => {
     ],
     'connect-src': [
       "'self'",
-      'https://openpanel.mirac.dev/api',
+      'https://openpanel.mirac.dev',
       serverUrl,
       'https://api-iam.intercom.io',
       'https://nexus-websocket-a.intercom.io',
