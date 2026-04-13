@@ -31,7 +31,10 @@ export const LOCALE = {
 } as const;
 
 export const EVENT_PARAMS = {
-  MAX_SIZE: 50_000,
+  MAX_SIZE: 8192,
+  MAX_KEYS: 32,
+  MAX_KEY_LENGTH: 32,
+  MAX_STRING_VALUE_LENGTH: 256,
   MAX_DEPTH: 6,
 } as const;
 

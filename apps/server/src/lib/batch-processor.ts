@@ -418,6 +418,7 @@ async function processEvents(
         continue;
       }
 
+      const normalizedParams = paramsValidation.data;
       let sessionData = sessionCache.get(payload.sessionId);
 
       if (!sessionData) {
@@ -518,7 +519,7 @@ async function processEvents(
         deviceId: sessionData.session.deviceId,
         appId: sessionData.device.appId,
         name: eventName,
-        params: payload.params ?? null,
+        params: normalizedParams,
         isScreen: payload.isScreen,
         timestamp: clientTimestamp,
         country: sessionData.device.country,

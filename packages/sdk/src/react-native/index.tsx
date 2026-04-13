@@ -324,7 +324,7 @@ async function identify(properties?: DeviceProperties): Promise<void> {
 /**
  * Track custom event
  * @param name Event name (required, alphanumeric, `_`, `-`, `.`, `/`, space)
- * @param params Event parameters (optional, primitives only)
+ * @param params Event parameters. Flat primitive object only. Max 32 keys. Keys max 32 chars. String values max 256 chars. Payload max 8 KB. Empty objects are normalized away.
  * @example
  * await Phase.track('purchase', { amount: 99.99, currency: 'USD' });
  */

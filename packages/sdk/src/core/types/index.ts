@@ -15,7 +15,10 @@ export const VALIDATION = {
     PATTERN: /^[\w./ -]+$/,
   },
   EVENT_PARAMS: {
-    MAX_SIZE: 50_000,
+    MAX_SIZE: 8192,
+    MAX_KEYS: 32,
+    MAX_KEY_LENGTH: 32,
+    MAX_STRING_VALUE_LENGTH: 256,
   },
   BATCH: {
     MAX_SIZE: 1000,
@@ -55,7 +58,13 @@ export type CreateSessionRequest = {
 };
 
 /**
- * Event parameters (optional, primitives only)
+ * Event parameters.
+ * Flat primitive object only.
+ * Max 32 keys.
+ * Max key length 32.
+ * Max string value length 256.
+ * Max serialized size 8 KB.
+ * Empty objects are normalized away.
  * @example
  * { user_id: '123', amount: 99.99, premium: true }
  */

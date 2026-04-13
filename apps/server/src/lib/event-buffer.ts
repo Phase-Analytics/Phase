@@ -1,4 +1,5 @@
 import Redis from 'ioredis';
+import { QUESTDB_EVENT_WRITE_TABLE } from './questdb-events';
 
 export type BufferedEvent = {
   eventId: string;
@@ -309,7 +310,7 @@ export class EventBuffer {
 
         const timestampNanos = new Date(event.timestamp).getTime() * 1_000_000;
 
-        return `events,${tags} ${fields} ${timestampNanos}`;
+        return `${QUESTDB_EVENT_WRITE_TABLE},${tags} ${fields} ${timestampNanos}`;
       })
       .join('\n');
   }

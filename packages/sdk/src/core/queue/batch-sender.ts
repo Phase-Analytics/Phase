@@ -142,7 +142,7 @@ export class BatchSender {
     name: string,
     params?: Record<string, string | number | boolean | null>
   ): string {
-    if (!params) {
+    if (!params || Object.keys(params).length === 0) {
       return name;
     }
     try {

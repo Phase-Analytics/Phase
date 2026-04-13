@@ -142,6 +142,14 @@ await Phase.identify({
 
 Track custom events with optional parameters.
 
+Rules for `params`:
+- flat primitive object only
+- max 32 keys
+- key max 32 chars
+- string value max 256 chars
+- serialized payload max 8 KB
+- empty objects are normalized away
+
 ```tsx
 // Event without parameters
 Phase.track('app_opened');

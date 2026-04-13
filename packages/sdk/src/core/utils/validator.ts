@@ -20,7 +20,7 @@ function isFlatValue(value: unknown): boolean {
 
 export function validateEventParams(
   params: EventParams | undefined
-): Result<void> {
+): Result<EventParams | undefined> {
   if (!params) {
     return { success: true, data: undefined };
   }
@@ -34,7 +34,35 @@ export function validateEventParams(
     };
   }
 
-  for (const [key, value] of Object.entries(params)) {
+  const entries = Object.entries(params);
+
+  if (entries.length === 0) {
+    return { success: true, data: undefined };
+  }
+
+  if (entries.length > VALIDATION.EVENT_PARAMS.MAX_KEYS) {
+    return {
+      success: false,
+      error: new ValidationError(
+        `Event params must not exceed ${VALIDATION.EVENT_PARAMS.MAX_KEYS} keys`
+      ),
+    };
+  }
+
+  const normalized: EventParams = {};
+
+  for (const [key, value] of entries.sort(([left], [right]) =>
+    left.localeCompare(right)
+  )) {
+    if (key.length > VALIDATION.EVENT_PARAMS.MAX_KEY_LENGTH) {
+      return {
+        success: false,
+        error: new ValidationError(
+          `Param key '${key}' exceeds maximum length of ${VALIDATION.EVENT_PARAMS.MAX_KEY_LENGTH}`
+        ),
+      };
+    }
+
     if (!isFlatValue(value)) {
       return {
         success: false,
@@ -43,10 +71,24 @@ export function validateEventParams(
         ),
       };
     }
+
+    if (
+      typeof value === 'string' &&
+      value.length > VALIDATION.EVENT_PARAMS.MAX_STRING_VALUE_LENGTH
+    ) {
+      return {
+        success: false,
+        error: new ValidationError(
+          `Param '${key}' exceeds maximum string length of ${VALIDATION.EVENT_PARAMS.MAX_STRING_VALUE_LENGTH}`
+        ),
+      };
+    }
+
+    normalized[key] = value;
   }
 
   try {
-    const serialized = JSON.stringify(params);
+    const serialized = JSON.stringify(normalized);
     if (serialized.length > VALIDATION.EVENT_PARAMS.MAX_SIZE) {
       return {
         success: false,
@@ -62,7 +104,10 @@ export function validateEventParams(
     };
   }
 
-  return { success: true, data: undefined };
+  return {
+    success: true,
+    data: Object.keys(normalized).length > 0 ? normalized : undefined,
+  };
 }
 
 export function validateEventName(name: string): Result<void> {

@@ -52,6 +52,7 @@ export const eventSdkRouter = new Elysia({ prefix: '/events' })
           };
         }
 
+        const normalizedParams = paramsValidation.data;
         const clientTimestamp = timestampValidation.data;
         const { session, device } = sessionValidation.data;
 
@@ -106,7 +107,7 @@ export const eventSdkRouter = new Elysia({ prefix: '/events' })
           deviceId: session.deviceId,
           appId: device.appId,
           name: eventName,
-          params: body.params ?? null,
+          params: normalizedParams,
           isScreen: body.isScreen,
           isDebug: sdkDebugData,
           timestamp: clientTimestamp.toISOString(),
@@ -137,7 +138,7 @@ export const eventSdkRouter = new Elysia({ prefix: '/events' })
           sessionId: body.sessionId,
           deviceId: session.deviceId,
           name: eventName,
-          params: body.params ?? null,
+          params: normalizedParams,
           isScreen: body.isScreen,
           isDebug: sdkDebugData,
           timestamp: clientTimestamp.toISOString(),

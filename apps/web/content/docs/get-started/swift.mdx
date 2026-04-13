@@ -261,7 +261,13 @@ PhaseSDK.shared.track("button_clicked", params: ["button_id": "submit"])
 - Examples: `purchase`, `user.signup`, `payment/success`, `Button Clicked`
 
 **Event parameters:**
-- Must be primitives: `String`, `Int`, `Double`, `Bool`, or `nil`
+- Flat primitive dictionary only
+- Values must be `String`, `Int`, `Double`, `Bool`, or `nil`
+- Max 32 keys
+- Key max 32 characters
+- String value max 256 characters
+- Serialized payload max 8 KB
+- Empty dictionaries are normalized away
 
 ### Screen Tracking
 
@@ -345,7 +351,7 @@ Event parameters passed to `track()`:
 <TypeTable
   type={{
     '[String: Any]': {
-      description: 'Dictionary of custom parameters',
+      description: 'Custom parameter name. Max 32 keys. Key max 32 chars. String values max 256 chars. Empty dictionaries are omitted.',
       type: 'String | Int | Double | Bool | nil',
     },
   }}

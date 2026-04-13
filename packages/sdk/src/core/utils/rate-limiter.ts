@@ -50,7 +50,7 @@ export class EventDeduplicator {
   }
 
   private createKey(name: string, params?: EventParams): EventKey {
-    if (!params) {
+    if (!params || Object.keys(params).length === 0) {
       return name;
     }
     try {

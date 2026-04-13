@@ -8,38 +8,12 @@ import {
   type BetterAuthSession,
   type BetterAuthUser,
 } from '@/lib/middleware';
+import {
+  getQuestDBEventStorageDiagnostics,
+  getTotalEventCount,
+} from '@/lib/questdb';
 
 type AuthContext = { user: BetterAuthUser; session: BetterAuthSession };
-
-async function getTotalEventsFromQuestDB(): Promise<number> {
-  try {
-    const QUESTDB_HTTP = 'http://questdb:9000';
-    const query = 'SELECT COUNT(*) as count FROM events';
-    const url = `${QUESTDB_HTTP}/exec`;
-
-    const response = await fetch(`${url}?query=${encodeURIComponent(query)}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      console.error('[Admin] QuestDB query failed:', response.statusText);
-      return 0;
-    }
-
-    const result = (await response.json()) as {
-      columns: Array<{ name: string; type: string }>;
-      dataset: unknown[][];
-    };
-
-    return (result.dataset[0]?.[0] as number) || 0;
-  } catch (error) {
-    console.error('[Admin] Failed to get total events from QuestDB:', error);
-    return 0;
-  }
-}
 
 export const adminWebRouter = new Elysia({ prefix: '/admin' })
   .derive(async ({ request }) => {
@@ -69,7 +43,7 @@ export const adminWebRouter = new Elysia({ prefix: '/admin' })
           db.select({ count: count() }).from(sessions),
         ]);
 
-        const totalEvents = await getTotalEventsFromQuestDB();
+        const totalEvents = await getTotalEventCount();
 
         set.status = HttpStatus.OK;
         return {
@@ -97,6 +71,61 @@ export const adminWebRouter = new Elysia({ prefix: '/admin' })
           totalDevices: t.Number(),
           totalSessions: t.Number(),
           totalEvents: t.Number(),
+        }),
+        401: t.Object({
+          code: t.String(),
+          detail: t.String(),
+        }),
+        403: t.Object({
+          code: t.String(),
+          detail: t.String(),
+        }),
+        500: t.Object({
+          code: t.String(),
+          detail: t.String(),
+        }),
+      },
+    }
+  )
+  .get(
+    '/questdb/events',
+    async (ctx) => {
+      const { set } = ctx as typeof ctx & AuthContext;
+      try {
+        const diagnostics = await getQuestDBEventStorageDiagnostics();
+
+        set.status = HttpStatus.OK;
+        return diagnostics;
+      } catch (error) {
+        console.error('[Admin.QuestDB.Events] Error:', error);
+        set.status = HttpStatus.INTERNAL_SERVER_ERROR;
+        return {
+          code: ErrorCode.INTERNAL_SERVER_ERROR,
+          detail: 'Failed to get QuestDB event diagnostics',
+        };
+      }
+    },
+    {
+      requireAdmin: true,
+      response: {
+        200: t.Object({
+          readTables: t.Array(t.String()),
+          writeTable: t.String(),
+          schemaVerified: t.Boolean(),
+          schemaError: t.Union([t.String(), t.Null()]),
+          tables: t.Array(
+            t.Object({
+              tableName: t.String(),
+              rowCount: t.Number(),
+              minTimestamp: t.Union([t.String(), t.Null()]),
+              maxTimestamp: t.Union([t.String(), t.Null()]),
+              partitionBy: t.Union([t.String(), t.Null()]),
+              walEnabled: t.Boolean(),
+              dedup: t.Boolean(),
+              ttlValue: t.Union([t.Number(), t.Null()]),
+              ttlUnit: t.Union([t.String(), t.Null()]),
+            })
+          ),
         }),
         401: t.Object({
           code: t.String(),

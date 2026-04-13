@@ -2,6 +2,7 @@ import {
   DEVICE_ID,
   ErrorCode,
   EVENT_NAME,
+  EVENT_PARAMS,
   HttpStatus,
   type PropertySearchCondition,
   PropertySearchFilterSchema,
@@ -398,8 +399,10 @@ export async function invalidateSessionCache(sessionId: string): Promise<void> {
   }
 }
 
-const MAX_PARAMS_SIZE = 50_000;
-const MAX_PARAM_KEY_LENGTH = 128;
+const MAX_PARAMS_SIZE = EVENT_PARAMS.MAX_SIZE;
+const MAX_PARAM_KEY_COUNT = EVENT_PARAMS.MAX_KEYS;
+const MAX_PARAM_KEY_LENGTH = EVENT_PARAMS.MAX_KEY_LENGTH;
+const MAX_PARAM_STRING_VALUE_LENGTH = EVENT_PARAMS.MAX_STRING_VALUE_LENGTH;
 const MAX_PROPERTIES_SIZE = 50_000;
 const MAX_PROPERTY_KEY_LENGTH = 128;
 
@@ -432,7 +435,26 @@ export function validateEventParams(
 
   const entries = Object.entries(params);
 
-  for (const [key, value] of entries) {
+  if (entries.length === 0) {
+    return { success: true, data: null };
+  }
+
+  if (entries.length > MAX_PARAM_KEY_COUNT) {
+    return {
+      success: false,
+      error: {
+        code: ErrorCode.VALIDATION_ERROR,
+        detail: `Params exceed maximum key count of ${MAX_PARAM_KEY_COUNT}`,
+        status: HttpStatus.BAD_REQUEST,
+      },
+    };
+  }
+
+  const normalized: Record<string, string | number | boolean | null> = {};
+
+  for (const [key, value] of entries.sort(([left], [right]) =>
+    left.localeCompare(right)
+  )) {
     if (key.length > MAX_PARAM_KEY_LENGTH) {
       return {
         success: false,
@@ -454,11 +476,27 @@ export function validateEventParams(
         },
       };
     }
+
+    if (
+      typeof value === 'string' &&
+      value.length > MAX_PARAM_STRING_VALUE_LENGTH
+    ) {
+      return {
+        success: false,
+        error: {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: `Param '${key}' exceeds maximum string length of ${MAX_PARAM_STRING_VALUE_LENGTH}`,
+          status: HttpStatus.BAD_REQUEST,
+        },
+      };
+    }
+
+    normalized[key] = value;
   }
 
   let jsonString: string;
   try {
-    jsonString = JSON.stringify(params);
+    jsonString = JSON.stringify(normalized);
   } catch (_error) {
     return {
       success: false,
@@ -483,7 +521,7 @@ export function validateEventParams(
 
   return {
     success: true,
-    data: params as Record<string, string | number | boolean | null>,
+    data: Object.keys(normalized).length > 0 ? normalized : null,
   };
 }
 

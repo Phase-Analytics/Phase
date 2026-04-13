@@ -321,7 +321,13 @@ Phase.track('purchase_completed', {
 - Examples: `purchase`, `user.signup`, `payment/success`, `Button Clicked`
 
 **Event parameters:**
-- Must be primitives: `string`, `number`, `boolean`, or `null`
+- Flat primitive object only
+- Values must be `string`, `number`, `boolean`, or `null`
+- Max 32 keys
+- Key max 32 characters
+- String value max 256 characters
+- Serialized payload max 8 KB
+- Empty objects are normalized away
 
 ### Automatic Screen Tracking
 
@@ -391,7 +397,7 @@ Event parameters passed to `Phase.track()`:
 <TypeTable
   type={{
     '[key: string]': {
-      description: 'Any custom parameter name',
+      description: 'Custom parameter name. Max 32 keys. Key max 32 chars. String values max 256 chars. Empty objects are omitted.',
       type: 'string | number | boolean | null',
     },
   }}

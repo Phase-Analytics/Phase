@@ -38,15 +38,19 @@ export class EventManager {
 
     const paramsValidation = validateEventParams(params);
     if (!paramsValidation.success) {
-      logger.error('Invalid event params. Use primitive values only.');
+      logger.error(
+        'Invalid event params. Use up to 32 primitive keys. Keys max 32 chars. String values max 256 chars. Payload max 8 KB.'
+      );
       return;
     }
+
+    const normalizedParams = paramsValidation.data;
 
     if (!this.rateLimiter.canTrack()) {
       return;
     }
 
-    if (this.deduplicator.isDuplicate(name, params)) {
+    if (this.deduplicator.isDuplicate(name, normalizedParams)) {
       logger.warn('Duplicate event detected. Ignoring.', { name });
       return;
     }
@@ -60,7 +64,7 @@ export class EventManager {
     const payload: CreateEventRequest = {
       sessionId,
       name,
-      params,
+      params: normalizedParams,
       isScreen,
       timestamp: new Date().toISOString(),
     };

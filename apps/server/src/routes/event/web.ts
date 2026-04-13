@@ -502,6 +502,9 @@ export const eventWebRouter = new Elysia({ prefix: '/events' })
         if (event.params) {
           try {
             parsedParams = JSON.parse(event.params);
+            if (parsedParams && Object.keys(parsedParams).length === 0) {
+              parsedParams = null;
+            }
           } catch (error) {
             console.error(
               `[Event.Get] Failed to parse params for event ${event.event_id}:`,
