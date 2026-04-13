@@ -8,7 +8,7 @@ import {
 const QUESTDB_HTTP = 'http://questdb:9000';
 const EVENT_TIMESTAMP_FORMAT = 'yyyy-MM-ddTHH:mm:ss.SSSUUUZ';
 const QUESTDB_EVENT_WRITE_PARTITION = 'MONTH';
-const QUESTDB_EVENT_CUTOVER_AT = '2026-04-13T09:30:33Z';
+const QUESTDB_EVENT_CUTOVER_AT = '2026-04-13T09:33:17Z';
 const QUESTDB_EVENT_CUTOVER_AT_MS = new Date(
   QUESTDB_EVENT_CUTOVER_AT
 ).getTime();
@@ -24,8 +24,8 @@ const CONTROL_CHARS_REGEX = /[\x00-\x1F\x7F]/;
 
 type QueryResponse = {
   query: string;
-  columns: Array<{ name: string; type: string }>;
-  dataset: unknown[][];
+  columns?: Array<{ name: string; type: string }>;
+  dataset?: unknown[][];
   count: number;
   error?: string;
   position?: number;
@@ -163,7 +163,8 @@ async function executeQuery<T>(query: string): Promise<T[]> {
     );
   }
 
-  const { columns, dataset } = result;
+  const columns = result.columns ?? [];
+  const dataset = result.dataset ?? [];
 
   return dataset.map((row) => {
     const obj: Record<string, unknown> = {};
