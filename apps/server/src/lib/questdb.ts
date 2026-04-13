@@ -519,10 +519,8 @@ export async function getEvents(
   const eventsQuery = `
     SELECT
       event_id,
-      session_id,
       device_id,
       name,
-      params,
       is_screen,
       is_debug,
       to_str(timestamp, '${EVENT_TIMESTAMP_FORMAT}') AS timestamp
