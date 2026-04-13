@@ -8,7 +8,7 @@ import {
 const QUESTDB_HTTP = 'http://questdb:9000';
 const EVENT_TIMESTAMP_FORMAT = 'yyyy-MM-ddTHH:mm:ss.SSSUUUZ';
 const QUESTDB_EVENT_WRITE_PARTITION = 'MONTH';
-const QUESTDB_EVENT_CUTOVER_AT = '2026-04-13T09:28:44Z';
+const QUESTDB_EVENT_CUTOVER_AT = '2026-04-13T09:30:33Z';
 const QUESTDB_EVENT_CUTOVER_AT_MS = new Date(
   QUESTDB_EVENT_CUTOVER_AT
 ).getTime();
@@ -193,7 +193,7 @@ function createEventTableQuery(
       is_screen BOOLEAN,
       is_debug BOOLEAN,
       timestamp TIMESTAMP
-    ) TIMESTAMP(timestamp) PARTITION BY ${partitionBy} WAL TTL 1 YEAR DEDUP UPSERT KEYS(timestamp, event_id)
+    ) TIMESTAMP(timestamp) PARTITION BY ${partitionBy} WAL DEDUP UPSERT KEYS(timestamp, event_id)
   `;
 }
 
