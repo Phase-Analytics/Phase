@@ -13,12 +13,14 @@ const getContentSecurityPolicy = () => {
       "'unsafe-inline'",
       'https://widget.intercom.io',
       'https://js.intercomcdn.com',
+      'https://rybbit-api.mirac.dev',
     ],
     'script-src-elem': [
       "'self'",
       "'unsafe-inline'",
       'https://widget.intercom.io',
       'https://js.intercomcdn.com',
+      'https://rybbit-api.mirac.dev',
     ],
     'style-src': ["'self'", "'unsafe-inline'"],
     'img-src': [
@@ -39,7 +41,7 @@ const getContentSecurityPolicy = () => {
     ],
     'connect-src': [
       "'self'",
-      'https://openpanel.mirac.dev',
+      'https://rybbit-api.mirac.dev',
       serverUrl,
       'https://api-iam.intercom.io',
       'https://nexus-websocket-a.intercom.io',
