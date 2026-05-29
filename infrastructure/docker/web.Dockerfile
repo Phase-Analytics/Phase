@@ -5,8 +5,7 @@ FROM base AS deps
 WORKDIR /app
 
 COPY package.json bun.lock ./
-COPY packages/shared/package.json ./packages/shared/
-COPY packages/sdk/package.json ./packages/sdk/
+COPY packages/shared/ ./packages/shared/
 COPY apps/web/ ./apps/web/
 COPY apps/server/package.json ./apps/server/package.json
 
