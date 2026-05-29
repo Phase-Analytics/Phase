@@ -20,6 +20,7 @@
 ![Swift](https://img.shields.io/badge/Swift-F54A2A?logo=swift&logoColor=white)
 ![React Native](https://img.shields.io/badge/React_Native-%2320232a.svg?logo=react&logoColor=%2361DAFB)
 ![Expo](https://img.shields.io/badge/Expo-000020?logo=expo&logoColor=fff)
+![Unity](https://img.shields.io/badge/Unity-000000?logo=unity&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=fff)
 
 </div>
@@ -39,7 +40,7 @@ Built with modern web technologies, Phase provides real-time analytics, offline 
 - **Privacy-First**: No PII collection by default, fully GDPR compliant
 - **Real-time Analytics**: Live event streams and activity visualization
 - **Offline Support**: Mobile SDKs queue events locally and sync when online
-- **Multi-platform SDKs**: React Native, Expo, and Swift SDKs
+- **Multi-platform SDKs**: React Native, Expo, Swift, and Unity SDKs
 - **Session Tracking**: Comprehensive session management with device and location data
 - **Batch Processing**: Efficient bulk event ingestion for high-volume applications
 - **Team Collaboration**: Multi-user support with team management
@@ -75,6 +76,7 @@ Complete documentation for integrating Phase Analytics into your applications:
   - [Expo Setup](https://phase.sh/docs/get-started/expo)
   - [React Native Setup](https://phase.sh/docs/get-started/react-native)
   - [Swift/iOS Setup](https://phase.sh/docs/get-started/swift)
+  - [Unity Setup](https://phase.sh/docs/get-started/unity)
 
 ## Quick Start
 

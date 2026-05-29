@@ -1,0 +1,29 @@
+name: Unity SDK
+
+on:
+  pull_request:
+    paths:
+      - 'packages/phase-unity/**'
+      - '.github/workflows/unity-sdk.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'packages/phase-unity/**'
+      - '.github/workflows/unity-sdk.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Test
+        run: dotnet test packages/phase-unity/Phase.Analytics.sln --verbosity minimal
+
+      - name: Verify format
+        run: dotnet format packages/phase-unity/Phase.Analytics.sln --verify-no-changes

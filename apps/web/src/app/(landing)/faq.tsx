@@ -12,7 +12,7 @@ const faqs = [
     question:
       'How is Phase Analytics different from other analytics platforms?',
     answer:
-      'Phase Analytics is built specifically for mobile developers (React Native, Swift, Expo) with a privacy-first approach. Unlike traditional platforms, we store all data in GDPR-compliant EU data centers (Germany), never sell your data, and collect zero PII by default.',
+      'Phase Analytics is built specifically for mobile developers (React Native, Swift, Expo, Unity) with a privacy-first approach. Unlike traditional platforms, we store all data in GDPR-compliant EU data centers (Germany), never sell your data, and collect zero PII by default.',
   },
   {
     question: 'Where is my application data stored?',

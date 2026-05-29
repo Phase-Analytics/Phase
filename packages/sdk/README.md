@@ -119,6 +119,7 @@ Visit our documentation:
 
 - **[Expo Guide](https://phase.sh/docs/get-started/expo)** - Complete setup guide for Expo projects
 - **[React Native Guide](https://phase.sh/docs/get-started/react-native)** - Complete setup guide for React Native projects
+- **[Unity Guide](https://phase.sh/docs/get-started/unity)** - Setup guide for Unity (iOS/Android)
 
 ## API Reference
 

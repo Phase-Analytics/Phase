@@ -1,0 +1,21 @@
+{
+  "name": "com.phase.analytics",
+  "version": "0.1.0",
+  "displayName": "Phase Analytics",
+  "description": "Privacy-first analytics SDK for Unity mobile (iOS/Android).",
+  "unity": "2021.3",
+  "documentationUrl": "https://phase.sh/docs/get-started/unity",
+  "licensesUrl": "https://github.com/Phase-Analytics/Phase/blob/main/packages/phase-unity/LICENSE",
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.2.1"
+  },
+  "keywords": [
+    "analytics",
+    "privacy",
+    "phase"
+  ],
+  "author": {
+    "name": "Phase Analytics",
+    "url": "https://phase.sh"
+  }
+}

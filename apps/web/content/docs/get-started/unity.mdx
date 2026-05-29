@@ -1,0 +1,295 @@
+---
+title: Unity
+description: Privacy-first mobile analytics for Unity (iOS/Android). Track users, sessions and events | Phase Analytics
+---
+
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs, TabsList, TabsTrigger, TabsContent } from 'fumadocs-ui/components/tabs';
+import { CodeBlock, Pre } from 'fumadocs-ui/components/codeblock';
+
+## Installation
+
+<Steps>
+
+<Step>
+
+### Add the UPM package
+
+In Unity: **Window → Package Manager → + → Add package from git URL**
+
+<CodeBlock lang="text" allowCopy={true}>
+```
+https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity
+```
+</CodeBlock>
+
+Pin a release tag (recommended):
+
+<CodeBlock lang="text" allowCopy={true}>
+```
+https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.0
+```
+</CodeBlock>
+
+**Or** add to `Packages/manifest.json`:
+
+<CodeBlock title="Packages/manifest.json" lang="json" allowCopy={true}>
+```json
+{
+  "dependencies": {
+    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.0"
+  }
+}
+```
+</CodeBlock>
+
+**Requirements:**
+
+- Unity 2021.3+
+- iOS 12+ / Android API 21+
+- `com.unity.nuget.newtonsoft-json` (pulled in automatically)
+
+</Step>
+
+<Step>
+
+### Get Your API Key
+
+1. Sign in to [Phase Dashboard](https://phase.sh/dashboard)
+2. Create a new project or select an existing one
+3. Open API Keys tab
+4. Copy your API Key (starts with `phase_`)
+
+</Step>
+
+</Steps>
+
+## Setup
+
+Initialize once, then identify before tracking. With `AutoBootstrap` enabled (default), the SDK creates a `DontDestroyOnLoad` lifecycle hook for pause/resume and flush-on-quit.
+
+<CodeBlock
+  title="GameBootstrap.cs"
+  lang="csharp"
+  icon={<img src="https://cdn.simpleicons.org/unity/FFFFFF" alt="Unity" className="size-4 dark:invert" />}
+>
+```csharp
+using Phase.Analytics;
+using Phase.Analytics.Config;
+using Phase.Analytics.Models;
+using UnityEngine;
+
+public class GameBootstrap : MonoBehaviour
+{
+    private async void Start()
+    {
+        var ok = await PhaseAnalytics.InitializeAsync(new PhaseConfig
+        {
+            ApiKey = "phase_xxx",
+        });
+
+        if (!ok) return;
+
+        await PhaseAnalytics.IdentifyAsync();
+        PhaseAnalytics.Track("app_opened");
+    }
+}
+```
+</CodeBlock>
+
+You can attach the sample script from `Samples~/PhaseAnalyticsSample` in the package, or copy the pattern above.
+
+## Configuration
+
+<TypeTable
+  type={{
+    ApiKey: {
+      description: 'Your Phase API key (starts with `phase_`)',
+      type: 'string',
+      required: true,
+    },
+    BaseUrl: {
+      description: 'Custom API endpoint for self-hosted deployments',
+      type: 'string',
+      default: '"https://api.phase.sh"',
+    },
+    LogLevel: {
+      description: 'Console logging level (`Info`, `Warn`, `Error`, `None`)',
+      type: 'LogLevel',
+      default: 'None',
+    },
+    DebugData: {
+      description: 'Mark identify/events as debug data',
+      type: 'bool',
+      default: 'false',
+    },
+    DeviceInfo: {
+      description: 'Collect device metadata (`app_version`, `engine`, `unity_version`, OS, model)',
+      type: 'bool',
+      default: 'true',
+    },
+    UserLocale: {
+      description: 'Collect locale; server may geolocate from IP when enabled',
+      type: 'bool',
+      default: 'true',
+    },
+    AutoBootstrap: {
+      description: 'Spawn `PhaseLifecycleHook` on initialize',
+      type: 'bool',
+      default: 'true',
+    },
+    DisableInEditor: {
+      description: 'Skip network calls in Unity Editor',
+      type: 'bool',
+      default: 'false',
+    },
+    AllowInsecureDev: {
+      description: 'Allow `http` base URL (development only)',
+      type: 'bool',
+      default: 'false',
+    },
+  }}
+/>
+
+## Usage
+
+### Identify
+
+**Required** before `Track`. Registers the device and starts a session.
+
+<CodeBlock lang="csharp" icon={<img src="https://cdn.simpleicons.org/unity/FFFFFF" alt="Unity" className="size-4 dark:invert" />}>
+```csharp
+await PhaseAnalytics.IdentifyAsync();
+
+await PhaseAnalytics.IdentifyAsync(new DeviceProperties
+{
+    ["user_id"] = "123",
+    ["plan"] = "premium",
+});
+```
+</CodeBlock>
+
+**Privacy by default:** no PII unless you pass properties. If you add PII, obtain consent first.
+
+Properties must be flat primitives: `string`, `number`, `bool`, or `null`.
+
+### Track Events
+
+<CodeBlock lang="csharp" icon={<img src="https://cdn.simpleicons.org/unity/FFFFFF" alt="Unity" className="size-4 dark:invert" />}>
+```csharp
+PhaseAnalytics.Track("level_complete", new EventParams
+{
+    ["level"] = 5,
+    ["score"] = 1200,
+});
+```
+</CodeBlock>
+
+**Event naming:** alphanumeric, `_`, `-`, `.`, `/`, space; 1–256 characters.
+
+**Event parameters:** same rules as React Native / Swift SDKs (max 32 keys, 8 KB serialized, primitives only).
+
+### Scene and level tracking
+
+There is **no** automatic navigation or screen tracking (unlike Expo/React Native). Fire events manually:
+
+<CodeBlock lang="csharp" icon={<img src="https://cdn.simpleicons.org/unity/FFFFFF" alt="Unity" className="size-4 dark:invert" />}>
+```csharp
+PhaseAnalytics.Track("scene_loaded", new EventParams { ["scene"] = sceneName });
+```
+</CodeBlock>
+
+### Clear local data
+
+<CodeBlock lang="csharp" icon={<img src="https://cdn.simpleicons.org/unity/FFFFFF" alt="Unity" className="size-4 dark:invert" />}>
+```csharp
+await PhaseAnalytics.ClearLocalDataAsync();
+// Call InitializeAsync + IdentifyAsync again before tracking
+```
+</CodeBlock>
+
+## Type Reference
+
+### DeviceProperties
+
+Custom attributes for `IdentifyAsync()`:
+
+<TypeTable
+  type={{
+    '[string]': {
+      description: 'Primitive values only',
+      type: 'string | number | bool | null',
+    },
+  }}
+/>
+
+### EventParams
+
+Parameters for `Track()`:
+
+<TypeTable
+  type={{
+    '[string]': {
+      description: 'Max 32 keys. Key max 32 chars. String values max 256 chars. Payload max 8 KB.',
+      type: 'string | number | bool | null',
+    },
+  }}
+/>
+
+## How It Works
+
+### Offline Support
+
+Events are stored under `Application.persistentDataPath` when offline or when requests fail. The queue syncs after `IdentifyAsync` when the network is available.
+
+### Privacy
+
+- No personal data by default
+- Device IDs generated locally (ULID)
+- `platform` is not sent from Unity (server uses unknown/null)
+- Geolocation from IP when `UserLocale` is enabled
+
+### Performance
+
+- `Track` is non-blocking
+- Rate limit: 15 events per second
+- 50 ms deduplication for identical name + params
+- Batch flush with gzip for 100+ queued items
+
+## IL2CPP and release builds
+
+Before shipping production iOS/Android builds:
+
+- Use **IL2CPP** scripting backend
+- Keep package `link.xml` (preserves `Phase.Analytics` + Newtonsoft.Json)
+- Run a release device smoke test: Initialize → Identify → Track
+
+<Tabs defaultValue="ios" persist>
+  <TabsList>
+    <TabsTrigger value="ios">iOS</TabsTrigger>
+    <TabsTrigger value="android">Android</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="ios">
+
+Verify events in the dashboard after an IL2CPP **Release** build on a physical device (Editor-only tests are not sufficient).
+
+  </TabsContent>
+
+  <TabsContent value="android">
+
+Same as iOS: IL2CPP release on hardware, then confirm events and offline flush after reconnecting.
+
+  </TabsContent>
+</Tabs>
+
+## Troubleshooting
+
+| Issue | What to check |
+|-------|----------------|
+| Initialize returns false | API key prefix `phase_`, HTTPS `BaseUrl` |
+| No events | `IdentifyAsync` before `Track` |
+| 401 | Invalid API key |
+| Queue not flushing | Online + identified |
+| IL2CPP issues | `link.xml`, Newtonsoft package, device release build |
