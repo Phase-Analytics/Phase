@@ -3,13 +3,15 @@
   "private": true,
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/sdk",
+    "packages/shared"
   ],
   "scripts": {
     "dev": "bun run dev:server & bun run dev:web",
     "dev:server": "bun run --filter server dev",
     "dev:web": "bun run --filter web dev",
     "build": "bun run build:packages && bun run build:apps",
+    "build:packages": "bun run --filter './packages/sdk' --filter './packages/shared' build",
     "build:apps": "bun run --filter './apps/*' build",
     "build:server": "bun run --filter server build",
     "build:web": "bun run --filter web build",
@@ -18,7 +20,7 @@
     "db:migrate": "bun run --filter server db:migrate",
     "db:push": "bun run --filter server db:push",
     "check": "bunx ultracite fix --unsafe",
-    "typecheck": "bun run --filter './apps/*' --filter './packages/*' typecheck"
+    "typecheck": "bun run --filter './apps/*' --filter './packages/sdk' --filter './packages/shared' typecheck"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.5",

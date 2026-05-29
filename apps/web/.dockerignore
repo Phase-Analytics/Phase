@@ -56,3 +56,6 @@ README.md
 .claude
 scripts
 *.log
+
+# Unity SDK (UPM — not Bun workspace)
+packages/phase-unity/

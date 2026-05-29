@@ -1,6 +1,11 @@
 .DS_Store
 /files
 
+# Unity SDK build output (dotnet; separate from Bun workspace)
+packages/phase-unity/**/bin/
+packages/phase-unity/**/obj/
+packages/phase-unity/PLAN.md
+
 # Environment variables
 .env
 .env.local

@@ -1,0 +1,6 @@
+# Unity SDK (UPM only — not part of the JS/Bun workspace)
+packages/phase-unity/
+
+# Dependencies and VCS
+node_modules/
+.git/
