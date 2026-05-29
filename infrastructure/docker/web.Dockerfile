@@ -6,10 +6,11 @@ WORKDIR /app
 
 COPY package.json bun.lock ./
 COPY packages/shared/ ./packages/shared/
+COPY packages/sdk/package.json ./packages/sdk/
 COPY apps/web/ ./apps/web/
 COPY apps/server/package.json ./apps/server/package.json
 
-RUN bun install --frozen-lockfile
+RUN bun install --frozen-lockfile --filter web
 
 FROM base AS builder
 
