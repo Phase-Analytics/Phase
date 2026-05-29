@@ -159,7 +159,7 @@ services:
       - SERVER_URL=${SERVER_URL}
       - WEB_URL=${WEB_URL}
       - PLUNK_SECRET_KEY=${PLUNK_SECRET_KEY}
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/phase
+      - DATABASE_URL=postgresql://postgres:postgres@phase-postgres:5432/phase
       - REDIS_URL=redis://redis:6379
       - QUESTDB_HOST=questdb
       - QUESTDB_ILP_PORT=9009

@@ -6,7 +6,7 @@ export default defineConfig({
   dialect: 'postgresql',
   ...(process.env.POSTGRES_PASSWORD && {
     dbCredentials: {
-      url: `postgresql://postgres:${process.env.POSTGRES_PASSWORD}@postgres:5432/phase`,
+      url: `postgresql://postgres:${process.env.POSTGRES_PASSWORD}@phase-postgres:5432/phase`,
     },
   }),
 });
