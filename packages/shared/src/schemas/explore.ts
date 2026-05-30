@@ -183,6 +183,7 @@ export const ExplorePresetSchema = z.object({
   appId: z.string(),
   name: z.string().trim().min(1).max(100),
   query: ExploreQueryV1Schema,
+  summary: z.string().trim().min(1).max(500).nullable(),
   createdByUserId: z.string(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
@@ -196,11 +197,13 @@ export const CreateExplorePresetRequestSchema = z.object({
   appId: z.string().min(1),
   name: z.string().trim().min(1, 'Preset name is required').max(100),
   query: ExploreQueryV1Schema,
+  summary: z.string().trim().min(1).max(500).nullable().optional(),
 });
 
 export const UpdateExplorePresetRequestSchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
   query: ExploreQueryV1Schema.optional(),
+  summary: z.string().trim().min(1).max(500).nullable().optional(),
 });
 
 export const ExploreRunRequestSchema = z.object({

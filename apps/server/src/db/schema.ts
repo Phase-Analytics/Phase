@@ -196,6 +196,7 @@ export const explorePresets = pgTable(
       .references(() => apps.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     query: jsonb('query').$type<ExploreQueryV1>().notNull(),
+    summary: text('summary'),
     createdByUserId: text('created_by_user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),

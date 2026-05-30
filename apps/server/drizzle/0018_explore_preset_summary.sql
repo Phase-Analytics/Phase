@@ -1,0 +1,1 @@
+ALTER TABLE "explore_presets" ADD COLUMN "summary" text;

@@ -1,15 +1,10 @@
 'use client';
 
 import type { ExploreCoverage, ExploreResult } from '@phase/shared';
+import type { ColumnDef } from '@tanstack/react-table';
+import { useMemo } from 'react';
+import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { formatDuration } from '@/lib/date-utils';
 import {
   fillDailyTimeseriesGaps,
@@ -107,14 +102,16 @@ function ResultBody({
             </div>
           ))}
         </div>
-        <ResultTable
-          headers={['Metric', 'Value']}
-          rows={result.rows.map((row) => [
-            row.label,
-            row.label === 'Count'
-              ? row.value.toLocaleString()
-              : formatDuration(row.value),
-          ])}
+        <ExploreValueTable
+          columnHeaders={['Metric', 'Value']}
+          rows={result.rows.map((row) => ({
+            id: row.label,
+            primary: row.label,
+            value:
+              row.label === 'Count'
+                ? row.value.toLocaleString()
+                : formatDuration(row.value),
+          }))}
         />
       </div>
     );
@@ -124,12 +121,13 @@ function ResultBody({
     return (
       <div className="space-y-4">
         <ExploreBreakdownChart rows={result.rows} />
-        <ResultTable
-          headers={['Dimension', 'Value']}
-          rows={result.rows.map((row) => [
-            row.dimension,
-            row.value.toLocaleString(),
-          ])}
+        <ExploreValueTable
+          columnHeaders={['Dimension', 'Value']}
+          rows={result.rows.map((row) => ({
+            id: row.dimension,
+            primary: row.dimension,
+            value: row.value.toLocaleString(),
+          }))}
         />
       </div>
     );
@@ -146,14 +144,15 @@ function ResultBody({
           formatAsDuration={formatTimeseriesAsDuration}
           points={filledPoints}
         />
-        <ResultTable
-          headers={['Date', 'Value']}
-          rows={filledPoints.map((point) => [
-            point.date,
-            formatTimeseriesAsDuration
+        <ExploreValueTable
+          columnHeaders={['Date', 'Value']}
+          rows={filledPoints.map((point) => ({
+            id: point.date,
+            primary: point.date,
+            value: formatTimeseriesAsDuration
               ? formatDuration(point.value)
               : point.value.toFixed(2),
-          ])}
+          }))}
         />
       </div>
     );
@@ -175,31 +174,39 @@ function ResultBody({
   return null;
 }
 
-function ResultTable({
-  headers,
+type ExploreValueTableRow = {
+  id: string;
+  primary: string;
+  value: string;
+};
+
+function ExploreValueTable({
+  columnHeaders,
   rows,
 }: {
-  headers: string[];
-  rows: string[][];
+  columnHeaders: [string, string];
+  rows: ExploreValueTableRow[];
 }) {
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          {headers.map((header) => (
-            <TableHead key={header}>{header}</TableHead>
-          ))}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {rows.map((row) => (
-          <TableRow key={row.join('-')}>
-            {row.map((cell, index) => (
-              <TableCell key={`${headers[index]}-${cell}`}>{cell}</TableCell>
-            ))}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+  const columns = useMemo<ColumnDef<ExploreValueTableRow>[]>(
+    () => [
+      {
+        accessorKey: 'primary',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={columnHeaders[0]} />
+        ),
+      },
+      {
+        accessorKey: 'value',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={columnHeaders[1]} />
+        ),
+        cell: ({ row }) => (
+          <span className="tabular-nums">{row.getValue('value')}</span>
+        ),
+      },
+    ],
+    [columnHeaders]
   );
+
+  return <DataTable columns={columns} data={rows} pageSize={10} />;
 }

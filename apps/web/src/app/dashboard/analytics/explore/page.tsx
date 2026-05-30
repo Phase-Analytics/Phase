@@ -30,7 +30,7 @@ export default function ExplorePage() {
   const [query, setQuery] = useState<ExploreQueryDefinition>(() =>
     defaultExploreQuery()
   );
-  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [querySummary, setQuerySummary] = useState<string | null>(null);
   const [hasGeneratedQuery, setHasGeneratedQuery] = useState(false);
   const [result, setResult] = useState<ExploreResult | null>(null);
   const [runMeta, setRunMeta] = useState<ExploreRunMeta | null>(null);
@@ -39,6 +39,7 @@ export default function ExplorePage() {
     useExploreRun();
   const hasRunRef = useRef(false);
   const queryRef = useRef(query);
+  const isNlDraftingRef = useRef(false);
   queryRef.current = query;
 
   const executeRun = useCallback(
@@ -85,14 +86,16 @@ export default function ExplorePage() {
   }, [appId, executeRun]);
 
   const handleLoadPreset = useCallback(
-    (presetQuery: ExploreQueryV1) => {
+    (presetQuery: ExploreQueryV1, presetSummary: string | null) => {
       setQuery({
         ...presetQuery,
         filters: normalizeExploreFiltersClient(presetQuery.filters),
         timeRange: toExploreTimeRange(timeRange),
       });
       setHasGeneratedQuery(true);
-      setAiSummary(null);
+      if (!isNlDraftingRef.current) {
+        setQuerySummary(presetSummary);
+      }
     },
     [timeRange]
   );
@@ -104,12 +107,13 @@ export default function ExplorePage() {
         filters: normalizeExploreFiltersClient(payload.query.filters),
         timeRange: toExploreTimeRange(timeRange),
       });
-      setAiSummary(payload.summary);
+      setQuerySummary(payload.summary);
       setHasGeneratedQuery(true);
       setResult(null);
       setRunMeta(null);
       setError(null);
       hasRunRef.current = false;
+      isNlDraftingRef.current = false;
     },
     [timeRange]
   );
@@ -131,6 +135,7 @@ export default function ExplorePage() {
             <ExplorePresetsSidebar
               appId={appId}
               currentQuery={query}
+              currentSummary={querySummary}
               onLoadQuery={handleLoadPreset}
               timeRange={toExploreTimeRange(timeRange)}
             />
@@ -138,22 +143,24 @@ export default function ExplorePage() {
 
           <div className="flex min-w-0 flex-col gap-4">
             {appId ? (
-              <ExploreAiPrompt appId={appId} onGenerated={handleAiGenerated} />
+              <ExploreAiPrompt
+                appId={appId}
+                onDraftingChange={(drafting) => {
+                  isNlDraftingRef.current = drafting;
+                }}
+                onGenerated={handleAiGenerated}
+                summary={querySummary}
+              />
             ) : null}
 
             {showBuilder ? (
-              <div className="space-y-2">
-                {aiSummary ? (
-                  <p className="text-muted-foreground text-sm">{aiSummary}</p>
-                ) : null}
-                <ExploreQueryBuilder
-                  appId={appId ?? ''}
-                  isRunning={isExploreRunning}
-                  onChange={setQuery}
-                  onRun={handleRun}
-                  query={query}
-                />
-              </div>
+              <ExploreQueryBuilder
+                appId={appId ?? ''}
+                isRunning={isExploreRunning}
+                onChange={setQuery}
+                onRun={handleRun}
+                query={query}
+              />
             ) : null}
 
             {showResults ? (

@@ -41,8 +41,9 @@ import { cn } from '@/lib/utils';
 type ExplorePresetsSidebarProps = {
   appId: string;
   currentQuery: ExploreQueryDefinition;
+  currentSummary: string | null;
   timeRange: ExploreTimeRange;
-  onLoadQuery: (query: ExploreQueryV1) => void;
+  onLoadQuery: (query: ExploreQueryV1, summary: string | null) => void;
 };
 
 type DialogMode = 'save' | 'rename' | 'duplicate';
@@ -62,6 +63,7 @@ function uniqueDuplicateName(base: string, existing: string[]): string {
 export function ExplorePresetsSidebar({
   appId,
   currentQuery,
+  currentSummary,
   timeRange,
   onLoadQuery,
 }: ExplorePresetsSidebarProps) {
@@ -106,6 +108,7 @@ export function ExplorePresetsSidebar({
           appId,
           name,
           query: buildExploreRunQuery(currentQuery, timeRange),
+          summary: currentSummary,
         });
       } else if (dialogMode === 'rename' && targetPreset) {
         await updatePreset.mutateAsync({ id: targetPreset.id, name });
@@ -114,6 +117,7 @@ export function ExplorePresetsSidebar({
           appId,
           name,
           query: targetPreset.query,
+          summary: targetPreset.summary,
         });
       }
 
@@ -193,7 +197,7 @@ export function ExplorePresetsSidebar({
                     className="flex-1 truncate text-left font-sans text-sm"
                     onClick={() => {
                       setActiveId(preset.id);
-                      onLoadQuery(preset.query);
+                      onLoadQuery(preset.query, preset.summary);
                     }}
                     type="button"
                   >

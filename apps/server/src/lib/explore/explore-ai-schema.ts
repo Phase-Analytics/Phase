@@ -73,6 +73,12 @@ export const ExploreQueryV1AiSchema = z.object({
 
 export type ExploreQueryV1Ai = z.infer<typeof ExploreQueryV1AiSchema>;
 
+export const ExploreAiGenerationSchema = ExploreQueryV1AiSchema.extend({
+  summary: z.string().min(1).max(500),
+});
+
+export type ExploreAiGeneration = z.infer<typeof ExploreAiGenerationSchema>;
+
 function coerceFilter(
   raw: z.infer<typeof ExploreFilterAiSchema>
 ): ExploreFilter {

@@ -260,6 +260,7 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
           appId: row.appId,
           name: row.name,
           query: ExploreQueryV1Schema.parse(row.query),
+          summary: row.summary,
           createdByUserId: row.createdByUserId,
           createdAt: row.createdAt.toISOString(),
           updatedAt: row.updatedAt.toISOString(),
@@ -314,6 +315,7 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
         appId: body.appId,
         name: body.name,
         query: parsed.data,
+        summary: body.summary ?? null,
         createdByUserId: user.id,
         createdAt: now,
         updatedAt: now,
@@ -324,6 +326,7 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
         appId: body.appId,
         name: body.name,
         query: parsed.data,
+        summary: body.summary ?? null,
         createdByUserId: user.id,
         createdAt: now.toISOString(),
         updatedAt: now.toISOString(),
@@ -393,6 +396,10 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
         updates.query = parsed.data;
       }
 
+      if (body.summary !== undefined) {
+        updates.summary = body.summary;
+      }
+
       const [row] = await db
         .update(explorePresets)
         .set(updates)
@@ -404,6 +411,7 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
         appId: row.appId,
         name: row.name,
         query: ExploreQueryV1Schema.parse(row.query),
+        summary: row.summary,
         createdByUserId: row.createdByUserId,
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),
