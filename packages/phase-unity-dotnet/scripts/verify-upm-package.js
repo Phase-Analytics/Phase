@@ -81,8 +81,37 @@ function walk(dir, relative = '') {
 
 walk(packageRoot);
 
+const asmdefPath = path.join(packageRoot, 'Runtime/Phase.Analytics.asmdef');
+const asmdef = JSON.parse(fs.readFileSync(asmdefPath, 'utf8'));
+if (asmdef.langVersion !== '10') {
+  fail('Runtime/Phase.Analytics.asmdef must set langVersion to "10" (file-scoped namespaces)');
+}
+
+const runtimeDir = path.join(packageRoot, 'Runtime');
+const fileScoped = [];
+function scanCs(dir) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      scanCs(full);
+      continue;
+    }
+    if (!entry.name.endsWith('.cs')) {
+      continue;
+    }
+    const firstLine = fs.readFileSync(full, 'utf8').split('\n')[0].trim();
+    if (/^namespace .+;$/.test(firstLine)) {
+      fileScoped.push(path.relative(packageRoot, full));
+    }
+  }
+}
+scanCs(runtimeDir);
+if (fileScoped.length > 0 && asmdef.langVersion !== '10') {
+  fail(`file-scoped namespaces require langVersion 10: ${fileScoped[0]}`);
+}
+
 if (failed) {
   process.exit(1);
 }
 
-console.log('UPM package layout and .meta files OK');
+console.log('UPM package layout, .meta files, and langVersion OK');

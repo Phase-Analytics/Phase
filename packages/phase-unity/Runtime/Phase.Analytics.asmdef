@@ -1,6 +1,7 @@
 {
   "name": "Phase.Analytics",
   "rootNamespace": "Phase.Analytics",
+  "langVersion": "10",
   "references": [
     "Newtonsoft.Json"
   ],

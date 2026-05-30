@@ -24,21 +24,15 @@ https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity
 ```
 </CodeBlock>
 
-Pin a **commit hash** on `main` until the `v0.1.0` git tag is published (required for immutable git UPM packages with committed `.meta` files):
+Pin the latest release tag:
 
 <CodeBlock lang="text" allowCopy={true}>
 ```
-https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#<commit-sha>
+https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.1
 ```
 </CodeBlock>
 
-After release, pin the tag:
-
-<CodeBlock lang="text" allowCopy={true}>
-```
-https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.0
-```
-</CodeBlock>
+`v0.1.0` ships committed `.meta` files for git UPM. `v0.1.1` adds `langVersion: 10` on the SDK asmdef (required for file-scoped namespaces; fixes CS8773 on Unity 6).
 
 **Or** add to `Packages/manifest.json`:
 
@@ -46,7 +40,7 @@ https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.0
 ```json
 {
   "dependencies": {
-    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#<commit-sha>"
+    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.1"
   }
 }
 ```
@@ -298,6 +292,7 @@ Same as iOS: IL2CPP release on hardware, then confirm events and offline flush a
 |-------|----------------|
 | `has no meta file, but it's in an immutable folder` | Pin a commit that includes committed `.meta` files under `packages/phase-unity`; re-import the package |
 | `CS0246` / `Phase` namespace not found | `Phase.Analytics` assembly did not compile (often missing `.meta` on git UPM); fix import warnings first |
+| `CS8773` file-scoped namespace | Upgrade to `#v0.1.1`+ (asmdef `langVersion: 10`); do not rely on consumer `csc.rsp` |
 | Initialize returns false | API key prefix `phase_`, HTTPS `BaseUrl` |
 | No events | `IdentifyAsync` before `Track` |
 | 401 | Invalid API key |
