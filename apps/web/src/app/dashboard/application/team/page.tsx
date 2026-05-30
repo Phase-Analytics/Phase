@@ -13,6 +13,7 @@ import { useQueryState } from 'nuqs';
 import { useMemo } from 'react';
 import { AddMemberDialog } from '@/components/add-member-dialog';
 import { RemoveMemberDialog } from '@/components/remove-member-dialog';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { RequireApp } from '@/components/require-app';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -46,12 +47,10 @@ export default function TeamPage() {
   return (
     <RequireApp>
       <div className="flex flex-1 flex-col gap-6">
-        <div>
-          <h1 className="font-bold font-sans text-2xl">Team</h1>
-          <p className="font-sans text-muted-foreground text-sm">
-            Manage your application team members
-          </p>
-        </div>
+        <DashboardPageHeader
+          description="Manage your application team members"
+          title="Team"
+        />
 
         <div className="space-y-4">
           <Card className="py-0">

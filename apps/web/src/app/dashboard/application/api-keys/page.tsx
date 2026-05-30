@@ -13,6 +13,7 @@ import { useScramble } from 'use-scramble';
 import { ClientDate } from '@/components/client-date';
 import { PublicApiIntroCard } from '@/components/public-api/public-api-intro-card';
 import { PublicApiTokenTable } from '@/components/public-api/public-api-token-table';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { RequireApp } from '@/components/require-app';
 import { RotateKeyDialog } from '@/components/rotate-key-dialog';
 import { Button } from '@/components/ui/button';
@@ -182,13 +183,10 @@ export default function ApiKeysPage() {
   return (
     <RequireApp>
       <div className="flex flex-1 flex-col gap-6">
-        <div>
-          <h1 className="font-bold font-sans text-2xl">API Keys</h1>
-          <p className="font-sans text-muted-foreground text-sm">
-            Manage your application credentials for ingestion and read-only
-            access.
-          </p>
-        </div>
+        <DashboardPageHeader
+          description="Manage your application credentials for ingestion and read-only access"
+          title="API Keys"
+        />
 
         <div className="space-y-4">
           <Card className="border-blue-500/50 bg-blue-500/5 py-0">

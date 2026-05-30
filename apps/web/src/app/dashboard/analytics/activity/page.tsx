@@ -18,6 +18,7 @@ import { EventsTable } from '@/components/events/events-table';
 import { TopEventsCard } from '@/components/events/top-events-card';
 import { TopScreensCard } from '@/components/events/top-screens-card';
 import { ExportButton } from '@/components/export-button';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { RequireApp } from '@/components/require-app';
 import { Card, CardContent } from '@/components/ui/card';
 import { buildQueryString, fetchApi } from '@/lib/api/client';
@@ -122,15 +123,11 @@ export default function EventsPage() {
   return (
     <RequireApp>
       <div className="flex flex-1 flex-col gap-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="font-bold font-sans text-2xl">Activity</h1>
-            <p className="font-sans text-muted-foreground text-sm">
-              Track and analyze events in your application
-            </p>
-          </div>
-          <ActivityExportButton />
-        </div>
+        <DashboardPageHeader
+          actions={<ActivityExportButton />}
+          description="Track and analyze events in your application"
+          title="Activity"
+        />
 
         <ErrorBoundary>
           <Suspense fallback={<EventsOverviewCardsSkeleton />}>

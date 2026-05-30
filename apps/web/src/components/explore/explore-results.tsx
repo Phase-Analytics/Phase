@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 import { formatDuration } from '@/lib/date-utils';
 import { ExploreBreakdownChart } from './explore-breakdown-chart';
 import { ExploreTimeseriesChart } from './explore-timeseries-chart';
@@ -22,7 +23,10 @@ type ExploreResultsProps = {
 export function ExploreResults({ result, isPending, error }: ExploreResultsProps) {
   if (isPending) {
     return (
-      <div className="text-muted-foreground text-sm">Running query...</div>
+      <div className="space-y-3">
+        <Skeleton className="h-10 w-48" />
+        <Skeleton className="h-[250px] w-full" />
+      </div>
     );
   }
 

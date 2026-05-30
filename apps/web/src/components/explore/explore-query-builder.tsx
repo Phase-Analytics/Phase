@@ -1,32 +1,107 @@
 'use client';
 
-import { Add01Icon, Delete02Icon } from '@hugeicons/core-free-icons';
+import {
+  Add01Icon,
+  Delete02Icon,
+  UnfoldMoreIcon,
+} from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import type {
-  ExploreBreakdown,
   ExploreFilter,
   ExploreGrain,
   ExploreQueryV1,
-  ExploreTimeRange,
   PropertyOperator,
 } from '@phase/shared';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { useExploreCatalog } from '@/lib/queries/use-explore';
 import { cn } from '@/lib/utils';
+import type { ExploreQueryDefinition } from './explore-query-utils';
 
 type ExploreQueryBuilderProps = {
   appId: string;
-  query: ExploreQueryV1;
-  onChange: (query: ExploreQueryV1) => void;
+  query: ExploreQueryDefinition;
+  onChange: (query: ExploreQueryDefinition) => void;
   onRun: () => void;
   isRunning: boolean;
 };
 
-const TIME_RANGES: ExploreTimeRange[] = ['7d', '30d', '180d', '360d'];
+type BuilderOption = {
+  value: string;
+  label: string;
+  disabled?: boolean;
+};
 
-const selectClassName =
-  'flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
+const GRAIN_OPTIONS: BuilderOption[] = [
+  { value: 'users', label: 'Users' },
+  { value: 'events', label: 'Events' },
+  { value: 'sessions', label: 'Sessions' },
+];
+
+const METRIC_OPTIONS: BuilderOption[] = [
+  { value: 'count', label: 'Count' },
+  { value: 'count_distinct_users', label: 'Distinct users' },
+  { value: 'avg', label: 'Average' },
+  { value: 'min', label: 'Min' },
+  { value: 'max', label: 'Max' },
+  { value: 'sum', label: 'Sum' },
+  { value: 'field_summary', label: 'Field summary' },
+  { value: 'sessions_per_user', label: 'Sessions / user' },
+];
+
+const BREAKDOWN_OPTIONS: BuilderOption[] = [
+  { value: 'none', label: 'None' },
+  { value: 'platform', label: 'Platform' },
+  { value: 'country', label: 'Country' },
+  { value: 'city', label: 'City' },
+  { value: 'locale', label: 'Locale' },
+  { value: 'event_name', label: 'Event name' },
+];
+
+const GROUP_BY_OPTIONS: BuilderOption[] = [
+  { value: 'none', label: 'None' },
+  { value: 'day', label: 'Day' },
+];
+
+const FILTER_TYPE_OPTIONS: BuilderOption[] = [
+  { value: 'event_performed', label: 'Event performed' },
+  { value: 'event_property', label: 'Event property' },
+  { value: 'device', label: 'Device field' },
+  { value: 'device_property', label: 'Device property' },
+];
+
+const PERFORMED_OPTIONS: BuilderOption[] = [
+  { value: 'true', label: 'Performed' },
+  { value: 'false', label: 'Not performed' },
+];
+
+const DEVICE_FIELD_OPTIONS: BuilderOption[] = [
+  { value: 'platform', label: 'Platform' },
+  { value: 'country', label: 'Country' },
+  { value: 'city', label: 'City' },
+  { value: 'locale', label: 'Locale' },
+];
+
+const DEVICE_OPERATOR_OPTIONS: BuilderOption[] = [
+  { value: 'eq', label: 'equals' },
+  { value: 'neq', label: 'not equals' },
+];
+
+const OPERATOR_OPTIONS: BuilderOption[] = [
+  { value: 'eq', label: '=' },
+  { value: 'neq', label: '!=' },
+  { value: 'gt', label: '>' },
+  { value: 'gte', label: '>=' },
+  { value: 'lt', label: '<' },
+  { value: 'lte', label: '<=' },
+  { value: 'contains', label: 'contains' },
+];
 
 export function ExploreQueryBuilder({
   appId,
@@ -49,148 +124,112 @@ export function ExploreQueryBuilder({
 
   const { data: catalog } = useExploreCatalog(appId, eventNameForCatalog);
 
-  const update = (partial: Partial<ExploreQueryV1>) => {
+  const update = (partial: Partial<ExploreQueryDefinition>) => {
     onChange({ ...query, ...partial });
   };
 
-  const addFilter = () => {
-    update({
-      filters: [
-        ...query.filters,
-        {
-          type: 'event_performed',
-          eventName: catalog?.eventNames[0] ?? 'app_opened',
-          performed: true,
-        },
-      ],
-    });
-  };
+  const fieldOptions: BuilderOption[] = [];
+  if (query.grain === 'sessions') {
+    fieldOptions.push({ value: 'session_duration', label: 'Session duration' });
+  }
+  if (query.grain === 'events') {
+    for (const name of catalog?.eventNames ?? []) {
+      fieldOptions.push({
+        value: `${name}::duration`,
+        label: `${name}.duration`,
+      });
+    }
+  }
 
-  const updateFilter = (index: number, filter: ExploreFilter) => {
-    const filters = [...query.filters];
-    filters[index] = filter;
-    update({ filters });
-  };
+  const breakdownOptions = BREAKDOWN_OPTIONS.map((option) => ({
+    ...option,
+    disabled:
+      option.value === 'event_name' && query.grain !== 'events',
+  }));
 
-  const removeFilter = (index: number) => {
-    update({ filters: query.filters.filter((_, i) => i !== index) });
-  };
+  const breakdownValue =
+    query.breakdown?.type === 'event_name'
+      ? 'event_name'
+      : query.breakdown?.type === 'device'
+        ? query.breakdown.field
+        : 'none';
+
+  const fieldValue =
+    query.metric.field?.kind === 'session_duration'
+      ? 'session_duration'
+      : query.metric.field?.kind === 'event_param'
+        ? `${query.metric.field.eventName}::${query.metric.field.paramKey}`
+        : fieldOptions[0]?.value ?? '';
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
         <Field label="Grain">
-          <select
-            className={cn(selectClassName, 'w-[140px]')}
-            onChange={(e) => update({ grain: e.target.value as ExploreGrain })}
+          <BuilderDropdown
+            className="w-[140px]"
+            onValueChange={(value) => update({ grain: value as ExploreGrain })}
+            options={GRAIN_OPTIONS}
             value={query.grain}
-          >
-            <option value="users">Users</option>
-            <option value="events">Events</option>
-            <option value="sessions">Sessions</option>
-          </select>
-        </Field>
-
-        <Field label="Time range">
-          <select
-            className={cn(selectClassName, 'w-[140px]')}
-            onChange={(e) =>
-              update({ timeRange: e.target.value as ExploreTimeRange })
-            }
-            value={query.timeRange}
-          >
-            {TIME_RANGES.map((range) => (
-              <option key={range} value={range}>
-                {range}
-              </option>
-            ))}
-          </select>
+          />
         </Field>
 
         <Field label="Metric">
-          <select
-            className={cn(selectClassName, 'w-[180px]')}
-            onChange={(e) =>
+          <BuilderDropdown
+            className="w-[180px]"
+            onValueChange={(value) =>
               update({
                 metric: {
                   ...query.metric,
-                  aggregation: e.target
-                    .value as ExploreQueryV1['metric']['aggregation'],
+                  aggregation: value as ExploreQueryV1['metric']['aggregation'],
                 },
               })
             }
+            options={METRIC_OPTIONS}
             value={query.metric.aggregation}
-          >
-            <option value="count">Count</option>
-            <option value="count_distinct_users">Distinct users</option>
-            <option value="avg">Average</option>
-            <option value="min">Min</option>
-            <option value="max">Max</option>
-            <option value="sum">Sum</option>
-            <option value="field_summary">Field summary</option>
-            <option value="sessions_per_user">Sessions / user</option>
-          </select>
+          />
         </Field>
 
         {(query.metric.aggregation === 'avg' ||
           query.metric.aggregation === 'min' ||
           query.metric.aggregation === 'max' ||
           query.metric.aggregation === 'sum' ||
-          query.metric.aggregation === 'field_summary') && (
-          <Field label="Field">
-            <select
-              className={cn(selectClassName, 'w-[220px]')}
-              onChange={(e) => {
-                if (e.target.value === 'session_duration') {
+          query.metric.aggregation === 'field_summary') &&
+          fieldOptions.length > 0 && (
+            <Field label="Field">
+              <BuilderDropdown
+                className="w-[220px]"
+                onValueChange={(value) => {
+                  if (value === 'session_duration') {
+                    update({
+                      metric: {
+                        ...query.metric,
+                        field: { kind: 'session_duration' },
+                      },
+                    });
+                    return;
+                  }
+                  const [eventName, paramKey] = value.split('::');
                   update({
                     metric: {
                       ...query.metric,
-                      field: { kind: 'session_duration' },
+                      field: {
+                        kind: 'event_param',
+                        eventName,
+                        paramKey,
+                      },
                     },
                   });
-                  return;
-                }
-                const [eventName, paramKey] = e.target.value.split('::');
-                update({
-                  metric: {
-                    ...query.metric,
-                    field: {
-                      kind: 'event_param',
-                      eventName,
-                      paramKey,
-                    },
-                  },
-                });
-              }}
-              value={
-                query.metric.field?.kind === 'session_duration'
-                  ? 'session_duration'
-                  : query.metric.field?.kind === 'event_param'
-                    ? `${query.metric.field.eventName}::${query.metric.field.paramKey}`
-                    : ''
-              }
-            >
-              <option disabled value="">
-                Select field
-              </option>
-              {query.grain === 'sessions' && (
-                <option value="session_duration">Session duration</option>
-              )}
-              {query.grain === 'events' &&
-                (catalog?.eventNames ?? []).map((name) => (
-                  <option key={name} value={`${name}::duration`}>
-                    {name}.duration
-                  </option>
-                ))}
-            </select>
-          </Field>
-        )}
+                }}
+                options={fieldOptions}
+                value={fieldValue}
+              />
+            </Field>
+          )}
 
         <Field label="Breakdown">
-          <select
-            className={cn(selectClassName, 'w-[160px]')}
-            onChange={(e) => {
-              const value = e.target.value;
+          <BuilderDropdown
+            className="w-[160px]"
+            onValueChange={(value) => {
               if (value === 'none') {
                 update({ breakdown: undefined });
                 return;
@@ -206,46 +245,32 @@ export function ExploreQueryBuilder({
                 },
               });
             }}
-            value={
-              query.breakdown?.type === 'event_name'
-                ? 'event_name'
-                : query.breakdown?.type === 'device'
-                  ? query.breakdown.field
-                  : 'none'
-            }
-          >
-            <option value="none">None</option>
-            <option value="platform">Platform</option>
-            <option value="country">Country</option>
-            <option value="city">City</option>
-            <option value="locale">Locale</option>
-            {query.grain === 'events' && (
-              <option value="event_name">Event name</option>
-            )}
-          </select>
+            options={breakdownOptions}
+            value={breakdownValue}
+          />
         </Field>
 
         {query.metric.aggregation === 'sessions_per_user' && (
           <Field label="Group by">
-            <select
-              className={cn(selectClassName, 'w-[120px]')}
-              onChange={(e) =>
+            <BuilderDropdown
+              className="w-[120px]"
+              onValueChange={(value) =>
                 update({
-                  groupBy: e.target.value === 'day' ? 'day' : undefined,
+                  groupBy: value === 'day' ? 'day' : undefined,
                 })
               }
+              options={GROUP_BY_OPTIONS}
               value={query.groupBy ?? 'none'}
-            >
-              <option value="none">None</option>
-              <option value="day">Day</option>
-            </select>
+            />
           </Field>
         )}
       </div>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <p className="font-medium text-sm">Filters</p>
+          <p className="font-semibold text-muted-foreground text-sm uppercase">
+            Filters
+          </p>
           <Button onClick={addFilter} size="sm" type="button" variant="outline">
             <HugeiconsIcon className="size-4" icon={Add01Icon} />
             Add filter
@@ -274,6 +299,29 @@ export function ExploreQueryBuilder({
       </Button>
     </div>
   );
+
+  function addFilter() {
+    update({
+      filters: [
+        ...query.filters,
+        {
+          type: 'event_performed',
+          eventName: catalog?.eventNames[0] ?? 'app_opened',
+          performed: true,
+        },
+      ],
+    });
+  }
+
+  function updateFilter(index: number, filter: ExploreFilter) {
+    const filters = [...query.filters];
+    filters[index] = filter;
+    update({ filters });
+  }
+
+  function removeFilter(index: number) {
+    update({ filters: query.filters.filter((_, i) => i !== index) });
+  }
 }
 
 function Field({
@@ -284,10 +332,56 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-1">
-      <p className="text-muted-foreground text-xs">{label}</p>
+    <div className="space-y-1.5">
+      <p className="font-medium text-muted-foreground text-xs">{label}</p>
       {children}
     </div>
+  );
+}
+
+function BuilderDropdown({
+  value,
+  onValueChange,
+  options,
+  className,
+  placeholder = 'Select',
+}: {
+  value: string;
+  onValueChange: (value: string) => void;
+  options: BuilderOption[];
+  className?: string;
+  placeholder?: string;
+}) {
+  const selected = options.find((option) => option.value === value);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          className={cn('h-9 justify-between gap-2 font-normal', className)}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          <span className="truncate">{selected?.label ?? placeholder}</span>
+          <HugeiconsIcon
+            className="size-4 shrink-0 opacity-50"
+            icon={UnfoldMoreIcon}
+          />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="max-h-64 overflow-y-auto">
+        {options.map((option) => (
+          <DropdownMenuItem
+            disabled={option.disabled}
+            key={option.value}
+            onClick={() => onValueChange(option.value)}
+          >
+            {option.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -307,10 +401,9 @@ function FilterRow({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border p-2">
-      <select
-        className={cn(selectClassName, 'w-[160px]')}
-        onChange={(e) => {
-          const type = e.target.value;
+      <BuilderDropdown
+        className="w-[160px]"
+        onValueChange={(type) => {
           if (type === 'event_performed') {
             onChange({
               type: 'event_performed',
@@ -341,41 +434,35 @@ function FilterRow({
             });
           }
         }}
+        options={FILTER_TYPE_OPTIONS}
         value={filter.type}
-      >
-        <option value="event_performed">Event performed</option>
-        <option value="event_property">Event property</option>
-        <option value="device">Device field</option>
-        <option value="device_property">Device property</option>
-      </select>
+      />
 
       {filter.type === 'event_performed' && (
         <>
           <Input
-            className="w-[180px]"
+            className="h-9 w-[180px]"
             onChange={(e) =>
               onChange({ ...filter, eventName: e.target.value })
             }
             placeholder="Event name"
             value={filter.eventName}
           />
-          <select
-            className={cn(selectClassName, 'w-[120px]')}
-            onChange={(e) =>
-              onChange({ ...filter, performed: e.target.value === 'true' })
+          <BuilderDropdown
+            className="w-[140px]"
+            onValueChange={(v) =>
+              onChange({ ...filter, performed: v === 'true' })
             }
+            options={PERFORMED_OPTIONS}
             value={filter.performed ? 'true' : 'false'}
-          >
-            <option value="true">Performed</option>
-            <option value="false">Not performed</option>
-          </select>
+          />
         </>
       )}
 
       {filter.type === 'event_property' && (
         <>
           <Input
-            className="w-[140px]"
+            className="h-9 w-[140px]"
             onChange={(e) =>
               onChange({ ...filter, eventName: e.target.value })
             }
@@ -383,17 +470,21 @@ function FilterRow({
             value={filter.eventName}
           />
           <Input
-            className="w-[100px]"
+            className="h-9 w-[100px]"
             onChange={(e) => onChange({ ...filter, key: e.target.value })}
             placeholder="Key"
             value={filter.key}
           />
-          <OperatorSelect
-            onChange={(operator) => onChange({ ...filter, operator })}
+          <BuilderDropdown
+            className="w-[100px]"
+            onValueChange={(v) =>
+              onChange({ ...filter, operator: v as PropertyOperator })
+            }
+            options={OPERATOR_OPTIONS}
             value={filter.operator}
           />
           <Input
-            className="w-[100px]"
+            className="h-9 w-[100px]"
             onChange={(e) =>
               onChange({
                 ...filter,
@@ -410,36 +501,30 @@ function FilterRow({
 
       {filter.type === 'device' && (
         <>
-          <select
-            className={cn(selectClassName, 'w-[120px]')}
-            onChange={(e) =>
-              onChange({
-                ...filter,
-                field: e.target.value as typeof filter.field,
-              })
-            }
-            value={filter.field}
-          >
-            <option value="platform">Platform</option>
-            <option value="country">Country</option>
-            <option value="city">City</option>
-            <option value="locale">Locale</option>
-          </select>
-          <select
-            className={cn(selectClassName, 'w-[100px]')}
-            onChange={(e) =>
-              onChange({
-                ...filter,
-                operator: e.target.value as 'eq' | 'neq',
-              })
-            }
-            value={filter.operator}
-          >
-            <option value="eq">equals</option>
-            <option value="neq">not equals</option>
-          </select>
-          <Input
+          <BuilderDropdown
             className="w-[120px]"
+            onValueChange={(field) =>
+              onChange({
+                ...filter,
+                field: field as typeof filter.field,
+              })
+            }
+            options={DEVICE_FIELD_OPTIONS}
+            value={filter.field}
+          />
+          <BuilderDropdown
+            className="w-[110px]"
+            onValueChange={(operator) =>
+              onChange({
+                ...filter,
+                operator: operator as 'eq' | 'neq',
+              })
+            }
+            options={DEVICE_OPERATOR_OPTIONS}
+            value={filter.operator}
+          />
+          <Input
+            className="h-9 w-[120px]"
             onChange={(e) => onChange({ ...filter, value: e.target.value })}
             value={filter.value}
           />
@@ -449,17 +534,21 @@ function FilterRow({
       {filter.type === 'device_property' && (
         <>
           <Input
-            className="w-[120px]"
+            className="h-9 w-[120px]"
             onChange={(e) => onChange({ ...filter, key: e.target.value })}
             placeholder="Key"
             value={filter.key}
           />
-          <OperatorSelect
-            onChange={(operator) => onChange({ ...filter, operator })}
+          <BuilderDropdown
+            className="w-[100px]"
+            onValueChange={(v) =>
+              onChange({ ...filter, operator: v as PropertyOperator })
+            }
+            options={OPERATOR_OPTIONS}
             value={filter.operator}
           />
           <Input
-            className="w-[120px]"
+            className="h-9 w-[120px]"
             onChange={(e) =>
               onChange({
                 ...filter,
@@ -478,29 +567,5 @@ function FilterRow({
         <HugeiconsIcon className="size-4" icon={Delete02Icon} />
       </Button>
     </div>
-  );
-}
-
-function OperatorSelect({
-  value,
-  onChange,
-}: {
-  value: PropertyOperator;
-  onChange: (value: PropertyOperator) => void;
-}) {
-  return (
-    <select
-      className={cn(selectClassName, 'w-[100px]')}
-      onChange={(e) => onChange(e.target.value as PropertyOperator)}
-      value={value}
-    >
-      <option value="eq">=</option>
-      <option value="neq">!=</option>
-      <option value="gt">&gt;</option>
-      <option value="gte">&gt;=</option>
-      <option value="lt">&lt;</option>
-      <option value="lte">&lt;=</option>
-      <option value="contains">contains</option>
-    </select>
   );
 }

@@ -4,6 +4,7 @@ import { parseAsString, useQueryState } from 'nuqs';
 import { Suspense, useCallback } from 'react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { ExportButton } from '@/components/export-button';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { RequireApp } from '@/components/require-app';
 import {
   SessionsActivityChart,
@@ -151,15 +152,11 @@ export default function SessionsPage() {
   return (
     <RequireApp>
       <div className="flex flex-1 flex-col gap-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="font-bold font-sans text-2xl">Sessions</h1>
-            <p className="font-sans text-muted-foreground text-sm">
-              Track and analyze user sessions in your application
-            </p>
-          </div>
-          <SessionsExportButton />
-        </div>
+        <DashboardPageHeader
+          actions={<SessionsExportButton />}
+          description="Track and analyze user sessions in your application"
+          title="Sessions"
+        />
 
         <ErrorBoundary>
           <Suspense fallback={<SessionsOverviewCardsSkeleton />}>

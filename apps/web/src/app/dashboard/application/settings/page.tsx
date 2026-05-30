@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { useQueryState } from 'nuqs';
 import { DeleteAppDialog } from '@/components/delete-app-dialog';
 import { EditAppNameDialog } from '@/components/edit-app-name-dialog';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { RequireApp } from '@/components/require-app';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -63,12 +64,10 @@ export default function SettingsPage() {
   return (
     <RequireApp>
       <div className="flex flex-1 flex-col gap-6">
-        <div>
-          <h1 className="font-bold font-sans text-2xl">Settings</h1>
-          <p className="font-sans text-muted-foreground text-sm">
-            Manage your app settings and configuration
-          </p>
-        </div>
+        <DashboardPageHeader
+          description="Manage your app settings and configuration"
+          title="Settings"
+        />
 
         <div className="space-y-4">
           <Card className="py-0">

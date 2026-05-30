@@ -4,7 +4,10 @@ import { parseAsString, useQueryState } from 'nuqs';
 import { TimescaleChart } from '@/components/timescale-chart';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { TimeRange } from '@/lib/api/types';
+import {
+  ANALYTICS_TIME_RANGE_OPTIONS,
+  toChartTimeRange,
+} from '@/lib/analytics-time-range';
 import { formatDuration } from '@/lib/date-utils';
 import { useSessionTimeseries } from '@/lib/queries';
 
@@ -71,7 +74,7 @@ export function SessionsActivityChart() {
 
   const { data: timeseriesData, isLoading } = useSessionTimeseries(
     appId || '',
-    (timeRange || '7d') as TimeRange,
+    toChartTimeRange(timeRange || '7d'),
     getMetricType(metric)
   );
 
@@ -123,12 +126,7 @@ export function SessionsActivityChart() {
       onMetricChange={setMetric}
       onTimeRangeChange={setTimeRange}
       timeRange={timeRange}
-      timeRangeOptions={[
-        { value: '7d', label: '7 Days' },
-        { value: '30d', label: '1 Month' },
-        { value: '180d', label: '6 Months' },
-        { value: '360d', label: '1 Year' },
-      ]}
+      timeRangeOptions={[...ANALYTICS_TIME_RANGE_OPTIONS]}
       title="Session Activity"
       valueFormatter={getValueFormatter(metric)}
     />
