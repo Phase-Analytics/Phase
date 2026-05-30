@@ -1,6 +1,6 @@
 {
   "name": "com.phase.analytics",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "displayName": "Phase Analytics",
   "description": "Privacy-first analytics SDK for Unity mobile (iOS/Android).",
   "unity": "2021.3",

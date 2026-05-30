@@ -32,7 +32,7 @@ Add to `Packages/manifest.json` (recommended for teams and CI):
 ```json
 {
   "dependencies": {
-    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.2"
+    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.3"
   }
 }
 ```
@@ -50,7 +50,7 @@ Return to Unity and let Package Manager resolve the dependency.
 
 <CodeBlock lang="text" allowCopy={true}>
 ```
-https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.2
+https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.3
 ```
 </CodeBlock>
 
@@ -59,13 +59,14 @@ https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.2
   </TabsContent>
 </Tabs>
 
-**Pin a release tag** (`#v0.1.2` recommended). Unpinned URLs pull `main` and can break reproducible builds.
+**Pin a release tag** (`#v0.1.3` recommended). Unpinned URLs pull `main` and can break reproducible builds.
 
 | Tag | What it fixes |
 |-----|----------------|
 | `v0.1.0` | Committed `.meta` files (required for git UPM) |
 | `v0.1.1` | `langVersion: 10` on asmdef |
 | `v0.1.2` | `Runtime/csc.rsp` with `-langversion:10` (Unity 6 git UPM CS8773) |
+| `v0.1.3` | `using System.Threading` in `UnityNetworkMonitor` (CS0246 `Timer`) |
 
 </Step>
 
@@ -97,7 +98,7 @@ After resolution, confirm the package is healthy **before** wiring game code:
 3. **Console** has **no** `CS8773` (file-scoped namespace) errors
 4. Assembly **`Phase.Analytics`** appears under **Project → Assemblies** (or compiles without errors)
 
-If any check fails, upgrade to `#v0.1.2` or newer, remove `Library/PackageCache/com.phase.analytics@*`, and re-import. Do not patch files inside `PackageCache` by hand.
+If any check fails, upgrade to `#v0.1.3` or newer, remove `Library/PackageCache/com.phase.analytics@*`, and re-import. Do not patch files inside `PackageCache` by hand.
 
 </Step>
 
@@ -562,6 +563,7 @@ Confirm `INTERNET` permission (Unity adds it by default for network builds).
 |-------|----------------|
 | `has no meta file, but it's in an immutable folder` | Upgrade to `#v0.1.0`+. Git UPM cannot generate `.meta` at import time. |
 | `CS8773` file-scoped namespace | Upgrade to `#v0.1.2`+ (`Runtime/csc.rsp`). Asmdef `langVersion` alone is insufficient on Unity 6 git UPM. |
+| `CS0246` `Timer` in `UnityNetworkMonitor` | Upgrade to `#v0.1.3`+ (`using System.Threading`) |
 | `CS0246` / `Phase` not found | `Phase.Analytics` assembly did not compile. Fix import/compile errors first; do not enable game `asmdef` references until the package builds. |
 | Package stuck on old version | Remove `Library/PackageCache/com.phase.analytics@*`, bump hash/tag in `manifest.json`, restart Unity. |
 
@@ -589,7 +591,7 @@ Confirm `INTERNET` permission (Unity adds it by default for network builds).
 |---------|---------------------|-------|
 | Screen tracking | Automatic (optional) | Manual events only |
 | `platform` field | Sent (`ios` / `android`) | Not sent |
-| Distribution | npm | Git UPM (`#v0.1.2`) |
+| Distribution | npm | Git UPM (`#v0.1.3`) |
 | Init pattern | Provider / hook | `InitializeAsync` + `MonoBehaviour` bootstrap |
 
 For the same event schema and dashboard, keep event names and parameter keys aligned across your mobile clients.
