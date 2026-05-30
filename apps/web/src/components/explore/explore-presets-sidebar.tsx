@@ -1,6 +1,12 @@
 'use client';
 
-import { Add01Icon, Delete02Icon } from '@hugeicons/core-free-icons';
+import {
+  Add01Icon,
+  Copy01Icon,
+  Delete02Icon,
+  MoreHorizontalIcon,
+  PencilEdit02Icon,
+} from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import type { ExplorePreset, ExploreQueryV1, ExploreTimeRange } from '@phase/shared';
 import { useState } from 'react';
@@ -9,21 +15,22 @@ import {
   isExplorePresetSavable,
   type ExploreQueryDefinition,
 } from '@/components/explore/explore-query-utils';
+import { PresetNameDialog } from '@/components/explore/explore-preset-dialogs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   useCreateExplorePreset,
   useDeleteExplorePreset,
   useExplorePresets,
+  useUpdateExplorePreset,
 } from '@/lib/queries/use-explore';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +41,20 @@ type ExplorePresetsSidebarProps = {
   onLoadQuery: (query: ExploreQueryV1) => void;
 };
 
+type DialogMode = 'save' | 'rename' | 'duplicate';
+
+function uniqueDuplicateName(base: string, existing: string[]): string {
+  const trimmed = base.trim();
+  let candidate = `${trimmed} (copy)`;
+  let index = 2;
+  const names = new Set(existing.map((name) => name.toLowerCase()));
+  while (names.has(candidate.toLowerCase())) {
+    candidate = `${trimmed} (copy ${index})`;
+    index += 1;
+  }
+  return candidate;
+}
+
 export function ExplorePresetsSidebar({
   appId,
   currentQuery,
@@ -42,58 +63,99 @@ export function ExplorePresetsSidebar({
 }: ExplorePresetsSidebarProps) {
   const { data, isPending } = useExplorePresets(appId);
   const createPreset = useCreateExplorePreset(appId);
+  const updatePreset = useUpdateExplorePreset(appId);
   const deletePreset = useDeleteExplorePreset(appId);
-  const [saveOpen, setSaveOpen] = useState(false);
-  const [presetName, setPresetName] = useState('');
+  const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
+  const [dialogName, setDialogName] = useState('');
+  const [targetPreset, setTargetPreset] = useState<ExplorePreset | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  const trimmedName = presetName.trim();
-  const canSave =
-    trimmedName.length > 0 &&
-    isExplorePresetSavable(trimmedName, currentQuery) &&
-    !createPreset.isPending;
+  const presetNames = (data?.presets ?? []).map((preset) => preset.name);
 
-  const handleSave = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const openDialog = (mode: DialogMode, preset?: ExplorePreset) => {
+    setSaveError(null);
+    setDialogMode(mode);
+    setTargetPreset(preset ?? null);
+
+    if (mode === 'save') {
+      setDialogName('');
+    } else if (mode === 'rename' && preset) {
+      setDialogName(preset.name);
+    } else if (mode === 'duplicate' && preset) {
+      setDialogName(uniqueDuplicateName(preset.name, presetNames));
+    }
+  };
+
+  const handleDialogSubmit = async (name: string) => {
     setSaveError(null);
 
-    if (!trimmedName) {
-      setSaveError('Enter a preset name.');
-      return;
-    }
+    try {
+      if (dialogMode === 'save') {
+        if (!isExplorePresetSavable(name, currentQuery)) {
+          setSaveError(
+            'Add at least one filter, breakdown, group by, or non-default metric before saving.'
+          );
+          return;
+        }
+        await createPreset.mutateAsync({
+          appId,
+          name,
+          query: buildExploreRunQuery(currentQuery, timeRange),
+        });
+      } else if (dialogMode === 'rename' && targetPreset) {
+        await updatePreset.mutateAsync({ id: targetPreset.id, name });
+      } else if (dialogMode === 'duplicate' && targetPreset) {
+        await createPreset.mutateAsync({
+          appId,
+          name,
+          query: targetPreset.query,
+        });
+      }
 
-    if (!isExplorePresetSavable(trimmedName, currentQuery)) {
+      setDialogMode(null);
+      setTargetPreset(null);
+      setDialogName('');
+    } catch (error) {
       setSaveError(
-        'Add at least one filter, breakdown, group by, or non-default metric before saving.'
+        error instanceof Error ? error.message : 'Failed to save preset'
       );
-      return;
     }
-
-    await createPreset.mutateAsync({
-      appId,
-      name: trimmedName,
-      query: buildExploreRunQuery(currentQuery, timeRange),
-    });
-    setPresetName('');
-    setSaveOpen(false);
   };
+
+  const dialogConfig = (() => {
+    if (dialogMode === 'rename') {
+      return {
+        title: 'Rename preset',
+        description: undefined,
+        submitLabel: 'Save',
+      };
+    }
+    if (dialogMode === 'duplicate') {
+      return {
+        title: 'Duplicate preset',
+        description: 'Create a copy of this preset with a new name.',
+        submitLabel: 'Duplicate',
+      };
+    }
+    return {
+      title: 'Save preset',
+      description: 'Save the current query configuration for your team.',
+      submitLabel: 'Save',
+    };
+  })();
+
+  const isDialogPending = createPreset.isPending || updatePreset.isPending;
 
   return (
     <Card className="py-0 lg:h-fit">
       <CardContent className="space-y-4 p-4">
         <div className="flex items-start justify-between gap-2">
-          <div>
-            <h2 className="font-semibold text-muted-foreground text-sm uppercase">
-              Presets
-            </h2>
-            <p className="text-muted-foreground text-sm">Shared for this app</p>
-          </div>
+          <h2 className="font-semibold text-muted-foreground text-sm uppercase">
+            Presets
+          </h2>
           <Button
-            onClick={() => {
-              setSaveError(null);
-              setSaveOpen(true);
-            }}
+            onClick={() => openDialog('save')}
             size="sm"
             type="button"
             variant="outline"
@@ -112,7 +174,7 @@ export function ExplorePresetsSidebar({
           <div className="flex max-h-[420px] flex-col gap-1 overflow-y-auto">
             {(data?.presets ?? []).length === 0 ? (
               <p className="text-muted-foreground text-sm">
-                No presets yet. Configure a query and save it.
+                No presets yet. Generate a query and save it.
               </p>
             ) : (
               (data?.presets ?? []).map((preset: ExplorePreset) => (
@@ -133,15 +195,43 @@ export function ExplorePresetsSidebar({
                   >
                     {preset.name}
                   </button>
-                  <Button
-                    className="size-7 opacity-0 group-hover:opacity-100"
-                    onClick={() => deletePreset.mutate(preset.id)}
-                    size="icon"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <HugeiconsIcon className="size-3.5" icon={Delete02Icon} />
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        className="size-7 shrink-0 opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100"
+                        size="icon"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <HugeiconsIcon
+                          className="size-3.5"
+                          icon={MoreHorizontalIcon}
+                        />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => openDialog('rename', preset)}
+                      >
+                        <HugeiconsIcon icon={PencilEdit02Icon} />
+                        Rename
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => openDialog('duplicate', preset)}
+                      >
+                        <HugeiconsIcon icon={Copy01Icon} />
+                        Duplicate
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => deletePreset.mutate(preset.id)}
+                      >
+                        <HugeiconsIcon icon={Delete02Icon} />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               ))
             )}
@@ -149,49 +239,24 @@ export function ExplorePresetsSidebar({
         )}
       </CardContent>
 
-      <Dialog
+      <PresetNameDialog
+        defaultName={dialogName}
+        description={dialogConfig.description}
+        error={saveError}
+        isPending={isDialogPending}
+        key={dialogMode ?? 'closed'}
         onOpenChange={(open) => {
-          setSaveOpen(open);
           if (!open) {
-            setPresetName('');
+            setDialogMode(null);
             setSaveError(null);
+            setTargetPreset(null);
           }
         }}
-        open={saveOpen}
-      >
-        <DialogContent>
-          <form onSubmit={handleSave}>
-            <DialogHeader>
-              <DialogTitle>Save preset</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3 py-2">
-              <Input
-                onChange={(e) => {
-                  setPresetName(e.target.value);
-                  setSaveError(null);
-                }}
-                placeholder="Preset name"
-                value={presetName}
-              />
-              {saveError ? (
-                <p className="text-destructive text-sm">{saveError}</p>
-              ) : null}
-            </div>
-            <DialogFooter>
-              <Button
-                onClick={() => setSaveOpen(false)}
-                type="button"
-                variant="outline"
-              >
-                Cancel
-              </Button>
-              <Button disabled={!canSave} type="submit">
-                Save
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+        onSubmit={handleDialogSubmit}
+        open={dialogMode !== null}
+        submitLabel={dialogConfig.submitLabel}
+        title={dialogConfig.title}
+      />
     </Card>
   );
 }

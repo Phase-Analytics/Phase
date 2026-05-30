@@ -35,11 +35,7 @@ export function ExploreResults({ result, isPending, error }: ExploreResultsProps
   }
 
   if (!result) {
-    return (
-      <div className="text-muted-foreground text-sm">
-        Configure your query and click Run.
-      </div>
-    );
+    return null;
   }
 
   if (result.kind === 'scalar') {

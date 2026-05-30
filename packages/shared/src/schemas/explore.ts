@@ -201,6 +201,16 @@ export const ExploreRunRequestSchema = z.object({
   query: ExploreQueryV1Schema,
 });
 
+export const ExploreGenerateQueryRequestSchema = z.object({
+  appId: z.string().min(1),
+  prompt: z.string().trim().min(3).max(2000),
+});
+
+export const ExploreGenerateQueryResponseSchema = z.object({
+  query: ExploreQueryV1Schema,
+  summary: z.string().min(1).max(500),
+});
+
 export const ExploreCatalogResponseSchema = z.object({
   eventNames: z.array(z.string()),
   deviceFields: z.object({
@@ -229,4 +239,10 @@ export type UpdateExplorePresetRequest = z.infer<
 >;
 export type ExplorePresetsListResponse = z.infer<
   typeof ExplorePresetsListResponseSchema
+>;
+export type ExploreGenerateQueryRequest = z.infer<
+  typeof ExploreGenerateQueryRequestSchema
+>;
+export type ExploreGenerateQueryResponse = z.infer<
+  typeof ExploreGenerateQueryResponseSchema
 >;

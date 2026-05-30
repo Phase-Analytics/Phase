@@ -1,6 +1,8 @@
 import type {
   CreateExplorePresetRequest,
   ExploreCatalogResponse,
+  ExploreGenerateQueryRequest,
+  ExploreGenerateQueryResponse,
   ExplorePreset,
   ExplorePresetsListResponse,
   ExploreQueryV1,
@@ -33,6 +35,16 @@ export function useExploreCatalog(appId: string, eventName?: string) {
       ),
     ...cacheConfig.list,
     enabled: Boolean(appId),
+  });
+}
+
+export function useExploreGenerateQuery() {
+  return useMutation({
+    mutationFn: (payload: ExploreGenerateQueryRequest) =>
+      fetchApi<ExploreGenerateQueryResponse>('/web/explore/generate-query', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
   });
 }
 

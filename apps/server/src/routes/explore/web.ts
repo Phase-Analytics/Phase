@@ -3,6 +3,8 @@ import {
   ErrorCode,
   ErrorResponseSchema,
   ExploreCatalogResponseSchema,
+  ExploreGenerateQueryRequestSchema,
+  ExploreGenerateQueryResponseSchema,
   ExplorePresetSchema,
   ExplorePresetsListResponseSchema,
   ExploreQueryV1Schema,
@@ -16,7 +18,13 @@ import { and, desc, eq, or, sql } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 import { apps, db, explorePresets } from '@/db';
 import { auth } from '@/lib/auth';
-import { ExploreEngineError, getExploreCatalog, runExploreQuery } from '@/lib/explore';
+import {
+  ExploreAiError,
+  ExploreEngineError,
+  generateExploreQueryFromPrompt,
+  getExploreCatalog,
+  runExploreQuery,
+} from '@/lib/explore';
 import {
   authPlugin,
   type BetterAuthSession,
@@ -107,6 +115,57 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
       body: ExploreRunRequestSchema,
       response: {
         200: ExploreRunResponseSchema,
+        400: ErrorResponseSchema,
+        401: ErrorResponseSchema,
+        403: ErrorResponseSchema,
+        500: ErrorResponseSchema,
+      },
+    }
+  )
+  .post(
+    '/generate-query',
+    async (ctx) => {
+      const { body, user, set } = ctx as typeof ctx & AuthContext;
+
+      if (!user?.id) {
+        set.status = HttpStatus.UNAUTHORIZED;
+        return {
+          code: ErrorCode.UNAUTHORIZED,
+          detail: 'Authentication required',
+        };
+      }
+
+      const app = await assertAppAccess(body.appId, user.id);
+      if (!app) {
+        set.status = HttpStatus.FORBIDDEN;
+        return {
+          code: ErrorCode.FORBIDDEN,
+          detail: 'App not found or access denied',
+        };
+      }
+
+      try {
+        return await generateExploreQueryFromPrompt(body.appId, body.prompt);
+      } catch (error) {
+        if (error instanceof ExploreAiError) {
+          set.status = error.statusCode;
+          return {
+            code: ErrorCode.VALIDATION_ERROR,
+            detail: error.message,
+          };
+        }
+        console.error('[Explore.GenerateQuery] Error:', error);
+        set.status = HttpStatus.INTERNAL_SERVER_ERROR;
+        return {
+          code: ErrorCode.INTERNAL_SERVER_ERROR,
+          detail: 'Failed to generate explore query',
+        };
+      }
+    },
+    {
+      body: ExploreGenerateQueryRequestSchema,
+      response: {
+        200: ExploreGenerateQueryResponseSchema,
         400: ErrorResponseSchema,
         401: ErrorResponseSchema,
         403: ErrorResponseSchema,

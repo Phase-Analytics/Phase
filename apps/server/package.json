@@ -14,11 +14,13 @@
     "test": "bun test src/lib/explore"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.67",
     "@elysiajs/cors": "^1.4.0",
     "@phase/shared": "workspace:*",
     "@polar-sh/better-auth": "^1.6.3",
     "@polar-sh/sdk": "^0.42.1",
     "@sinclair/typebox": "^0.34.15",
+    "ai": "^6.0.193",
     "better-auth": "1.4.7",
     "drizzle-orm": "^0.44.7",
     "elysia": "^1.4.19",
