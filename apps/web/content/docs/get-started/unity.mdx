@@ -199,9 +199,11 @@ await PhaseAnalytics.InitializeAsync(new PhaseConfig
 ```
 </CodeBlock>
 
-- `DisableInEditor` — skips network I/O in the Unity Editor (calls still queue logic where applicable)
-- `DebugData` — sends `x-phase-debug-data: 1` so events are marked as debug in the dashboard
-- **Always** validate on a **physical device** with an IL2CPP **Release** build before shipping
+**DisableInEditor** skips network I/O in the Unity Editor (calls still queue logic where applicable).
+
+**DebugData** sends `x-phase-debug-data: 1` so events are marked as debug in the dashboard.
+
+**Always** validate on a **physical device** with an IL2CPP **Release** build before shipping.
 
   </TabsContent>
 </Tabs>
@@ -533,17 +535,21 @@ Editor Play Mode is **not** enough to validate analytics. Ship only after a devi
 
   <TabsContent value="ios">
 
-- Use **Development** or **Release** IL2CPP build on hardware (Simulator can miss networking edge cases)
-- Ensure App Transport Security allows your `BaseUrl` (default `https://api.phase.sh` is fine)
-- Test offline: enable airplane mode, `Track` events, disable airplane mode, background app, verify flush in dashboard
+Use a **Development** or **Release** IL2CPP build on hardware (Simulator can miss networking edge cases).
+
+Ensure App Transport Security allows your `BaseUrl` (default `https://api.phase.sh` is fine).
+
+**Offline test:** enable airplane mode, `Track` events, disable airplane mode, background the app, verify flush in the dashboard.
 
   </TabsContent>
 
   <TabsContent value="android">
 
-- Use IL2CPP **Release** on a physical device
-- Confirm `INTERNET` permission (Unity adds it by default for network builds)
-- Test offline flush the same way as iOS after reconnecting
+Use an IL2CPP **Release** build on a physical device.
+
+Confirm `INTERNET` permission (Unity adds it by default for network builds).
+
+**Offline test:** same flow as iOS after reconnecting.
 
   </TabsContent>
 </Tabs>
