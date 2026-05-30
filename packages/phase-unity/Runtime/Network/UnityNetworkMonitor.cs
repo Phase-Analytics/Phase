@@ -13,13 +13,13 @@ public sealed class UnityNetworkMonitor : INetworkMonitor
 #if UNITY_5_3_OR_NEWER
     private NetworkState _lastState = new() { IsConnected = true };
     private Action<NetworkState>? _listener;
-    private float _lastPollTime;
+    private float _lastPollTime = -PollIntervalSeconds;
 #endif
 
     public Task<NetworkState> FetchNetworkStateAsync()
     {
 #if UNITY_5_3_OR_NEWER
-        return Task.FromResult(new NetworkState { IsConnected = IsReachable() });
+        return Task.FromResult(_lastState);
 #else
         return Task.FromResult(new NetworkState { IsConnected = true });
 #endif
@@ -29,7 +29,6 @@ public sealed class UnityNetworkMonitor : INetworkMonitor
     {
 #if UNITY_5_3_OR_NEWER
         _listener = listener;
-        _lastState = new NetworkState { IsConnected = IsReachable() };
         listener(_lastState);
         return new Subscription(() => _listener = null);
 #else
