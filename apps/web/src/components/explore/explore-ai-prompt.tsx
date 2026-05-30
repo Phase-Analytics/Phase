@@ -117,7 +117,7 @@ export function ExploreAiPrompt({
               setDrafting(true);
             }
           }}
-          placeholder="e.g. Türkiye'deki Android kullanıcılar günde kaç kez oyuna girmiş, gün gün göster"
+          placeholder="e.g. How many times do iOS users in the US open the game each day, shown day by day"
           readOnly={showingSummary}
           value={input}
         />
