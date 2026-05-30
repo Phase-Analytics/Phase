@@ -28,7 +28,8 @@ export default function ExplorePage() {
   const [hasGeneratedQuery, setHasGeneratedQuery] = useState(false);
   const [result, setResult] = useState<ExploreResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const runExplore = useExploreRun();
+  const { mutateAsync: runExploreQuery, isPending: isExploreRunning } =
+    useExploreRun();
   const hasRunRef = useRef(false);
   const queryRef = useRef(query);
   queryRef.current = query;
@@ -46,7 +47,7 @@ export default function ExplorePage() {
       );
 
       try {
-        const response = await runExplore.mutateAsync({
+        const response = await runExploreQuery({
           appId,
           query: runQuery,
         });
@@ -57,7 +58,7 @@ export default function ExplorePage() {
         setError(err instanceof Error ? err.message : 'Query failed');
       }
     },
-    [appId, runExplore, timeRange]
+    [appId, runExploreQuery, timeRange]
   );
 
   const handleRun = useCallback(() => {
@@ -69,7 +70,7 @@ export default function ExplorePage() {
       return;
     }
     void executeRun(queryRef.current);
-  }, [appId, executeRun]);
+  }, [appId, timeRange, executeRun]);
 
   const handleLoadPreset = useCallback(
     (presetQuery: ExploreQueryV1) => {
@@ -98,7 +99,8 @@ export default function ExplorePage() {
     [timeRange]
   );
 
-  const showResults = Boolean(result) || runExplore.isPending || Boolean(error);
+  const showResults =
+    Boolean(result) || isExploreRunning || Boolean(error);
   const showBuilder = hasGeneratedQuery;
 
   return (
@@ -144,7 +146,7 @@ export default function ExplorePage() {
                   </div>
                   <ExploreQueryBuilder
                     appId={appId ?? ''}
-                    isRunning={runExplore.isPending}
+                    isRunning={isExploreRunning}
                     onChange={setQuery}
                     onRun={handleRun}
                     query={query}
@@ -161,7 +163,7 @@ export default function ExplorePage() {
                   </h2>
                   <ExploreResults
                     error={error}
-                    isPending={runExplore.isPending}
+                    isPending={isExploreRunning}
                     result={result}
                   />
                 </CardContent>

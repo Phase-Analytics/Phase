@@ -72,8 +72,8 @@ export const RATE_LIMIT_STRATEGIES = {
     keyPrefix: 'rate:public-api',
   } satisfies RateLimitConfig,
   EXPLORE_AI_GENERATE: {
-    maxAttempts: 10,
-    ttl: 600,
+    maxAttempts: 2,
+    ttl: 60,
     keyPrefix: 'rate:explore-ai',
   } satisfies RateLimitConfig,
 } as const;
