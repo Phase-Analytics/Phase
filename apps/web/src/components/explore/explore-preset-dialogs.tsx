@@ -86,9 +86,17 @@ export function PresetNameDialog({
             >
               Cancel
             </Button>
-            <Button className="relative" disabled={!trimmed || isPending} type="submit">
-              {isPending ? <Spinner className="absolute inset-0 m-auto size-4" /> : null}
-              <span className={isPending ? 'invisible' : ''}>{submitLabel}</span>
+            <Button
+              className="relative"
+              disabled={!trimmed || isPending}
+              type="submit"
+            >
+              {isPending ? (
+                <Spinner className="absolute inset-0 m-auto size-4" />
+              ) : null}
+              <span className={isPending ? 'invisible' : ''}>
+                {submitLabel}
+              </span>
             </Button>
           </DialogFooter>
         </form>

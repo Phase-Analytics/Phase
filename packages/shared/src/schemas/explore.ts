@@ -183,11 +183,7 @@ export const ExplorePresetsListResponseSchema = z.object({
 
 export const CreateExplorePresetRequestSchema = z.object({
   appId: z.string().min(1),
-  name: z
-    .string()
-    .trim()
-    .min(1, 'Preset name is required')
-    .max(100),
+  name: z.string().trim().min(1, 'Preset name is required').max(100),
   query: ExploreQueryV1Schema,
 });
 
@@ -230,7 +226,9 @@ export type ExploreQueryV1 = z.infer<typeof ExploreQueryV1Schema>;
 export type ExploreResult = z.infer<typeof ExploreResultSchema>;
 export type ExploreRunResponse = z.infer<typeof ExploreRunResponseSchema>;
 export type ExplorePreset = z.infer<typeof ExplorePresetSchema>;
-export type ExploreCatalogResponse = z.infer<typeof ExploreCatalogResponseSchema>;
+export type ExploreCatalogResponse = z.infer<
+  typeof ExploreCatalogResponseSchema
+>;
 export type CreateExplorePresetRequest = z.infer<
   typeof CreateExplorePresetRequestSchema
 >;

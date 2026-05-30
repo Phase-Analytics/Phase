@@ -22,25 +22,36 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function ExploreTimeseriesChart({ points }: ExploreTimeseriesChartProps) {
+export function ExploreTimeseriesChart({
+  points,
+}: ExploreTimeseriesChartProps) {
   const chartId = useMemo(
     () => `explore-ts-${Math.random().toString(36).slice(2, 9)}`,
     []
   );
 
   if (points.length === 0) {
-    return (
-      <p className="text-muted-foreground text-sm">No timeseries data.</p>
-    );
+    return <p className="text-muted-foreground text-sm">No timeseries data.</p>;
   }
 
   return (
-    <ChartContainer className="aspect-auto h-[250px] w-full" config={chartConfig}>
+    <ChartContainer
+      className="aspect-auto h-[250px] w-full"
+      config={chartConfig}
+    >
       <AreaChart data={points}>
         <defs>
           <linearGradient id={`fill-${chartId}`} x1="0" x2="0" y1="0" y2="1">
-            <stop offset="5%" stopColor="var(--color-chart-2)" stopOpacity={0.8} />
-            <stop offset="95%" stopColor="var(--color-chart-2)" stopOpacity={0.1} />
+            <stop
+              offset="5%"
+              stopColor="var(--color-chart-2)"
+              stopOpacity={0.8}
+            />
+            <stop
+              offset="95%"
+              stopColor="var(--color-chart-2)"
+              stopOpacity={0.1}
+            />
           </linearGradient>
         </defs>
         <CartesianGrid vertical={false} />

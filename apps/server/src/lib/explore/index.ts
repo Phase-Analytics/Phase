@@ -1,5 +1,5 @@
-export { runExploreQuery } from './engine';
 export { getExploreCatalog } from './catalog';
+export { runExploreQuery } from './engine';
+export { ExploreAiError, ExploreEngineError } from './errors';
 export { generateExploreQueryFromPrompt } from './generate-query';
-export { ExploreEngineError, ExploreAiError } from './errors';
 export { resolveExploreDateRange } from './time-range';

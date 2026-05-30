@@ -9,9 +9,9 @@ import {
   GithubIcon,
   GlobalIcon,
   Key01Icon,
-  Search01Icon,
   PlaySquareIcon,
   QuestionIcon,
+  Search01Icon,
   Setting07Icon,
   UserGroupIcon,
 } from '@hugeicons/core-free-icons';

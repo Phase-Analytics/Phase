@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const packageRoot = path.resolve(__dirname, '../../phase-unity');
 
@@ -27,7 +27,9 @@ for (const file of forbiddenRootFiles) {
 }
 
 if (fs.existsSync(path.join(packageRoot, 'tests'))) {
-  fail('tests/ must not live under packages/phase-unity (use packages/phase-unity-dotnet/tests)');
+  fail(
+    'tests/ must not live under packages/phase-unity (use packages/phase-unity-dotnet/tests)'
+  );
 }
 
 for (const file of requiredRoots) {
@@ -84,7 +86,9 @@ walk(packageRoot);
 const asmdefPath = path.join(packageRoot, 'Runtime/Phase.Analytics.asmdef');
 const asmdef = JSON.parse(fs.readFileSync(asmdefPath, 'utf8'));
 if (asmdef.langVersion !== '10') {
-  fail('Runtime/Phase.Analytics.asmdef must set langVersion to "10" (file-scoped namespaces)');
+  fail(
+    'Runtime/Phase.Analytics.asmdef must set langVersion to "10" (file-scoped namespaces)'
+  );
 }
 
 const runtimeDir = path.join(packageRoot, 'Runtime');
@@ -112,7 +116,9 @@ if (fileScoped.length > 0 && asmdef.langVersion !== '10') {
 
 const cscRspPath = path.join(packageRoot, 'Runtime/csc.rsp');
 if (!fs.existsSync(cscRspPath)) {
-  fail('missing Runtime/csc.rsp (Unity 6 git UPM needs -langversion:10 via csc.rsp)');
+  fail(
+    'missing Runtime/csc.rsp (Unity 6 git UPM needs -langversion:10 via csc.rsp)'
+  );
 }
 if (!fs.existsSync(`${cscRspPath}.meta`)) {
   fail('missing .meta for Runtime/csc.rsp');

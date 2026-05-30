@@ -3,9 +3,9 @@
  * Generates stable Unity .meta files for the UPM package at packages/phase-unity.
  * Re-run after adding Runtime/ or Samples~/ assets, then commit the metas.
  */
-const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
+const crypto = require('node:crypto');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const packageRoot = path.resolve(__dirname, '../../phase-unity');
 
@@ -113,9 +113,9 @@ function shouldSkipDir(name) {
 }
 
 function walk(dir, relative = '') {
-  const entries = fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
+  const entries = fs
+    .readdirSync(dir, { withFileTypes: true })
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   for (const entry of entries) {
     if (entry.name.endsWith('.meta') || shouldSkipEntry(entry.name)) {
@@ -138,7 +138,10 @@ function walk(dir, relative = '') {
 }
 
 function writeMeta(relativePath, content) {
-  const metaPath = path.join(packageRoot, `${relativePath.replace(/\/$/, '')}.meta`);
+  const metaPath = path.join(
+    packageRoot,
+    `${relativePath.replace(/\/$/, '')}.meta`
+  );
   fs.mkdirSync(path.dirname(metaPath), { recursive: true });
   fs.writeFileSync(metaPath, content, 'utf8');
 }

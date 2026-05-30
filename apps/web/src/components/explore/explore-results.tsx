@@ -1,6 +1,7 @@
 'use client';
 
 import type { ExploreResult } from '@phase/shared';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -9,7 +10,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Skeleton } from '@/components/ui/skeleton';
 import { formatDuration } from '@/lib/date-utils';
 import { ExploreBreakdownChart } from './explore-breakdown-chart';
 import { ExploreTimeseriesChart } from './explore-timeseries-chart';
@@ -20,7 +20,11 @@ type ExploreResultsProps = {
   error: string | null;
 };
 
-export function ExploreResults({ result, isPending, error }: ExploreResultsProps) {
+export function ExploreResults({
+  result,
+  isPending,
+  error,
+}: ExploreResultsProps) {
   if (isPending) {
     return (
       <div className="space-y-3">

@@ -138,9 +138,7 @@ function sanitizeNumeric(
   return Math.max(min, Math.min(Math.floor(num), max));
 }
 
-export async function executeQuestDBReadQuery<T>(
-  query: string
-): Promise<T[]> {
+export async function executeQuestDBReadQuery<T>(query: string): Promise<T[]> {
   return executeQuery<T>(query);
 }
 

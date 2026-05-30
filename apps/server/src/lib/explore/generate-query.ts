@@ -1,8 +1,12 @@
 import { openai } from '@ai-sdk/openai';
-import { ExploreQueryV1Schema, type ExploreQueryV1 } from '@phase/shared';
+import type { ExploreQueryV1 } from '@phase/shared';
 import { generateObject } from 'ai';
 import { getExploreCatalog } from './catalog';
 import { ExploreAiError, ExploreEngineError } from './errors';
+import {
+  ExploreQueryV1AiSchema,
+  parseExploreAiGeneration,
+} from './explore-ai-schema';
 import { getEventParamKeysSample } from './questdb-helpers';
 import { validateExploreQuery } from './validate';
 
@@ -37,44 +41,58 @@ function usesReasoningOptions(modelId: string): boolean {
   );
 }
 
+function getAiErrorMessage(error: unknown): string {
+  if (error && typeof error === 'object') {
+    const record = error as {
+      message?: string;
+      data?: { error?: { message?: string } };
+    };
+    if (record.data?.error?.message) {
+      return record.data.error.message;
+    }
+    if (record.message) {
+      return record.message;
+    }
+  }
+  return 'Failed to generate query. Try rephrasing your question.';
+}
+
+function isNonRetryableApiError(error: unknown): boolean {
+  if (error && typeof error === 'object' && 'isRetryable' in error) {
+    return error.isRetryable === false;
+  }
+  return false;
+}
+
 function buildSystemPrompt(catalogContext: string): string {
   return `You convert natural language analytics questions into ExploreQueryV1 JSON for Phase Analytics.
 
-Output ONLY valid JSON matching the schema. version must be 1. timeRange must be "7d" (the dashboard controls the visible range separately).
+Output JSON matching the schema. version must be 1. timeRange must be "7d" (dashboard controls range separately).
 
 Grains:
-- users: distinct devices (called users in UI). Use for cohorts who performed events, breakdowns by platform/country/city/locale, sessions_per_user.
-- events: individual event rows in QuestDB. Use for event counts, event property aggregates (duration etc).
+- users: distinct devices. Cohorts, platform/country breakdowns, sessions_per_user.
+- events: event counts and event property aggregates.
 - sessions: session duration and session counts with device filters.
 
-Filters (max 20):
-- event_performed: { type, eventName, performed: true|false }
-- event_property: { type, eventName, key, operator, value } — operators: eq, neq, gt, gte, lt, lte, contains, startsWith, endsWith
-- device: { type, field: platform|country|city|locale, operator: eq|neq, value }
-- device_property: custom device JSON properties
+Filters (max 20) — set only fields required for each type:
+- event_performed: type, eventName, performed
+- event_property: type, eventName, key, operator, value
+- device: type, field (platform|country|city|locale), operator (eq|neq), value
+- device_property: type, key, operator, value
 
-Metrics:
-- count, count_distinct_users, avg, min, max, sum, field_summary, sessions_per_user
-- field for avg/min/max/sum/field_summary: session_duration (sessions grain only) OR event_param { kind, eventName, paramKey }
-- field_summary on events grain returns count/avg/min/max for a numeric event param
+Metric:
+- aggregation: count | count_distinct_users | avg | min | max | sum | field_summary | sessions_per_user
+- field (when needed): { kind: "session_duration" } OR { kind: "event_param", eventName, paramKey }
 
-Breakdown (optional, one only):
-- device: { type: "device", field: platform|country|city|locale } — users or sessions grain
-- event_name: { type: "event_name" } — events grain only
+Breakdown (optional): { type: "device", field } OR { type: "event_name" }. Omit breakdown if not needed.
 
-groupBy: "day" only with metric sessions_per_user on users grain.
+groupBy: "day" only with sessions_per_user on users grain.
 
 Rules:
-- Prefer event names from the app catalog when available.
-- Country codes are ISO 2-letter (TR not Turkey). Platform values: ios, android, web.
-- For "users who did X then breakdown by Y": users grain + event_performed filter + device breakdown.
-- For event property stats: events grain + event_performed + field_summary or avg/min/max with event_param.
-- For filtered event counts: events grain + filters + count.
-- For avg session duration with device filters: sessions grain + device filters + avg + session_duration.
-- For daily sessions per user: users grain + optional device filters + sessions_per_user + groupBy day.
-- Do not use p50 or p95 aggregations (not supported in engine).
-- Do not use event_param breakdown type.
-- Never include debug events (handled server-side).
+- Use event names from catalog when possible.
+- Country codes ISO 2-letter (TR). Platform: ios, android, web.
+- Do not use p50, p95, or event_param breakdown.
+- Never include debug events.
 
 App catalog:
 ${catalogContext}`;
@@ -130,12 +148,12 @@ export async function generateExploreQueryFromPrompt(
     const userPrompt =
       attempt === 0
         ? prompt
-        : `${prompt}\n\nPrevious JSON failed validation: ${lastValidationError}. Fix and return valid ExploreQueryV1.`;
+        : `${prompt}\n\nPrevious output failed validation: ${lastValidationError}. Return corrected JSON.`;
 
     try {
       const { object } = await generateObject({
         model: openai(modelId),
-        schema: ExploreQueryV1Schema,
+        schema: ExploreQueryV1AiSchema,
         system,
         prompt: userPrompt,
         maxOutputTokens: 1200,
@@ -150,19 +168,27 @@ export async function generateExploreQueryFromPrompt(
           : { temperature: 0.1 }),
       });
 
-      const parsed = ExploreQueryV1Schema.safeParse({
-        ...object,
-        version: 1,
-        timeRange: '7d',
-      });
+      const aiParsed = ExploreQueryV1AiSchema.safeParse(object);
+      if (!aiParsed.success) {
+        lastValidationError = aiParsed.error.message;
+        continue;
+      }
 
-      if (!parsed.success) {
-        lastValidationError = parsed.error.message;
+      let query: ExploreQueryV1;
+      try {
+        query = parseExploreAiGeneration({
+          ...aiParsed.data,
+          version: 1,
+          timeRange: '7d',
+        });
+      } catch (error) {
+        lastValidationError =
+          error instanceof Error ? error.message : 'Invalid query shape';
         continue;
       }
 
       try {
-        validateExploreQuery(parsed.data);
+        validateExploreQuery(query);
       } catch (error) {
         lastValidationError =
           error instanceof ExploreEngineError
@@ -171,15 +197,16 @@ export async function generateExploreQueryFromPrompt(
         continue;
       }
 
-      const summary = describeQuery(parsed.data);
-      return { query: parsed.data, summary };
+      return { query, summary: describeQuery(query) };
     } catch (error) {
+      if (isNonRetryableApiError(error)) {
+        console.error('[Explore.GenerateQuery] API error:', error);
+        throw new ExploreAiError(getAiErrorMessage(error), 400);
+      }
+
       if (attempt === MAX_ATTEMPTS - 1) {
         console.error('[Explore.GenerateQuery] AI error:', error);
-        throw new ExploreAiError(
-          'Failed to generate query. Try rephrasing your question.',
-          500
-        );
+        throw new ExploreAiError(getAiErrorMessage(error), 500);
       }
     }
   }

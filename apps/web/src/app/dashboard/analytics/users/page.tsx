@@ -2,9 +2,9 @@
 
 import { parseAsString, useQueryState } from 'nuqs';
 import { Suspense, useCallback } from 'react';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { ExportButton } from '@/components/export-button';
-import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { RequireApp } from '@/components/require-app';
 import { Card, CardContent } from '@/components/ui/card';
 import {

@@ -23,9 +23,7 @@ export function isExplorePresetSavable(
   const hasGroupBy = Boolean(query.groupBy);
   const hasField = Boolean(query.metric.field);
   const isNonDefaultMetric =
-    query.metric.aggregation !== 'count' ||
-    query.grain !== 'users' ||
-    hasField;
+    query.metric.aggregation !== 'count' || query.grain !== 'users' || hasField;
 
   return hasFilters || hasBreakdown || hasGroupBy || isNonDefaultMetric;
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const runtimeRoot = path.resolve(__dirname, '../../phase-unity/Runtime');
 
@@ -34,14 +34,21 @@ for (const file of walkCs(runtimeRoot)) {
     !rel.startsWith('Constants/') &&
     !content.includes('using Phase.Analytics.Constants')
   ) {
-    fail(`${rel}: uses ValidationConstants without "using Phase.Analytics.Constants"`);
+    fail(
+      `${rel}: uses ValidationConstants without "using Phase.Analytics.Constants"`
+    );
   }
 
   const usesUnityEngine =
-    content.includes('using UnityEngine;') || content.includes('using UnityEngine.');
+    content.includes('using UnityEngine;') ||
+    content.includes('using UnityEngine.');
   const usesUtils = content.includes('using Phase.Analytics.Utils;');
 
-  if (usesUnityEngine && usesUtils && /(?<!\.)\bLogger\.(Info|Warn|Error)\b/.test(content)) {
+  if (
+    usesUnityEngine &&
+    usesUtils &&
+    /(?<!\.)\bLogger\.(Info|Warn|Error)\b/.test(content)
+  ) {
     fail(
       `${rel}: ambiguous Logger with UnityEngine — qualify as Phase.Analytics.Utils.Logger`
     );

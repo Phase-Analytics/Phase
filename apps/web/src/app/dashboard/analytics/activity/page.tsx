@@ -2,6 +2,7 @@
 
 import { parseAsString, useQueryState } from 'nuqs';
 import { Suspense, useCallback } from 'react';
+import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { ErrorBoundary } from '@/components/error-boundary';
 import {
   EventsActivityChart,
@@ -18,7 +19,6 @@ import { EventsTable } from '@/components/events/events-table';
 import { TopEventsCard } from '@/components/events/top-events-card';
 import { TopScreensCard } from '@/components/events/top-screens-card';
 import { ExportButton } from '@/components/export-button';
-import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { RequireApp } from '@/components/require-app';
 import { Card, CardContent } from '@/components/ui/card';
 import { buildQueryString, fetchApi } from '@/lib/api/client';

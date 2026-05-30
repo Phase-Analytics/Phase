@@ -6,8 +6,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
-import { cn } from '@/lib/utils';
 import { useExploreGenerateQuery } from '@/lib/queries/use-explore';
+import { cn } from '@/lib/utils';
 import type { ExploreQueryDefinition } from './explore-query-utils';
 
 type ExploreAiPromptProps = {
@@ -71,10 +71,7 @@ export function ExploreAiPrompt({ appId, onGenerated }: ExploreAiPromptProps) {
             </p>
           ) : null}
 
-          <Button
-            disabled={!trimmed || generateQuery.isPending}
-            type="submit"
-          >
+          <Button disabled={!trimmed || generateQuery.isPending} type="submit">
             {generateQuery.isPending ? (
               <>
                 <Spinner className="size-4" />

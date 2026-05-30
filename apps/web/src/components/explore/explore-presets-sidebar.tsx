@@ -8,14 +8,18 @@ import {
   PencilEdit02Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import type { ExplorePreset, ExploreQueryV1, ExploreTimeRange } from '@phase/shared';
+import type {
+  ExplorePreset,
+  ExploreQueryV1,
+  ExploreTimeRange,
+} from '@phase/shared';
 import { useState } from 'react';
+import { PresetNameDialog } from '@/components/explore/explore-preset-dialogs';
 import {
   buildExploreRunQuery,
-  isExplorePresetSavable,
   type ExploreQueryDefinition,
+  isExplorePresetSavable,
 } from '@/components/explore/explore-query-utils';
-import { PresetNameDialog } from '@/components/explore/explore-preset-dialogs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {

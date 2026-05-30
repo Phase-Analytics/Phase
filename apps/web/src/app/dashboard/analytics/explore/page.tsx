@@ -5,13 +5,13 @@ import { parseAsString, useQueryState } from 'nuqs';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnalyticsTimeRangePicker } from '@/components/analytics/analytics-time-range-picker';
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
-import { ExploreAiPrompt } from '@/components/explore/explore-ai-prompt';
 import { defaultExploreQuery } from '@/components/explore/default-query';
+import { ExploreAiPrompt } from '@/components/explore/explore-ai-prompt';
 import { ExplorePresetsSidebar } from '@/components/explore/explore-presets-sidebar';
 import { ExploreQueryBuilder } from '@/components/explore/explore-query-builder';
 import {
-  type ExploreQueryDefinition,
   buildExploreRunQuery,
+  type ExploreQueryDefinition,
 } from '@/components/explore/explore-query-utils';
 import { ExploreResults } from '@/components/explore/explore-results';
 import { RequireApp } from '@/components/require-app';
@@ -22,7 +22,8 @@ import { useExploreRun } from '@/lib/queries/use-explore';
 export default function ExplorePage() {
   const [appId] = useQueryState('app', parseAsString);
   const [timeRange] = useQueryState('range', parseAsString.withDefault('7d'));
-  const [query, setQuery] = useState<ExploreQueryDefinition>(defaultExploreQuery);
+  const [query, setQuery] =
+    useState<ExploreQueryDefinition>(defaultExploreQuery);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [hasGeneratedQuery, setHasGeneratedQuery] = useState(false);
   const [result, setResult] = useState<ExploreResult | null>(null);
@@ -64,20 +65,23 @@ export default function ExplorePage() {
   }, [executeRun, query]);
 
   useEffect(() => {
-    if (!hasRunRef.current || !appId) {
+    if (!(hasRunRef.current && appId)) {
       return;
     }
     void executeRun(queryRef.current);
-  }, [timeRange, appId, executeRun]);
+  }, [appId, executeRun]);
 
-  const handleLoadPreset = useCallback((presetQuery: ExploreQueryV1) => {
-    setQuery({
-      ...presetQuery,
-      timeRange: toExploreTimeRange(timeRange),
-    });
-    setHasGeneratedQuery(true);
-    setAiSummary(null);
-  }, [timeRange]);
+  const handleLoadPreset = useCallback(
+    (presetQuery: ExploreQueryV1) => {
+      setQuery({
+        ...presetQuery,
+        timeRange: toExploreTimeRange(timeRange),
+      });
+      setHasGeneratedQuery(true);
+      setAiSummary(null);
+    },
+    [timeRange]
+  );
 
   const handleAiGenerated = useCallback(
     (payload: { query: ExploreQueryDefinition; summary: string }) => {
@@ -94,8 +98,7 @@ export default function ExplorePage() {
     [timeRange]
   );
 
-  const showResults =
-    Boolean(result) || runExplore.isPending || Boolean(error);
+  const showResults = Boolean(result) || runExplore.isPending || Boolean(error);
   const showBuilder = hasGeneratedQuery;
 
   return (
@@ -130,7 +133,9 @@ export default function ExplorePage() {
                       Query
                     </h2>
                     {aiSummary ? (
-                      <p className="text-muted-foreground text-sm">{aiSummary}</p>
+                      <p className="text-muted-foreground text-sm">
+                        {aiSummary}
+                      </p>
                     ) : (
                       <p className="text-muted-foreground text-sm">
                         Review and edit, then run

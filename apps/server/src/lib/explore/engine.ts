@@ -4,15 +4,11 @@ import type {
   ExploreRunResponse,
 } from '@phase/shared';
 import {
-  buildEventPropertyCondition,
-  buildBaseEventConditions,
-  eventParamExtractSql,
-  getDistinctDeviceIdsFromEvents,
-  runEventsAggregateQuery,
-} from './questdb-helpers';
-import { buildExploreEventsSubquery, executeQuestDBReadQuery } from '@/lib/questdb';
-import { EXPLORE_MAX_BREAKDOWN_ROWS } from './constants';
+  buildExploreEventsSubquery,
+  executeQuestDBReadQuery,
+} from '@/lib/questdb';
 import { resolveEventCohortDeviceIds } from './cohort';
+import { EXPLORE_MAX_BREAKDOWN_ROWS } from './constants';
 import { ExploreEngineError } from './errors';
 import {
   avgSessionDurationForExplore,
@@ -23,6 +19,13 @@ import {
   resolveBreakdownField,
   sessionsPerUserTimeseriesForExplore,
 } from './postgres-helpers';
+import {
+  buildBaseEventConditions,
+  buildEventPropertyCondition,
+  eventParamExtractSql,
+  getDistinctDeviceIdsFromEvents,
+  runEventsAggregateQuery,
+} from './questdb-helpers';
 import { resolveExploreDateRange } from './time-range';
 import { validateExploreQuery } from './validate';
 
@@ -31,8 +34,8 @@ function escapeSqlString(value: string): string {
 }
 
 function buildEventFilterConditions(
-  appId: string,
-  dateRange: ReturnType<typeof resolveExploreDateRange>,
+  _appId: string,
+  _dateRange: ReturnType<typeof resolveExploreDateRange>,
   filters: ExploreQueryV1['filters'],
   eventName?: string
 ): string[] {
@@ -108,7 +111,10 @@ async function runEventsGrainQuery(
     };
   }
 
-  if (aggregation === 'field_summary' && query.metric.field?.kind === 'event_param') {
+  if (
+    aggregation === 'field_summary' &&
+    query.metric.field?.kind === 'event_param'
+  ) {
     const extract = eventParamExtractSql(query.metric.field.paramKey);
     const metrics = await runEventsAggregateQuery({
       appId,
@@ -203,7 +209,10 @@ async function runUsersGrainQuery(
     return emptyResultForQuery(query);
   }
 
-  if (query.metric.aggregation === 'sessions_per_user' && query.groupBy === 'day') {
+  if (
+    query.metric.aggregation === 'sessions_per_user' &&
+    query.groupBy === 'day'
+  ) {
     const points = await sessionsPerUserTimeseriesForExplore(
       appId,
       query.filters,
@@ -250,7 +259,10 @@ async function runSessionsGrainQuery(
     return emptyResultForQuery(query);
   }
 
-  if (query.metric.aggregation === 'avg' && query.metric.field?.kind === 'session_duration') {
+  if (
+    query.metric.aggregation === 'avg' &&
+    query.metric.field?.kind === 'session_duration'
+  ) {
     const avg = await avgSessionDurationForExplore(
       appId,
       query.filters,

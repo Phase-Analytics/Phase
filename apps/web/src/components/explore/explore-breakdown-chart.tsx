@@ -27,7 +27,9 @@ export function ExploreBreakdownChart({ rows }: ExploreBreakdownChartProps) {
 
   if (data.length === 0) {
     return (
-      <p className="text-muted-foreground text-sm">No breakdown data for this query.</p>
+      <p className="text-muted-foreground text-sm">
+        No breakdown data for this query.
+      </p>
     );
   }
 
@@ -38,9 +40,9 @@ export function ExploreBreakdownChart({ rows }: ExploreBreakdownChartProps) {
         <XAxis dataKey="value" type="number" />
         <YAxis
           dataKey="dimension"
+          tick={{ fontSize: 11 }}
           type="category"
           width={100}
-          tick={{ fontSize: 11 }}
         />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Bar dataKey="value" fill="var(--color-chart-1)" radius={4} />

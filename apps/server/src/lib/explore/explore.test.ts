@@ -62,7 +62,9 @@ describe('validateExploreQuery', () => {
       version: 1,
       grain: 'events',
       timeRange: '30d',
-      filters: [{ type: 'event_performed', eventName: 'level_ended', performed: true }],
+      filters: [
+        { type: 'event_performed', eventName: 'level_ended', performed: true },
+      ],
       metric: {
         aggregation: 'field_summary',
         field: {

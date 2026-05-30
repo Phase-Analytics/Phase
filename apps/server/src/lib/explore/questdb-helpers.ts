@@ -74,7 +74,9 @@ export function buildEventPropertyCondition(
     if (operator === 'neq') {
       return `LOWER(${strExtract}) != '${escaped}'`;
     }
-    throw new ExploreEngineError(`Operator ${operator} not supported for string event params`);
+    throw new ExploreEngineError(
+      `Operator ${operator} not supported for string event params`
+    );
   }
 
   const num = value.toString();
@@ -101,7 +103,11 @@ export async function getDistinctDeviceIdsFromEvents(options: {
   dateRange: ExploreDateRange;
   conditions: string[];
 }): Promise<string[]> {
-  const base = buildBaseEventConditions(options.appId, options.dateRange, options.conditions);
+  const base = buildBaseEventConditions(
+    options.appId,
+    options.dateRange,
+    options.conditions
+  );
   const subquery = buildExploreEventsSubquery({
     selectClause: 'CAST(device_id AS VARCHAR) AS device_id',
     conditions: base,
@@ -136,7 +142,11 @@ export async function runEventsAggregateQuery(options: {
   selectMetrics: string;
   havingClause?: string;
 }): Promise<Record<string, number | null>> {
-  const base = buildBaseEventConditions(options.appId, options.dateRange, options.conditions);
+  const base = buildBaseEventConditions(
+    options.appId,
+    options.dateRange,
+    options.conditions
+  );
   const subquery = buildExploreEventsSubquery({
     selectClause: `
       CAST(device_id AS VARCHAR) AS device_id,
@@ -158,7 +168,8 @@ export async function runEventsAggregateQuery(options: {
     ${having}
   `;
 
-  const [row] = await executeQuestDBReadQuery<Record<string, number | null>>(query);
+  const [row] =
+    await executeQuestDBReadQuery<Record<string, number | null>>(query);
   return row ?? {};
 }
 

@@ -119,7 +119,7 @@ export function ExploreQueryBuilder({
     if (field?.kind === 'event_param') {
       return field.eventName;
     }
-    return undefined;
+    return;
   })();
 
   const { data: catalog } = useExploreCatalog(appId, eventNameForCatalog);
@@ -143,8 +143,7 @@ export function ExploreQueryBuilder({
 
   const breakdownOptions = BREAKDOWN_OPTIONS.map((option) => ({
     ...option,
-    disabled:
-      option.value === 'event_name' && query.grain !== 'events',
+    disabled: option.value === 'event_name' && query.grain !== 'events',
   }));
 
   const breakdownValue =
@@ -159,7 +158,7 @@ export function ExploreQueryBuilder({
       ? 'session_duration'
       : query.metric.field?.kind === 'event_param'
         ? `${query.metric.field.eventName}::${query.metric.field.paramKey}`
-        : fieldOptions[0]?.value ?? '';
+        : (fieldOptions[0]?.value ?? '');
 
   return (
     <div className="space-y-4">
@@ -442,9 +441,7 @@ function FilterRow({
         <>
           <Input
             className="h-9 w-[180px]"
-            onChange={(e) =>
-              onChange({ ...filter, eventName: e.target.value })
-            }
+            onChange={(e) => onChange({ ...filter, eventName: e.target.value })}
             placeholder="Event name"
             value={filter.eventName}
           />
@@ -463,9 +460,7 @@ function FilterRow({
         <>
           <Input
             className="h-9 w-[140px]"
-            onChange={(e) =>
-              onChange({ ...filter, eventName: e.target.value })
-            }
+            onChange={(e) => onChange({ ...filter, eventName: e.target.value })}
             placeholder="Event"
             value={filter.eventName}
           />

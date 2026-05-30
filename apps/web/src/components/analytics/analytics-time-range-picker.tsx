@@ -33,7 +33,8 @@ export function AnalyticsTimeRangePicker({
     parseAsString.withDefault('7d')
   );
 
-  const isControlled = controlledValue !== undefined && onValueChange !== undefined;
+  const isControlled =
+    controlledValue !== undefined && onValueChange !== undefined;
   const value = isControlled ? controlledValue : urlRange;
   const setValue = isControlled ? onValueChange : setUrlRange;
 

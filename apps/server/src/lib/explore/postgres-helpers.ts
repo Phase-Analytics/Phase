@@ -1,9 +1,8 @@
 import type { ExploreFilter, PropertySearchCondition } from '@phase/shared';
-import { and, count, eq, gte, inArray, lte, sql, type SQL } from 'drizzle-orm';
+import { and, count, eq, gte, inArray, lte, type SQL, sql } from 'drizzle-orm';
 import { db, devices, sessions } from '@/db';
 import { buildPropertySearchFilters } from '@/lib/property-search';
 import { EXPLORE_MAX_BREAKDOWN_ROWS } from './constants';
-import { ExploreEngineError } from './errors';
 import type { ExploreDateRange } from './time-range';
 
 function deviceFiltersFromExplore(filters: ExploreFilter[]): SQL[] {
@@ -47,7 +46,10 @@ function buildDeviceWhere(
   filters: ExploreFilter[],
   eventCohort: string[] | null
 ): SQL[] {
-  const parts: SQL[] = [eq(devices.appId, appId), ...deviceFiltersFromExplore(filters)];
+  const parts: SQL[] = [
+    eq(devices.appId, appId),
+    ...deviceFiltersFromExplore(filters),
+  ];
 
   if (eventCohort !== null) {
     if (eventCohort.length === 0) {
@@ -234,9 +236,10 @@ export async function sessionsPerUserTimeseriesForExplore(
   }));
 }
 
-export function resolveBreakdownField(
-  breakdown: { type: string; field?: string }
-): 'platform' | 'country' | 'city' | 'locale' | null {
+export function resolveBreakdownField(breakdown: {
+  type: string;
+  field?: string;
+}): 'platform' | 'country' | 'city' | 'locale' | null {
   if (breakdown.type === 'device' && breakdown.field) {
     return breakdown.field as 'platform' | 'country' | 'city' | 'locale';
   }

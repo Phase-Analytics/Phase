@@ -15,7 +15,9 @@ export function validateExploreQuery(query: ExploreQueryV1): void {
   }
 
   if (metric.field?.kind === 'session_duration' && grain !== 'sessions') {
-    throw new ExploreEngineError('Session duration field requires Sessions grain');
+    throw new ExploreEngineError(
+      'Session duration field requires Sessions grain'
+    );
   }
 
   if (metric.field?.kind === 'event_param' && grain !== 'events') {

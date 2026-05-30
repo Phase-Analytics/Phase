@@ -4,7 +4,10 @@ import { parseAsString, useQueryState } from 'nuqs';
 import { TimescaleChart } from '@/components/timescale-chart';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ANALYTICS_TIME_RANGE_OPTIONS, toChartTimeRange } from '@/lib/analytics-time-range';
+import {
+  ANALYTICS_TIME_RANGE_OPTIONS,
+  toChartTimeRange,
+} from '@/lib/analytics-time-range';
 import { useDeviceTimeseries } from '@/lib/queries';
 
 export function UsersActivityChart() {

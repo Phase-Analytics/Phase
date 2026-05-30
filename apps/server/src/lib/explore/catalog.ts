@@ -14,11 +14,15 @@ export async function getExploreCatalog(
     db
       .selectDistinct({ platform: devices.platform })
       .from(devices)
-      .where(sql`${devices.appId} = ${appId} AND ${devices.platform} IS NOT NULL`),
+      .where(
+        sql`${devices.appId} = ${appId} AND ${devices.platform} IS NOT NULL`
+      ),
     db
       .selectDistinct({ country: devices.country })
       .from(devices)
-      .where(sql`${devices.appId} = ${appId} AND ${devices.country} IS NOT NULL`),
+      .where(
+        sql`${devices.appId} = ${appId} AND ${devices.country} IS NOT NULL`
+      ),
   ]);
 
   const paramKeysByEvent: Record<string, string[]> = {};
