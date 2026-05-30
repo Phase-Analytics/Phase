@@ -169,7 +169,7 @@ services:
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-5.4-mini}
-      - OPENAI_REASONING_EFFORT=${OPENAI_REASONING_EFFORT:-minimal}
+      - OPENAI_REASONING_EFFORT=${OPENAI_REASONING_EFFORT:-low}
     deploy:
       resources:
         limits:

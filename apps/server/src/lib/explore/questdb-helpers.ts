@@ -173,6 +173,19 @@ export async function runEventsAggregateQuery(options: {
   return row ?? {};
 }
 
+export async function countEventsInRange(
+  appId: string,
+  dateRange: ExploreDateRange
+): Promise<number> {
+  const metrics = await runEventsAggregateQuery({
+    appId,
+    dateRange,
+    conditions: [],
+    selectMetrics: 'count(*) AS value',
+  });
+  return Number(metrics.value ?? 0);
+}
+
 export async function getEventParamKeysSample(options: {
   appId: string;
   eventName: string;

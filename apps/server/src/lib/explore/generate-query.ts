@@ -10,8 +10,8 @@ import {
 import { getEventParamKeysSample } from './questdb-helpers';
 import { validateExploreQuery } from './validate';
 
-const DEFAULT_MODEL = 'gpt-5.4-mini';
-const DEFAULT_REASONING_EFFORT = 'medium';
+const DEFAULT_MODEL = 'gpt-5.4-nano';
+const DEFAULT_REASONING_EFFORT = 'low';
 const MAX_ATTEMPTS = 2;
 
 const REASONING_EFFORTS = [
@@ -81,7 +81,9 @@ Model:
 - sessions grain = session spans. "play time/session length/session count" → sessions; duration uses metric.field session_duration.
 - events grain = event rows. "how many times/event property/avg duration param" → events.
 
-Intent: cohort/filter → event_performed; platform/country split → breakdown device; event mix → breakdown event_name (events grain); daily engagement trend → sessions_per_user + groupBy day.
+Intent: cohort/filter → event_performed; platform/country split → breakdown device; event mix → breakdown event_name (events grain); daily engagement trend → sessions_per_user + groupBy day. Multiple filters are AND only (no OR groups).
+
+Write queries like: "Count devices where … and … split by platform". Compare/diff between two segments is not supported — pick one cohort.
 
 Schema: version=1, timeRange="7d". All object keys required; null when unused.
 

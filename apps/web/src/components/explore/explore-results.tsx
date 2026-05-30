@@ -1,6 +1,6 @@
 'use client';
 
-import type { ExploreResult } from '@phase/shared';
+import type { ExploreCoverage, ExploreResult } from '@phase/shared';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -12,22 +12,26 @@ import {
 } from '@/components/ui/table';
 import { formatDuration } from '@/lib/date-utils';
 import { ExploreBreakdownChart } from './explore-breakdown-chart';
+import { ExploreCoverageStats } from './explore-coverage-stats';
 import { ExploreTimeseriesChart } from './explore-timeseries-chart';
 
 type ExploreResultsProps = {
   result: ExploreResult | null;
+  coverage?: ExploreCoverage | null;
   isPending: boolean;
   error: string | null;
 };
 
 export function ExploreResults({
   result,
+  coverage,
   isPending,
   error,
 }: ExploreResultsProps) {
   if (isPending) {
     return (
       <div className="space-y-3">
+        <Skeleton className="h-16 w-full" />
         <Skeleton className="h-10 w-48" />
         <Skeleton className="h-[250px] w-full" />
       </div>
@@ -42,6 +46,15 @@ export function ExploreResults({
     return null;
   }
 
+  return (
+    <div className="space-y-5">
+      {coverage ? <ExploreCoverageStats coverage={coverage} /> : null}
+      <ResultBody result={result} />
+    </div>
+  );
+}
+
+function ResultBody({ result }: { result: ExploreResult }) {
   if (result.kind === 'scalar') {
     const display =
       result.label.toLowerCase().includes('duration') ||
@@ -52,7 +65,9 @@ export function ExploreResults({
     return (
       <div className="space-y-2">
         <p className="text-muted-foreground text-sm">{result.label}</p>
-        <p className="font-semibold text-4xl tabular-nums">{display}</p>
+        <p className="font-semibold text-4xl tabular-nums tracking-tight">
+          {display}
+        </p>
       </div>
     );
   }
@@ -62,7 +77,7 @@ export function ExploreResults({
       <div className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {result.rows.map((row) => (
-            <div className="rounded-lg border p-3" key={row.label}>
+            <div className="rounded-lg border bg-muted/15 p-3" key={row.label}>
               <p className="text-muted-foreground text-xs">{row.label}</p>
               <p className="font-medium text-xl tabular-nums">
                 {row.label === 'Count'

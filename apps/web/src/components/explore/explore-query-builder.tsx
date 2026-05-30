@@ -1,27 +1,20 @@
 'use client';
 
-import {
-  Add01Icon,
-  Delete02Icon,
-  UnfoldMoreIcon,
-} from '@hugeicons/core-free-icons';
+import { Add01Icon, PlayIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import type {
   ExploreFilter,
   ExploreGrain,
   ExploreQueryV1,
-  PropertyOperator,
 } from '@phase/shared';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
 import { useExploreCatalog } from '@/lib/queries/use-explore';
-import { cn } from '@/lib/utils';
+import { describeExploreQuery, grainLabel } from './explore-query-language';
+import {
+  BuilderDropdown,
+  ExploreFilterClause,
+} from './explore-filter-clause';
 import type { ExploreQueryDefinition } from './explore-query-utils';
 
 type ExploreQueryBuilderProps = {
@@ -32,31 +25,25 @@ type ExploreQueryBuilderProps = {
   isRunning: boolean;
 };
 
-type BuilderOption = {
-  value: string;
-  label: string;
-  disabled?: boolean;
-};
-
-const GRAIN_OPTIONS: BuilderOption[] = [
-  { value: 'users', label: 'Users' },
-  { value: 'events', label: 'Events' },
-  { value: 'sessions', label: 'Sessions' },
+const GRAIN_OPTIONS = [
+  { value: 'users', label: 'devices' },
+  { value: 'events', label: 'events' },
+  { value: 'sessions', label: 'sessions' },
 ];
 
-const METRIC_OPTIONS: BuilderOption[] = [
+const METRIC_OPTIONS = [
   { value: 'count', label: 'Count' },
-  { value: 'count_distinct_users', label: 'Distinct users' },
+  { value: 'count_distinct_users', label: 'Count unique devices' },
   { value: 'avg', label: 'Average' },
-  { value: 'min', label: 'Min' },
-  { value: 'max', label: 'Max' },
+  { value: 'min', label: 'Minimum' },
+  { value: 'max', label: 'Maximum' },
   { value: 'sum', label: 'Sum' },
-  { value: 'field_summary', label: 'Field summary' },
-  { value: 'sessions_per_user', label: 'Sessions / user' },
+  { value: 'field_summary', label: 'Summarize field' },
+  { value: 'sessions_per_user', label: 'Sessions per device' },
 ];
 
-const BREAKDOWN_OPTIONS: BuilderOption[] = [
-  { value: 'none', label: 'None' },
+const BREAKDOWN_OPTIONS = [
+  { value: 'none', label: 'No split' },
   { value: 'platform', label: 'Platform' },
   { value: 'country', label: 'Country' },
   { value: 'city', label: 'City' },
@@ -64,44 +51,18 @@ const BREAKDOWN_OPTIONS: BuilderOption[] = [
   { value: 'event_name', label: 'Event name' },
 ];
 
-const GROUP_BY_OPTIONS: BuilderOption[] = [
-  { value: 'none', label: 'None' },
-  { value: 'day', label: 'Day' },
+const GROUP_BY_OPTIONS = [
+  { value: 'none', label: 'No grouping' },
+  { value: 'day', label: 'Per day' },
 ];
 
-const FILTER_TYPE_OPTIONS: BuilderOption[] = [
-  { value: 'event_performed', label: 'Event performed' },
-  { value: 'event_property', label: 'Event property' },
-  { value: 'device', label: 'Device field' },
-  { value: 'device_property', label: 'Device property' },
-];
-
-const PERFORMED_OPTIONS: BuilderOption[] = [
-  { value: 'true', label: 'Performed' },
-  { value: 'false', label: 'Not performed' },
-];
-
-const DEVICE_FIELD_OPTIONS: BuilderOption[] = [
-  { value: 'platform', label: 'Platform' },
-  { value: 'country', label: 'Country' },
-  { value: 'city', label: 'City' },
-  { value: 'locale', label: 'Locale' },
-];
-
-const DEVICE_OPERATOR_OPTIONS: BuilderOption[] = [
-  { value: 'eq', label: 'equals' },
-  { value: 'neq', label: 'not equals' },
-];
-
-const OPERATOR_OPTIONS: BuilderOption[] = [
-  { value: 'eq', label: '=' },
-  { value: 'neq', label: '!=' },
-  { value: 'gt', label: '>' },
-  { value: 'gte', label: '>=' },
-  { value: 'lt', label: '<' },
-  { value: 'lte', label: '<=' },
-  { value: 'contains', label: 'contains' },
-];
+function sectionLabel(text: string) {
+  return (
+    <p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+      {text}
+    </p>
+  );
+}
 
 export function ExploreQueryBuilder({
   appId,
@@ -128,9 +89,9 @@ export function ExploreQueryBuilder({
     onChange({ ...query, ...partial });
   };
 
-  const fieldOptions: BuilderOption[] = [];
+  const fieldOptions: Array<{ value: string; label: string }> = [];
   if (query.grain === 'sessions') {
-    fieldOptions.push({ value: 'session_duration', label: 'Session duration' });
+    fieldOptions.push({ value: 'session_duration', label: 'session duration' });
   }
   if (query.grain === 'events') {
     for (const name of catalog?.eventNames ?? []) {
@@ -140,6 +101,13 @@ export function ExploreQueryBuilder({
       });
     }
   }
+
+  const needsField =
+    query.metric.aggregation === 'avg' ||
+    query.metric.aggregation === 'min' ||
+    query.metric.aggregation === 'max' ||
+    query.metric.aggregation === 'sum' ||
+    query.metric.aggregation === 'field_summary';
 
   const breakdownOptions = BREAKDOWN_OPTIONS.map((option) => ({
     ...option,
@@ -160,21 +128,15 @@ export function ExploreQueryBuilder({
         ? `${query.metric.field.eventName}::${query.metric.field.paramKey}`
         : (fieldOptions[0]?.value ?? '');
 
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <Field label="Grain">
-          <BuilderDropdown
-            className="w-[140px]"
-            onValueChange={(value) => update({ grain: value as ExploreGrain })}
-            options={GRAIN_OPTIONS}
-            value={query.grain}
-          />
-        </Field>
+  const summary = describeExploreQuery(query);
 
-        <Field label="Metric">
+  return (
+    <div className="overflow-hidden rounded-xl border bg-card shadow-xs">
+      <section className="border-b bg-muted/25 px-4 py-3">
+        {sectionLabel('Measure')}
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
           <BuilderDropdown
-            className="w-[180px]"
+            className="min-w-[160px]"
             onValueChange={(value) =>
               update({
                 metric: {
@@ -186,17 +148,11 @@ export function ExploreQueryBuilder({
             options={METRIC_OPTIONS}
             value={query.metric.aggregation}
           />
-        </Field>
-
-        {(query.metric.aggregation === 'avg' ||
-          query.metric.aggregation === 'min' ||
-          query.metric.aggregation === 'max' ||
-          query.metric.aggregation === 'sum' ||
-          query.metric.aggregation === 'field_summary') &&
-          fieldOptions.length > 0 && (
-            <Field label="Field">
+          {needsField && fieldOptions.length > 0 ? (
+            <>
+              <span className="text-muted-foreground">of</span>
               <BuilderDropdown
-                className="w-[220px]"
+                className="min-w-[200px] font-mono"
                 onValueChange={(value) => {
                   if (value === 'session_duration') {
                     update({
@@ -222,12 +178,90 @@ export function ExploreQueryBuilder({
                 options={fieldOptions}
                 value={fieldValue}
               />
-            </Field>
-          )}
-
-        <Field label="Breakdown">
+            </>
+          ) : null}
+          <span className="text-muted-foreground">across</span>
           <BuilderDropdown
-            className="w-[160px]"
+            className="min-w-[120px]"
+            onValueChange={(value) => {
+              const grain = value as ExploreGrain;
+              const next: Partial<ExploreQueryDefinition> = { grain };
+              if (grain !== 'events' && query.breakdown?.type === 'event_name') {
+                next.breakdown = undefined;
+              }
+              if (grain !== 'users' && query.metric.aggregation === 'sessions_per_user') {
+                next.metric = { ...query.metric, aggregation: 'count' };
+                next.groupBy = undefined;
+              }
+              if (grain !== 'sessions' && query.metric.field?.kind === 'session_duration') {
+                next.metric = { ...query.metric, field: undefined };
+              }
+              if (grain !== 'events' && query.metric.field?.kind === 'event_param') {
+                next.metric = { ...query.metric, field: undefined };
+              }
+              update(next);
+            }}
+            options={GRAIN_OPTIONS}
+            value={query.grain}
+          />
+        </div>
+        <p className="mt-2 text-muted-foreground text-xs">
+          {query.grain === 'users'
+            ? 'Each device is a unique install (player).'
+            : query.grain === 'sessions'
+              ? 'Session spans between open and background.'
+              : 'Raw event rows in the selected time range.'}
+        </p>
+      </section>
+
+      <section className="border-b px-4 py-3">
+        <div className="flex items-center justify-between gap-2">
+          {sectionLabel('Where')}
+          <Button onClick={addFilter} size="sm" type="button" variant="outline">
+            <HugeiconsIcon className="size-3.5" icon={Add01Icon} />
+            Add condition
+          </Button>
+        </div>
+
+        <div className="mt-3 space-y-2">
+          {query.filters.length === 0 ? (
+            <p className="rounded-lg border border-dashed bg-muted/20 px-3 py-2 text-muted-foreground text-sm">
+              No conditions — includes all {grainLabel(query.grain)} in range.
+            </p>
+          ) : (
+            query.filters.map((filter, index) => (
+              <div
+                className="flex flex-wrap items-start gap-2"
+                key={`filter-${index}-${filter.type}`}
+              >
+                {index > 0 ? (
+                  <span className="mt-2 rounded-md bg-muted px-2 py-0.5 font-semibold text-[10px] text-muted-foreground uppercase tracking-wider">
+                    and
+                  </span>
+                ) : null}
+                <ExploreFilterClause
+                  catalog={catalog}
+                  filter={filter}
+                  onChange={(next) => updateFilter(index, next)}
+                  onRemove={() => removeFilter(index)}
+                />
+              </div>
+            ))
+          )}
+        </div>
+        {query.filters.length > 1 ? (
+          <p className="mt-2 text-muted-foreground text-xs">
+            All conditions must match (AND). OR groups are not supported yet.
+          </p>
+        ) : null}
+      </section>
+
+      <section className="border-b px-4 py-3">
+        {sectionLabel('Split & trend')}
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <span className="text-muted-foreground text-sm">Split by</span>
+          <BuilderDropdown
+            className="min-w-[140px]"
             onValueChange={(value) => {
               if (value === 'none') {
                 update({ breakdown: undefined });
@@ -247,55 +281,50 @@ export function ExploreQueryBuilder({
             options={breakdownOptions}
             value={breakdownValue}
           />
-        </Field>
-
-        {query.metric.aggregation === 'sessions_per_user' && (
-          <Field label="Group by">
-            <BuilderDropdown
-              className="w-[120px]"
-              onValueChange={(value) =>
-                update({
-                  groupBy: value === 'day' ? 'day' : undefined,
-                })
-              }
-              options={GROUP_BY_OPTIONS}
-              value={query.groupBy ?? 'none'}
-            />
-          </Field>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <p className="font-semibold text-muted-foreground text-sm uppercase">
-            Filters
-          </p>
-          <Button onClick={addFilter} size="sm" type="button" variant="outline">
-            <HugeiconsIcon className="size-4" icon={Add01Icon} />
-            Add filter
-          </Button>
-        </div>
-
-        {query.filters.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No filters applied.</p>
-        ) : (
-          <div className="space-y-2">
-            {query.filters.map((filter, index) => (
-              <FilterRow
-                catalog={catalog}
-                filter={filter}
-                key={`${filter.type}-${index}`}
-                onChange={(next) => updateFilter(index, next)}
-                onRemove={() => removeFilter(index)}
+          {query.metric.aggregation === 'sessions_per_user' ? (
+            <>
+              <span className="text-muted-foreground text-sm">Trend</span>
+              <BuilderDropdown
+                className="min-w-[130px]"
+                onValueChange={(value) =>
+                  update({
+                    groupBy: value === 'day' ? 'day' : undefined,
+                  })
+                }
+                options={GROUP_BY_OPTIONS}
+                value={query.groupBy ?? 'none'}
               />
-            ))}
-          </div>
-        )}
-      </div>
+            </>
+          ) : null}
+        </div>
+      </section>
 
-      <Button disabled={isRunning} onClick={onRun} type="button">
-        {isRunning ? 'Running...' : 'Run query'}
-      </Button>
+      <footer className="flex flex-col gap-3 bg-muted/15 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="max-w-xl font-mono text-muted-foreground text-xs leading-relaxed">
+          {summary}
+        </p>
+        <Button disabled={isRunning} onClick={onRun} type="button">
+          {isRunning ? (
+            <>
+              <Spinner className="size-4" />
+              Running
+            </>
+          ) : (
+            <>
+              <HugeiconsIcon className="size-4" icon={PlayIcon} />
+              Run query
+            </>
+          )}
+        </Button>
+      </footer>
+
+      {catalog?.eventNames.length ? (
+        <datalist id="explore-event-names">
+          {catalog.eventNames.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
+      ) : null}
     </div>
   );
 
@@ -321,246 +350,4 @@ export function ExploreQueryBuilder({
   function removeFilter(index: number) {
     update({ filters: query.filters.filter((_, i) => i !== index) });
   }
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <p className="font-medium text-muted-foreground text-xs">{label}</p>
-      {children}
-    </div>
-  );
-}
-
-function BuilderDropdown({
-  value,
-  onValueChange,
-  options,
-  className,
-  placeholder = 'Select',
-}: {
-  value: string;
-  onValueChange: (value: string) => void;
-  options: BuilderOption[];
-  className?: string;
-  placeholder?: string;
-}) {
-  const selected = options.find((option) => option.value === value);
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          className={cn('h-9 justify-between gap-2 font-normal', className)}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          <span className="truncate">{selected?.label ?? placeholder}</span>
-          <HugeiconsIcon
-            className="size-4 shrink-0 opacity-50"
-            icon={UnfoldMoreIcon}
-          />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="max-h-64 overflow-y-auto">
-        {options.map((option) => (
-          <DropdownMenuItem
-            disabled={option.disabled}
-            key={option.value}
-            onClick={() => onValueChange(option.value)}
-          >
-            {option.label}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-function FilterRow({
-  filter,
-  onChange,
-  onRemove,
-  catalog,
-}: {
-  filter: ExploreFilter;
-  onChange: (filter: ExploreFilter) => void;
-  onRemove: () => void;
-  catalog?: {
-    eventNames: string[];
-    deviceFields: { platforms: string[]; countries: string[] };
-  };
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border p-2">
-      <BuilderDropdown
-        className="w-[160px]"
-        onValueChange={(type) => {
-          if (type === 'event_performed') {
-            onChange({
-              type: 'event_performed',
-              eventName: catalog?.eventNames[0] ?? '',
-              performed: true,
-            });
-          } else if (type === 'event_property') {
-            onChange({
-              type: 'event_property',
-              eventName: catalog?.eventNames[0] ?? '',
-              key: 'duration',
-              operator: 'gt',
-              value: 0,
-            });
-          } else if (type === 'device') {
-            onChange({
-              type: 'device',
-              field: 'platform',
-              operator: 'eq',
-              value: 'ios',
-            });
-          } else {
-            onChange({
-              type: 'device_property',
-              key: '',
-              operator: 'eq',
-              value: '',
-            });
-          }
-        }}
-        options={FILTER_TYPE_OPTIONS}
-        value={filter.type}
-      />
-
-      {filter.type === 'event_performed' && (
-        <>
-          <Input
-            className="h-9 w-[180px]"
-            onChange={(e) => onChange({ ...filter, eventName: e.target.value })}
-            placeholder="Event name"
-            value={filter.eventName}
-          />
-          <BuilderDropdown
-            className="w-[140px]"
-            onValueChange={(v) =>
-              onChange({ ...filter, performed: v === 'true' })
-            }
-            options={PERFORMED_OPTIONS}
-            value={filter.performed ? 'true' : 'false'}
-          />
-        </>
-      )}
-
-      {filter.type === 'event_property' && (
-        <>
-          <Input
-            className="h-9 w-[140px]"
-            onChange={(e) => onChange({ ...filter, eventName: e.target.value })}
-            placeholder="Event"
-            value={filter.eventName}
-          />
-          <Input
-            className="h-9 w-[100px]"
-            onChange={(e) => onChange({ ...filter, key: e.target.value })}
-            placeholder="Key"
-            value={filter.key}
-          />
-          <BuilderDropdown
-            className="w-[100px]"
-            onValueChange={(v) =>
-              onChange({ ...filter, operator: v as PropertyOperator })
-            }
-            options={OPERATOR_OPTIONS}
-            value={filter.operator}
-          />
-          <Input
-            className="h-9 w-[100px]"
-            onChange={(e) =>
-              onChange({
-                ...filter,
-                value: Number.isNaN(Number(e.target.value))
-                  ? e.target.value
-                  : Number(e.target.value),
-              })
-            }
-            placeholder="Value"
-            value={String(filter.value ?? '')}
-          />
-        </>
-      )}
-
-      {filter.type === 'device' && (
-        <>
-          <BuilderDropdown
-            className="w-[120px]"
-            onValueChange={(field) =>
-              onChange({
-                ...filter,
-                field: field as typeof filter.field,
-              })
-            }
-            options={DEVICE_FIELD_OPTIONS}
-            value={filter.field}
-          />
-          <BuilderDropdown
-            className="w-[110px]"
-            onValueChange={(operator) =>
-              onChange({
-                ...filter,
-                operator: operator as 'eq' | 'neq',
-              })
-            }
-            options={DEVICE_OPERATOR_OPTIONS}
-            value={filter.operator}
-          />
-          <Input
-            className="h-9 w-[120px]"
-            onChange={(e) => onChange({ ...filter, value: e.target.value })}
-            value={filter.value}
-          />
-        </>
-      )}
-
-      {filter.type === 'device_property' && (
-        <>
-          <Input
-            className="h-9 w-[120px]"
-            onChange={(e) => onChange({ ...filter, key: e.target.value })}
-            placeholder="Key"
-            value={filter.key}
-          />
-          <BuilderDropdown
-            className="w-[100px]"
-            onValueChange={(v) =>
-              onChange({ ...filter, operator: v as PropertyOperator })
-            }
-            options={OPERATOR_OPTIONS}
-            value={filter.operator}
-          />
-          <Input
-            className="h-9 w-[120px]"
-            onChange={(e) =>
-              onChange({
-                ...filter,
-                value: Number.isNaN(Number(e.target.value))
-                  ? e.target.value
-                  : Number(e.target.value),
-              })
-            }
-            placeholder="Value"
-            value={String(filter.value ?? '')}
-          />
-        </>
-      )}
-
-      <Button onClick={onRemove} size="icon" type="button" variant="ghost">
-        <HugeiconsIcon className="size-4" icon={Delete02Icon} />
-      </Button>
-    </div>
-  );
 }

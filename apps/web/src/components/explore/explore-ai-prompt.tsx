@@ -4,7 +4,6 @@ import { SparklesIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { useExploreGenerateQuery } from '@/lib/queries/use-explore';
 import { cn } from '@/lib/utils';
@@ -38,54 +37,58 @@ export function ExploreAiPrompt({ appId, onGenerated }: ExploreAiPromptProps) {
       query: result.query,
       summary: result.summary,
     });
+    setPrompt('');
   };
 
   return (
-    <Card className="py-0">
-      <CardContent className="space-y-4 p-4">
-        <div>
-          <h2 className="font-semibold text-muted-foreground text-sm uppercase">
-            Ask a question
-          </h2>
-          <p className="text-muted-foreground text-sm">
-            Describe what you want to analyze in plain language
+    <form
+      className="overflow-hidden rounded-xl border bg-card shadow-xs"
+      onSubmit={handleSubmit}
+    >
+      <div className="border-b bg-muted/25 px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <HugeiconsIcon
+            className="size-4 text-muted-foreground"
+            icon={SparklesIcon}
+          />
+          <p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+            Natural language
           </p>
         </div>
+      </div>
+      <div className="space-y-3 p-4">
+        <textarea
+          className={cn(
+            'min-h-[88px] w-full resize-y rounded-lg border border-input bg-background px-3 py-2.5 text-sm shadow-xs outline-none',
+            'placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
+            'disabled:cursor-not-allowed disabled:opacity-50'
+          )}
+          disabled={generateQuery.isPending}
+          onChange={(event) => setPrompt(event.target.value)}
+          placeholder='e.g. "Count devices who performed paywall_clicked where platform is ios, split by country"'
+          value={prompt}
+        />
 
-        <form className="space-y-3" onSubmit={handleSubmit}>
-          <textarea
-            className={cn(
-              'flex min-h-[100px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none',
-              'placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
-              'disabled:cursor-not-allowed disabled:opacity-50'
-            )}
-            disabled={generateQuery.isPending}
-            onChange={(event) => setPrompt(event.target.value)}
-            placeholder="e.g. Users who clicked paywall, broken down by platform"
-            value={prompt}
-          />
+        {generateQuery.error ? (
+          <p className="text-destructive text-sm">{generateQuery.error.message}</p>
+        ) : null}
 
-          {generateQuery.error ? (
-            <p className="text-destructive text-sm">
-              {generateQuery.error.message}
-            </p>
-          ) : null}
-
+        <div className="flex justify-end">
           <Button disabled={!trimmed || generateQuery.isPending} type="submit">
             {generateQuery.isPending ? (
               <>
                 <Spinner className="size-4" />
-                Generating...
+                Generating
               </>
             ) : (
               <>
                 <HugeiconsIcon className="size-4" icon={SparklesIcon} />
-                Generate query
+                Generate rule
               </>
             )}
           </Button>
-        </form>
-      </CardContent>
-    </Card>
+        </div>
+      </div>
+    </form>
   );
 }

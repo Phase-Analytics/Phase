@@ -156,10 +156,17 @@ export const ExploreResultSchema = z.discriminatedUnion('kind', [
   ExplorePercentilesResultSchema,
 ]);
 
+export const ExploreCoverageSchema = z.object({
+  evaluated: z.number().min(0),
+  matched: z.number().min(0),
+  unit: z.enum(['devices', 'events', 'sessions']),
+});
+
 export const ExploreRunMetaSchema = z.object({
   generatedAt: z.string().datetime(),
   rowCount: z.number().min(0),
   truncated: z.boolean().optional(),
+  coverage: ExploreCoverageSchema.optional(),
 });
 
 export const ExploreRunResponseSchema = z.object({
@@ -224,6 +231,8 @@ export type ExploreMetric = z.infer<typeof ExploreMetricSchema>;
 export type ExploreBreakdown = z.infer<typeof ExploreBreakdownSchema>;
 export type ExploreQueryV1 = z.infer<typeof ExploreQueryV1Schema>;
 export type ExploreResult = z.infer<typeof ExploreResultSchema>;
+export type ExploreCoverage = z.infer<typeof ExploreCoverageSchema>;
+export type ExploreRunMeta = z.infer<typeof ExploreRunMetaSchema>;
 export type ExploreRunResponse = z.infer<typeof ExploreRunResponseSchema>;
 export type ExplorePreset = z.infer<typeof ExplorePresetSchema>;
 export type ExploreCatalogResponse = z.infer<

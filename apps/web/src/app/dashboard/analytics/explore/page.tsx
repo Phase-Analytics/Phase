@@ -1,6 +1,10 @@
 'use client';
 
-import type { ExploreQueryV1, ExploreResult } from '@phase/shared';
+import type {
+  ExploreQueryV1,
+  ExploreResult,
+  ExploreRunMeta,
+} from '@phase/shared';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnalyticsTimeRangePicker } from '@/components/analytics/analytics-time-range-picker';
@@ -22,11 +26,13 @@ import { useExploreRun } from '@/lib/queries/use-explore';
 export default function ExplorePage() {
   const [appId] = useQueryState('app', parseAsString);
   const [timeRange] = useQueryState('range', parseAsString.withDefault('7d'));
-  const [query, setQuery] =
-    useState<ExploreQueryDefinition>(defaultExploreQuery);
+  const [query, setQuery] = useState<ExploreQueryDefinition>(() =>
+    defaultExploreQuery()
+  );
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [hasGeneratedQuery, setHasGeneratedQuery] = useState(false);
   const [result, setResult] = useState<ExploreResult | null>(null);
+  const [runMeta, setRunMeta] = useState<ExploreRunMeta | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { mutateAsync: runExploreQuery, isPending: isExploreRunning } =
     useExploreRun();
@@ -52,9 +58,11 @@ export default function ExplorePage() {
           query: runQuery,
         });
         setResult(response.result);
+        setRunMeta(response.meta);
         hasRunRef.current = true;
       } catch (err) {
         setResult(null);
+        setRunMeta(null);
         setError(err instanceof Error ? err.message : 'Query failed');
       }
     },
@@ -93,6 +101,7 @@ export default function ExplorePage() {
       setAiSummary(payload.summary);
       setHasGeneratedQuery(true);
       setResult(null);
+      setRunMeta(null);
       setError(null);
       hasRunRef.current = false;
     },
@@ -108,7 +117,7 @@ export default function ExplorePage() {
       <div className="flex flex-1 flex-col gap-6">
         <DashboardPageHeader
           actions={<AnalyticsTimeRangePicker />}
-          description="Describe what you want to analyze, then review and run"
+          description="Build rules like a firewall query: measure, filter, split, run"
           title="Explore"
         />
 
@@ -122,46 +131,34 @@ export default function ExplorePage() {
             />
           ) : null}
 
-          <div className="flex min-w-0 flex-col gap-6">
+          <div className="flex min-w-0 flex-col gap-4">
             {appId ? (
               <ExploreAiPrompt appId={appId} onGenerated={handleAiGenerated} />
             ) : null}
 
             {showBuilder ? (
-              <Card className="py-0">
-                <CardContent className="space-y-4 p-4">
-                  <div>
-                    <h2 className="font-semibold text-muted-foreground text-sm uppercase">
-                      Query
-                    </h2>
-                    {aiSummary ? (
-                      <p className="text-muted-foreground text-sm">
-                        {aiSummary}
-                      </p>
-                    ) : (
-                      <p className="text-muted-foreground text-sm">
-                        Review and edit, then run
-                      </p>
-                    )}
-                  </div>
-                  <ExploreQueryBuilder
-                    appId={appId ?? ''}
-                    isRunning={isExploreRunning}
-                    onChange={setQuery}
-                    onRun={handleRun}
-                    query={query}
-                  />
-                </CardContent>
-              </Card>
+              <div className="space-y-2">
+                {aiSummary ? (
+                  <p className="text-muted-foreground text-sm">{aiSummary}</p>
+                ) : null}
+                <ExploreQueryBuilder
+                  appId={appId ?? ''}
+                  isRunning={isExploreRunning}
+                  onChange={setQuery}
+                  onRun={handleRun}
+                  query={query}
+                />
+              </div>
             ) : null}
 
             {showResults ? (
               <Card className="py-0">
                 <CardContent className="space-y-4 p-4">
-                  <h2 className="font-semibold text-muted-foreground text-sm uppercase">
+                  <h2 className="font-semibold text-muted-foreground text-sm uppercase tracking-wide">
                     Results
                   </h2>
                   <ExploreResults
+                    coverage={runMeta?.coverage}
                     error={error}
                     isPending={isExploreRunning}
                     result={result}

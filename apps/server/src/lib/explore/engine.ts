@@ -26,6 +26,7 @@ import {
   getDistinctDeviceIdsFromEvents,
   runEventsAggregateQuery,
 } from './questdb-helpers';
+import { buildExploreCoverage } from './coverage';
 import { resolveExploreDateRange } from './time-range';
 import { validateExploreQuery } from './validate';
 
@@ -345,11 +346,19 @@ export async function runExploreQuery(
           ? result.rows.length
           : 1;
 
+  const coverage = await buildExploreCoverage(
+    appId,
+    query,
+    dateRange,
+    result
+  );
+
   return {
     result,
     meta: {
       generatedAt: new Date().toISOString(),
       rowCount,
+      coverage,
     },
   };
 }
