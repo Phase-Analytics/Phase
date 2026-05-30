@@ -24,62 +24,81 @@ jobs:
         run: |
           VERSION=$(node -p "require('./packages/phase-unity/package.json').version")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag=unity-v$VERSION" >> $GITHUB_OUTPUT
+          echo "unity_tag=unity-v$VERSION" >> $GITHUB_OUTPUT
+          echo "release_tag=v$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Check tag
-        id: check_tag
+      - name: Check tags
+        id: check_tags
         run: |
-          if git rev-parse "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "Tag ${{ steps.version.outputs.tag }} already exists, skipping"
+          UNITY_TAG="${{ steps.version.outputs.unity_tag }}"
+          RELEASE_TAG="${{ steps.version.outputs.release_tag }}"
+          if git rev-parse "$UNITY_TAG" >/dev/null 2>&1; then
+            echo "unity_exists=true" >> $GITHUB_OUTPUT
           else
-            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "unity_exists=false" >> $GITHUB_OUTPUT
+          fi
+          if git rev-parse "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "release_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "release_exists=false" >> $GITHUB_OUTPUT
           fi
 
       - uses: actions/setup-node@v4
-        if: steps.check_tag.outputs.exists == 'false'
+        if: steps.check_tags.outputs.unity_exists == 'false' || steps.check_tags.outputs.release_exists == 'false'
         with:
           node-version: '22'
 
       - name: Verify UPM package
-        if: steps.check_tag.outputs.exists == 'false'
+        if: steps.check_tags.outputs.unity_exists == 'false' || steps.check_tags.outputs.release_exists == 'false'
         run: |
           node packages/phase-unity-dotnet/scripts/verify-upm-package.js
           node packages/phase-unity-dotnet/scripts/verify-unity-sources.js
 
       - uses: actions/setup-dotnet@v4
-        if: steps.check_tag.outputs.exists == 'false'
+        if: steps.check_tags.outputs.unity_exists == 'false' || steps.check_tags.outputs.release_exists == 'false'
         with:
           dotnet-version: '10.0.x'
 
       - name: Test
-        if: steps.check_tag.outputs.exists == 'false'
+        if: steps.check_tags.outputs.unity_exists == 'false' || steps.check_tags.outputs.release_exists == 'false'
         run: dotnet test packages/phase-unity-dotnet/Phase.Analytics.sln --verbosity minimal
 
-      - name: Create and push tag
-        if: steps.check_tag.outputs.exists == 'false'
+      - name: Create and push tags
+        if: steps.check_tags.outputs.unity_exists == 'false' || steps.check_tags.outputs.release_exists == 'false'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "${{ steps.version.outputs.tag }}" -m "Unity SDK ${{ steps.version.outputs.version }}"
-          git push origin "${{ steps.version.outputs.tag }}"
+          if [ "${{ steps.check_tags.outputs.release_exists }}" = "false" ]; then
+            git tag -a "${{ steps.version.outputs.release_tag }}" -m "Unity SDK ${{ steps.version.outputs.version }}"
+          fi
+          if [ "${{ steps.check_tags.outputs.unity_exists }}" = "false" ]; then
+            git tag -a "${{ steps.version.outputs.unity_tag }}" -m "Unity SDK ${{ steps.version.outputs.version }}"
+          fi
+          TAGS=()
+          if [ "${{ steps.check_tags.outputs.release_exists }}" = "false" ]; then
+            TAGS+=("${{ steps.version.outputs.release_tag }}")
+          fi
+          if [ "${{ steps.check_tags.outputs.unity_exists }}" = "false" ]; then
+            TAGS+=("${{ steps.version.outputs.unity_tag }}")
+          fi
+          if [ "${#TAGS[@]}" -gt 0 ]; then
+            git push origin "${TAGS[@]}"
+          fi
 
       - name: Create GitHub Release
-        if: steps.check_tag.outputs.exists == 'false'
+        if: steps.check_tags.outputs.release_exists == 'false'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
+          tag_name: ${{ steps.version.outputs.release_tag }}
           name: Unity SDK ${{ steps.version.outputs.version }}
           body: |
             Unity UPM package (`com.phase.analytics`).
 
             ```json
-            "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#${{ steps.version.outputs.tag }}"
+            "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v${{ steps.version.outputs.version }}"
             ```
 
             Docs: https://phase.sh/docs/get-started/unity
-
-            > Expo / React Native releases use npm tag `v*` from `packages/sdk`. Unity uses `unity-v*` only.
           draft: false
           prerelease: false
           generate_release_notes: true

@@ -14,24 +14,16 @@ Privacy-first mobile analytics for Unity (iOS/Android).
 
 ## Installation
 
-Git UPM from the Phase monorepo. Tags use the **`unity-v*`** prefix (not npm `v*`).
-
 ```
-https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#unity-v0.1.6
+https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.6
 ```
-
-| Tag | Notes |
-|-----|--------|
-| `unity-v0.1.0` … `unity-v0.1.4` | Legacy tags were `v0.1.x` (same commits) |
-| `unity-v0.1.4` | Metas, compile fixes, UPM samples |
-| `unity-v0.1.6` | `platform` ios/android, BCP47 locale, events only (no `TrackScreen`) |
 
 **Or** `Packages/manifest.json`:
 
 ```json
 {
   "dependencies": {
-    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#unity-v0.1.6"
+    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.6"
   }
 }
 ```
