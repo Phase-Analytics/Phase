@@ -9,6 +9,7 @@ import {
   GithubIcon,
   GlobalIcon,
   Key01Icon,
+  Search01Icon,
   PlaySquareIcon,
   QuestionIcon,
   Setting07Icon,
@@ -127,6 +128,15 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
         icon: GlobalIcon,
         keywords: ['realtime', 'analytics', 'real-time'],
         path: `/dashboard/analytics/realtime?app=${appId}`,
+      },
+      {
+        id: 'explore',
+        name: 'Explore',
+        description: 'Ad-hoc query builder for users, events, and sessions',
+        category: 'Analytics',
+        icon: Search01Icon,
+        keywords: ['explore', 'query', 'analytics', 'builder', 'breakdown'],
+        path: `/dashboard/analytics/explore?app=${appId}`,
       },
       {
         id: 'settings',

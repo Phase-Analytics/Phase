@@ -9,6 +9,7 @@ import {
   GithubIcon,
   GlobalIcon,
   Key01Icon,
+  Search01Icon,
   Layers01Icon,
   Logout01Icon,
   Mail01Icon,
@@ -91,6 +92,12 @@ const analyticsNavItems: NavItem[] = [
     icon: GlobalIcon,
     path: '/dashboard/analytics/realtime',
     tooltip: 'Realtime',
+  },
+  {
+    label: 'Explore',
+    icon: Search01Icon,
+    path: '/dashboard/analytics/explore',
+    tooltip: 'Explore',
   },
 ];
 

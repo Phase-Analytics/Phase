@@ -84,4 +84,14 @@ export const queryKeys = {
     stats: () => [...queryKeys.admin.all, 'stats'] as const,
     users: () => [...queryKeys.admin.all, 'users'] as const,
   },
+
+  explore: {
+    all: ['explore'] as const,
+    presets: (appId: string) =>
+      [...queryKeys.explore.all, 'presets', appId] as const,
+    catalog: (appId: string, eventName?: string) =>
+      [...queryKeys.explore.all, 'catalog', appId, eventName] as const,
+    run: (appId: string, query: unknown) =>
+      [...queryKeys.explore.all, 'run', appId, query] as const,
+  },
 } as const;

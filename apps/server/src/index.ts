@@ -24,6 +24,7 @@ import { authRouter } from '@/routes/auth';
 import { batchSdkRouter } from '@/routes/batch';
 import { deviceSdkRouter, deviceWebRouter } from '@/routes/device';
 import { eventSdkRouter, eventWebRouter } from '@/routes/event';
+import { exploreWebRouter } from '@/routes/explore';
 import health from '@/routes/health';
 import { pingSdkRouter } from '@/routes/ping';
 import { publicApiRouter } from '@/routes/public-api';
@@ -147,6 +148,7 @@ const webRoutes = new Elysia({ prefix: '/web' })
   .use(appWebRouter)
   .use(deviceWebRouter)
   .use(eventWebRouter)
+  .use(exploreWebRouter)
   .use(realtimeWebRouter)
   .use(sessionWebRouter);
 

@@ -79,4 +79,4 @@ export type DateRangeParams = {
   endDate?: string;
 };
 
-export type TimeRange = '7d' | '30d' | '90d' | 'all';
+export type TimeRange = '7d' | '30d' | '90d' | '180d' | '360d' | 'all';

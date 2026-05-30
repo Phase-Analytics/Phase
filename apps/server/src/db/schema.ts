@@ -1,3 +1,4 @@
+import type { ExploreQueryV1 } from '@phase/shared';
 import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
@@ -186,6 +187,32 @@ export const devices = pgTable(
   })
 );
 
+export const explorePresets = pgTable(
+  'explore_presets',
+  {
+    id: text('id').primaryKey(),
+    appId: text('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    query: jsonb('query').$type<ExploreQueryV1>().notNull(),
+    createdByUserId: text('created_by_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    appIdUpdatedAtIdx: index('explore_presets_app_id_updated_at_idx').on(
+      table.appId,
+      table.updatedAt.desc()
+    ),
+  })
+);
+
 export const sessions = pgTable(
   'sessions_analytics',
   {
@@ -219,6 +246,18 @@ export const appRelations = relations(apps, ({ one, many }) => ({
   }),
   devices: many(devices),
   publicApiTokens: many(publicApiTokens),
+  explorePresets: many(explorePresets),
+}));
+
+export const explorePresetsRelations = relations(explorePresets, ({ one }) => ({
+  app: one(apps, {
+    fields: [explorePresets.appId],
+    references: [apps.id],
+  }),
+  createdByUser: one(user, {
+    fields: [explorePresets.createdByUserId],
+    references: [user.id],
+  }),
 }));
 
 export const deviceRelations = relations(devices, ({ one, many }) => ({
@@ -276,3 +315,6 @@ export type NewAnalyticsSession = typeof sessions.$inferInsert;
 
 export type Waitlist = typeof waitlist.$inferSelect;
 export type NewWaitlist = typeof waitlist.$inferInsert;
+
+export type ExplorePresetRow = typeof explorePresets.$inferSelect;
+export type NewExplorePresetRow = typeof explorePresets.$inferInsert;

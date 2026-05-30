@@ -138,6 +138,30 @@ function sanitizeNumeric(
   return Math.max(min, Math.min(Math.floor(num), max));
 }
 
+export async function executeQuestDBReadQuery<T>(
+  query: string
+): Promise<T[]> {
+  return executeQuery<T>(query);
+}
+
+export function buildExploreEventsSubquery(options: {
+  selectClause: string;
+  conditions: string[];
+  startDate?: string;
+  endDate?: string;
+}): string {
+  const readTables = resolveReadTablesForRange({
+    startDate: options.startDate,
+    endDate: options.endDate,
+  });
+
+  return buildEventReadUnion(
+    options.selectClause,
+    options.conditions,
+    readTables
+  );
+}
+
 async function executeQuery<T>(query: string): Promise<T[]> {
   const url = `${QUESTDB_HTTP}/exec`;
 
