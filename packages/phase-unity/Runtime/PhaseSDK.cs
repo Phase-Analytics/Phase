@@ -114,6 +114,25 @@ public sealed class PhaseSDK
             EnsureStorageAdapter();
             _config = config;
 
+#if UNITY_5_3_OR_NEWER
+            if (config.AutoBootstrap)
+            {
+                PhaseLifecycleHook.EnsureExists();
+            }
+
+            if (_networkMonitor is UnityNetworkMonitor unityNetworkMonitor)
+            {
+                PhaseLifecycleHook.RegisterNetworkMonitor(unityNetworkMonitor);
+            }
+#endif
+
+            var deviceInfoProvider = _deviceInfoProvider;
+#if UNITY_5_3_OR_NEWER
+            deviceInfoProvider = new StaticDeviceInfoProvider(
+                _deviceInfoProvider.GetDeviceInfo()
+            );
+#endif
+
             var transport = _transportFactory(config);
             _httpClient = new SdkHttpClient(
                 config.ApiKey,
@@ -129,7 +148,7 @@ public sealed class PhaseSDK
             _deviceManager = new DeviceManager(
                 _httpClient,
                 _offlineQueue,
-                _deviceInfoProvider,
+                deviceInfoProvider,
                 config
             );
 
@@ -142,7 +161,6 @@ public sealed class PhaseSDK
             );
 
             SetupNetworkListener();
-            EnsureLifecycleHook(config);
 
             lock (_sync)
             {
@@ -375,6 +393,13 @@ public sealed class PhaseSDK
 
     private void Cleanup()
     {
+#if UNITY_5_3_OR_NEWER
+        if (_networkMonitor is UnityNetworkMonitor unityNetworkMonitor)
+        {
+            PhaseLifecycleHook.UnregisterNetworkMonitor(unityNetworkMonitor);
+        }
+#endif
+
         _networkSubscription?.Dispose();
         _networkSubscription = null;
         _sessionManager?.Dispose();
@@ -456,13 +481,4 @@ public sealed class PhaseSDK
 #endif
     }
 
-    private void EnsureLifecycleHook(PhaseConfig config)
-    {
-#if UNITY_5_3_OR_NEWER
-        if (config.AutoBootstrap)
-        {
-            PhaseLifecycleHook.EnsureExists();
-        }
-#endif
-    }
 }

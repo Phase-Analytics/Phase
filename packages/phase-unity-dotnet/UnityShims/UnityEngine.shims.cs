@@ -53,6 +53,11 @@ namespace UnityEngine
         ReachableViaLocalAreaNetwork,
     }
 
+    public static class Time
+    {
+        public static float realtimeSinceStartup { get; set; }
+    }
+
     public static class Debug
     {
         public static void Log(object message) { }

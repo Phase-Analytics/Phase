@@ -1,5 +1,6 @@
 #if UNITY_5_3_OR_NEWER
 using System;
+using Phase.Analytics.Network;
 using Phase.Analytics.Utils;
 using UnityEngine;
 
@@ -8,6 +9,20 @@ namespace Phase.Analytics;
 public sealed class PhaseLifecycleHook : MonoBehaviour
 {
     private static PhaseLifecycleHook? _instance;
+    private static UnityNetworkMonitor? _networkMonitor;
+
+    public static void RegisterNetworkMonitor(UnityNetworkMonitor monitor)
+    {
+        _networkMonitor = monitor;
+    }
+
+    public static void UnregisterNetworkMonitor(UnityNetworkMonitor monitor)
+    {
+        if (_networkMonitor == monitor)
+        {
+            _networkMonitor = null;
+        }
+    }
 
     public static void EnsureExists()
     {
@@ -43,6 +58,7 @@ public sealed class PhaseLifecycleHook : MonoBehaviour
     private void Update()
     {
         MainThreadDispatcher.ProcessPending();
+        _networkMonitor?.PollIfDue();
     }
 
     private void OnApplicationPause(bool paused)

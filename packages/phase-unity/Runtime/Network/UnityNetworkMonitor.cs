@@ -1,5 +1,4 @@
 using System;
-using System.Threading;
 using System.Threading.Tasks;
 #if UNITY_5_3_OR_NEWER
 using UnityEngine;
@@ -9,21 +8,13 @@ namespace Phase.Analytics.Network;
 
 public sealed class UnityNetworkMonitor : INetworkMonitor
 {
-    private const int PollIntervalMs = 2000;
+    private const float PollIntervalSeconds = 2f;
 
 #if UNITY_5_3_OR_NEWER
-    private readonly Timer _pollTimer;
     private NetworkState _lastState = new() { IsConnected = true };
     private Action<NetworkState>? _listener;
+    private float _lastPollTime;
 #endif
-
-    public UnityNetworkMonitor()
-    {
-#if UNITY_5_3_OR_NEWER
-        _lastState = new NetworkState { IsConnected = IsReachable() };
-        _pollTimer = new Timer(_ => Poll(), null, PollIntervalMs, PollIntervalMs);
-#endif
-    }
 
     public Task<NetworkState> FetchNetworkStateAsync()
     {
@@ -38,6 +29,7 @@ public sealed class UnityNetworkMonitor : INetworkMonitor
     {
 #if UNITY_5_3_OR_NEWER
         _listener = listener;
+        _lastState = new NetworkState { IsConnected = IsReachable() };
         listener(_lastState);
         return new Subscription(() => _listener = null);
 #else
@@ -48,12 +40,21 @@ public sealed class UnityNetworkMonitor : INetworkMonitor
 
     public void Dispose()
     {
-#if UNITY_5_3_OR_NEWER
-        _pollTimer.Dispose();
-#endif
     }
 
 #if UNITY_5_3_OR_NEWER
+    internal void PollIfDue()
+    {
+        var now = Time.realtimeSinceStartup;
+        if (now - _lastPollTime < PollIntervalSeconds)
+        {
+            return;
+        }
+
+        _lastPollTime = now;
+        Poll();
+    }
+
     private void Poll()
     {
         var next = new NetworkState { IsConnected = IsReachable() };
