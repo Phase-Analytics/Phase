@@ -12,7 +12,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Runtime/**/*.cs" Exclude="Runtime/Storage/UnityFileStorage.cs;Runtime/PhaseAnalyticsEditorReset.cs" />
+    <Compile
+      Include="../phase-unity/Runtime/**/*.cs"
+      Exclude="../phase-unity/Runtime/Storage/UnityFileStorage.cs;../phase-unity/Runtime/PhaseAnalyticsEditorReset.cs"
+    />
   </ItemGroup>
 
   <ItemGroup>

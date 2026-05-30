@@ -5,6 +5,8 @@
 packages/phase-unity/**/bin/
 packages/phase-unity/**/obj/
 packages/phase-unity/PLAN.md
+packages/phase-unity-dotnet/**/bin/
+packages/phase-unity-dotnet/**/obj/
 
 # Environment variables
 .env

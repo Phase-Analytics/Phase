@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - 'packages/phase-unity/**'
+      - 'packages/phase-unity-dotnet/**'
       - '.github/workflows/unity-sdk.yml'
   push:
     branches:
       - main
     paths:
       - 'packages/phase-unity/**'
+      - 'packages/phase-unity-dotnet/**'
       - '.github/workflows/unity-sdk.yml'
 
 jobs:
@@ -22,8 +24,15 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify UPM package layout
+        run: node packages/phase-unity-dotnet/scripts/verify-upm-package.js
+
       - name: Test
-        run: dotnet test packages/phase-unity/Phase.Analytics.sln --verbosity minimal
+        run: dotnet test packages/phase-unity-dotnet/Phase.Analytics.sln --verbosity minimal
 
       - name: Verify format
-        run: dotnet format packages/phase-unity/Phase.Analytics.sln --verify-no-changes
+        run: dotnet format packages/phase-unity-dotnet/Phase.Analytics.sln --verify-no-changes

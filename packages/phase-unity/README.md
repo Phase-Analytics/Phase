@@ -23,7 +23,13 @@ Add the package via Unity Package Manager (Git URL):
 https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity
 ```
 
-Pin a release tag (recommended):
+Pin a **commit hash** until a release tag exists (git UPM requires committed `.meta` files; tags are added after release):
+
+```
+https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#<commit-sha>
+```
+
+After `v0.1.0` is published on the repo:
 
 ```
 https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.0
@@ -34,7 +40,7 @@ https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.0
 ```json
 {
   "dependencies": {
-    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.0"
+    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#<commit-sha>"
   }
 }
 ```
@@ -162,8 +168,15 @@ This SDK ships inside the [Phase](https://github.com/Phase-Analytics/Phase) mono
 ## Development
 
 ```bash
-cd packages/phase-unity
+cd packages/phase-unity-dotnet
 dotnet test Phase.Analytics.sln
+```
+
+Regenerate Unity `.meta` files after changing `Runtime/` or `Samples~/`:
+
+```bash
+node packages/phase-unity-dotnet/scripts/generate-unity-metas.js
+node packages/phase-unity-dotnet/scripts/verify-upm-package.js
 ```
 
 ## License

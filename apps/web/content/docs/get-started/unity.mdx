@@ -24,7 +24,15 @@ https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity
 ```
 </CodeBlock>
 
-Pin a release tag (recommended):
+Pin a **commit hash** on `main` until the `v0.1.0` git tag is published (required for immutable git UPM packages with committed `.meta` files):
+
+<CodeBlock lang="text" allowCopy={true}>
+```
+https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#<commit-sha>
+```
+</CodeBlock>
+
+After release, pin the tag:
 
 <CodeBlock lang="text" allowCopy={true}>
 ```
@@ -38,7 +46,7 @@ https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.0
 ```json
 {
   "dependencies": {
-    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.0"
+    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#<commit-sha>"
   }
 }
 ```
@@ -288,6 +296,8 @@ Same as iOS: IL2CPP release on hardware, then confirm events and offline flush a
 
 | Issue | What to check |
 |-------|----------------|
+| `has no meta file, but it's in an immutable folder` | Pin a commit that includes committed `.meta` files under `packages/phase-unity`; re-import the package |
+| `CS0246` / `Phase` namespace not found | `Phase.Analytics` assembly did not compile (often missing `.meta` on git UPM); fix import warnings first |
 | Initialize returns false | API key prefix `phase_`, HTTPS `BaseUrl` |
 | No events | `IdentifyAsync` before `Track` |
 | 401 | Invalid API key |
