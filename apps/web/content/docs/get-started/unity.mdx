@@ -32,7 +32,7 @@ Add to `Packages/manifest.json` (recommended for teams and CI):
 ```json
 {
   "dependencies": {
-    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.5"
+    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#unity-v0.1.6"
   }
 }
 ```
@@ -50,7 +50,7 @@ Return to Unity and let Package Manager resolve the dependency.
 
 <CodeBlock lang="text" allowCopy={true}>
 ```
-https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.5
+https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#unity-v0.1.6
 ```
 </CodeBlock>
 
@@ -59,16 +59,15 @@ https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.5
   </TabsContent>
 </Tabs>
 
-**Pin a release tag** (`#v0.1.5` recommended). Unpinned URLs pull `main` and can break reproducible builds.
+**Pin a Unity tag** (`#unity-v0.1.6` recommended). Unity uses the `unity-v*` prefix. Expo / React Native npm releases use `v*` from `packages/sdk` (different versioning).
 
 | Tag | What it fixes |
 |-----|----------------|
-| `v0.1.0` | Committed `.meta` files (required for git UPM) |
-| `v0.1.1` | `langVersion: 10` on asmdef |
-| `v0.1.2` | `Runtime/csc.rsp` with `-langversion:10` (Unity 6 git UPM CS8773) |
-| `v0.1.3` | `using System.Threading` in `UnityNetworkMonitor` (CS0246 `Timer`) |
-| `v0.1.4` | `ValidationConstants` import, `Logger` ambiguity, UPM `samples` in `package.json` |
-| `v0.1.5` | `platform` (`ios`/`android`), `TrackScreen`, BCP47 locale |
+| `v0.1.0`–`v0.1.4` or `unity-v0.1.0`–`unity-v0.1.4` | Same commits; prefer `unity-v*` going forward |
+| `unity-v0.1.4` | Metas, compile fixes (`ValidationConstants`, `Logger`), UPM samples |
+| `unity-v0.1.6` | `platform` ios/android, BCP47 locale, event-only API (no screen tracking) |
+
+Intermediate tags `v0.1.1`–`v0.1.3`: asmdef `langVersion`, `csc.rsp`, `System.Threading` import.
 
 </Step>
 
@@ -100,7 +99,7 @@ After resolution, confirm the package is healthy **before** wiring game code:
 3. **Console** has **no** `CS8773` (file-scoped namespace) errors
 4. Assembly **`Phase.Analytics`** appears under **Project → Assemblies** (or compiles without errors)
 
-If any check fails, upgrade to `#v0.1.5` or newer, remove `Library/PackageCache/com.phase.analytics@*`, and re-import. Do not patch files inside `PackageCache` by hand.
+If any check fails, upgrade to `#unity-v0.1.6` or newer, remove `Library/PackageCache/com.phase.analytics@*`, and re-import. Do not patch files inside `PackageCache` by hand.
 
 </Step>
 
@@ -265,7 +264,7 @@ await PhaseAnalytics.InitializeAsync(new PhaseConfig
   }}
 />
 
-**Platform:** on **iOS/Android player builds**, identify sends `platform: "ios"` or `"android"` (same as React Native / Swift). In the Unity Editor and non-mobile targets it is `null`. There is still **no** automatic scene/router tracking (unlike Expo); use `TrackScreen` or `Track` manually.
+**Platform:** on **iOS/Android player builds**, identify sends `platform: "ios"` or `"android"`. In the Editor it is `null`. **No screen tracking API** (unlike Expo Router auto-track or Swift `trackScreen`); use `Track` only, e.g. `Track("scene_loaded", ...)`.
 
 ## Usage
 
@@ -370,18 +369,9 @@ PhaseAnalytics.Track("level_complete", new EventParams
 - Serialized payload max 8 KB
 - Empty objects are normalized away
 
-### Track screens
+### Scenes and levels (manual events)
 
-`TrackScreen` marks events with `isScreen: true` (dashboard screen analytics). Names are normalized to paths: `LevelSelect` → `/level-select`. Already slash-prefixed names are kept as-is.
-
-<CodeBlock lang="csharp" icon={<img src="https://cdn.simpleicons.org/unity/FFFFFF" alt="Unity" className="size-4 dark:invert" />}>
-```csharp
-PhaseAnalytics.TrackScreen("LevelSelect");
-PhaseAnalytics.TrackScreen("/settings", new EventParams { ["tab"] = "privacy" });
-```
-</CodeBlock>
-
-There is **no** automatic navigation tracking (unlike Expo Router). Wire scenes yourself:
+There is **no** `TrackScreen` and no automatic navigation tracking. Model navigation with normal events:
 
 <CodeBlock
   title="SceneLoader.cs"
@@ -390,6 +380,7 @@ There is **no** automatic navigation tracking (unlike Expo Router). Wire scenes 
 >
 ```csharp
 using Phase.Analytics;
+using Phase.Analytics.Models;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -400,7 +391,11 @@ public sealed class SceneAnalytics : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        PhaseAnalytics.TrackScreen(scene.name, new EventParams { ["mode"] = mode.ToString() });
+        PhaseAnalytics.Track("scene_loaded", new EventParams
+        {
+            ["scene"] = scene.name,
+            ["mode"] = mode.ToString(),
+        });
     }
 }
 ```
@@ -426,8 +421,7 @@ await PhaseAnalytics.IdentifyAsync();
 |--------|-------------|
 | `InitializeAsync(PhaseConfig)` | Sets up storage, HTTP, managers, optional lifecycle hook. Returns `false` on invalid config. Idempotent. |
 | `IdentifyAsync(DeviceProperties?)` | Registers device and starts session. Required before reliable tracking. |
-| `Track(string, EventParams?)` | Queues a custom event (`isScreen: false`). Requires prior identify. |
-| `TrackScreen(string, EventParams?)` | Queues a screen view (`isScreen: true`). Normalizes name to a path. |
+| `Track(string, EventParams?)` | Queues a custom event. Requires prior identify. |
 | `ClearLocalDataAsync()` | Deletes local Phase storage directory. |
 | `IsInitialized` | `true` after successful `InitializeAsync`. |
 | `IsIdentified` | `true` after successful `IdentifyAsync`. |
@@ -562,8 +556,8 @@ Confirm `INTERNET` permission (Unity adds it by default for network builds).
 | `has no meta file, but it's in an immutable folder` | Upgrade to `#v0.1.0`+. Git UPM cannot generate `.meta` at import time. |
 | `CS8773` file-scoped namespace | Upgrade to `#v0.1.2`+ (`Runtime/csc.rsp`). Asmdef `langVersion` alone is insufficient on Unity 6 git UPM. |
 | `CS0246` `Timer` in `UnityNetworkMonitor` | Upgrade to `#v0.1.3`+ (`using System.Threading`) |
-| `CS0103` `ValidationConstants` | Upgrade to `#v0.1.5`+ |
-| `CS0104` ambiguous `Logger` | Upgrade to `#v0.1.5`+ (`PhaseLifecycleHook`) |
+| `CS0103` `ValidationConstants` | Upgrade to `#unity-v0.1.4`+ |
+| `CS0104` ambiguous `Logger` | Upgrade to `#unity-v0.1.4`+ (`PhaseLifecycleHook`) |
 | `CS0246` / `Phase` not found | `Phase.Analytics` assembly did not compile. Fix import/compile errors first; do not enable game `asmdef` references until the package builds. |
 | Package stuck on old version | Remove `Library/PackageCache/com.phase.analytics@*`, bump hash/tag in `manifest.json`, restart Unity. |
 
@@ -589,9 +583,9 @@ Confirm `INTERNET` permission (Unity adds it by default for network builds).
 
 | Feature | Expo / React Native | Unity |
 |---------|---------------------|-------|
-| Screen tracking | Automatic (optional, Expo Router) | Manual `TrackScreen` / scene hooks |
-| `platform` field | Sent (`ios` / `android`) | Sent on mobile player builds |
-| Distribution | npm | Git UPM (`#v0.1.5`) |
+| Screen tracking | Automatic (optional, Expo Router) | **Not supported** — use `Track` events |
+| `platform` field | Sent (`ios` / `android`) | Sent on mobile player builds (`unity-v0.1.6`+) |
+| Distribution | npm tag `v*` | Git UPM tag `unity-v*` |
 | Init pattern | Provider / hook | `InitializeAsync` + `MonoBehaviour` bootstrap |
 
 For the same event schema and dashboard, keep event names and parameter keys aligned across your mobile clients.

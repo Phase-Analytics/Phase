@@ -5,14 +5,6 @@ namespace Phase.Analytics.Tests;
 public sealed class ValidatorTests
 {
     [Fact]
-    public void ScreenNameNormalizer_adds_slash_and_kebab_case()
-    {
-        Assert.Equal("/profile-view", ScreenNameNormalizer.Normalize("ProfileView"));
-        Assert.Equal("/settings", ScreenNameNormalizer.Normalize("/settings"));
-        Assert.Equal("/unknown", ScreenNameNormalizer.Normalize("   "));
-    }
-
-    [Fact]
     public void ValidateApiKey_rejects_empty()
     {
         var result = Validator.ValidateApiKey("");

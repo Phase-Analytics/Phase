@@ -1,4 +1,4 @@
-name: Release
+name: Expo / React Native SDK Release
 
 on:
   push:
@@ -82,14 +82,11 @@ jobs:
           tag_name: ${{ steps.version.outputs.tag }}
           name: Release ${{ steps.version.outputs.tag }}
           body: |
-            📦 **npm:** https://www.npmjs.com/package/phase-analytics/v/${{ steps.version.outputs.version }}
+            npm: https://www.npmjs.com/package/phase-analytics/v/${{ steps.version.outputs.version }}
 
-            🎮 **Unity (UPM):** add to `Packages/manifest.json`:
-            ```
-            "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v${{ steps.version.outputs.version }}"
-            ```
+            Docs: https://phase.sh/docs/get-started/expo
 
-            Docs: https://phase.sh/docs/get-started/unity
+            Unity UPM releases are tagged separately (`unity-v*`). See `.github/workflows/unity-release.yml`.
 
             ## What's Changed
 

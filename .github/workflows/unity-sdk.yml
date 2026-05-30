@@ -1,4 +1,4 @@
-name: Unity SDK
+name: Unity SDK CI
 
 on:
   pull_request:

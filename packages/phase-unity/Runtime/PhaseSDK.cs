@@ -235,44 +235,6 @@ public sealed class PhaseSDK
         _eventManager.Track(name, parameters);
     }
 
-    public void TrackScreen(string name, EventParams? parameters = null)
-    {
-        var screenName = ScreenNameNormalizer.Normalize(name);
-
-        lock (_sync)
-        {
-            if (!_isInitialized)
-            {
-                Logger.Warn("SDK not initialized. Queuing trackScreen() call.");
-                _pendingCalls.Add(() =>
-                {
-                    TrackScreen(name, parameters);
-                    return Task.CompletedTask;
-                });
-                return;
-            }
-
-            if (!_isIdentified)
-            {
-                Logger.Warn("Device not identified. Queuing trackScreen() call.");
-                _pendingCalls.Add(() =>
-                {
-                    TrackScreen(name, parameters);
-                    return Task.CompletedTask;
-                });
-                return;
-            }
-        }
-
-        if (_eventManager == null)
-        {
-            Logger.Error("Event manager not ready. Initialization may have failed.");
-            return;
-        }
-
-        _eventManager.Track(screenName, parameters, isScreen: true);
-    }
-
     public void Pause()
     {
         _sessionManager?.Pause();

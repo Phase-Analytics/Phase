@@ -8,188 +8,62 @@ Privacy-first mobile analytics for Unity (iOS/Android).
 
 - **Privacy by Default** - No PII collected without explicit consent
 - **Offline Support** - Events queued locally and synced when online
-- **Manual Event Tracking** - `Track` and `TrackScreen` (no automatic scene/navigation hooks)
+- **Event Tracking Only** - `Track` custom events (no screen tracking API)
 - **Lightweight** - IL2CPP-friendly, Newtonsoft.Json with link preservation
 - **Self-Hostable** - Custom API base URL
 
 ## Installation
 
-Add the package via Unity Package Manager (Git URL):
-
-1. **Window → Package Manager → + → Add package from git URL**
-2. Enter:
+Git UPM from the Phase monorepo. Tags use the **`unity-v*`** prefix (not npm `v*`).
 
 ```
-https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity
+https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#unity-v0.1.6
 ```
 
-Pin the latest release tag (recommended):
+| Tag | Notes |
+|-----|--------|
+| `unity-v0.1.0` … `unity-v0.1.4` | Legacy tags were `v0.1.x` (same commits) |
+| `unity-v0.1.4` | Metas, compile fixes, UPM samples |
+| `unity-v0.1.6` | `platform` ios/android, BCP47 locale, events only (no `TrackScreen`) |
 
-```
-https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.5
-```
-
-- `v0.1.0` — committed `.meta` files for git UPM
-- `v0.1.1` — `langVersion: 10` in asmdef (not enough on Unity 6 git UPM)
-- `v0.1.2` — `Runtime/csc.rsp` with `-langversion:10` (CS8773 fix for Unity 6)
-- `v0.1.3` — `using System.Threading` in `UnityNetworkMonitor` (CS0246 `Timer`)
-- `v0.1.4` — `ValidationConstants` import, `Logger` ambiguity fix, UPM `samples` entry
-- `v0.1.5` — `platform` (`ios`/`android`), `TrackScreen` API, BCP47 locale
-
-**Or** add to `Packages/manifest.json`:
+**Or** `Packages/manifest.json`:
 
 ```json
 {
   "dependencies": {
-    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.5"
+    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#unity-v0.1.6"
   }
 }
 ```
 
-**Requirements**
-
-- Unity 2021.3+
-- iOS 12+ / Android API 21+
-- `com.unity.nuget.newtonsoft-json` (declared in `package.json`)
+**Requirements:** Unity 2021.3+, iOS 12+ / Android API 21+, `com.unity.nuget.newtonsoft-json`
 
 ## Quick Start
 
 ```csharp
-using Phase.Analytics;
-using Phase.Analytics.Config;
-using Phase.Analytics.Models;
-
-public class GameBootstrap : MonoBehaviour
-{
-    private async void Start()
-    {
-        var ok = await PhaseAnalytics.InitializeAsync(new PhaseConfig
-        {
-            ApiKey = "phase_xxx",
-        });
-
-        if (!ok) return;
-
-        await PhaseAnalytics.IdentifyAsync();
-        PhaseAnalytics.Track("app_opened");
-    }
-}
+await PhaseAnalytics.InitializeAsync(new PhaseConfig { ApiKey = "phase_xxx" });
+await PhaseAnalytics.IdentifyAsync();
+PhaseAnalytics.Track("app_opened");
+PhaseAnalytics.Track("level_complete", new EventParams { ["level"] = 5 });
 ```
 
-With `AutoBootstrap = true` (default), `InitializeAsync` creates a `PhaseLifecycleHook` for pause/resume and flush-on-quit.
+## Releases
 
-See `Samples~/PhaseAnalyticsSample` for a minimal bootstrap script.
+- **Unity:** git tag `unity-v{version}` from `packages/phase-unity/package.json` (workflow `unity-release.yml`)
+- **Expo / React Native:** npm `phase-analytics@v{version}` from `packages/sdk` (workflow `release.yml`)
 
 ## Documentation
 
-For complete documentation, including configuration, event rules, offline behavior, and IL2CPP notes:
-
-- **[Unity Guide](https://phase.sh/docs/get-started/unity)** - Setup, API, and troubleshooting
-
-## API Reference
-
-### `PhaseAnalytics.InitializeAsync(config)`
-
-Initializes storage, HTTP, managers, and optional lifecycle hook. Idempotent.
-
-### `PhaseAnalytics.IdentifyAsync(properties?)`
-
-Registers the device and starts a session. Required before `Track`.
-
-```csharp
-await PhaseAnalytics.IdentifyAsync();
-
-await PhaseAnalytics.IdentifyAsync(new DeviceProperties
-{
-    ["user_id"] = "123",
-    ["plan"] = "premium",
-});
-```
-
-### `PhaseAnalytics.Track(eventName, params?)`
-
-Track custom events (non-blocking).
-
-```csharp
-PhaseAnalytics.Track("level_complete", new EventParams
-{
-    ["level"] = 5,
-    ["score"] = 1200,
-});
-
-// Screen views (isScreen: true; name normalized to /kebab-case)
-PhaseAnalytics.TrackScreen("LevelSelect");
-PhaseAnalytics.TrackScreen("/settings");
-
-// Or manual scene events
-PhaseAnalytics.Track("scene_loaded", new EventParams { ["scene"] = sceneName });
-```
-
-**Event params rules**
-
-- Flat primitives only (`string`, `number`, `bool`, `null`)
-- Max 32 keys, key max 32 chars
-- String values max 256 chars
-- Serialized payload max 8 KB
-
-### `PhaseAnalytics.ClearLocalDataAsync()`
-
-Wipes local Phase storage (GDPR-style). Does not delete server data. Re-init and identify after.
-
-## Configuration
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `ApiKey` | `string` | **Required** | Starts with `phase_` |
-| `BaseUrl` | `string` | `"https://api.phase.sh"` | Self-hosted API |
-| `LogLevel` | enum | `None` | `Info`, `Warn`, `Error`, `None` |
-| `DebugData` | `bool` | `false` | `x-phase-debug-data: 1` header |
-| `DeviceInfo` | `bool` | `true` | OS, model, `app_version`, `engine`, `unity_version` |
-| `UserLocale` | `bool` | `true` | Locale + server geolocation from IP |
-| `AutoBootstrap` | `bool` | `true` | Auto `PhaseLifecycleHook` |
-| `DisableInEditor` | `bool` | `false` | Skip network in Unity Editor |
-| `AllowInsecureDev` | `bool` | `false` | Allow `http` base URL (dev only) |
-
-**Platform:** on iOS/Android player builds, `platform` is `ios` or `android` (null in Editor and non-mobile targets). **No** automatic scene/navigation tracking (unlike Expo Router); call `TrackScreen` or `Track` yourself.
-
-## Privacy
-
-Phase Analytics is designed with privacy as a core principle:
-
-- No personal data is collected by default
-- Device IDs are generated locally and stored persistently
-- Only technical metadata is collected when enabled (OS, model, app version, locale)
-- Geolocation is resolved server-side from IP when `UserLocale` is enabled
-- No IDFA or advertising identifiers in v1
-
-**Important:** If you collect PII, ensure you have proper user consent.
-
-## Distribution
-
-This SDK ships inside the [Phase](https://github.com/Phase-Analytics/Phase) monorepo as a UPM package. There is no npm/OpenUPM publish.
-
-**Releases:** tag the repo (e.g. `v0.1.0`) and pin the git URL to that tag. GitHub Releases on the main repo are used for changelog notes; Unity consumers install via UPM git URL, not a `.unitypackage` download.
+https://phase.sh/docs/get-started/unity
 
 ## Development
 
 ```bash
 cd packages/phase-unity-dotnet
 dotnet test Phase.Analytics.sln
-```
-
-Regenerate Unity `.meta` files after changing `Runtime/` or `Samples~/`:
-
-```bash
-node packages/phase-unity-dotnet/scripts/generate-unity-metas.js
-node packages/phase-unity-dotnet/scripts/verify-upm-package.js
+node ../phase-unity-dotnet/scripts/verify-upm-package.js
 ```
 
 ## License
 
 AGPL-3.0 — see [LICENSE](./LICENSE).
-
-## Repository
-
-- **Homepage**: [phase.sh](https://phase.sh)
-- **GitHub**: [Phase-Analytics/Phase](https://github.com/Phase-Analytics/Phase)
-- **Issues**: [Report a bug](https://github.com/Phase-Analytics/Phase/issues)

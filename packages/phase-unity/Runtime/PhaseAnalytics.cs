@@ -64,16 +64,6 @@ public static class PhaseAnalytics
         }
     }
 
-    /// <summary>Tracks a screen view (<c>isScreen: true</c>). Name is normalized to a path (e.g. <c>ProfileView</c> → <c>/profile-view</c>).</summary>
-    public static void TrackScreen(string name, EventParams? parameters = null)
-    {
-        lock (Sync)
-        {
-            _sdk ??= new PhaseSDK();
-            _sdk.TrackScreen(name, parameters);
-        }
-    }
-
     /// <summary>Clears persisted Phase SDK data on device.</summary>
     public static Task ClearLocalDataAsync() => PhaseStorage.ClearLocalDataAsync();
 

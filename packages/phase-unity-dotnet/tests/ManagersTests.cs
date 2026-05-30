@@ -8,7 +8,6 @@ using Phase.Analytics.Managers;
 using Phase.Analytics.Models;
 using Phase.Analytics.Queue;
 using Phase.Analytics.Storage;
-using Phase.Analytics.Utils;
 
 namespace Phase.Analytics.Tests;
 
@@ -150,38 +149,6 @@ public sealed class ManagersTests
         );
 
         Assert.Equal("ios", payload?.Platform);
-    }
-
-    [Fact]
-    public async Task EventManager_track_screen_sets_is_screen_and_normalizes_name()
-    {
-        var context = CreateContext();
-        var deviceId = await context.DeviceManager.InitializeAsync();
-        var sessionManager = new SessionManager(
-            context.Client,
-            context.Queue,
-            deviceId,
-            new ManualPingScheduler()
-        );
-        var eventManager = new EventManager(
-            context.Client,
-            context.Queue,
-            sessionManager.GetSessionId
-        );
-
-        await sessionManager.StartAsync(isOnline: true);
-        eventManager.Track(ScreenNameNormalizer.Normalize("ProfileView"), null, isScreen: true);
-        await Task.Delay(50);
-
-        var eventRequest = context.Transport.Requests.Last(request =>
-            request.Url.EndsWith("/sdk/events")
-        );
-        var payload = JsonConvert.DeserializeObject<CreateEventRequest>(
-            Encoding.UTF8.GetString(eventRequest.Body)
-        );
-
-        Assert.True(payload?.IsScreen);
-        Assert.Equal("/profile-view", payload?.Name);
     }
 
     [Fact]
