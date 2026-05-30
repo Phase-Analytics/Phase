@@ -9,10 +9,11 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
-import { formatDate } from '@/lib/date-utils';
+import { formatDate, formatDuration } from '@/lib/date-utils';
 
 type ExploreTimeseriesChartProps = {
   points: Array<{ date: string; value: number }>;
+  formatAsDuration?: boolean;
 };
 
 const chartConfig = {
@@ -24,6 +25,7 @@ const chartConfig = {
 
 export function ExploreTimeseriesChart({
   points,
+  formatAsDuration = false,
 }: ExploreTimeseriesChartProps) {
   const chartId = useMemo(
     () => `explore-ts-${Math.random().toString(36).slice(2, 9)}`,
@@ -66,6 +68,11 @@ export function ExploreTimeseriesChart({
         <ChartTooltip
           content={
             <ChartTooltipContent
+              formatter={(value) =>
+                formatAsDuration
+                  ? formatDuration(Number(value))
+                  : Number(value).toLocaleString()
+              }
               labelFormatter={(value) => (
                 <ClientDate date={value} format="date" />
               )}

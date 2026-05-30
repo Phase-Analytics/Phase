@@ -10,18 +10,24 @@ import {
 import { resolveEventCohortDeviceIds } from './cohort';
 import { EXPLORE_MAX_BREAKDOWN_ROWS } from './constants';
 import { ExploreEngineError } from './errors';
+import { deviceIdSqlCondition, resolveQuestDbDeviceIds } from './device-scope';
 import {
   avgSessionDurationForExplore,
+  avgSessionDurationTimeseriesForExplore,
   breakdownDevicesForExplore,
+  breakdownDevicesPairForExplore,
   countDevicesForExplore,
   countSessionsForExplore,
   isEmptyCohort,
   resolveBreakdownField,
+  resolveBreakdownPair,
+  sessionCountTimeseriesForExplore,
   sessionsPerUserTimeseriesForExplore,
 } from './postgres-helpers';
 import {
   buildBaseEventConditions,
   buildEventPropertyCondition,
+  eventCountTimeseriesForExplore,
   eventParamExtractSql,
   getDistinctDeviceIdsFromEvents,
   runEventsAggregateQuery,
@@ -71,6 +77,15 @@ async function runEventsGrainQuery(
       ? query.metric.field.eventName
       : query.filters.find((f) => f.type === 'event_performed')?.eventName;
 
+  const deviceIds = await resolveQuestDbDeviceIds(
+    appId,
+    dateRange,
+    query.filters
+  );
+  if (deviceIds !== null && deviceIds.length === 0) {
+    return emptyResultForQuery(query);
+  }
+
   const baseConditions = buildBaseEventConditions(appId, dateRange);
   const filterConditions = buildEventFilterConditions(
     appId,
@@ -78,9 +93,23 @@ async function runEventsGrainQuery(
     query.filters,
     eventName
   );
-  const allConditions = [...baseConditions, ...filterConditions];
+  const allConditions = [
+    ...baseConditions,
+    ...filterConditions,
+    ...deviceIdSqlCondition(deviceIds),
+  ];
 
   const { aggregation } = query.metric;
+
+  if (query.groupBy === 'day' && aggregation === 'count') {
+    const points = await eventCountTimeseriesForExplore(
+      appId,
+      dateRange,
+      filterConditions,
+      deviceIds
+    );
+    return { kind: 'timeseries', points };
+  }
 
   if (query.breakdown?.type === 'event_name') {
     const subquery = buildExploreEventsSubquery({
@@ -172,7 +201,10 @@ async function runEventsGrainQuery(
     const ids = await getDistinctDeviceIdsFromEvents({
       appId,
       dateRange,
-      conditions: filterConditions,
+      conditions: [
+        ...filterConditions,
+        ...deviceIdSqlCondition(deviceIds),
+      ],
     });
     return {
       kind: 'scalar',
@@ -224,6 +256,17 @@ async function runUsersGrainQuery(
   }
 
   if (query.breakdown) {
+    const pair = resolveBreakdownPair(query.breakdown);
+    if (pair) {
+      const rows = await breakdownDevicesPairForExplore(
+        appId,
+        query.filters,
+        eventCohort,
+        pair
+      );
+      return { kind: 'breakdown', rows };
+    }
+
     const field = resolveBreakdownField(query.breakdown);
     if (!field) {
       throw new ExploreEngineError('Unsupported breakdown for users grain');
@@ -260,6 +303,30 @@ async function runSessionsGrainQuery(
     return emptyResultForQuery(query);
   }
 
+  if (query.groupBy === 'day' && query.metric.aggregation === 'count') {
+    const points = await sessionCountTimeseriesForExplore(
+      appId,
+      query.filters,
+      eventCohort,
+      dateRange
+    );
+    return { kind: 'timeseries', points };
+  }
+
+  if (
+    query.groupBy === 'day' &&
+    query.metric.aggregation === 'avg' &&
+    query.metric.field?.kind === 'session_duration'
+  ) {
+    const points = await avgSessionDurationTimeseriesForExplore(
+      appId,
+      query.filters,
+      eventCohort,
+      dateRange
+    );
+    return { kind: 'timeseries', points };
+  }
+
   if (
     query.metric.aggregation === 'avg' &&
     query.metric.field?.kind === 'session_duration'
@@ -278,6 +345,17 @@ async function runSessionsGrainQuery(
   }
 
   if (query.breakdown) {
+    const pair = resolveBreakdownPair(query.breakdown);
+    if (pair) {
+      const rows = await breakdownDevicesPairForExplore(
+        appId,
+        query.filters,
+        eventCohort,
+        pair
+      );
+      return { kind: 'breakdown', rows };
+    }
+
     const field = resolveBreakdownField(query.breakdown);
     if (!field) {
       throw new ExploreEngineError('Unsupported breakdown for sessions grain');

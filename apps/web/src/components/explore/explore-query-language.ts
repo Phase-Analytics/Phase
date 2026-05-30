@@ -78,6 +78,9 @@ export function formatBreakdown(query: ExploreQueryV1): string | null {
   if (query.breakdown.type === 'event_name') {
     return 'event name';
   }
+  if (query.breakdown.type === 'device_pair') {
+    return `${query.breakdown.fields[0]} + ${query.breakdown.fields[1]}`;
+  }
   if (query.breakdown.type === 'device') {
     return query.breakdown.field;
   }

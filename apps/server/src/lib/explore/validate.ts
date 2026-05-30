@@ -4,10 +4,29 @@ import { ExploreEngineError } from './errors';
 export function validateExploreQuery(query: ExploreQueryV1): void {
   const { grain, metric, groupBy } = query;
 
-  if (groupBy === 'day' && metric.aggregation !== 'sessions_per_user') {
-    throw new ExploreEngineError(
-      'Group by day is only supported with sessions per user metric'
-    );
+  if (groupBy === 'day') {
+    const sessionsPerUserTrend =
+      grain === 'users' && metric.aggregation === 'sessions_per_user';
+    const avgDurationTrend =
+      grain === 'sessions' &&
+      metric.aggregation === 'avg' &&
+      metric.field?.kind === 'session_duration';
+    const sessionCountTrend =
+      grain === 'sessions' && metric.aggregation === 'count';
+    const eventCountTrend = grain === 'events' && metric.aggregation === 'count';
+
+    if (
+      !(
+        sessionsPerUserTrend ||
+        avgDurationTrend ||
+        sessionCountTrend ||
+        eventCountTrend
+      )
+    ) {
+      throw new ExploreEngineError(
+        'Group by day requires a supported daily metric (sessions per device, session count, event count, or avg session duration)'
+      );
+    }
   }
 
   if (metric.aggregation === 'sessions_per_user' && grain !== 'users') {
@@ -37,6 +56,16 @@ export function validateExploreQuery(query: ExploreQueryV1): void {
 
   if (query.breakdown?.type === 'event_param' && grain !== 'events') {
     throw new ExploreEngineError('Event param breakdown requires Events grain');
+  }
+
+  if (
+    query.breakdown?.type === 'device_pair' &&
+    grain !== 'users' &&
+    grain !== 'sessions'
+  ) {
+    throw new ExploreEngineError(
+      'Country + platform breakdown requires devices or sessions grain'
+    );
   }
 
   if (

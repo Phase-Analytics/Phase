@@ -160,6 +160,12 @@ export default function ExplorePage() {
                   <ExploreResults
                     coverage={runMeta?.coverage}
                     error={error}
+                    formatTimeseriesAsDuration={
+                      query.grain === 'sessions' &&
+                      query.metric.aggregation === 'avg' &&
+                      query.metric.field?.kind === 'session_duration' &&
+                      query.groupBy === 'day'
+                    }
                     isPending={isExploreRunning}
                     result={result}
                   />

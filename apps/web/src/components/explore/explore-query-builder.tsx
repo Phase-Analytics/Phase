@@ -10,7 +10,6 @@ import type {
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useExploreCatalog } from '@/lib/queries/use-explore';
-import { describeExploreQuery, grainLabel } from './explore-query-language';
 import {
   BuilderDropdown,
   ExploreFilterClause,
@@ -48,6 +47,7 @@ const BREAKDOWN_OPTIONS = [
   { value: 'country', label: 'Country' },
   { value: 'city', label: 'City' },
   { value: 'locale', label: 'Locale' },
+  { value: 'country_platform', label: 'Country + platform' },
   { value: 'event_name', label: 'Event name' },
 ];
 
@@ -111,15 +111,21 @@ export function ExploreQueryBuilder({
 
   const breakdownOptions = BREAKDOWN_OPTIONS.map((option) => ({
     ...option,
-    disabled: option.value === 'event_name' && query.grain !== 'events',
+    disabled:
+      (option.value === 'event_name' && query.grain !== 'events') ||
+      (option.value === 'country_platform' &&
+        query.grain !== 'users' &&
+        query.grain !== 'sessions'),
   }));
 
   const breakdownValue =
     query.breakdown?.type === 'event_name'
       ? 'event_name'
-      : query.breakdown?.type === 'device'
-        ? query.breakdown.field
-        : 'none';
+      : query.breakdown?.type === 'device_pair'
+        ? 'country_platform'
+        : query.breakdown?.type === 'device'
+          ? query.breakdown.field
+          : 'none';
 
   const fieldValue =
     query.metric.field?.kind === 'session_duration'
@@ -128,7 +134,14 @@ export function ExploreQueryBuilder({
         ? `${query.metric.field.eventName}::${query.metric.field.paramKey}`
         : (fieldOptions[0]?.value ?? '');
 
-  const summary = describeExploreQuery(query);
+  const showDayTrend =
+    (query.grain === 'users' &&
+      query.metric.aggregation === 'sessions_per_user') ||
+    (query.grain === 'sessions' &&
+      (query.metric.aggregation === 'count' ||
+        (query.metric.aggregation === 'avg' &&
+          query.metric.field?.kind === 'session_duration'))) ||
+    (query.grain === 'events' && query.metric.aggregation === 'count');
 
   return (
     <div className="overflow-hidden rounded-xl border bg-card shadow-xs">
@@ -205,13 +218,6 @@ export function ExploreQueryBuilder({
             value={query.grain}
           />
         </div>
-        <p className="mt-2 text-muted-foreground text-xs">
-          {query.grain === 'users'
-            ? 'Each device is a unique install (player).'
-            : query.grain === 'sessions'
-              ? 'Session spans between open and background.'
-              : 'Raw event rows in the selected time range.'}
-        </p>
       </section>
 
       <section className="border-b px-4 py-3">
@@ -225,9 +231,7 @@ export function ExploreQueryBuilder({
 
         <div className="mt-3 space-y-2">
           {query.filters.length === 0 ? (
-            <p className="rounded-lg border border-dashed bg-muted/20 px-3 py-2 text-muted-foreground text-sm">
-              No conditions — includes all {grainLabel(query.grain)} in range.
-            </p>
+            <div className="rounded-lg border border-dashed bg-muted/20 px-3 py-4" />
           ) : (
             query.filters.map((filter, index) => (
               <div
@@ -249,11 +253,6 @@ export function ExploreQueryBuilder({
             ))
           )}
         </div>
-        {query.filters.length > 1 ? (
-          <p className="mt-2 text-muted-foreground text-xs">
-            All conditions must match (AND). OR groups are not supported yet.
-          </p>
-        ) : null}
       </section>
 
       <section className="border-b px-4 py-3">
@@ -264,11 +263,20 @@ export function ExploreQueryBuilder({
             className="min-w-[140px]"
             onValueChange={(value) => {
               if (value === 'none') {
-                update({ breakdown: undefined });
+                update({ breakdown: undefined, groupBy: undefined });
                 return;
               }
               if (value === 'event_name') {
                 update({ breakdown: { type: 'event_name' } });
+                return;
+              }
+              if (value === 'country_platform') {
+                update({
+                  breakdown: {
+                    type: 'device_pair',
+                    fields: ['country', 'platform'],
+                  },
+                });
                 return;
               }
               update({
@@ -281,7 +289,7 @@ export function ExploreQueryBuilder({
             options={breakdownOptions}
             value={breakdownValue}
           />
-          {query.metric.aggregation === 'sessions_per_user' ? (
+          {showDayTrend ? (
             <>
               <span className="text-muted-foreground text-sm">Trend</span>
               <BuilderDropdown
@@ -299,10 +307,7 @@ export function ExploreQueryBuilder({
         </div>
       </section>
 
-      <footer className="flex flex-col gap-3 bg-muted/15 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="max-w-xl font-mono text-muted-foreground text-xs leading-relaxed">
-          {summary}
-        </p>
+      <footer className="flex justify-end bg-muted/15 px-4 py-3">
         <Button disabled={isRunning} onClick={onRun} type="button">
           {isRunning ? (
             <>

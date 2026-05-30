@@ -8,8 +8,6 @@ const noMetricField = {
   paramKey: null,
 };
 
-const noBreakdown = { type: null, field: null };
-
 describe('parseExploreAiGeneration', () => {
   test('coerces paywall platform breakdown query', () => {
     const query = parseExploreAiGeneration({
@@ -28,7 +26,7 @@ describe('parseExploreAiGeneration', () => {
         },
       ],
       metric: { aggregation: 'count', field: noMetricField },
-      breakdown: { type: 'device', field: 'platform' },
+      breakdown: { type: 'device', field: 'platform', field2: null },
       groupBy: null,
     });
 
@@ -61,7 +59,7 @@ describe('parseExploreAiGeneration', () => {
           paramKey: 'duration',
         },
       },
-      breakdown: noBreakdown,
+      breakdown: { type: null, field: null, field2: null },
       groupBy: null,
     });
 

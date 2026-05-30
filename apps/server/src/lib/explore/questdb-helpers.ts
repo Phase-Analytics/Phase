@@ -173,6 +173,54 @@ export async function runEventsAggregateQuery(options: {
   return row ?? {};
 }
 
+export async function eventCountTimeseriesForExplore(
+  appId: string,
+  dateRange: ExploreDateRange,
+  conditions: string[],
+  deviceIds: string[] | null
+): Promise<Array<{ date: string; value: number }>> {
+  const deviceConditions =
+    deviceIds === null
+      ? []
+      : deviceIds.length === 0
+        ? ['1 = 0']
+        : [
+            `device_id IN (${deviceIds.map((id) => `'${escapeSqlString(id)}'`).join(', ')})`,
+          ];
+
+  const base = buildBaseEventConditions(appId, dateRange, [
+    ...conditions,
+    ...deviceConditions,
+  ]);
+
+  const subquery = buildExploreEventsSubquery({
+    selectClause: 'timestamp',
+    conditions: base,
+    startDate: dateRange.startDate,
+    endDate: dateRange.endDate,
+  });
+
+  const query = `
+    SELECT
+      CAST(timestamp AS DATE) AS date,
+      COUNT(*) AS value
+    FROM (
+      ${subquery}
+    ) event_rows
+    GROUP BY date
+    ORDER BY date
+  `;
+
+  const rows = await executeQuestDBReadQuery<{ date: string; value: number }>(
+    query
+  );
+
+  return rows.map((row) => ({
+    date: row.date.slice(0, 10),
+    value: Number(row.value),
+  }));
+}
+
 export async function countEventsInRange(
   appId: string,
   dateRange: ExploreDateRange

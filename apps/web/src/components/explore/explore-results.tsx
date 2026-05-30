@@ -20,6 +20,7 @@ type ExploreResultsProps = {
   coverage?: ExploreCoverage | null;
   isPending: boolean;
   error: string | null;
+  formatTimeseriesAsDuration?: boolean;
 };
 
 export function ExploreResults({
@@ -27,6 +28,7 @@ export function ExploreResults({
   coverage,
   isPending,
   error,
+  formatTimeseriesAsDuration = false,
 }: ExploreResultsProps) {
   if (isPending) {
     return (
@@ -49,12 +51,21 @@ export function ExploreResults({
   return (
     <div className="space-y-5">
       {coverage ? <ExploreCoverageStats coverage={coverage} /> : null}
-      <ResultBody result={result} />
+      <ResultBody
+        formatTimeseriesAsDuration={formatTimeseriesAsDuration}
+        result={result}
+      />
     </div>
   );
 }
 
-function ResultBody({ result }: { result: ExploreResult }) {
+function ResultBody({
+  result,
+  formatTimeseriesAsDuration,
+}: {
+  result: ExploreResult;
+  formatTimeseriesAsDuration: boolean;
+}) {
   if (result.kind === 'scalar') {
     const display =
       result.label.toLowerCase().includes('duration') ||
@@ -118,12 +129,17 @@ function ResultBody({ result }: { result: ExploreResult }) {
   if (result.kind === 'timeseries') {
     return (
       <div className="space-y-4">
-        <ExploreTimeseriesChart points={result.points} />
+        <ExploreTimeseriesChart
+          formatAsDuration={formatTimeseriesAsDuration}
+          points={result.points}
+        />
         <ResultTable
           headers={['Date', 'Value']}
           rows={result.points.map((point) => [
             point.date,
-            point.value.toFixed(2),
+            formatTimeseriesAsDuration
+              ? formatDuration(point.value)
+              : point.value.toFixed(2),
           ])}
         />
       </div>

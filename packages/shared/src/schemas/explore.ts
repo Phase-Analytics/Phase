@@ -84,6 +84,10 @@ export const ExploreMetricSchema = z.object({
 
 export const ExploreBreakdownSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('device'), field: ExploreDeviceFieldSchema }),
+  z.object({
+    type: z.literal('device_pair'),
+    fields: z.tuple([ExploreDeviceFieldSchema, ExploreDeviceFieldSchema]),
+  }),
   z.object({ type: z.literal('event_name') }),
   z.object({
     type: z.literal('event_param'),

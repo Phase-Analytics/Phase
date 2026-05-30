@@ -81,7 +81,7 @@ Model:
 - sessions grain = session spans. "play time/session length/session count" → sessions; duration uses metric.field session_duration.
 - events grain = event rows. "how many times/event property/avg duration param" → events.
 
-Intent: cohort/filter → event_performed; platform/country split → breakdown device; event mix → breakdown event_name (events grain); daily engagement trend → sessions_per_user + groupBy day. Multiple filters are AND only (no OR groups).
+Intent: cohort/filter → event_performed; single split → breakdown device field; country+platform together → breakdown type device_pair with field+field2 (e.g. country, platform); event mix → breakdown event_name (events grain); daily sessions per device (avg) → users + sessions_per_user + groupBy day; daily total session count → sessions + count + groupBy day; daily event count → events + count + groupBy day (+ event_performed filter for event name); daily avg session duration → sessions + avg + session_duration + groupBy day. Multiple filters are AND only (no OR groups).
 
 Write queries like: "Count devices where … and … split by platform". Compare/diff between two segments is not supported — pick one cohort.
 
@@ -92,7 +92,7 @@ Filters (max 20), always all keys (eventName, performed, key, operator, value, f
 
 metric.field: { kind: "none"|"session_duration"|"event_param", eventName, paramKey } (nulls when unused).
 
-breakdown: { type, field } or both null. groupBy: null except "day" with sessions_per_user on users.
+breakdown: { type, field, field2 } — device_pair uses field+field2; else nulls. groupBy: "day" for daily trends above, else null.
 
 Rules: catalog event names; ISO country (TR); platform ios|android|web; no p50/p95; no debug events.
 

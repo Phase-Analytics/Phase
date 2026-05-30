@@ -48,13 +48,65 @@ describe('validateExploreQuery', () => {
     expect(() => validateExploreQuery(query)).toThrow(ExploreEngineError);
   });
 
-  test('rejects groupBy without sessions_per_user', () => {
+  test('rejects groupBy without supported daily trend metric', () => {
     const query: ExploreQueryV1 = {
       ...base,
       groupBy: 'day',
       metric: { aggregation: 'count' },
     };
     expect(() => validateExploreQuery(query)).toThrow(ExploreEngineError);
+  });
+
+  test('allows daily avg session duration on sessions grain', () => {
+    const query: ExploreQueryV1 = {
+      version: 1,
+      grain: 'sessions',
+      timeRange: '7d',
+      filters: [{ type: 'device', field: 'country', operator: 'eq', value: 'TR' }],
+      metric: {
+        aggregation: 'avg',
+        field: { kind: 'session_duration' },
+      },
+      groupBy: 'day',
+    };
+    expect(() => validateExploreQuery(query)).not.toThrow();
+  });
+
+  test('allows daily event count on events grain', () => {
+    const query: ExploreQueryV1 = {
+      version: 1,
+      grain: 'events',
+      timeRange: '7d',
+      filters: [
+        { type: 'device', field: 'platform', operator: 'eq', value: 'ios' },
+        {
+          type: 'event_performed',
+          eventName: 'artwork_swiped',
+          performed: true,
+        },
+      ],
+      metric: { aggregation: 'count' },
+      groupBy: 'day',
+    };
+    expect(() => validateExploreQuery(query)).not.toThrow();
+  });
+
+  test('allows device_pair breakdown on users grain', () => {
+    const query: ExploreQueryV1 = {
+      version: 1,
+      grain: 'users',
+      timeRange: '7d',
+      filters: [
+        {
+          type: 'event_performed',
+          eventName: 'paywall_clicked',
+          performed: true,
+        },
+      ],
+      metric: { aggregation: 'count' },
+      breakdown: { type: 'device_pair', fields: ['country', 'platform'] },
+    };
+    expect(() => validateExploreQuery(query)).not.toThrow();
   });
 
   test('allows level_ended field summary on events', () => {

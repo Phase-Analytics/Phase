@@ -43,8 +43,12 @@ const ExploreMetricFieldAiSchema = z.object({
 });
 
 const ExploreBreakdownAiSchema = z.object({
-  type: z.union([z.enum(['device', 'event_name']), z.null()]),
+  type: z.union([
+    z.enum(['device', 'event_name', 'device_pair']),
+    z.null(),
+  ]),
   field: nullDeviceField,
+  field2: nullDeviceField,
 });
 
 export const ExploreQueryV1AiSchema = z.object({
@@ -128,6 +132,12 @@ function coerceBreakdown(
   }
   if (raw.type === 'event_name') {
     return { type: 'event_name' };
+  }
+  if (raw.type === 'device_pair' && raw.field && raw.field2) {
+    return { type: 'device_pair', fields: [raw.field, raw.field2] };
+  }
+  if (raw.field && raw.field2) {
+    return { type: 'device_pair', fields: [raw.field, raw.field2] };
   }
   if (raw.field) {
     return { type: 'device', field: raw.field };

@@ -41,7 +41,7 @@ function deviceFiltersFromExplore(filters: ExploreFilter[]): SQL[] {
   return sqlFilters;
 }
 
-function buildDeviceWhere(
+export function buildDeviceWhere(
   appId: string,
   filters: ExploreFilter[],
   eventCohort: string[] | null
@@ -183,6 +183,57 @@ export async function countSessionsForExplore(
   return Number(row?.count ?? 0);
 }
 
+export async function avgSessionDurationTimeseriesForExplore(
+  appId: string,
+  filters: ExploreFilter[],
+  eventCohort: string[] | null,
+  dateRange: ExploreDateRange
+): Promise<Array<{ date: string; value: number }>> {
+  if (isEmptyCohort(eventCohort)) {
+    return [];
+  }
+
+  const deviceWhere = buildDeviceWhere(appId, filters, eventCohort);
+  if (deviceWhere.length === 0) {
+    return [];
+  }
+
+  const result = await db.execute<{ date: string; value: number }>(sql`
+    WITH filtered_devices AS (
+      SELECT device_id FROM devices
+      WHERE ${and(...deviceWhere)}
+    ),
+    daily_durations AS (
+      SELECT
+        DATE(s.started_at) AS day,
+        EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at))::float AS duration_s
+      FROM sessions_analytics s
+      INNER JOIN filtered_devices fd ON s.device_id = fd.device_id
+      WHERE s.started_at >= ${dateRange.startDate}::timestamptz
+        AND s.started_at <= ${dateRange.endDate}::timestamptz
+    ),
+    date_series AS (
+      SELECT DATE(generate_series(
+        ${dateRange.startDate}::timestamp,
+        ${dateRange.endDate}::timestamp,
+        '1 day'::interval
+      )) AS date
+    )
+    SELECT
+      ds.date::text AS date,
+      COALESCE(AVG(daily_durations.duration_s), 0)::float AS value
+    FROM date_series ds
+    LEFT JOIN daily_durations ON daily_durations.day = ds.date
+    GROUP BY ds.date
+    ORDER BY ds.date
+  `);
+
+  return result.rows.map((row) => ({
+    date: row.date,
+    value: Number(row.value),
+  }));
+}
+
 export async function sessionsPerUserTimeseriesForExplore(
   appId: string,
   filters: ExploreFilter[],
@@ -236,12 +287,120 @@ export async function sessionsPerUserTimeseriesForExplore(
   }));
 }
 
+function deviceColumn(
+  field: 'platform' | 'country' | 'city' | 'locale'
+) {
+  return field === 'platform'
+    ? devices.platform
+    : field === 'country'
+      ? devices.country
+      : field === 'city'
+        ? devices.city
+        : devices.locale;
+}
+
+export async function breakdownDevicesPairForExplore(
+  appId: string,
+  filters: ExploreFilter[],
+  eventCohort: string[] | null,
+  fields: ['platform' | 'country' | 'city' | 'locale', 'platform' | 'country' | 'city' | 'locale']
+): Promise<Array<{ dimension: string; value: number }>> {
+  const whereParts = buildDeviceWhere(appId, filters, eventCohort);
+  if (whereParts.length === 0) {
+    return [];
+  }
+
+  const columnA = deviceColumn(fields[0]);
+  const columnB = deviceColumn(fields[1]);
+
+  const rows = await db
+    .select({
+      dimension: sql<string>`COALESCE(${columnA}, 'unknown') || ' · ' || COALESCE(${columnB}, 'unknown')`,
+      value: count(),
+    })
+    .from(devices)
+    .where(and(...whereParts))
+    .groupBy(columnA, columnB)
+    .orderBy(sql`count(*) DESC`)
+    .limit(EXPLORE_MAX_BREAKDOWN_ROWS);
+
+  return rows.map((row) => ({
+    dimension: row.dimension,
+    value: Number(row.value),
+  }));
+}
+
+export async function sessionCountTimeseriesForExplore(
+  appId: string,
+  filters: ExploreFilter[],
+  eventCohort: string[] | null,
+  dateRange: ExploreDateRange
+): Promise<Array<{ date: string; value: number }>> {
+  if (isEmptyCohort(eventCohort)) {
+    return [];
+  }
+
+  const deviceWhere = buildDeviceWhere(appId, filters, eventCohort);
+  if (deviceWhere.length === 0) {
+    return [];
+  }
+
+  const result = await db.execute<{ date: string; value: number }>(sql`
+    WITH filtered_devices AS (
+      SELECT device_id FROM devices
+      WHERE ${and(...deviceWhere)}
+    ),
+    daily_counts AS (
+      SELECT
+        DATE(s.started_at) AS day,
+        COUNT(*)::int AS session_count
+      FROM sessions_analytics s
+      INNER JOIN filtered_devices fd ON s.device_id = fd.device_id
+      WHERE s.started_at >= ${dateRange.startDate}::timestamptz
+        AND s.started_at <= ${dateRange.endDate}::timestamptz
+      GROUP BY DATE(s.started_at)
+    ),
+    date_series AS (
+      SELECT DATE(generate_series(
+        ${dateRange.startDate}::timestamp,
+        ${dateRange.endDate}::timestamp,
+        '1 day'::interval
+      )) AS date
+    )
+    SELECT
+      ds.date::text AS date,
+      COALESCE(daily_counts.session_count, 0)::float AS value
+    FROM date_series ds
+    LEFT JOIN daily_counts ON daily_counts.day = ds.date
+    ORDER BY ds.date
+  `);
+
+  return result.rows.map((row) => ({
+    date: row.date,
+    value: Number(row.value),
+  }));
+}
+
 export function resolveBreakdownField(breakdown: {
   type: string;
   field?: string;
 }): 'platform' | 'country' | 'city' | 'locale' | null {
   if (breakdown.type === 'device' && breakdown.field) {
     return breakdown.field as 'platform' | 'country' | 'city' | 'locale';
+  }
+  return null;
+}
+
+export function resolveBreakdownPair(
+  breakdown: { type: string; fields?: readonly string[] }
+):
+  | ['platform' | 'country' | 'city' | 'locale', 'platform' | 'country' | 'city' | 'locale']
+  | null {
+  if (breakdown.type === 'device_pair' && breakdown.fields?.length === 2) {
+    return breakdown.fields as [
+      'platform' | 'country' | 'city' | 'locale',
+      'platform' | 'country' | 'city' | 'locale',
+    ];
   }
   return null;
 }
