@@ -25,6 +25,7 @@ import {
   getExploreCatalog,
   runExploreQuery,
 } from '@/lib/explore';
+import { checkExploreAiGenerateRateLimit } from '@/lib/rate-limit';
 import {
   authPlugin,
   type BetterAuthSession,
@@ -144,13 +145,25 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
         };
       }
 
+      const rateLimit = await checkExploreAiGenerateRateLimit(user.id);
+      if (!rateLimit.allowed) {
+        set.status = HttpStatus.TOO_MANY_REQUESTS;
+        return {
+          code: ErrorCode.TOO_MANY_REQUESTS,
+          detail: rateLimit.reason ?? 'Too many AI query requests',
+        };
+      }
+
       try {
         return await generateExploreQueryFromPrompt(body.appId, body.prompt);
       } catch (error) {
         if (error instanceof ExploreAiError) {
           set.status = error.statusCode;
           return {
-            code: ErrorCode.VALIDATION_ERROR,
+            code:
+              error.statusCode === HttpStatus.TOO_MANY_REQUESTS
+                ? ErrorCode.TOO_MANY_REQUESTS
+                : ErrorCode.VALIDATION_ERROR,
             detail: error.message,
           };
         }
@@ -169,6 +182,7 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
         400: ErrorResponseSchema,
         401: ErrorResponseSchema,
         403: ErrorResponseSchema,
+        429: ErrorResponseSchema,
         500: ErrorResponseSchema,
       },
     }

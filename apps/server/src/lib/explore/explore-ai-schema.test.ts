@@ -2,6 +2,14 @@ import { describe, expect, test } from 'bun:test';
 import { parseExploreAiGeneration } from './explore-ai-schema';
 import { validateExploreQuery } from './validate';
 
+const noMetricField = {
+  kind: 'none' as const,
+  eventName: null,
+  paramKey: null,
+};
+
+const noBreakdown = { type: null, field: null };
+
 describe('parseExploreAiGeneration', () => {
   test('coerces paywall platform breakdown query', () => {
     const query = parseExploreAiGeneration({
@@ -13,10 +21,15 @@ describe('parseExploreAiGeneration', () => {
           type: 'event_performed',
           eventName: 'paywall_clicked',
           performed: true,
+          key: null,
+          operator: null,
+          value: null,
+          field: null,
         },
       ],
-      metric: { aggregation: 'count' },
+      metric: { aggregation: 'count', field: noMetricField },
       breakdown: { type: 'device', field: 'platform' },
+      groupBy: null,
     });
 
     expect(query.grain).toBe('users');
@@ -34,6 +47,10 @@ describe('parseExploreAiGeneration', () => {
           type: 'event_performed',
           eventName: 'level_ended',
           performed: true,
+          key: null,
+          operator: null,
+          value: null,
+          field: null,
         },
       ],
       metric: {
@@ -44,6 +61,8 @@ describe('parseExploreAiGeneration', () => {
           paramKey: 'duration',
         },
       },
+      breakdown: noBreakdown,
+      groupBy: null,
     });
 
     expect(query.metric.field).toEqual({

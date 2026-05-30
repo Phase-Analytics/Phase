@@ -8,6 +8,19 @@ import {
 } from '@phase/shared';
 import { z } from 'zod';
 
+const nullString = z.union([z.string().max(128), z.null()]);
+const nullOperator = z.union([z.string().max(32), z.null()]);
+const nullDeviceField = z.union([
+  z.enum(['platform', 'country', 'city', 'locale']),
+  z.null(),
+]);
+const nullFilterValue = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.null(),
+]);
+
 const ExploreFilterAiSchema = z.object({
   type: z.enum([
     'event_performed',
@@ -15,26 +28,24 @@ const ExploreFilterAiSchema = z.object({
     'device',
     'device_property',
   ]),
-  eventName: z.string().max(128).optional(),
-  performed: z.boolean().optional(),
-  key: z.string().max(128).optional(),
-  operator: z.string().max(32).optional(),
-  value: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
-  field: z.enum(['platform', 'country', 'city', 'locale']).optional(),
+  eventName: nullString,
+  performed: z.union([z.boolean(), z.null()]),
+  key: nullString,
+  operator: nullOperator,
+  value: nullFilterValue,
+  field: nullDeviceField,
 });
 
 const ExploreMetricFieldAiSchema = z.object({
-  kind: z.enum(['session_duration', 'event_param']),
-  eventName: z.string().max(128).optional(),
-  paramKey: z.string().max(128).optional(),
+  kind: z.enum(['none', 'session_duration', 'event_param']),
+  eventName: nullString,
+  paramKey: nullString,
 });
 
-const ExploreBreakdownAiSchema = z
-  .object({
-    type: z.enum(['device', 'event_name']),
-    field: z.enum(['platform', 'country', 'city', 'locale']).optional(),
-  })
-  .optional();
+const ExploreBreakdownAiSchema = z.object({
+  type: z.union([z.enum(['device', 'event_name']), z.null()]),
+  field: nullDeviceField,
+});
 
 export const ExploreQueryV1AiSchema = z.object({
   version: z.literal(1),
@@ -52,10 +63,10 @@ export const ExploreQueryV1AiSchema = z.object({
       'field_summary',
       'sessions_per_user',
     ]),
-    field: ExploreMetricFieldAiSchema.optional(),
+    field: ExploreMetricFieldAiSchema,
   }),
   breakdown: ExploreBreakdownAiSchema,
-  groupBy: z.enum(['day']).optional(),
+  groupBy: z.union([z.enum(['day']), z.null()]),
 });
 
 export type ExploreQueryV1Ai = z.infer<typeof ExploreQueryV1AiSchema>;
@@ -112,7 +123,7 @@ function coerceFilter(
 function coerceBreakdown(
   raw: ExploreQueryV1Ai['breakdown']
 ): ExploreBreakdown | undefined {
-  if (!raw?.type) {
+  if (!raw.type) {
     return;
   }
   if (raw.type === 'event_name') {
@@ -127,7 +138,7 @@ function coerceBreakdown(
 function coerceMetricField(
   raw: ExploreQueryV1Ai['metric']['field']
 ): ExploreField | undefined {
-  if (!raw) {
+  if (raw.kind === 'none') {
     return;
   }
   if (raw.kind === 'session_duration') {
@@ -153,7 +164,7 @@ export function coerceExploreAiQueryToV1(
       field: coerceMetricField(raw.metric.field),
     },
     breakdown: coerceBreakdown(raw.breakdown),
-    groupBy: raw.groupBy,
+    groupBy: raw.groupBy ?? undefined,
   };
 }
 
