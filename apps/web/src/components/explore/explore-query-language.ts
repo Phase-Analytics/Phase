@@ -11,7 +11,10 @@ const GRAIN_LABELS: Record<ExploreGrain, string> = {
   sessions: 'sessions',
 };
 
-const AGGREGATION_LABELS: Record<ExploreQueryV1['metric']['aggregation'], string> = {
+const AGGREGATION_LABELS: Record<
+  ExploreQueryV1['metric']['aggregation'],
+  string
+> = {
   count: 'Count',
   count_distinct_users: 'Count unique devices',
   avg: 'Average',
@@ -137,7 +140,10 @@ export function describeExploreQuery(
   return parts.join(' ');
 }
 
-export function coveragePercent(matched: number, evaluated: number): number | null {
+export function coveragePercent(
+  matched: number,
+  evaluated: number
+): number | null {
   if (evaluated <= 0) {
     return null;
   }

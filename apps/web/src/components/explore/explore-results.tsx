@@ -11,6 +11,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { formatDuration } from '@/lib/date-utils';
+import {
+  fillDailyTimeseriesGaps,
+  getChartPeriodDates,
+} from '@/lib/fill-daily-timeseries';
 import { ExploreBreakdownChart } from './explore-breakdown-chart';
 import { ExploreCoverageStats } from './explore-coverage-stats';
 import { ExploreTimeseriesChart } from './explore-timeseries-chart';
@@ -21,6 +25,7 @@ type ExploreResultsProps = {
   isPending: boolean;
   error: string | null;
   formatTimeseriesAsDuration?: boolean;
+  timeRange?: string;
 };
 
 export function ExploreResults({
@@ -29,6 +34,7 @@ export function ExploreResults({
   isPending,
   error,
   formatTimeseriesAsDuration = false,
+  timeRange,
 }: ExploreResultsProps) {
   if (isPending) {
     return (
@@ -54,6 +60,7 @@ export function ExploreResults({
       <ResultBody
         formatTimeseriesAsDuration={formatTimeseriesAsDuration}
         result={result}
+        timeRange={timeRange}
       />
     </div>
   );
@@ -62,9 +69,11 @@ export function ExploreResults({
 function ResultBody({
   result,
   formatTimeseriesAsDuration,
+  timeRange,
 }: {
   result: ExploreResult;
   formatTimeseriesAsDuration: boolean;
+  timeRange?: string;
 }) {
   if (result.kind === 'scalar') {
     const display =
@@ -127,15 +136,19 @@ function ResultBody({
   }
 
   if (result.kind === 'timeseries') {
+    const filledPoints = timeRange
+      ? fillDailyTimeseriesGaps(result.points, getChartPeriodDates(timeRange))
+      : result.points;
+
     return (
       <div className="space-y-4">
         <ExploreTimeseriesChart
           formatAsDuration={formatTimeseriesAsDuration}
-          points={result.points}
+          points={filledPoints}
         />
         <ResultTable
           headers={['Date', 'Value']}
-          rows={result.points.map((point) => [
+          rows={filledPoints.map((point) => [
             point.date,
             formatTimeseriesAsDuration
               ? formatDuration(point.value)

@@ -18,6 +18,7 @@ import {
   type ExploreQueryDefinition,
 } from '@/components/explore/explore-query-utils';
 import { ExploreResults } from '@/components/explore/explore-results';
+import { normalizeExploreFiltersClient } from '@/components/explore/normalize-explore-filters';
 import { RequireApp } from '@/components/require-app';
 import { Card, CardContent } from '@/components/ui/card';
 import { toExploreTimeRange } from '@/lib/analytics-time-range';
@@ -48,7 +49,10 @@ export default function ExplorePage() {
 
       setError(null);
       const runQuery = buildExploreRunQuery(
-        definition,
+        {
+          ...definition,
+          filters: normalizeExploreFiltersClient(definition.filters),
+        },
         toExploreTimeRange(timeRange)
       );
 
@@ -78,12 +82,13 @@ export default function ExplorePage() {
       return;
     }
     void executeRun(queryRef.current);
-  }, [appId, timeRange, executeRun]);
+  }, [appId, executeRun]);
 
   const handleLoadPreset = useCallback(
     (presetQuery: ExploreQueryV1) => {
       setQuery({
         ...presetQuery,
+        filters: normalizeExploreFiltersClient(presetQuery.filters),
         timeRange: toExploreTimeRange(timeRange),
       });
       setHasGeneratedQuery(true);
@@ -96,6 +101,7 @@ export default function ExplorePage() {
     (payload: { query: ExploreQueryDefinition; summary: string }) => {
       setQuery({
         ...payload.query,
+        filters: normalizeExploreFiltersClient(payload.query.filters),
         timeRange: toExploreTimeRange(timeRange),
       });
       setAiSummary(payload.summary);
@@ -108,8 +114,7 @@ export default function ExplorePage() {
     [timeRange]
   );
 
-  const showResults =
-    Boolean(result) || isExploreRunning || Boolean(error);
+  const showResults = Boolean(result) || isExploreRunning || Boolean(error);
   const showBuilder = hasGeneratedQuery;
 
   return (
@@ -168,6 +173,7 @@ export default function ExplorePage() {
                     }
                     isPending={isExploreRunning}
                     result={result}
+                    timeRange={timeRange}
                   />
                 </CardContent>
               </Card>

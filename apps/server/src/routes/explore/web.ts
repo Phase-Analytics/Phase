@@ -25,12 +25,12 @@ import {
   getExploreCatalog,
   runExploreQuery,
 } from '@/lib/explore';
-import { checkExploreAiGenerateRateLimit } from '@/lib/rate-limit';
 import {
   authPlugin,
   type BetterAuthSession,
   type BetterAuthUser,
 } from '@/lib/middleware';
+import { checkExploreAiGenerateRateLimit } from '@/lib/rate-limit';
 
 type AuthContext = {
   user: BetterAuthUser;

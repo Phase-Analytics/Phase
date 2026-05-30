@@ -9,8 +9,10 @@ import {
 } from '@/lib/questdb';
 import { resolveEventCohortDeviceIds } from './cohort';
 import { EXPLORE_MAX_BREAKDOWN_ROWS } from './constants';
-import { ExploreEngineError } from './errors';
+import { buildExploreCoverage } from './coverage';
 import { deviceIdSqlCondition, resolveQuestDbDeviceIds } from './device-scope';
+import { ExploreEngineError } from './errors';
+import { normalizeExploreFilters } from './normalize-filters';
 import {
   avgSessionDurationForExplore,
   avgSessionDurationTimeseriesForExplore,
@@ -32,7 +34,6 @@ import {
   getDistinctDeviceIdsFromEvents,
   runEventsAggregateQuery,
 } from './questdb-helpers';
-import { buildExploreCoverage } from './coverage';
 import { resolveExploreDateRange } from './time-range';
 import { validateExploreQuery } from './validate';
 
@@ -201,10 +202,7 @@ async function runEventsGrainQuery(
     const ids = await getDistinctDeviceIdsFromEvents({
       appId,
       dateRange,
-      conditions: [
-        ...filterConditions,
-        ...deviceIdSqlCondition(deviceIds),
-      ],
+      conditions: [...filterConditions, ...deviceIdSqlCondition(deviceIds)],
     });
     return {
       kind: 'scalar',
@@ -396,20 +394,25 @@ export async function runExploreQuery(
   appId: string,
   query: ExploreQueryV1
 ): Promise<ExploreRunResponse> {
-  validateExploreQuery(query);
-  const dateRange = resolveExploreDateRange(query.timeRange);
+  const normalizedQuery: ExploreQueryV1 = {
+    ...query,
+    filters: normalizeExploreFilters(query.filters),
+  };
+
+  validateExploreQuery(normalizedQuery);
+  const dateRange = resolveExploreDateRange(normalizedQuery.timeRange);
 
   let result: ExploreResult;
 
-  switch (query.grain) {
+  switch (normalizedQuery.grain) {
     case 'events':
-      result = await runEventsGrainQuery(appId, query, dateRange);
+      result = await runEventsGrainQuery(appId, normalizedQuery, dateRange);
       break;
     case 'users':
-      result = await runUsersGrainQuery(appId, query, dateRange);
+      result = await runUsersGrainQuery(appId, normalizedQuery, dateRange);
       break;
     case 'sessions':
-      result = await runSessionsGrainQuery(appId, query, dateRange);
+      result = await runSessionsGrainQuery(appId, normalizedQuery, dateRange);
       break;
     default:
       throw new ExploreEngineError('Unsupported grain');
@@ -426,7 +429,7 @@ export async function runExploreQuery(
 
   const coverage = await buildExploreCoverage(
     appId,
-    query,
+    normalizedQuery,
     dateRange,
     result
   );

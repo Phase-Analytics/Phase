@@ -287,9 +287,7 @@ export async function sessionsPerUserTimeseriesForExplore(
   }));
 }
 
-function deviceColumn(
-  field: 'platform' | 'country' | 'city' | 'locale'
-) {
+function deviceColumn(field: 'platform' | 'country' | 'city' | 'locale') {
   return field === 'platform'
     ? devices.platform
     : field === 'country'
@@ -303,7 +301,10 @@ export async function breakdownDevicesPairForExplore(
   appId: string,
   filters: ExploreFilter[],
   eventCohort: string[] | null,
-  fields: ['platform' | 'country' | 'city' | 'locale', 'platform' | 'country' | 'city' | 'locale']
+  fields: [
+    'platform' | 'country' | 'city' | 'locale',
+    'platform' | 'country' | 'city' | 'locale',
+  ]
 ): Promise<Array<{ dimension: string; value: number }>> {
   const whereParts = buildDeviceWhere(appId, filters, eventCohort);
   if (whereParts.length === 0) {
@@ -391,10 +392,14 @@ export function resolveBreakdownField(breakdown: {
   return null;
 }
 
-export function resolveBreakdownPair(
-  breakdown: { type: string; fields?: readonly string[] }
-):
-  | ['platform' | 'country' | 'city' | 'locale', 'platform' | 'country' | 'city' | 'locale']
+export function resolveBreakdownPair(breakdown: {
+  type: string;
+  fields?: readonly string[];
+}):
+  | [
+      'platform' | 'country' | 'city' | 'locale',
+      'platform' | 'country' | 'city' | 'locale',
+    ]
   | null {
   if (breakdown.type === 'device_pair' && breakdown.fields?.length === 2) {
     return breakdown.fields as [

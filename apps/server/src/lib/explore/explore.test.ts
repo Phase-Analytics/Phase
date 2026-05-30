@@ -62,7 +62,9 @@ describe('validateExploreQuery', () => {
       version: 1,
       grain: 'sessions',
       timeRange: '7d',
-      filters: [{ type: 'device', field: 'country', operator: 'eq', value: 'TR' }],
+      filters: [
+        { type: 'device', field: 'country', operator: 'eq', value: 'TR' },
+      ],
       metric: {
         aggregation: 'avg',
         field: { kind: 'session_duration' },

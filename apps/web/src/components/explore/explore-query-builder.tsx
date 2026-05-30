@@ -10,10 +10,7 @@ import type {
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useExploreCatalog } from '@/lib/queries/use-explore';
-import {
-  BuilderDropdown,
-  ExploreFilterClause,
-} from './explore-filter-clause';
+import { BuilderDropdown, ExploreFilterClause } from './explore-filter-clause';
 import type { ExploreQueryDefinition } from './explore-query-utils';
 
 type ExploreQueryBuilderProps = {
@@ -199,17 +196,29 @@ export function ExploreQueryBuilder({
             onValueChange={(value) => {
               const grain = value as ExploreGrain;
               const next: Partial<ExploreQueryDefinition> = { grain };
-              if (grain !== 'events' && query.breakdown?.type === 'event_name') {
+              if (
+                grain !== 'events' &&
+                query.breakdown?.type === 'event_name'
+              ) {
                 next.breakdown = undefined;
               }
-              if (grain !== 'users' && query.metric.aggregation === 'sessions_per_user') {
+              if (
+                grain !== 'users' &&
+                query.metric.aggregation === 'sessions_per_user'
+              ) {
                 next.metric = { ...query.metric, aggregation: 'count' };
                 next.groupBy = undefined;
               }
-              if (grain !== 'sessions' && query.metric.field?.kind === 'session_duration') {
+              if (
+                grain !== 'sessions' &&
+                query.metric.field?.kind === 'session_duration'
+              ) {
                 next.metric = { ...query.metric, field: undefined };
               }
-              if (grain !== 'events' && query.metric.field?.kind === 'event_param') {
+              if (
+                grain !== 'events' &&
+                query.metric.field?.kind === 'event_param'
+              ) {
                 next.metric = { ...query.metric, field: undefined };
               }
               update(next);

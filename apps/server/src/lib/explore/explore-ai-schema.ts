@@ -7,6 +7,7 @@ import {
   ExploreQueryV1Schema,
 } from '@phase/shared';
 import { z } from 'zod';
+import { normalizeExploreFilters } from './normalize-filters';
 
 const nullString = z.union([z.string().max(128), z.null()]);
 const nullOperator = z.union([z.string().max(32), z.null()]);
@@ -43,10 +44,7 @@ const ExploreMetricFieldAiSchema = z.object({
 });
 
 const ExploreBreakdownAiSchema = z.object({
-  type: z.union([
-    z.enum(['device', 'event_name', 'device_pair']),
-    z.null(),
-  ]),
+  type: z.union([z.enum(['device', 'event_name', 'device_pair']), z.null()]),
   field: nullDeviceField,
   field2: nullDeviceField,
 });
@@ -189,6 +187,6 @@ export function parseExploreAiGeneration(
 
   return ExploreQueryV1Schema.parse({
     ...coerced,
-    filters,
+    filters: normalizeExploreFilters(filters),
   });
 }

@@ -70,7 +70,9 @@ export function ExploreAiPrompt({ appId, onGenerated }: ExploreAiPromptProps) {
         />
 
         {generateQuery.error ? (
-          <p className="text-destructive text-sm">{generateQuery.error.message}</p>
+          <p className="text-destructive text-sm">
+            {generateQuery.error.message}
+          </p>
         ) : null}
 
         <div className="flex justify-end">

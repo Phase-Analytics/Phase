@@ -88,7 +88,9 @@ Write queries like: "Count devices where … and … split by platform". Compare
 Schema: version=1, timeRange="7d". All object keys required; null when unused.
 
 Filters (max 20), always all keys (eventName, performed, key, operator, value, field):
-- event_performed / event_property / device / device_property — set relevant keys, rest null.
+- device: field platform|country|city|locale (NOT device_property for these)
+- device_property: only custom property keys in JSON
+- event_performed / event_property — set relevant keys, rest null
 
 metric.field: { kind: "none"|"session_duration"|"event_param", eventName, paramKey } (nulls when unused).
 

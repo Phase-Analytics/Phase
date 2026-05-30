@@ -289,7 +289,6 @@ export function ExploreFilterClause({
       >
         <HugeiconsIcon className="size-3.5" icon={Delete02Icon} />
       </Button>
-
     </div>
   );
 }

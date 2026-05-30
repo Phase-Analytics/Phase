@@ -20,23 +20,23 @@ export function ExploreCoverageStats({
   return (
     <div className="grid gap-3 sm:grid-cols-3">
       <StatCard
+        hint={`Total ${unit} in scope`}
         label="Evaluated"
         value={coverage.evaluated.toLocaleString()}
-        hint={`Total ${unit} in scope`}
       />
       <StatCard
+        hint="Matched your conditions"
         label="Matched"
         value={coverage.matched.toLocaleString()}
-        hint="Matched your conditions"
       />
       <StatCard
-        label="Match rate"
-        value={percent === null ? '—' : `${percent}%`}
         hint={
           percent === null
             ? undefined
             : `${coverage.matched.toLocaleString()} of ${coverage.evaluated.toLocaleString()} ${unit}`
         }
+        label="Match rate"
+        value={percent === null ? '—' : `${percent}%`}
       />
     </div>
   );

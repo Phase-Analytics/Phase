@@ -13,7 +13,8 @@ export function validateExploreQuery(query: ExploreQueryV1): void {
       metric.field?.kind === 'session_duration';
     const sessionCountTrend =
       grain === 'sessions' && metric.aggregation === 'count';
-    const eventCountTrend = grain === 'events' && metric.aggregation === 'count';
+    const eventCountTrend =
+      grain === 'events' && metric.aggregation === 'count';
 
     if (
       !(

@@ -1,8 +1,8 @@
 import type { ExploreFilter } from '@phase/shared';
 import { and } from 'drizzle-orm';
 import { db, devices } from '@/db';
-import { EXPLORE_MAX_COHORT_DEVICES } from './constants';
 import { resolveEventCohortDeviceIds } from './cohort';
+import { EXPLORE_MAX_COHORT_DEVICES } from './constants';
 import { ExploreEngineError } from './errors';
 import { buildDeviceWhere, isEmptyCohort } from './postgres-helpers';
 import type { ExploreDateRange } from './time-range';

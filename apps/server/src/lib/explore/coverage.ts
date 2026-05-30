@@ -57,7 +57,7 @@ export async function buildExploreCoverage(
       return { evaluated, matched: evaluated, unit: 'devices' };
     }
     if (!hasEventOrDeviceFilters) {
-      return undefined;
+      return;
     }
 
     return { evaluated, matched, unit: 'devices' };
@@ -78,7 +78,7 @@ export async function buildExploreCoverage(
     );
 
     if (!hasEventOrDeviceFilters) {
-      return undefined;
+      return;
     }
 
     return { evaluated, matched, unit: 'sessions' };
@@ -89,11 +89,11 @@ export async function buildExploreCoverage(
     const matched = matchedFromResult(result);
 
     if (matched === null || !hasEventOrDeviceFilters) {
-      return undefined;
+      return;
     }
 
     return { evaluated, matched, unit: 'events' };
   }
 
-  return undefined;
+  return;
 }
