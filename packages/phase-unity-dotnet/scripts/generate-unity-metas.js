@@ -85,7 +85,12 @@ function metaForFile(relativePath) {
   if (base.endsWith('.cs')) {
     return monoImporterMeta(guidFor(relativePath));
   }
-  if (base.endsWith('.json') || base.endsWith('.xml') || base.endsWith('.md')) {
+  if (
+    base.endsWith('.json') ||
+    base.endsWith('.xml') ||
+    base.endsWith('.md') ||
+    base.endsWith('.rsp')
+  ) {
     return textMeta(guidFor(relativePath));
   }
   return defaultMeta(guidFor(relativePath));

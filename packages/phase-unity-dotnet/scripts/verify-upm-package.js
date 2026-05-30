@@ -110,6 +110,18 @@ if (fileScoped.length > 0 && asmdef.langVersion !== '10') {
   fail(`file-scoped namespaces require langVersion 10: ${fileScoped[0]}`);
 }
 
+const cscRspPath = path.join(packageRoot, 'Runtime/csc.rsp');
+if (!fs.existsSync(cscRspPath)) {
+  fail('missing Runtime/csc.rsp (Unity 6 git UPM needs -langversion:10 via csc.rsp)');
+}
+if (!fs.existsSync(`${cscRspPath}.meta`)) {
+  fail('missing .meta for Runtime/csc.rsp');
+}
+const cscRsp = fs.readFileSync(cscRspPath, 'utf8');
+if (!/-langversion:10/i.test(cscRsp)) {
+  fail('Runtime/csc.rsp must contain -langversion:10');
+}
+
 if (failed) {
   process.exit(1);
 }
