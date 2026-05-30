@@ -3,7 +3,7 @@
 import type { ExploreCoverage, ExploreResult } from '@phase/shared';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useMemo } from 'react';
-import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
+import { DataTable } from '@/components/ui/data-table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDuration } from '@/lib/date-utils';
 import {
@@ -191,15 +191,13 @@ function ExploreValueTable({
     () => [
       {
         accessorKey: 'primary',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={columnHeaders[0]} />
-        ),
+        enableSorting: false,
+        header: columnHeaders[0],
       },
       {
         accessorKey: 'value',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={columnHeaders[1]} />
-        ),
+        enableSorting: false,
+        header: columnHeaders[1],
         cell: ({ row }) => (
           <span className="tabular-nums">{row.getValue('value')}</span>
         ),

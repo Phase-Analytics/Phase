@@ -73,14 +73,18 @@ export function BuilderDropdown({
       <DropdownMenuTrigger asChild>
         <Button
           className={cn(
-            'h-8 justify-between gap-2 bg-background font-normal shadow-xs',
+            'h-8 gap-2 bg-background font-normal shadow-xs',
             className
           )}
+          hoverScale={1}
           size="sm"
+          tapScale={1}
           type="button"
           variant="outline"
         >
-          <span className="truncate">{selected?.label ?? placeholder}</span>
+          <span className="min-w-0 flex-1 truncate text-left">
+            {selected?.label ?? placeholder}
+          </span>
           <HugeiconsIcon
             className="size-3.5 shrink-0 opacity-50"
             icon={UnfoldMoreIcon}

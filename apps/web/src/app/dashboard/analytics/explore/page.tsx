@@ -11,7 +11,7 @@ import { AnalyticsTimeRangePicker } from '@/components/analytics/analytics-time-
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { defaultExploreQuery } from '@/components/explore/default-query';
 import { ExploreAiPrompt } from '@/components/explore/explore-ai-prompt';
-import { ExplorePresetsSidebar } from '@/components/explore/explore-presets-sidebar';
+import { ExplorePresetsSection } from '@/components/explore/explore-presets-section';
 import { ExploreQueryBuilder } from '@/components/explore/explore-query-builder';
 import {
   buildExploreRunQuery,
@@ -130,9 +130,9 @@ export default function ExplorePage() {
           title="Explore"
         />
 
-        <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+        <div className="flex min-w-0 flex-col gap-4">
           {appId ? (
-            <ExplorePresetsSidebar
+            <ExplorePresetsSection
               appId={appId}
               currentQuery={query}
               currentSummary={querySummary}
@@ -141,51 +141,49 @@ export default function ExplorePage() {
             />
           ) : null}
 
-          <div className="flex min-w-0 flex-col gap-4">
-            {appId ? (
-              <ExploreAiPrompt
-                appId={appId}
-                onDraftingChange={(drafting) => {
-                  isNlDraftingRef.current = drafting;
-                }}
-                onGenerated={handleAiGenerated}
-                summary={querySummary}
-              />
-            ) : null}
+          {appId ? (
+            <ExploreAiPrompt
+              appId={appId}
+              onDraftingChange={(drafting) => {
+                isNlDraftingRef.current = drafting;
+              }}
+              onGenerated={handleAiGenerated}
+              summary={querySummary}
+            />
+          ) : null}
 
-            {showBuilder ? (
-              <ExploreQueryBuilder
-                appId={appId ?? ''}
-                isRunning={isExploreRunning}
-                onChange={setQuery}
-                onRun={handleRun}
-                query={query}
-              />
-            ) : null}
+          {showBuilder ? (
+            <ExploreQueryBuilder
+              appId={appId ?? ''}
+              isRunning={isExploreRunning}
+              onChange={setQuery}
+              onRun={handleRun}
+              query={query}
+            />
+          ) : null}
 
-            {showResults ? (
-              <Card className="py-0">
-                <CardContent className="space-y-4 p-4">
-                  <h2 className="font-semibold text-muted-foreground text-sm uppercase tracking-wide">
-                    Results
-                  </h2>
-                  <ExploreResults
-                    coverage={runMeta?.coverage}
-                    error={error}
-                    formatTimeseriesAsDuration={
-                      query.grain === 'sessions' &&
-                      query.metric.aggregation === 'avg' &&
-                      query.metric.field?.kind === 'session_duration' &&
-                      query.groupBy === 'day'
-                    }
-                    isPending={isExploreRunning}
-                    result={result}
-                    timeRange={timeRange}
-                  />
-                </CardContent>
-              </Card>
-            ) : null}
-          </div>
+          {showResults ? (
+            <Card className="py-0">
+              <CardContent className="space-y-4 p-4">
+                <h2 className="font-semibold text-muted-foreground text-sm uppercase tracking-wide">
+                  Results
+                </h2>
+                <ExploreResults
+                  coverage={runMeta?.coverage}
+                  error={error}
+                  formatTimeseriesAsDuration={
+                    query.grain === 'sessions' &&
+                    query.metric.aggregation === 'avg' &&
+                    query.metric.field?.kind === 'session_duration' &&
+                    query.groupBy === 'day'
+                  }
+                  isPending={isExploreRunning}
+                  result={result}
+                  timeRange={timeRange}
+                />
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
       </div>
     </RequireApp>

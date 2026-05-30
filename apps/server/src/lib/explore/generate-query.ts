@@ -115,7 +115,7 @@ breakdown: { type, field, field2 } — device_pair uses field+field2; else nulls
 
 Rules: catalog event names; ISO country (TR); platform ios|android|web; no p50/p95; no debug events.
 
-summary: required. One short human sentence (max 200 chars) describing what the chart shows for a product analyst. Same language as the user's question. Never mention grain, aggregation names, filter(s), breakdown, groupBy, or schema terms. Example (Turkish question): "Türkiye'deki Android kullanıcıların günlük oturum sayısı dağılımı".
+summary: required. One short human sentence (max 200 chars) describing what the chart shows for a product analyst. Same language as the user's question. Never mention grain, aggregation names, filter(s), breakdown, groupBy, or schema terms. Example: "Daily session counts for Android users in Turkey".
 
 Catalog:
 ${catalogContext}`;

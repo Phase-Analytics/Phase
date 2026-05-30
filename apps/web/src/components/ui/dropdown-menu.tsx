@@ -3,6 +3,7 @@ import {
   CheckmarkSquare01Icon,
   CircleIcon,
 } from '@hugeicons/core-free-icons';
+import { cloneElement, isValidElement, type ReactElement } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   DropdownMenuCheckboxItem as DropdownMenuCheckboxItemPrimitive,
@@ -47,8 +48,24 @@ function DropdownMenu(props: DropdownMenuProps) {
 
 type DropdownMenuTriggerProps = DropdownMenuTriggerPrimitiveProps;
 
-function DropdownMenuTrigger(props: DropdownMenuTriggerProps) {
-  return <DropdownMenuTriggerPrimitive {...props} />;
+function DropdownMenuTrigger({
+  asChild,
+  children,
+  ...props
+}: DropdownMenuTriggerProps) {
+  const resolvedChildren =
+    asChild && isValidElement(children)
+      ? cloneElement(
+          children as ReactElement<{ hoverScale?: number; tapScale?: number }>,
+          { hoverScale: 1, tapScale: 1 }
+        )
+      : children;
+
+  return (
+    <DropdownMenuTriggerPrimitive asChild={asChild} {...props}>
+      {resolvedChildren}
+    </DropdownMenuTriggerPrimitive>
+  );
 }
 
 type DropdownMenuContentProps = DropdownMenuContentPrimitiveProps;

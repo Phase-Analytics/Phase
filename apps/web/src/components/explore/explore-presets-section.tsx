@@ -21,7 +21,6 @@ import {
   isExplorePresetSavable,
 } from '@/components/explore/explore-query-utils';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,7 +37,7 @@ import {
 } from '@/lib/queries/use-explore';
 import { cn } from '@/lib/utils';
 
-type ExplorePresetsSidebarProps = {
+type ExplorePresetsSectionProps = {
   appId: string;
   currentQuery: ExploreQueryDefinition;
   currentSummary: string | null;
@@ -60,13 +59,13 @@ function uniqueDuplicateName(base: string, existing: string[]): string {
   return candidate;
 }
 
-export function ExplorePresetsSidebar({
+export function ExplorePresetsSection({
   appId,
   currentQuery,
   currentSummary,
   timeRange,
   onLoadQuery,
-}: ExplorePresetsSidebarProps) {
+}: ExplorePresetsSectionProps) {
   const { data, isPending } = useExplorePresets(appId);
   const createPreset = useCreateExplorePreset(appId);
   const updatePreset = useUpdateExplorePreset(appId);
@@ -154,98 +153,98 @@ export function ExplorePresetsSidebar({
   })();
 
   const isDialogPending = createPreset.isPending || updatePreset.isPending;
+  const presets = data?.presets ?? [];
 
   return (
-    <Card className="py-0 lg:h-fit">
-      <CardContent className="space-y-4 p-4">
-        <div className="flex items-start justify-between gap-2">
-          <h2 className="font-semibold text-muted-foreground text-sm uppercase">
-            Presets
-          </h2>
-          <Button
-            onClick={() => openDialog('save')}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            <HugeiconsIcon className="size-4" icon={Add01Icon} />
-            Save
-          </Button>
-        </div>
+    <div className="overflow-hidden rounded-xl border bg-card shadow-xs">
+      <div className="flex items-center justify-between gap-2 border-b bg-muted/25 px-4 py-2.5">
+        <p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+          Presets
+        </p>
+        <Button
+          onClick={() => openDialog('save')}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          <HugeiconsIcon className="size-4" icon={Add01Icon} />
+          Save
+        </Button>
+      </div>
 
+      <div className="p-4">
         {isPending ? (
-          <div className="space-y-2">
-            <Skeleton className="h-9 w-full" />
-            <Skeleton className="h-9 w-full" />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <Skeleton className="h-[72px] rounded-lg" key={index} />
+            ))}
           </div>
+        ) : presets.length === 0 ? (
+          <p className="text-muted-foreground text-sm">
+            No presets yet. Generate a query and save it.
+          </p>
         ) : (
-          <div className="flex max-h-[420px] flex-col gap-1 overflow-y-auto">
-            {(data?.presets ?? []).length === 0 ? (
-              <p className="text-muted-foreground text-sm">
-                No presets yet. Generate a query and save it.
-              </p>
-            ) : (
-              (data?.presets ?? []).map((preset: ExplorePreset) => (
-                <div
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            {presets.map((preset) => (
+              <div className="group relative" key={preset.id}>
+                <button
                   className={cn(
-                    'group flex items-center gap-1 rounded-md border px-2 py-1.5',
+                    'flex min-h-[72px] w-full flex-col items-start justify-between rounded-lg border bg-background p-3 pr-9 text-left text-sm shadow-xs transition-colors hover:bg-muted/40',
                     activeId === preset.id && 'border-primary bg-muted/50'
                   )}
-                  key={preset.id}
+                  onClick={() => {
+                    setActiveId(preset.id);
+                    onLoadQuery(preset.query, preset.summary);
+                  }}
+                  type="button"
                 >
-                  <button
-                    className="flex-1 truncate text-left font-sans text-sm"
-                    onClick={() => {
-                      setActiveId(preset.id);
-                      onLoadQuery(preset.query, preset.summary);
-                    }}
-                    type="button"
-                  >
+                  <span className="line-clamp-3 font-medium leading-snug">
                     {preset.name}
-                  </button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        className="size-7 shrink-0 opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100"
-                        size="icon"
-                        type="button"
-                        variant="ghost"
-                      >
-                        <HugeiconsIcon
-                          className="size-3.5"
-                          icon={MoreHorizontalIcon}
-                        />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => openDialog('rename', preset)}
-                      >
-                        <HugeiconsIcon icon={PencilEdit02Icon} />
-                        Rename
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => openDialog('duplicate', preset)}
-                      >
-                        <HugeiconsIcon icon={Copy01Icon} />
-                        Duplicate
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => deletePreset.mutate(preset.id)}
-                      >
-                        <HugeiconsIcon icon={Delete02Icon} />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              ))
-            )}
+                  </span>
+                </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      className="absolute top-1.5 right-1.5 size-7 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+                      onClick={(event) => event.stopPropagation()}
+                      size="icon"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <HugeiconsIcon
+                        className="size-3.5"
+                        icon={MoreHorizontalIcon}
+                      />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => openDialog('rename', preset)}
+                    >
+                      <HugeiconsIcon icon={PencilEdit02Icon} />
+                      Rename
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => openDialog('duplicate', preset)}
+                    >
+                      <HugeiconsIcon icon={Copy01Icon} />
+                      Duplicate
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => deletePreset.mutate(preset.id)}
+                    >
+                      <HugeiconsIcon icon={Delete02Icon} />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            ))}
           </div>
         )}
-      </CardContent>
+      </div>
 
       <PresetNameDialog
         defaultName={dialogName}
@@ -265,6 +264,6 @@ export function ExplorePresetsSidebar({
         submitLabel={dialogConfig.submitLabel}
         title={dialogConfig.title}
       />
-    </Card>
+    </div>
   );
 }

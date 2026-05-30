@@ -1,0 +1,44 @@
+---
+title: Explore
+description: Build custom analytics queries in the Phase dashboard
+---
+
+Explore lets you answer product questions without writing SQL. You describe what you want in natural language or build a rule in the UI, then run it against your app's events, sessions, and devices.
+
+## Where to find it
+
+Open **[Dashboard](https://phase.sh/dashboard) → Analytics → Explore**. Use the time range picker in the header; it applies to the query you run.
+
+## How a query is built
+
+Each query has three layers, similar to a firewall rule:
+
+**Measure** — What to count or aggregate, and which grain:
+
+- **Devices** (users grain): distinct installs. Use for cohorts and "who did X".
+- **Sessions**: session spans, duration, session counts.
+- **Events**: raw event rows, event properties, per-event metrics.
+
+**Where** — Filters combined with **AND** only (no OR groups yet). Examples: country, platform, event performed, event property, custom device property.
+
+**Split & trend** — Optional breakdown (platform, country, country + platform, event name) and **per day** trend when the metric supports it (daily session counts, daily event counts, avg session duration, sessions per device per day).
+
+Click **Run query** to execute. Results can be a single number, a breakdown chart, a daily timeseries, or a distribution.
+
+## Natural language
+
+Type a question in your own language and click **Generate rule**. The builder fills in from your description and shows a short **summary** of what the chart represents. That summary stays in the Natural language section until you start a new question.
+
+You can still edit measure, filters, and split manually after generation.
+
+## Presets
+
+Save the current rule (including its summary) as a **preset** for your team. Loading a preset restores the builder and the summary. Saving again overwrites the stored query and summary for that preset name.
+
+## Limits
+
+- Filters are AND-only; comparing two segments side by side is not supported yet.
+- Result rows and breakdown buckets are capped server-side.
+- AI generation is rate-limited per user.
+
+For raw event/session exports and automation, use the [Public API](/docs/public-api/usage).

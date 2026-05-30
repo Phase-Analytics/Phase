@@ -3,6 +3,7 @@
   "pages": [
     "index",
     "get-started",
+    "dashboard",
     "concepts",
     "public-api",
     "privacy",

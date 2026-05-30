@@ -5,6 +5,7 @@ import {
   ComputerPhoneSyncIcon,
   CreditCardIcon,
   CursorPointer02Icon,
+  DiscoverSquareIcon,
   File02Icon,
   GithubIcon,
   GlobalIcon,
@@ -14,7 +15,6 @@ import {
   Mail01Icon,
   PlaySquareIcon,
   PyramidStructure02Icon,
-  Search01Icon,
   Setting07Icon,
   UnfoldMoreIcon,
   UserGroupIcon,
@@ -95,11 +95,26 @@ const analyticsNavItems: NavItem[] = [
   },
   {
     label: 'Explore',
-    icon: Search01Icon,
+    icon: DiscoverSquareIcon,
     path: '/dashboard/analytics/explore',
     tooltip: 'Explore',
   },
 ];
+
+function SidebarNavLinkContent({
+  icon,
+  label,
+}: {
+  icon: NavItem['icon'];
+  label: string;
+}) {
+  return (
+    <>
+      <HugeiconsIcon className="size-4 shrink-0" icon={icon} />
+      <span className="font-sans leading-none">{label}</span>
+    </>
+  );
+}
 
 const _comingSoonNavItems = [
   {
@@ -354,6 +369,7 @@ export function DashboardSidebar() {
                   {appId ? (
                     <SidebarMenuButton
                       asChild
+                      className="[&>a]:flex [&>a]:items-center [&>a]:gap-2"
                       isActive={pathname.includes(item.path)}
                       tooltip={item.tooltip}
                     >
@@ -365,14 +381,18 @@ export function DashboardSidebar() {
                           }
                         }}
                       >
-                        <HugeiconsIcon icon={item.icon} />
-                        <span className="font-sans">{item.label}</span>
+                        <SidebarNavLinkContent
+                          icon={item.icon}
+                          label={item.label}
+                        />
                       </Link>
                     </SidebarMenuButton>
                   ) : (
                     <SidebarMenuButton disabled tooltip={item.tooltip}>
-                      <HugeiconsIcon icon={item.icon} />
-                      <span className="font-sans">{item.label}</span>
+                      <SidebarNavLinkContent
+                        icon={item.icon}
+                        label={item.label}
+                      />
                     </SidebarMenuButton>
                   )}
                 </SidebarMenuItem>
@@ -392,8 +412,10 @@ export function DashboardSidebar() {
                   return (
                     <SidebarMenuItem key={item.label}>
                       <SidebarMenuButton disabled tooltip={item.tooltip}>
-                        <HugeiconsIcon icon={item.icon} />
-                        <span className="font-sans">{item.label}</span>
+                        <SidebarNavLinkContent
+                          icon={item.icon}
+                          label={item.label}
+                        />
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   );
@@ -405,6 +427,7 @@ export function DashboardSidebar() {
                   <SidebarMenuItem key={item.label}>
                     <SidebarMenuButton
                       asChild
+                      className="[&>a]:flex [&>a]:items-center [&>a]:gap-2"
                       isActive={pathname.includes(item.path)}
                       tooltip={item.tooltip}
                     >
@@ -416,8 +439,10 @@ export function DashboardSidebar() {
                           }
                         }}
                       >
-                        <HugeiconsIcon icon={item.icon} />
-                        <span className="font-sans">{item.label}</span>
+                        <SidebarNavLinkContent
+                          icon={item.icon}
+                          label={item.label}
+                        />
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
