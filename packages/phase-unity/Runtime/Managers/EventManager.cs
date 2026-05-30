@@ -32,7 +32,7 @@ public sealed class EventManager
         _isOnline = isOnline;
     }
 
-    public void Track(string name, EventParams? parameters = null)
+    public void Track(string name, EventParams? parameters = null, bool isScreen = false)
     {
         if (!Validator.ValidateEventName(name).Success)
         {
@@ -73,7 +73,7 @@ public sealed class EventManager
             SessionId = sessionId,
             Name = name,
             Params = normalizedParams,
-            IsScreen = false,
+            IsScreen = isScreen,
             Timestamp = DateTime.UtcNow.ToString("o"),
         };
 

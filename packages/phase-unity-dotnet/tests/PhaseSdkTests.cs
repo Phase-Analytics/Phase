@@ -61,6 +61,40 @@ public sealed class PhaseSdkTests
     }
 
     [Fact]
+    public async Task TrackScreen_sends_normalized_screen_event()
+    {
+        var storage = CreateStorage();
+        var transport = new RecordingTransport();
+        var sdk = new PhaseSDK(
+            new StaticDeviceInfoProvider(
+                new DeviceInfo
+                {
+                    Platform = "android",
+                    OsVersion = "Android 14",
+                    Locale = "en-US",
+                    Model = "Pixel",
+                }
+            ),
+            new AlwaysOnlineNetworkMonitor(),
+            transport
+        );
+
+        Assert.True(
+            await sdk.InitializeAsync(
+                new PhaseConfig { ApiKey = "phase_test_key", BaseUrl = "https://api.phase.sh" }
+            )
+        );
+        await sdk.IdentifyAsync();
+        sdk.TrackScreen("LevelSelect");
+        await Task.Delay(100);
+
+        var eventRequest = transport.Requests.Last(request => request.Url.EndsWith("/sdk/events"));
+        var body = System.Text.Encoding.UTF8.GetString(eventRequest.Body);
+        Assert.Contains("\"isScreen\":true", body);
+        Assert.Contains("\"name\":\"/level-select\"", body);
+    }
+
+    [Fact]
     public async Task PhaseAnalytics_initialize_validates_config()
     {
         CreateStorage();

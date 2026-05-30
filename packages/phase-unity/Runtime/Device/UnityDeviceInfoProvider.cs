@@ -1,3 +1,4 @@
+using System.Globalization;
 using Phase.Analytics.Constants;
 using Phase.Analytics.Models;
 #if UNITY_5_3_OR_NEWER
@@ -13,6 +14,7 @@ public sealed class UnityDeviceInfoProvider : IDeviceInfoProvider
 #if UNITY_5_3_OR_NEWER
         return new DeviceInfo
         {
+            Platform = GetPlatform(),
             OsVersion = Truncate(SystemInfo.operatingSystem, ValidationConstants.OsVersionMaxLength),
             Locale = Truncate(GetLocale(), ValidationConstants.LocaleMaxLength),
             Model = string.IsNullOrWhiteSpace(SystemInfo.deviceModel)
@@ -29,9 +31,32 @@ public sealed class UnityDeviceInfoProvider : IDeviceInfoProvider
     }
 
 #if UNITY_5_3_OR_NEWER
+    private static string? GetPlatform()
+    {
+#if UNITY_IOS
+        return "ios";
+#elif UNITY_ANDROID
+        return "android";
+#else
+        return null;
+#endif
+    }
+
     private static string? GetLocale()
     {
-        return Application.systemLanguage.ToString();
+        try
+        {
+            var cultureName = CultureInfo.CurrentCulture.Name;
+            if (!string.IsNullOrWhiteSpace(cultureName))
+            {
+                return Truncate(cultureName, ValidationConstants.LocaleMaxLength);
+            }
+        }
+        catch (CultureNotFoundException)
+        {
+        }
+
+        return Truncate(Application.systemLanguage.ToString(), ValidationConstants.LocaleMaxLength);
     }
 
     private static string? Truncate(string? value, int maxLength)

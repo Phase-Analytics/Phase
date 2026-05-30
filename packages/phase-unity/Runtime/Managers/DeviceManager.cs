@@ -160,7 +160,7 @@ public sealed class DeviceManager
         {
             DeviceId = _deviceId,
             OsVersion = _collectDeviceInfo ? deviceInfo.OsVersion : null,
-            Platform = null,
+            Platform = _collectDeviceInfo ? deviceInfo.Platform : null,
             Locale = _collectLocale ? deviceInfo.Locale : null,
             Model = _collectDeviceInfo ? deviceInfo.Model : null,
             Properties = BuildProperties(properties, deviceInfo),

@@ -1,3 +1,5 @@
+using System.Text;
+using Newtonsoft.Json;
 using Phase.Analytics.Client;
 using Phase.Analytics.Config;
 using Phase.Analytics.Constants;
@@ -6,6 +8,7 @@ using Phase.Analytics.Managers;
 using Phase.Analytics.Models;
 using Phase.Analytics.Queue;
 using Phase.Analytics.Storage;
+using Phase.Analytics.Utils;
 
 namespace Phase.Analytics.Tests;
 
@@ -125,6 +128,63 @@ public sealed class ManagersTests
     }
 
     [Fact]
+    public async Task DeviceManager_sends_platform_from_device_info()
+    {
+        var context = CreateContext(
+            deviceInfo: new DeviceInfo
+            {
+                Platform = "ios",
+                OsVersion = "iOS 17.0",
+                Locale = "en-US",
+                Model = "iPhone",
+            }
+        );
+        await context.DeviceManager.InitializeAsync();
+        await context.DeviceManager.IdentifyAsync(isOnline: true);
+
+        var deviceRequest = context.Transport.Requests.First(request =>
+            request.Url.EndsWith("/sdk/devices")
+        );
+        var payload = JsonConvert.DeserializeObject<CreateDeviceRequest>(
+            Encoding.UTF8.GetString(deviceRequest.Body)
+        );
+
+        Assert.Equal("ios", payload?.Platform);
+    }
+
+    [Fact]
+    public async Task EventManager_track_screen_sets_is_screen_and_normalizes_name()
+    {
+        var context = CreateContext();
+        var deviceId = await context.DeviceManager.InitializeAsync();
+        var sessionManager = new SessionManager(
+            context.Client,
+            context.Queue,
+            deviceId,
+            new ManualPingScheduler()
+        );
+        var eventManager = new EventManager(
+            context.Client,
+            context.Queue,
+            sessionManager.GetSessionId
+        );
+
+        await sessionManager.StartAsync(isOnline: true);
+        eventManager.Track(ScreenNameNormalizer.Normalize("ProfileView"), null, isScreen: true);
+        await Task.Delay(50);
+
+        var eventRequest = context.Transport.Requests.Last(request =>
+            request.Url.EndsWith("/sdk/events")
+        );
+        var payload = JsonConvert.DeserializeObject<CreateEventRequest>(
+            Encoding.UTF8.GetString(eventRequest.Body)
+        );
+
+        Assert.True(payload?.IsScreen);
+        Assert.Equal("/profile-view", payload?.Name);
+    }
+
+    [Fact]
     public async Task BatchSender_flush_dequeues_queue()
     {
         var context = CreateContext();
@@ -143,7 +203,10 @@ public sealed class ManagersTests
         Assert.Contains(context.Transport.Requests, request => request.Url.EndsWith("/sdk/batch"));
     }
 
-    private static TestContext CreateContext(string apiKey = "phase_test_key")
+    private static TestContext CreateContext(
+        string apiKey = "phase_test_key",
+        DeviceInfo? deviceInfo = null
+    )
     {
         var storage = new FileStorage(
             Path.Combine(Path.GetTempPath(), "phase-unity-manager-tests", Guid.NewGuid().ToString("N"))
@@ -154,7 +217,7 @@ public sealed class ManagersTests
         var client = new SdkHttpClient(apiKey, transport);
         var queue = new OfflineQueue();
         queue.InitializeAsync().GetAwaiter().GetResult();
-        var deviceManager = CreateDeviceManager(storage, queue, apiKey, transport);
+        var deviceManager = CreateDeviceManager(storage, queue, apiKey, transport, deviceInfo);
 
         return new TestContext(storage, transport, client, queue, deviceManager);
     }
@@ -163,7 +226,8 @@ public sealed class ManagersTests
         FileStorage storage,
         OfflineQueue queue,
         string apiKey,
-        IHttpTransport? transport = null
+        IHttpTransport? transport = null,
+        DeviceInfo? deviceInfo = null
     )
     {
         StorageService.SetAdapter(storage);
@@ -179,14 +243,15 @@ public sealed class ManagersTests
             client,
             queue,
             new StaticDeviceInfoProvider(
-                new DeviceInfo
-                {
-                    OsVersion = "TestOS 1.0",
-                    Locale = "en-US",
-                    Model = "TestDevice",
-                    AppVersion = "1.0.0",
-                    UnityVersion = "2021.3.0",
-                }
+                deviceInfo
+                    ?? new DeviceInfo
+                    {
+                        OsVersion = "TestOS 1.0",
+                        Locale = "en-US",
+                        Model = "TestDevice",
+                        AppVersion = "1.0.0",
+                        UnityVersion = "2021.3.0",
+                    }
             ),
             config
         );

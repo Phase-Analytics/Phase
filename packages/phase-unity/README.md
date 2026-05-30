@@ -8,7 +8,7 @@ Privacy-first mobile analytics for Unity (iOS/Android).
 
 - **Privacy by Default** - No PII collected without explicit consent
 - **Offline Support** - Events queued locally and synced when online
-- **Manual Event Tracking** - No automatic screen tracking; you control what is sent
+- **Manual Event Tracking** - `Track` and `TrackScreen` (no automatic scene/navigation hooks)
 - **Lightweight** - IL2CPP-friendly, Newtonsoft.Json with link preservation
 - **Self-Hostable** - Custom API base URL
 
@@ -26,7 +26,7 @@ https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity
 Pin the latest release tag (recommended):
 
 ```
-https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.4
+https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.5
 ```
 
 - `v0.1.0` — committed `.meta` files for git UPM
@@ -34,13 +34,14 @@ https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.4
 - `v0.1.2` — `Runtime/csc.rsp` with `-langversion:10` (CS8773 fix for Unity 6)
 - `v0.1.3` — `using System.Threading` in `UnityNetworkMonitor` (CS0246 `Timer`)
 - `v0.1.4` — `ValidationConstants` import, `Logger` ambiguity fix, UPM `samples` entry
+- `v0.1.5` — `platform` (`ios`/`android`), `TrackScreen` API, BCP47 locale
 
 **Or** add to `Packages/manifest.json`:
 
 ```json
 {
   "dependencies": {
-    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.4"
+    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.5"
   }
 }
 ```
@@ -107,7 +108,7 @@ await PhaseAnalytics.IdentifyAsync(new DeviceProperties
 
 ### `PhaseAnalytics.Track(eventName, params?)`
 
-Track custom events (non-blocking). `isScreen` is always `false`.
+Track custom events (non-blocking).
 
 ```csharp
 PhaseAnalytics.Track("level_complete", new EventParams
@@ -116,7 +117,11 @@ PhaseAnalytics.Track("level_complete", new EventParams
     ["score"] = 1200,
 });
 
-// Manual scene / level tracking (not automatic)
+// Screen views (isScreen: true; name normalized to /kebab-case)
+PhaseAnalytics.TrackScreen("LevelSelect");
+PhaseAnalytics.TrackScreen("/settings");
+
+// Or manual scene events
 PhaseAnalytics.Track("scene_loaded", new EventParams { ["scene"] = sceneName });
 ```
 
@@ -145,7 +150,7 @@ Wipes local Phase storage (GDPR-style). Does not delete server data. Re-init and
 | `DisableInEditor` | `bool` | `false` | Skip network in Unity Editor |
 | `AllowInsecureDev` | `bool` | `false` | Allow `http` base URL (dev only) |
 
-**Unity-specific:** the SDK does not send a `platform` field (`ios`/`android`). The server treats it as unknown.
+**Platform:** on iOS/Android player builds, `platform` is `ios` or `android` (null in Editor and non-mobile targets). **No** automatic scene/navigation tracking (unlike Expo Router); call `TrackScreen` or `Track` yourself.
 
 ## Privacy
 

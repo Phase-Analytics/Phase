@@ -3,6 +3,8 @@ namespace Phase.Analytics.Models;
 /// <summary>Device metadata collected locally.</summary>
 public sealed class DeviceInfo
 {
+    public string? Platform { get; set; }
+
     public string? OsVersion { get; set; }
 
     public string? Locale { get; set; }
