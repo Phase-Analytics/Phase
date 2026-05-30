@@ -75,7 +75,7 @@ public sealed class PhaseLifecycleHook : MonoBehaviour
         }
         catch (Exception error)
         {
-            Logger.Error("Flush on quit failed.", error);
+            Phase.Analytics.Utils.Logger.Error("Flush on quit failed.", error);
         }
     }
 }

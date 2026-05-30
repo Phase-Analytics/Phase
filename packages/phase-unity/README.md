@@ -26,20 +26,21 @@ https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity
 Pin the latest release tag (recommended):
 
 ```
-https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.3
+https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.4
 ```
 
 - `v0.1.0` — committed `.meta` files for git UPM
 - `v0.1.1` — `langVersion: 10` in asmdef (not enough on Unity 6 git UPM)
 - `v0.1.2` — `Runtime/csc.rsp` with `-langversion:10` (CS8773 fix for Unity 6)
 - `v0.1.3` — `using System.Threading` in `UnityNetworkMonitor` (CS0246 `Timer`)
+- `v0.1.4` — `ValidationConstants` import, `Logger` ambiguity fix, UPM `samples` entry
 
 **Or** add to `Packages/manifest.json`:
 
 ```json
 {
   "dependencies": {
-    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.3"
+    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.4"
   }
 }
 ```

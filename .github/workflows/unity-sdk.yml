@@ -31,6 +31,9 @@ jobs:
       - name: Verify UPM package layout
         run: node packages/phase-unity-dotnet/scripts/verify-upm-package.js
 
+      - name: Verify Unity source conventions
+        run: node packages/phase-unity-dotnet/scripts/verify-unity-sources.js
+
       - name: Test
         run: dotnet test packages/phase-unity-dotnet/Phase.Analytics.sln --verbosity minimal
 

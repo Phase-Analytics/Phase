@@ -1,6 +1,6 @@
 {
   "name": "com.phase.analytics",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "displayName": "Phase Analytics",
   "description": "Privacy-first analytics SDK for Unity mobile (iOS/Android).",
   "unity": "2021.3",
@@ -9,6 +9,13 @@
   "dependencies": {
     "com.unity.nuget.newtonsoft-json": "3.2.1"
   },
+  "samples": [
+    {
+      "displayName": "Phase Analytics Sample",
+      "description": "Minimal Initialize, Identify, and Track bootstrap for a scene.",
+      "path": "Samples~/PhaseAnalyticsSample"
+    }
+  ],
   "keywords": [
     "analytics",
     "privacy",

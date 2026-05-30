@@ -3,6 +3,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <RootNamespace>Phase.Analytics</RootNamespace>
     <AssemblyName>Phase.Analytics</AssemblyName>
+    <DefineConstants>UNITY_5_3_OR_NEWER</DefineConstants>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
@@ -12,10 +13,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile
-      Include="../phase-unity/Runtime/**/*.cs"
-      Exclude="../phase-unity/Runtime/Storage/UnityFileStorage.cs;../phase-unity/Runtime/PhaseAnalyticsEditorReset.cs"
-    />
+    <Compile Include="../phase-unity/Runtime/**/*.cs" Exclude="../phase-unity/Runtime/PhaseAnalyticsEditorReset.cs" />
+    <Compile Include="UnityShims/**/*.cs" />
   </ItemGroup>
 
   <ItemGroup>
