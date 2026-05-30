@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Phase.Analytics.Utils;
 #if UNITY_5_3_OR_NEWER
 using UnityEngine;
 using UnityEngine.Networking;
@@ -16,7 +17,12 @@ public sealed class UnityWebRequestTransport : IHttpTransport
     )
     {
 #if UNITY_5_3_OR_NEWER
-        return SendUnityAsync(request, cancellationToken);
+        var tcs = new TaskCompletionSource<HttpTransportResponse>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+
+        MainThreadDispatcher.Enqueue(() => StartRequest(request, cancellationToken, tcs));
+        return tcs.Task;
 #else
         throw new InvalidOperationException(
             "UnityWebRequestTransport is only available in Unity player builds."
@@ -25,12 +31,19 @@ public sealed class UnityWebRequestTransport : IHttpTransport
     }
 
 #if UNITY_5_3_OR_NEWER
-    private static async Task<HttpTransportResponse> SendUnityAsync(
+    private static void StartRequest(
         HttpTransportRequest request,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        TaskCompletionSource<HttpTransportResponse> tcs
     )
     {
-        using var webRequest = new UnityWebRequest(request.Url, UnityWebRequest.kHttpVerbPOST);
+        if (cancellationToken.IsCancellationRequested)
+        {
+            tcs.TrySetCanceled(cancellationToken);
+            return;
+        }
+
+        var webRequest = new UnityWebRequest(request.Url, UnityWebRequest.kHttpVerbPOST);
         webRequest.uploadHandler = new UploadHandlerRaw(request.Body);
         webRequest.downloadHandler = new DownloadHandlerBuffer();
         webRequest.timeout = Math.Max(1, request.TimeoutMs / 1000);
@@ -41,19 +54,53 @@ public sealed class UnityWebRequestTransport : IHttpTransport
         }
 
         var operation = webRequest.SendWebRequest();
-        using var registration = cancellationToken.Register(() => webRequest.Abort());
 
-        while (!operation.isDone)
+        using var registration = cancellationToken.Register(() =>
+        {
+            if (!operation.isDone)
+            {
+                webRequest.Abort();
+            }
+        });
+
+        MainThreadDispatcher.EnqueuePoll(() =>
         {
             if (cancellationToken.IsCancellationRequested)
             {
-                webRequest.Abort();
-                return new HttpTransportResponse(0, string.Empty, timedOut: true);
+                if (!operation.isDone)
+                {
+                    webRequest.Abort();
+                }
+
+                webRequest.Dispose();
+                tcs.TrySetResult(new HttpTransportResponse(0, string.Empty, timedOut: true));
+                return true;
             }
 
-            await Task.Yield();
-        }
+            if (!operation.isDone)
+            {
+                return false;
+            }
 
+            try
+            {
+                tcs.TrySetResult(BuildResponse(webRequest));
+            }
+            catch (Exception error)
+            {
+                tcs.TrySetException(error);
+            }
+            finally
+            {
+                webRequest.Dispose();
+            }
+
+            return true;
+        });
+    }
+
+    private static HttpTransportResponse BuildResponse(UnityWebRequest webRequest)
+    {
         if (
             webRequest.result == UnityWebRequest.Result.ConnectionError
             || webRequest.result == UnityWebRequest.Result.DataProcessingError

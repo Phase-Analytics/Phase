@@ -470,12 +470,9 @@ public sealed class PhaseSDK
     private static IHttpTransport CreateDefaultTransport(PhaseConfig config)
     {
 #if UNITY_5_3_OR_NEWER
-        if (config.DisableInEditor)
-        {
-            return new SystemNetHttpTransport();
-        }
-
-        return new UnityWebRequestTransport();
+        return config.UseUnityWebRequestTransport
+            ? new UnityWebRequestTransport()
+            : new SystemNetHttpTransport();
 #else
         return new SystemNetHttpTransport();
 #endif

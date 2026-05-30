@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.9
+
+- Default HTTP transport on Unity is `System.Net.Http` (`SystemNetHttpTransport`), safe when SDK continuations use `ConfigureAwait(false)`.
+- Opt-in `PhaseConfig.UseUnityWebRequestTransport`: `UnityWebRequest` runs on the main thread via `MainThreadDispatcher` (per-frame poll, no thread-pool `SendWebRequest`).
+
 ## 0.1.8
 
 - `UnityNetworkMonitor`: only `PollIfDue` (main thread) calls `Application.internetReachability`. `Subscribe` and `FetchNetworkStateAsync` return cached `_lastState`.
