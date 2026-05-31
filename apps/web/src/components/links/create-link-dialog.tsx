@@ -123,10 +123,13 @@ export function CreateLinkDialog({ appId }: CreateLinkDialogProps) {
       if (form.ogPendingFile) {
         const formData = new FormData();
         formData.append('file', form.ogPendingFile);
-        await fetchApiFormData<LinkDetail>(
+        const uploaded = await fetchApiFormData<LinkDetail>(
           `/web/links/${created.id}/og-image${buildQueryString({ appId })}`,
           formData
         );
+        if (!uploaded.ogImageUrl) {
+          throw new Error('Image upload did not complete');
+        }
       }
 
       setOpen(false);

@@ -790,8 +790,8 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
   .post(
     '/:linkId/og-image',
     async (ctx) => {
-      const { params, query, user, set, body } = ctx as typeof ctx &
-        AuthContext & { body: { file: File } };
+      const { params, query, user, set, request } = ctx as typeof ctx &
+        AuthContext;
 
       if (!user?.id) {
         set.status = HttpStatus.UNAUTHORIZED;
@@ -824,7 +824,24 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         return { code: ErrorCode.NOT_FOUND, detail: 'Link not found' };
       }
 
-      const file = body.file;
+      const formData = await request.formData();
+      const file = formData.get('file');
+
+      if (!(file instanceof File)) {
+        set.status = HttpStatus.BAD_REQUEST;
+        return {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: 'Missing image file',
+        };
+      }
+
+      if (!file.size) {
+        set.status = HttpStatus.BAD_REQUEST;
+        return {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: 'Missing image file',
+        };
+      }
 
       if (file.size > LINK_OG_IMAGE.maxUploadBytes) {
         set.status = HttpStatus.BAD_REQUEST;
@@ -853,13 +870,13 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
       const objectKey = buildLinkOgObjectKey(existing.appId, existing.id);
 
       try {
+        await deleteR2ObjectByPublicUrl(existing.ogImageUrl);
+
         const ogImageUrl = await uploadToR2({
           key: objectKey,
           body: processed,
           contentType: 'image/webp',
         });
-
-        await deleteR2ObjectByPublicUrl(existing.ogImageUrl);
 
         const [row] = await db
           .update(links)
@@ -872,7 +889,8 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         const domainIds = await loadLinkDomainIds(row.id);
         const domainsById = await loadDomainsByIdForApp(existing.appId);
         return serializeLinkDetail(row, domainIds, domainsById);
-      } catch {
+      } catch (error) {
+        console.error('[links] OG image upload failed:', error);
         set.status = HttpStatus.INTERNAL_SERVER_ERROR;
         return {
           code: ErrorCode.INTERNAL_SERVER_ERROR,
@@ -883,10 +901,7 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
     {
       params: t.Object({ linkId: t.String() }),
       query: t.Object({ appId: t.String() }),
-      body: t.Object({
-        file: t.File({ maxSize: LINK_OG_IMAGE.maxUploadBytes }),
-      }),
-      type: 'multipart/form-data',
+      parse: 'none',
       response: {
         200: LinkDetailSchema,
         400: ErrorResponseSchema,

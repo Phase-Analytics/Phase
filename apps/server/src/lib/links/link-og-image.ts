@@ -40,6 +40,10 @@ export class LinkOgImageError extends Error {
 }
 
 export async function processLinkOgImage(input: Buffer): Promise<Buffer> {
+  if (!input.byteLength) {
+    throw new LinkOgImageError('Missing image file');
+  }
+
   if (input.byteLength > LINK_OG_IMAGE.maxUploadBytes) {
     throw new LinkOgImageError(
       `Image must be ${Math.round(LINK_OG_IMAGE.maxUploadBytes / (1024 * 1024))}MB or smaller`

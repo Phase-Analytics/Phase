@@ -10,6 +10,7 @@ import { LINK_OG_IMAGE } from '@phase/shared';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
 import { formatApiErrorMessage } from '@/lib/format-api-error';
 import { ignorePromiseRejection } from '@/lib/ignore-promise-rejection';
 import {
@@ -132,6 +133,10 @@ export function LinkOgFields({
     if (linkId) {
       try {
         const updated = await uploadImage.mutateAsync(file);
+        if (!updated.ogImageUrl) {
+          setUploadError('Image upload did not complete');
+          return;
+        }
         onImageUrlChange(updated.ogImageUrl);
         onPendingFileChange(null);
       } catch (err) {
@@ -216,6 +221,12 @@ export function LinkOgFields({
           />
           Image
         </p>
+        {imageBusy && linkId ? (
+          <p className="flex items-center gap-2 text-muted-foreground text-xs">
+            <Spinner className="size-3.5" />
+            Uploading image...
+          </p>
+        ) : null}
         {previewUrl ? (
           <div className="space-y-2">
             {/* biome-ignore lint/performance/noImgElement: user R2 preview URLs */}

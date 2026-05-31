@@ -90,17 +90,13 @@ export function LinksTable({ appId, links, isLoading }: LinksTableProps) {
     },
     {
       accessorKey: 'totalClicks',
-      header: () => (
-        <span className="inline-flex items-center gap-1.5">
+      header: 'Clicks',
+      cell: ({ row }) => (
+        <span className="inline-flex items-center gap-1.5 font-medium tabular-nums">
           <HugeiconsIcon
-            className="size-3.5 text-muted-foreground"
+            className="size-3.5 shrink-0 text-muted-foreground"
             icon={CursorPointer01Icon}
           />
-          Clicks
-        </span>
-      ),
-      cell: ({ row }) => (
-        <span className="font-medium tabular-nums">
           {row.original.totalClicks ?? 0}
         </span>
       ),
