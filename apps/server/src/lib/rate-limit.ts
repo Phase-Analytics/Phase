@@ -76,6 +76,11 @@ export const RATE_LIMIT_STRATEGIES = {
     ttl: 300,
     keyPrefix: 'rate:explore-ai',
   } satisfies RateLimitConfig,
+  LINK_REDIRECT: {
+    maxAttempts: 120,
+    ttl: 60,
+    keyPrefix: 'rate:link-redirect',
+  } satisfies RateLimitConfig,
 } as const;
 
 const RATE_LIMIT_LUA_SCRIPT = `
@@ -213,6 +218,12 @@ export async function checkExploreAiGenerateRateLimit(
   return await checkRateLimit(RATE_LIMIT_STRATEGIES.EXPLORE_AI_GENERATE, {
     deviceId: userId,
   });
+}
+
+export async function checkLinkRedirectRateLimit(
+  ip: string
+): Promise<RateLimitResult> {
+  return await checkRateLimit(RATE_LIMIT_STRATEGIES.LINK_REDIRECT, { ip });
 }
 
 export function createRateLimiter(config: RateLimitConfig) {

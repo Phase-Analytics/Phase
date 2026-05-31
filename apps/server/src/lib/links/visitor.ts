@@ -17,10 +17,8 @@ export function buildVisitorKey(options: {
   browserFamily: string;
   acceptLanguage: string | null;
 }): string {
-  const day = new Date().toISOString().slice(0, 10);
   const payload = [
     options.linkId,
-    day,
     options.platform,
     options.osFamily,
     options.browserFamily,

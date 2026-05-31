@@ -1,15 +1,20 @@
 'use client';
 
+import { ChartDownIcon, ChartUpIcon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useMemo, useState } from 'react';
+import { LinkAnalyticsBreakdownCard } from '@/components/links/link-analytics-breakdown';
 import { TimescaleChart } from '@/components/timescale-chart';
 import { Card, CardContent } from '@/components/ui/card';
+import { CountingNumber } from '@/components/ui/counting-number';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   ANALYTICS_TIME_RANGE_OPTIONS,
   isAnalyticsTimeRange,
 } from '@/lib/analytics-time-range';
 import { useLinkAnalytics } from '@/lib/queries';
+import { cn } from '@/lib/utils';
 
 type LinkAnalyticsProps = {
   appId: string;
@@ -23,36 +28,27 @@ const RANGE_MS: Record<string, number> = {
   '360d': 360 * 24 * 60 * 60 * 1000,
 };
 
-function BreakdownList({
-  title,
-  items,
-}: {
-  title: string;
-  items: Array<{ key: string; count: number }>;
-}) {
+function getChangeColor(change: number) {
+  if (change === 0) {
+    return 'text-muted-foreground';
+  }
+  return change > 0 ? 'text-success' : 'text-destructive';
+}
+
+function OverviewChange({ change }: { change: number }) {
   return (
-    <Card className="py-0">
-      <CardContent className="space-y-3 p-4">
-        <h3 className="font-semibold text-muted-foreground text-sm uppercase">
-          {title}
-        </h3>
-        {items.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No data yet</p>
-        ) : (
-          <ul className="space-y-2">
-            {items.map((item) => (
-              <li
-                className="flex items-center justify-between text-sm"
-                key={`${title}-${item.key}`}
-              >
-                <span className="truncate">{item.key}</span>
-                <span className="font-medium tabular-nums">{item.count}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
+    <div className="mt-1 flex items-center gap-1 text-xs">
+      {change !== 0 && (
+        <HugeiconsIcon
+          className={cn('size-3', getChangeColor(change))}
+          icon={change > 0 ? ChartUpIcon : ChartDownIcon}
+        />
+      )}
+      <span className={cn('font-medium', getChangeColor(change))}>
+        {Math.abs(change)}%
+      </span>
+      <span className="text-muted-foreground">from yesterday</span>
+    </div>
   );
 }
 
@@ -115,27 +111,30 @@ export function LinkAnalytics({ appId, linkId }: LinkAnalyticsProps) {
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="py-0">
           <CardContent className="p-4">
-            <p className="text-muted-foreground text-sm">Total clicks</p>
-            <p className="font-bold text-3xl tabular-nums">
-              {data.totalClicks}
+            <p className="text-muted-foreground text-xs uppercase">
+              Total clicks
             </p>
+            <p className="font-bold text-3xl tabular-nums">
+              <CountingNumber number={data.totalClicks} />
+            </p>
+            <OverviewChange change={data.totalClicksChange24h} />
           </CardContent>
         </Card>
         <Card className="py-0">
           <CardContent className="p-4">
-            <p className="text-muted-foreground text-sm">Unique visits</p>
+            <p className="text-muted-foreground text-xs uppercase">
+              Unique visits
+            </p>
             <p className="font-bold text-3xl tabular-nums">
-              {data.uniqueVisits}
+              <CountingNumber number={data.uniqueVisits} />
             </p>
-            <p className="mt-1 text-muted-foreground text-xs">
-              Cookieless daily estimate. Resets each UTC day.
-            </p>
+            <OverviewChange change={data.uniqueVisitsChange24h} />
           </CardContent>
         </Card>
       </div>
 
       <TimescaleChart
-        chartColor="var(--color-chart-1)"
+        chartColor="var(--color-chart-2)"
         data={chartData}
         dataKey="value"
         dataLabel={metric === 'clicks' ? 'Clicks' : 'Unique visits'}
@@ -154,14 +153,26 @@ export function LinkAnalytics({ appId, linkId }: LinkAnalyticsProps) {
       />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <BreakdownList items={data.countries} title="Countries" />
-        <BreakdownList items={data.platforms} title="Platforms" />
-        <BreakdownList
+        <LinkAnalyticsBreakdownCard
+          items={data.countries}
+          title="Countries"
+          variant="countries"
+        />
+        <LinkAnalyticsBreakdownCard
           items={data.operatingSystems}
           title="Operating systems"
+          variant="operatingSystems"
         />
-        <BreakdownList items={data.browsers} title="Browsers" />
-        <BreakdownList items={data.referrers} title="Referrers" />
+        <LinkAnalyticsBreakdownCard
+          items={data.browsers}
+          title="Browsers"
+          variant="browsers"
+        />
+        <LinkAnalyticsBreakdownCard
+          items={data.referrers}
+          title="Referrers"
+          variant="referrers"
+        />
       </div>
     </div>
   );

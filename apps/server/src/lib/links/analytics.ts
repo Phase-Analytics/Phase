@@ -28,6 +28,72 @@ function escapeSqlString(value: string): string {
   return value.replace(/'/g, "''");
 }
 
+function computePercentChange(current: number, previous: number): number {
+  const baseline = Math.max(previous, 1);
+  return Number((((current - previous) / baseline) * 100).toFixed(2));
+}
+
+async function getLink24hChangeMetrics(
+  appId: string,
+  linkId: string
+): Promise<{
+  totalClicksChange24h: number;
+  uniqueVisitsChange24h: number;
+}> {
+  const now = new Date();
+  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+  const start24 = escapeSqlString(twentyFourHoursAgo.toISOString());
+  const start48 = escapeSqlString(fortyEightHoursAgo.toISOString());
+  const end = escapeSqlString(now.toISOString());
+
+  const base = `
+    app_id = '${appId}'
+    AND link_id = '${linkId}'
+  `;
+
+  const [last24Rows, prev24Rows] = await Promise.all([
+    executeQuestDBReadQuery<{
+      clicks: number;
+      unique_visits: number;
+    }>(`
+        SELECT
+          count() AS clicks,
+          count_distinct(visitor_key) AS unique_visits
+        FROM ${QUESTDB_LINK_CLICKS_TABLE}
+        WHERE ${base}
+          AND timestamp >= '${start24}'
+          AND timestamp < '${end}'
+      `),
+    executeQuestDBReadQuery<{
+      clicks: number;
+      unique_visits: number;
+    }>(`
+        SELECT
+          count() AS clicks,
+          count_distinct(visitor_key) AS unique_visits
+        FROM ${QUESTDB_LINK_CLICKS_TABLE}
+        WHERE ${base}
+          AND timestamp >= '${start48}'
+          AND timestamp < '${start24}'
+      `),
+  ]);
+
+  const last24 = last24Rows[0];
+  const prev24 = prev24Rows[0];
+
+  return {
+    totalClicksChange24h: computePercentChange(
+      Number(last24?.clicks ?? 0),
+      Number(prev24?.clicks ?? 0)
+    ),
+    uniqueVisitsChange24h: computePercentChange(
+      Number(last24?.unique_visits ?? 0),
+      Number(prev24?.unique_visits ?? 0)
+    ),
+  };
+}
+
 export async function getLinkClickTotalsByApp(
   appId: string
 ): Promise<Map<string, number>> {
@@ -75,7 +141,7 @@ export async function getLinkAnalytics(options: {
     osRows,
     browserRows,
     referrerRows,
-    platformRows,
+    changeMetrics,
   ] = await Promise.all([
     executeQuestDBReadQuery<{
       total_clicks: number;
@@ -126,28 +192,32 @@ export async function getLinkAnalytics(options: {
         LIMIT 20
       `),
     executeQuestDBReadQuery<{ key: string; count: number }>(`
-        SELECT referrer AS key, count() AS count
+        SELECT
+          CASE
+            WHEN referrer IS NULL
+              OR referrer = ''
+              OR lower(referrer) = 'null'
+              OR lower(referrer) = '(direct)'
+            THEN 'direct'
+            ELSE referrer
+          END AS key,
+          count() AS count
         FROM ${QUESTDB_LINK_CLICKS_TABLE}
         WHERE ${baseWhere}
-        GROUP BY referrer
+        GROUP BY key
         ORDER BY count DESC
         LIMIT 20
       `),
-    executeQuestDBReadQuery<{ key: string; count: number }>(`
-        SELECT platform AS key, count() AS count
-        FROM ${QUESTDB_LINK_CLICKS_TABLE}
-        WHERE ${baseWhere}
-        GROUP BY platform
-        ORDER BY count DESC
-        LIMIT 10
-      `),
+    getLink24hChangeMetrics(appId, linkId),
   ]);
 
   const summary = summaryRows[0];
 
   return {
     totalClicks: Number(summary?.total_clicks ?? 0),
+    totalClicksChange24h: changeMetrics.totalClicksChange24h,
     uniqueVisits: Number(summary?.unique_visits ?? 0),
+    uniqueVisitsChange24h: changeMetrics.uniqueVisitsChange24h,
     timeseries: timeseriesRows.map((row) => ({
       date: row.date,
       clicks: Number(row.clicks),
@@ -166,10 +236,6 @@ export async function getLinkAnalytics(options: {
       count: Number(row.count),
     })),
     referrers: referrerRows.map((row) => ({
-      key: row.key,
-      count: Number(row.count),
-    })),
-    platforms: platformRows.map((row) => ({
       key: row.key,
       count: Number(row.count),
     })),

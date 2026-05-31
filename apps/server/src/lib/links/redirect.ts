@@ -1,7 +1,8 @@
 import { UAParser } from 'ua-parser-js';
 import { getLocationFromIP } from '@/lib/geolocation';
-import { isLinkBotRequest } from './bot';
+import { shouldRecordLinkClick } from './bot';
 import { getLinkClickBuffer } from './click-buffer';
+import { normalizeReferrer } from './referrer';
 import { LINK_DEFAULT_HOST } from './constants';
 import {
   resolveDestinationForPlatform,
@@ -40,10 +41,6 @@ export async function handleLinkRedirect(
   slug: string,
   options: { mode: 'default' | 'custom'; host?: string }
 ): Promise<Response> {
-  if (isLinkBotRequest(request.headers)) {
-    return notFound('bot');
-  }
-
   const link = await resolveLinkBySlug(slug);
   if (!link) {
     return notFound('link_not_found');
@@ -98,7 +95,7 @@ export async function handleLinkRedirect(
   const geo = clientIp ? getLocationFromIP(clientIp) : null;
 
   const buffer = getLinkClickBuffer();
-  if (buffer) {
+  if (buffer && shouldRecordLinkClick(request)) {
     await buffer.push({
       appId: link.appId,
       linkId: link.id,
@@ -113,7 +110,7 @@ export async function handleLinkRedirect(
       os: osFamily,
       browser: browserFamily,
       platform,
-      referrer: request.headers.get('referer'),
+      referrer: normalizeReferrer(request.headers.get('referer')),
       domainHost,
       timestamp: new Date().toISOString(),
     });

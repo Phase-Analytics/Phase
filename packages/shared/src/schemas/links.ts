@@ -147,13 +147,14 @@ export const LinkAnalyticsTimeseriesPointSchema = z.object({
 
 export const LinkAnalyticsResponseSchema = z.object({
   totalClicks: z.number().int().nonnegative(),
+  totalClicksChange24h: z.number(),
   uniqueVisits: z.number().int().nonnegative(),
+  uniqueVisitsChange24h: z.number(),
   timeseries: z.array(LinkAnalyticsTimeseriesPointSchema),
   countries: z.array(LinkAnalyticsBreakdownItemSchema),
   operatingSystems: z.array(LinkAnalyticsBreakdownItemSchema),
   browsers: z.array(LinkAnalyticsBreakdownItemSchema),
   referrers: z.array(LinkAnalyticsBreakdownItemSchema),
-  platforms: z.array(LinkAnalyticsBreakdownItemSchema),
 });
 
 export type CreateLinkRequest = z.infer<typeof CreateLinkRequestSchema>;
