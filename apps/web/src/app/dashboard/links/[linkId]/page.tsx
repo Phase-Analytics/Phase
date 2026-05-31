@@ -72,21 +72,17 @@ export default function LinkDetailPage({
 
         {link && appId && primaryUrl ? (
           <>
-            <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
+            <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
               <LinkInfoCard domains={domains} link={link} />
-              <div className="flex min-h-0 flex-col gap-4">
-                <LinkOgPreviewCard
-                  className="min-h-0 flex-1"
-                  link={link}
-                  siteLabel={primaryUrl.display}
-                />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <LinkOgPreviewCard link={link} />
                 <LinkQrCard shortUrl={primaryUrl.url} />
               </div>
             </div>
 
-            <LinkClicksTable appId={appId} linkId={linkId} />
-
             <LinkAnalytics appId={appId} linkId={linkId} />
+
+            <LinkClicksTable appId={appId} linkId={linkId} />
           </>
         ) : null}
       </div>

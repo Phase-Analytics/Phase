@@ -3,58 +3,46 @@
 import type { LinkDetail } from '@phase/shared';
 import { Card, CardContent } from '@/components/ui/card';
 import { resolveLinkOgPreviewContent } from '@/lib/link-og-preview-content';
-import { cn } from '@/lib/utils';
 
 type LinkOgPreviewCardProps = {
   link: LinkDetail;
-  siteLabel: string;
-  className?: string;
 };
 
-export function LinkOgPreviewCard({
-  link,
-  siteLabel,
-  className,
-}: LinkOgPreviewCardProps) {
-  const preview = resolveLinkOgPreviewContent(link, siteLabel);
+export function LinkOgPreviewCard({ link }: LinkOgPreviewCardProps) {
+  const preview = resolveLinkOgPreviewContent(link);
 
   return (
-    <Card className={cn('flex min-h-0 flex-col py-0', className)}>
-      <CardContent className="flex min-h-0 flex-1 flex-col p-4">
-        <h2 className="shrink-0 font-semibold text-muted-foreground text-sm uppercase">
+    <Card className="py-0">
+      <CardContent className="p-3">
+        <h2 className="font-semibold text-muted-foreground text-sm uppercase">
           Preview
         </h2>
 
-        <div className="mt-3 flex min-h-0 flex-1 items-center justify-center">
-          <div className="w-full max-w-sm overflow-hidden rounded-xl border bg-card shadow-[var(--shadow),var(--highlight)]">
-            {preview.imageSrc ? (
-              // biome-ignore lint/performance/noImgElement: external OG image URL
-              <img
-                alt=""
-                className="aspect-[1200/630] w-full object-cover"
-                height={315}
-                src={preview.imageSrc}
-                width={600}
-              />
-            ) : (
-              <div className="flex aspect-[1200/630] w-full items-center justify-center bg-muted/80 [background-image:linear-gradient(135deg,color-mix(in_oklab,var(--foreground)_6%,transparent)_0%,transparent_50%,color-mix(in_oklab,var(--foreground)_4%,transparent)_100%)]">
-                <span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                  No image
-                </span>
-              </div>
-            )}
-
-            <div className="space-y-1 border-t bg-muted/20 px-3 py-2.5">
-              <p className="truncate text-[11px] text-muted-foreground uppercase tracking-wide">
-                {preview.siteLabel}
-              </p>
-              <p className="line-clamp-2 font-semibold text-sm leading-snug">
-                {preview.title}
-              </p>
-              <p className="line-clamp-2 text-muted-foreground text-xs leading-relaxed">
-                {preview.description}
-              </p>
+        <div className="mt-2 overflow-hidden rounded-lg border bg-card shadow-sm">
+          {preview.imageSrc ? (
+            // biome-ignore lint/performance/noImgElement: external OG image URL
+            <img
+              alt=""
+              className="aspect-[1.91/1] max-h-20 w-full object-cover"
+              height={80}
+              src={preview.imageSrc}
+              width={152}
+            />
+          ) : (
+            <div className="flex aspect-[1.91/1] max-h-20 w-full items-center justify-center bg-muted/60">
+              <span className="text-[10px] text-muted-foreground">
+                No image
+              </span>
             </div>
+          )}
+
+          <div className="space-y-0.5 border-t px-2 py-1.5">
+            <p className="line-clamp-1 font-medium text-xs leading-snug">
+              {preview.title}
+            </p>
+            <p className="line-clamp-2 text-[11px] text-muted-foreground leading-snug">
+              {preview.description}
+            </p>
           </div>
         </div>
       </CardContent>

@@ -50,8 +50,8 @@ export function LinkQrCard({ shortUrl, className }: LinkQrCardProps) {
   };
 
   return (
-    <Card className={cn('shrink-0 py-0', className)}>
-      <CardContent className="p-4">
+    <Card className={cn('py-0', className)}>
+      <CardContent className="p-3">
         <div className="flex items-center justify-between gap-2">
           <h2 className="font-semibold text-muted-foreground text-sm uppercase">
             QR code
@@ -72,12 +72,12 @@ export function LinkQrCard({ shortUrl, className }: LinkQrCardProps) {
           </Tooltip>
         </div>
 
-        <div className="mt-3 flex items-center justify-center rounded-lg bg-muted p-2 [background-image:linear-gradient(to_right,color-mix(in_oklab,var(--foreground)_10%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklab,var(--foreground)_10%,transparent)_1px,transparent_1px)] [background-size:16px_16px]">
+        <div className="mt-2 flex items-center justify-center rounded-lg bg-muted p-1.5 [background-image:linear-gradient(to_right,color-mix(in_oklab,var(--foreground)_10%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklab,var(--foreground)_10%,transparent)_1px,transparent_1px)] [background-size:14px_14px]">
           {dataUrl ? (
             // biome-ignore lint/performance/noImgElement: dynamic data URL QR preview
             <img
               alt="Link QR code"
-              className="aspect-square w-[min(100%,8rem)] rounded-md border border-border/60 bg-white shadow-sm"
+              className="aspect-square w-[min(100%,6.5rem)] rounded-md border border-border/60 bg-white shadow-sm"
               height={DISPLAY_QR_SIZE}
               src={dataUrl}
               style={{ imageRendering: 'auto' }}

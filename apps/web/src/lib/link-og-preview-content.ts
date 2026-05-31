@@ -4,7 +4,6 @@ import { getLinkOgImageSrc } from '@/lib/link-og-image-url';
 export type LinkOgPreviewContent = {
   title: string;
   description: string;
-  siteLabel: string;
   imageSrc: string | undefined;
 };
 
@@ -26,8 +25,7 @@ export function resolveLinkOgPreviewContent(
     | 'ogDescription'
     | 'ogImageUrl'
     | 'updatedAt'
-  >,
-  siteLabel: string
+  >
 ): LinkOgPreviewContent {
   let title = link.ogTitle?.trim();
   if (!title) {
@@ -45,7 +43,6 @@ export function resolveLinkOgPreviewContent(
   return {
     title,
     description,
-    siteLabel,
     imageSrc: getLinkOgImageSrc(link.ogImageUrl, link.updatedAt),
   };
 }
