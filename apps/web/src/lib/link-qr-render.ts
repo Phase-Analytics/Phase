@@ -1,5 +1,5 @@
-import QRCode from 'qrcode';
 import type { QRCode as QRCodeType } from 'qrcode';
+import QRCode from 'qrcode';
 
 const LOGO_SRC = '/web-app-manifest-512x512.png';
 const LOGO_SIZE_RATIO = 0.22;
@@ -47,7 +47,8 @@ function isInLogoClearZone(
 ): boolean {
   const center = (moduleCount - 1) / 2;
   return (
-    Math.abs(row - center) <= clearRadius && Math.abs(col - center) <= clearRadius
+    Math.abs(row - center) <= clearRadius &&
+    Math.abs(col - center) <= clearRadius
   );
 }
 

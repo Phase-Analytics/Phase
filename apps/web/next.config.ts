@@ -4,6 +4,25 @@ import type { NextConfig } from 'next';
 const getContentSecurityPolicy = () => {
   const serverUrl =
     process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
+  const linkAssetsUrl = process.env.R2_PUBLIC_BASE_URL?.trim();
+
+  const imgSrc = [
+    "'self'",
+    'data:',
+    'blob:',
+    'https:',
+    'https://static.intercomassets.com',
+    'https://*.intercomcdn.com',
+    'https://downloads.intercomcdn.com',
+  ];
+
+  if (linkAssetsUrl) {
+    try {
+      imgSrc.push(new URL(linkAssetsUrl).origin);
+    } catch {
+      imgSrc.push(linkAssetsUrl);
+    }
+  }
 
   const policy = {
     'default-src': ["'self'"],
@@ -23,15 +42,7 @@ const getContentSecurityPolicy = () => {
       'https://rybbit-api.mirac.dev',
     ],
     'style-src': ["'self'", "'unsafe-inline'"],
-    'img-src': [
-      "'self'",
-      'data:',
-      'blob:',
-      'https:',
-      'https://static.intercomassets.com',
-      'https://*.intercomcdn.com',
-      'https://downloads.intercomcdn.com',
-    ],
+    'img-src': imgSrc,
     'font-src': ["'self'", 'data:'],
     'media-src': [
       "'self'",

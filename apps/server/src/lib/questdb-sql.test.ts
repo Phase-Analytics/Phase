@@ -1,8 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import {
-  assertExploreEventName,
-  escapeQuestDbString,
-} from './questdb-sql';
+import { assertExploreEventName, escapeQuestDbString } from './questdb-sql';
 
 describe('escapeQuestDbString', () => {
   test('escapes single quotes', () => {

@@ -6,6 +6,13 @@ import {
   type LinkDeviceRoutingValues,
 } from '@/components/links/link-device-routing-fields';
 import {
+  emptyLinkOgValues,
+  hasLinkOgPreview,
+  hasLinkOgTextValues,
+  type LinkOgValues,
+  linkOgFromDetail,
+} from '@/components/links/link-og-fields';
+import {
   emptyLinkUtmValues,
   hasLinkUtmValues,
   type LinkUtmValues,
@@ -23,6 +30,10 @@ export type LinkFormState = {
   utm: LinkUtmValues;
   deviceEnabled: boolean;
   device: LinkDeviceRoutingValues;
+  ogEnabled: boolean;
+  og: LinkOgValues;
+  ogImageUrl: string | null;
+  ogPendingFile: File | null;
   expiresAt?: Date;
   disabled: boolean;
 };
@@ -36,6 +47,10 @@ export function emptyLinkFormState(): LinkFormState {
     utm: emptyLinkUtmValues(),
     deviceEnabled: false,
     device: emptyDeviceRoutingValues(),
+    ogEnabled: false,
+    og: emptyLinkOgValues(),
+    ogImageUrl: null,
+    ogPendingFile: null,
     expiresAt: undefined,
     disabled: false,
   };
@@ -44,6 +59,7 @@ export function emptyLinkFormState(): LinkFormState {
 export function linkDetailToFormState(link: LinkDetail): LinkFormState {
   const utm = linkUtmFromDetail(link);
   const device = deviceRoutingFromDetail(link);
+  const og = linkOgFromDetail(link);
 
   return {
     hostValue:
@@ -54,9 +70,22 @@ export function linkDetailToFormState(link: LinkDetail): LinkFormState {
     utm,
     deviceEnabled: hasDeviceRoutingValues(device),
     device,
+    ogEnabled: hasLinkOgPreview(link),
+    og,
+    ogImageUrl: link.ogImageUrl,
+    ogPendingFile: null,
     expiresAt: link.expiresAt ? new Date(link.expiresAt) : undefined,
     disabled: Boolean(link.disabledAt),
   };
+}
+
+export function linkOgEnabledFromForm(form: LinkFormState): boolean {
+  return (
+    form.ogEnabled ||
+    hasLinkOgTextValues(form.og) ||
+    Boolean(form.ogImageUrl) ||
+    Boolean(form.ogPendingFile)
+  );
 }
 
 export function expiresAtToIso(date: Date | undefined): string | null {

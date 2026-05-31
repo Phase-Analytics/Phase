@@ -5,7 +5,10 @@ export function escapeQuestDbString(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/'/g, "''");
 }
 
-export function assertQuestDbIdentifier(value: string, fieldName: string): void {
+export function assertQuestDbIdentifier(
+  value: string,
+  fieldName: string
+): void {
   if (!IDENTIFIER_REGEX.test(value)) {
     throw new Error(
       `Invalid ${fieldName}: contains unexpected characters. Only alphanumeric, hyphens, and underscores are allowed.`

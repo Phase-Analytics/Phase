@@ -141,6 +141,13 @@
       "when": 1780234052589,
       "tag": "0019_links",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1780262034996,
+      "tag": "0020_safe_roland_deschain",
+      "breakpoints": true
     }
   ]
 }

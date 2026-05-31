@@ -11,8 +11,13 @@ import {
   emptyLinkFormState,
   expiresAtToIso,
   linkDetailToFormState,
+  linkOgEnabledFromForm,
   PHASE_HOST_VALUE,
 } from '@/components/links/link-form-utils';
+import {
+  emptyLinkOgValues,
+  linkOgToPayload,
+} from '@/components/links/link-og-fields';
 import {
   emptyLinkUtmValues,
   linkUtmToPayload,
@@ -109,6 +114,9 @@ export function EditLinkDialog({
         domainIds: form.hostValue === PHASE_HOST_VALUE ? [] : [form.hostValue],
         expiresAt: expiresAtToIso(form.expiresAt),
         disabled: form.disabled,
+        ...(linkOgEnabledFromForm(form)
+          ? linkOgToPayload(form.og)
+          : linkOgToPayload(emptyLinkOgValues())),
       });
       toast.success('Link updated');
       setOpen(false);
@@ -133,8 +141,10 @@ export function EditLinkDialog({
           </div>
         ) : (
           <LinkFormFields
+            appId={appId}
             form={form}
             idPrefix="edit-link"
+            linkId={linkId}
             onChange={setForm}
             originalSlug={link?.slug}
             slugError={slugInvalid ? 'Link is taken' : null}

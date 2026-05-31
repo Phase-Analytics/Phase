@@ -57,7 +57,9 @@ export function isPrivateOrReservedIp(ip: string): boolean {
   return true;
 }
 
-export async function assertPublicResolvableHost(hostname: string): Promise<void> {
+export async function assertPublicResolvableHost(
+  hostname: string
+): Promise<void> {
   const normalized = hostname.trim().toLowerCase();
 
   if (

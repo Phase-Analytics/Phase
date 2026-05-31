@@ -30,12 +30,22 @@ import {
 } from '@/lib/links/cache';
 import { LINK_CNAME_TARGET } from '@/lib/links/constants';
 import { verifyDomainCname } from '@/lib/links/dns';
+import {
+  LinkOgImageError,
+  processLinkOgImage,
+} from '@/lib/links/link-og-image';
 import { buildDefaultShortUrl, resolvePrimaryShortUrl } from '@/lib/links/urls';
 import {
   authPlugin,
   type BetterAuthSession,
   type BetterAuthUser,
 } from '@/lib/middleware';
+import {
+  buildLinkOgObjectKey,
+  deleteR2ObjectByPublicUrl,
+  isR2Configured,
+  uploadToR2,
+} from '@/lib/r2';
 
 type AuthContext = { user: BetterAuthUser; session: BetterAuthSession };
 
@@ -120,6 +130,9 @@ function serializeLinkDetail(
     deviceIosUrl: row.deviceIosUrl,
     deviceAndroidUrl: row.deviceAndroidUrl,
     deviceOthersUrl: row.deviceOthersUrl,
+    ogTitle: row.ogTitle,
+    ogDescription: row.ogDescription,
+    ogImageUrl: row.ogImageUrl,
     domainIds,
   };
 }
@@ -327,6 +340,8 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
           deviceIosUrl: parsed.data.deviceIosUrl ?? null,
           deviceAndroidUrl: parsed.data.deviceAndroidUrl ?? null,
           deviceOthersUrl: parsed.data.deviceOthersUrl ?? null,
+          ogTitle: parsed.data.ogTitle ?? null,
+          ogDescription: parsed.data.ogDescription ?? null,
           expiresAt,
           disabledAt: parsed.data.disabled ? new Date() : null,
         })
@@ -685,6 +700,12 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
           ...(parsed.data.deviceOthersUrl !== undefined
             ? { deviceOthersUrl: parsed.data.deviceOthersUrl }
             : {}),
+          ...(parsed.data.ogTitle !== undefined
+            ? { ogTitle: parsed.data.ogTitle }
+            : {}),
+          ...(parsed.data.ogDescription !== undefined
+            ? { ogDescription: parsed.data.ogDescription }
+            : {}),
           ...(parsed.data.expiresAt !== undefined
             ? {
                 expiresAt: parsed.data.expiresAt
@@ -763,6 +784,164 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
     {
       params: t.Object({ linkId: t.String() }),
       query: t.Object({ appId: t.String() }),
+    }
+  )
+  .post(
+    '/:linkId/og-image',
+    async (ctx) => {
+      const { params, query, user, set, request } = ctx as typeof ctx &
+        AuthContext;
+
+      if (!user?.id) {
+        set.status = HttpStatus.UNAUTHORIZED;
+        return {
+          code: ErrorCode.UNAUTHORIZED,
+          detail: 'Authentication required',
+        };
+      }
+
+      if (!isR2Configured()) {
+        set.status = 503;
+        return {
+          code: ErrorCode.INTERNAL_SERVER_ERROR,
+          detail: 'Image uploads are not configured',
+        };
+      }
+
+      const app = await assertAppAccess(query.appId, user.id);
+      if (!app) {
+        set.status = HttpStatus.FORBIDDEN;
+        return { code: ErrorCode.FORBIDDEN, detail: 'Access denied' };
+      }
+
+      const existing = await db.query.links.findFirst({
+        where: and(eq(links.id, params.linkId), eq(links.appId, query.appId)),
+      });
+
+      if (!existing) {
+        set.status = HttpStatus.NOT_FOUND;
+        return { code: ErrorCode.NOT_FOUND, detail: 'Link not found' };
+      }
+
+      const formData = await request.formData();
+      const file = formData.get('file');
+      if (!(file instanceof File)) {
+        set.status = HttpStatus.BAD_REQUEST;
+        return {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: 'Missing image file',
+        };
+      }
+
+      const input = Buffer.from(await file.arrayBuffer());
+
+      let processed: Buffer;
+      try {
+        processed = await processLinkOgImage(input);
+      } catch (error) {
+        set.status = HttpStatus.BAD_REQUEST;
+        return {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail:
+            error instanceof LinkOgImageError
+              ? error.message
+              : 'Invalid image file',
+        };
+      }
+
+      const objectKey = buildLinkOgObjectKey(existing.appId, existing.id);
+
+      try {
+        const ogImageUrl = await uploadToR2({
+          key: objectKey,
+          body: processed,
+          contentType: 'image/webp',
+        });
+
+        await deleteR2ObjectByPublicUrl(existing.ogImageUrl);
+
+        const [row] = await db
+          .update(links)
+          .set({ ogImageUrl })
+          .where(eq(links.id, existing.id))
+          .returning();
+
+        await invalidateCachedLink(existing.slug);
+
+        const domainIds = await loadLinkDomainIds(row.id);
+        const domainsById = await loadDomainsByIdForApp(existing.appId);
+        return serializeLinkDetail(row, domainIds, domainsById);
+      } catch {
+        set.status = HttpStatus.INTERNAL_SERVER_ERROR;
+        return {
+          code: ErrorCode.INTERNAL_SERVER_ERROR,
+          detail: 'Failed to upload image',
+        };
+      }
+    },
+    {
+      params: t.Object({ linkId: t.String() }),
+      query: t.Object({ appId: t.String() }),
+      response: {
+        200: LinkDetailSchema,
+        400: ErrorResponseSchema,
+        401: ErrorResponseSchema,
+        403: ErrorResponseSchema,
+        404: ErrorResponseSchema,
+      },
+    }
+  )
+  .delete(
+    '/:linkId/og-image',
+    async (ctx) => {
+      const { params, query, user, set } = ctx as typeof ctx & AuthContext;
+
+      if (!user?.id) {
+        set.status = HttpStatus.UNAUTHORIZED;
+        return {
+          code: ErrorCode.UNAUTHORIZED,
+          detail: 'Authentication required',
+        };
+      }
+
+      const app = await assertAppAccess(query.appId, user.id);
+      if (!app) {
+        set.status = HttpStatus.FORBIDDEN;
+        return { code: ErrorCode.FORBIDDEN, detail: 'Access denied' };
+      }
+
+      const existing = await db.query.links.findFirst({
+        where: and(eq(links.id, params.linkId), eq(links.appId, query.appId)),
+      });
+
+      if (!existing) {
+        set.status = HttpStatus.NOT_FOUND;
+        return { code: ErrorCode.NOT_FOUND, detail: 'Link not found' };
+      }
+
+      await deleteR2ObjectByPublicUrl(existing.ogImageUrl);
+
+      const [row] = await db
+        .update(links)
+        .set({ ogImageUrl: null })
+        .where(eq(links.id, existing.id))
+        .returning();
+
+      await invalidateCachedLink(existing.slug);
+
+      const domainIds = await loadLinkDomainIds(row.id);
+      const domainsById = await loadDomainsByIdForApp(existing.appId);
+      return serializeLinkDetail(row, domainIds, domainsById);
+    },
+    {
+      params: t.Object({ linkId: t.String() }),
+      query: t.Object({ appId: t.String() }),
+      response: {
+        200: LinkDetailSchema,
+        401: ErrorResponseSchema,
+        403: ErrorResponseSchema,
+        404: ErrorResponseSchema,
+      },
     }
   )
   .get(

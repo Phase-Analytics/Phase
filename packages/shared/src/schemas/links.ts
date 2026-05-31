@@ -49,6 +49,11 @@ export const LinkUtmFieldsSchema = z.object({
   utmContent: z.string().max(256).nullable().optional(),
 });
 
+export const LinkOgTextFieldsSchema = z.object({
+  ogTitle: z.string().max(200).nullable().optional(),
+  ogDescription: z.string().max(500).nullable().optional(),
+});
+
 export const CreateLinkRequestSchema = z
   .object({
     appId: z.string().min(1),
@@ -61,7 +66,8 @@ export const CreateLinkRequestSchema = z
     disabled: z.boolean().optional(),
     domainIds: z.array(z.string()).optional(),
   })
-  .merge(LinkUtmFieldsSchema);
+  .merge(LinkUtmFieldsSchema)
+  .merge(LinkOgTextFieldsSchema);
 
 export const UpdateLinkRequestSchema = z
   .object({
@@ -74,7 +80,8 @@ export const UpdateLinkRequestSchema = z
     disabled: z.boolean().optional(),
     domainIds: z.array(z.string()).optional(),
   })
-  .merge(LinkUtmFieldsSchema);
+  .merge(LinkUtmFieldsSchema)
+  .merge(LinkOgTextFieldsSchema);
 
 export const LinkListItemSchema = z.object({
   id: z.string(),
@@ -102,6 +109,9 @@ export const LinkDetailSchema = LinkListItemSchema.extend({
   deviceIosUrl: z.string().nullable(),
   deviceAndroidUrl: z.string().nullable(),
   deviceOthersUrl: z.string().nullable(),
+  ogTitle: z.string().nullable(),
+  ogDescription: z.string().nullable(),
+  ogImageUrl: z.string().url().nullable(),
   domainIds: z.array(z.string()),
 });
 

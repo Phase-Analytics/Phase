@@ -2,6 +2,7 @@
 
 import { AddSquareIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
+import type { LinkDetail } from '@phase/shared';
 import { CreateLinkRequestSchema, formatZodError } from '@phase/shared';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -13,8 +14,13 @@ import { LinkFormFields } from '@/components/links/link-form-fields';
 import {
   emptyLinkFormState,
   expiresAtToIso,
+  linkOgEnabledFromForm,
   PHASE_HOST_VALUE,
 } from '@/components/links/link-form-utils';
+import {
+  emptyLinkOgValues,
+  linkOgToPayload,
+} from '@/components/links/link-og-fields';
 import {
   emptyLinkUtmValues,
   linkUtmToPayload,
@@ -29,6 +35,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
+import { buildQueryString, fetchApiFormData } from '@/lib/api/client';
 import { formatApiErrorMessage } from '@/lib/format-api-error';
 import {
   useCreateLink,
@@ -99,6 +106,9 @@ export function CreateLinkDialog({ appId }: CreateLinkDialogProps) {
       domainIds: form.hostValue === PHASE_HOST_VALUE ? [] : [form.hostValue],
       expiresAt: expiresAtToIso(form.expiresAt),
       disabled: form.disabled,
+      ...(linkOgEnabledFromForm(form)
+        ? linkOgToPayload(form.og)
+        : linkOgToPayload(emptyLinkOgValues())),
     };
 
     const parsed = CreateLinkRequestSchema.safeParse(payload);
@@ -109,6 +119,16 @@ export function CreateLinkDialog({ appId }: CreateLinkDialogProps) {
 
     try {
       const created = await createLink.mutateAsync(parsed.data);
+
+      if (form.ogPendingFile) {
+        const formData = new FormData();
+        formData.append('file', form.ogPendingFile);
+        await fetchApiFormData<LinkDetail>(
+          `/web/links/${created.id}/og-image${buildQueryString({ appId })}`,
+          formData
+        );
+      }
+
       setOpen(false);
       router.push(`/dashboard/links/${created.id}?app=${appId}`);
     } catch (err) {
@@ -130,6 +150,7 @@ export function CreateLinkDialog({ appId }: CreateLinkDialogProps) {
         </DialogHeader>
 
         <LinkFormFields
+          appId={appId}
           form={form}
           idPrefix="create-link"
           onChange={setForm}

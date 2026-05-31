@@ -16,6 +16,9 @@ export type CachedLinkConfig = {
   deviceIosUrl: string | null;
   deviceAndroidUrl: string | null;
   deviceOthersUrl: string | null;
+  ogTitle: string | null;
+  ogDescription: string | null;
+  ogImageUrl: string | null;
   expiresAt: string | null;
   disabledAt: string | null;
   allowedDomainIds: string[] | null;

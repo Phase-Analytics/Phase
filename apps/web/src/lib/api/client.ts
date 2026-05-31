@@ -61,6 +61,37 @@ export async function fetchApi<T>(
   return response.json();
 }
 
+export async function fetchApiFormData<T>(
+  endpoint: string,
+  formData: FormData,
+  options?: Omit<RequestInit, 'body'>
+): Promise<T> {
+  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
+
+  const response = await fetch(url, {
+    credentials: 'include',
+    method: 'POST',
+    body: formData,
+    ...options,
+  });
+
+  if (!response.ok) {
+    const errorData: ErrorResponse = await response.json().catch(() => ({
+      code: 'UNKNOWN_ERROR',
+      detail: 'An unexpected error occurred',
+    }));
+
+    throw new ApiError(
+      errorData.code,
+      errorData.detail,
+      response.status,
+      errorData.meta
+    );
+  }
+
+  return response.json();
+}
+
 export function buildQueryString(
   params: Record<string, string | number | boolean | undefined | null>
 ): string {

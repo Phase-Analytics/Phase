@@ -1,13 +1,14 @@
 import { normalizeLinkBrowserFamily } from '@phase/shared';
 import { UAParser } from 'ua-parser-js';
 import { getLocationFromIP } from '@/lib/geolocation';
-import { shouldRecordLinkClick } from './bot';
+import { shouldRecordLinkClick, shouldServeLinkOgPreview } from './bot';
 import { getLinkClickBuffer } from './click-buffer';
 import { LINK_DEFAULT_HOST } from './constants';
 import {
   resolveDestinationForPlatform,
   resolveLinkDevicePlatform,
 } from './device';
+import { buildLinkOgPreviewHtml, buildLinkPreviewPageUrl } from './og-preview';
 import { normalizeReferrer } from './referrer';
 import {
   isLinkAllowedOnDomain,
@@ -94,6 +95,23 @@ export async function handleLinkRedirect(
     utmTerm: link.utmTerm,
     utmContent: link.utmContent,
   });
+
+  if (shouldServeLinkOgPreview(request)) {
+    const pageUrl = buildLinkPreviewPageUrl(slug, options);
+    const html = buildLinkOgPreviewHtml({
+      link,
+      pageUrl,
+      destinationUrl: finalUrl,
+    });
+
+    return new Response(html, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'public, max-age=300',
+      },
+    });
+  }
 
   const clientIp = extractClientIp(request);
   const geo = clientIp ? getLocationFromIP(clientIp) : null;

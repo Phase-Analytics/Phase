@@ -15,7 +15,7 @@ type SlugAvailableResponse = z.infer<typeof SlugAvailableResponseSchema>;
 
 import type { LinkDomain } from '@phase/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { buildQueryString, fetchApi } from '@/lib/api/client';
+import { buildQueryString, fetchApi, fetchApiFormData } from '@/lib/api/client';
 import { cacheConfig } from './query-client';
 import { queryKeys } from './query-keys';
 
@@ -165,6 +165,49 @@ export function useVerifyLinkDomain(appId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.links.domains(appId),
+      });
+    },
+  });
+}
+
+export function useUploadLinkOgImage(appId: string, linkId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return fetchApiFormData<LinkDetail>(
+        `/web/links/${linkId}/og-image${buildQueryString({ appId })}`,
+        formData
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.links.detail(appId, linkId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.links.list(appId),
+      });
+    },
+  });
+}
+
+export function useDeleteLinkOgImage(appId: string, linkId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () =>
+      fetchApi<LinkDetail>(
+        `/web/links/${linkId}/og-image${buildQueryString({ appId })}`,
+        { method: 'DELETE' }
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.links.detail(appId, linkId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.links.list(appId),
       });
     },
   });

@@ -1,5 +1,5 @@
-import { escapeQuestDbString } from '@/lib/questdb-sql';
 import { executeQuestDBReadQuery } from '@/lib/questdb';
+import { escapeQuestDbString } from '@/lib/questdb-sql';
 import { QUESTDB_LINK_CLICKS_TABLE } from './constants';
 
 type RangeWindow = {

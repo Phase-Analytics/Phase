@@ -41,7 +41,9 @@ function GeoBarRow({
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1.5">{label}</div>
         <div className="flex shrink-0 items-baseline gap-2">
-          <span className="font-semibold text-sm">{count.toLocaleString()}</span>
+          <span className="font-semibold text-sm">
+            {count.toLocaleString()}
+          </span>
           <span className="text-muted-foreground text-xs">
             ({percentage.toFixed(1)}%)
           </span>
@@ -114,8 +116,7 @@ export function LinkAnalyticsGeoCard({
               ) : (
                 countries.map((item) => {
                   const isValid =
-                    item.key.length === 2 &&
-                    COUNTRY_CODE_REGEX.test(item.key);
+                    item.key.length === 2 && COUNTRY_CODE_REGEX.test(item.key);
                   const label = getCountryLabel(item.key);
                   const percentage = countryTotal
                     ? (item.count / countryTotal) * 100

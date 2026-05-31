@@ -170,6 +170,12 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-5.4-mini}
       - OPENAI_REASONING_EFFORT=${OPENAI_REASONING_EFFORT:-low}
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID:-}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
+      - R2_BUCKET_NAME=${R2_BUCKET_NAME:-}
+      - R2_PUBLIC_BASE_URL=${R2_PUBLIC_BASE_URL:-}
+      - R2_ENDPOINT=${R2_ENDPOINT:-}
     deploy:
       resources:
         limits:
@@ -219,13 +225,15 @@ services:
         - NEXT_TELEMETRY_DISABLED=1
         - BETTER_AUTH_TELEMETRY=0
         - NEXT_PUBLIC_SERVER_URL=${SERVER_URL}
+        - R2_PUBLIC_BASE_URL=${R2_PUBLIC_BASE_URL:-}
     container_name: phase-web
     environment:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
       - BETTER_AUTH_TELEMETRY=0
       - NEXT_PUBLIC_SERVER_URL=${SERVER_URL}
-      - LINK_REDIRECT_UPSTREAM_URL=http://phase-server:3001
+      - R2_PUBLIC_BASE_URL=${R2_PUBLIC_BASE_URL:-}
+      - SERVER_INTERNAL_URL=http://phase-server:3001
     deploy:
       resources:
         limits:

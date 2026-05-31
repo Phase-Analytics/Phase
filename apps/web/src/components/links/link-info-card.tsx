@@ -5,6 +5,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import type { LinkDetail } from '@phase/shared';
 import { ClientDate } from '@/components/client-date';
 import { hasDeviceRoutingValues } from '@/components/links/link-device-routing-fields';
+import { hasLinkOgPreview } from '@/components/links/link-og-fields';
 import { LinkStatusBadge } from '@/components/links/link-status-badge';
 import {
   getLinkUtmDisplayEntries,
@@ -84,15 +85,8 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
                   size="icon-sm"
                   variant="outline"
                 >
-                  <a
-                    href={shortUrl}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    <HugeiconsIcon
-                      className="size-4"
-                      icon={LinkSquare02Icon}
-                    />
+                  <a href={shortUrl} rel="noopener noreferrer" target="_blank">
+                    <HugeiconsIcon className="size-4" icon={LinkSquare02Icon} />
                   </a>
                 </Button>
               </TooltipTrigger>
@@ -137,6 +131,36 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
                   </div>
                 ))}
               </dl>
+            ) : (
+              <p className="text-muted-foreground text-sm">None</p>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <p className="text-muted-foreground text-xs uppercase">
+            Social preview
+          </p>
+          <div className="mt-1">
+            {hasLinkOgPreview(link) ? (
+              <div className="space-y-2">
+                {link.ogTitle ? (
+                  <p className="font-medium text-sm">{link.ogTitle}</p>
+                ) : null}
+                {link.ogDescription ? (
+                  <p className="text-muted-foreground text-sm">
+                    {link.ogDescription}
+                  </p>
+                ) : null}
+                {link.ogImageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    alt="Link preview"
+                    className="aspect-[1200/630] w-full max-w-sm rounded-md border object-cover"
+                    src={link.ogImageUrl}
+                  />
+                ) : null}
+              </div>
             ) : (
               <p className="text-muted-foreground text-sm">None</p>
             )}

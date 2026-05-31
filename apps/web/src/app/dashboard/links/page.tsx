@@ -73,11 +73,7 @@ export default function LinksPage() {
         ) : null}
 
         {appId ? (
-          <LinksTable
-            appId={appId}
-            isLoading={isPending}
-            links={data?.links}
-          />
+          <LinksTable appId={appId} isLoading={isPending} links={data?.links} />
         ) : (
           <div className="space-y-2 rounded-md border p-3">
             <Skeleton className="h-10 w-full" />

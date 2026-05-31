@@ -18,6 +18,10 @@ import { LinkFeatureSection } from '@/components/links/link-feature-section';
 import type { LinkFormState } from '@/components/links/link-form-utils';
 import { PHASE_HOST_VALUE } from '@/components/links/link-form-utils';
 import {
+  hasLinkOgTextValues,
+  LinkOgFields,
+} from '@/components/links/link-og-fields';
+import {
   getLinkUtmDisplayEntries,
   LinkUtmFields,
 } from '@/components/links/link-utm-fields';
@@ -26,6 +30,8 @@ import { Switch } from '@/components/ui/switch';
 import { formatUrlWithoutProtocol } from '@/lib/link-urls';
 
 type LinkFormFieldsProps = {
+  appId: string;
+  linkId?: string;
   form: LinkFormState;
   onChange: (form: LinkFormState) => void;
   verifiedDomains: Array<{ id: string; hostname: string }>;
@@ -63,6 +69,8 @@ function FeatureSummary({
 }
 
 export function LinkFormFields({
+  appId,
+  linkId,
   form,
   onChange,
   verifiedDomains,
@@ -213,6 +221,36 @@ export function LinkFormFields({
       </LinkFeatureSection>
       {!form.utmEnabled && utmSummary.length > 0 ? (
         <FeatureSummary items={utmSummary} />
+      ) : null}
+
+      <LinkFeatureSection
+        enabled={form.ogEnabled}
+        onEnabledChange={(ogEnabled) => patch({ ogEnabled })}
+        title="Social preview (Open Graph)"
+      >
+        <LinkOgFields
+          appId={appId}
+          linkId={linkId}
+          ogImageUrl={form.ogImageUrl}
+          onChange={(og) => patch({ og })}
+          onImageUrlChange={(ogImageUrl) => patch({ ogImageUrl })}
+          onPendingFileChange={(ogPendingFile) => patch({ ogPendingFile })}
+          pendingFile={form.ogPendingFile}
+          values={form.og}
+        />
+      </LinkFeatureSection>
+      {!form.ogEnabled && (hasLinkOgTextValues(form.og) || form.ogImageUrl) ? (
+        <FeatureSummary
+          items={[
+            ...(form.og.title
+              ? [{ label: 'Title', value: form.og.title }]
+              : []),
+            ...(form.og.description
+              ? [{ label: 'Description', value: form.og.description }]
+              : []),
+            ...(form.ogImageUrl ? [{ label: 'Image', value: 'Uploaded' }] : []),
+          ]}
+        />
       ) : null}
 
       <div className="space-y-4 rounded-md border p-4">

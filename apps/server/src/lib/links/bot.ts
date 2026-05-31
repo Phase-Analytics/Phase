@@ -26,6 +26,23 @@ function isPrefetchRequest(headers: Headers): boolean {
   return false;
 }
 
+export function shouldServeLinkOgPreview(request: Request): boolean {
+  if (request.method.toUpperCase() !== 'GET') {
+    return false;
+  }
+
+  if (isPrefetchRequest(request.headers)) {
+    return false;
+  }
+
+  const userAgent = request.headers.get('user-agent');
+  if (!userAgent?.trim()) {
+    return false;
+  }
+
+  return isbot(userAgent);
+}
+
 export function shouldRecordLinkClick(request: Request): boolean {
   if (request.method.toUpperCase() !== 'GET') {
     return false;

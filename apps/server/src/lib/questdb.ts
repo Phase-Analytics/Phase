@@ -1,14 +1,14 @@
 import { decodeTime } from 'ulid';
 import {
-  assertExploreEventName,
-  assertQuestDbIdentifier,
-  escapeQuestDbString,
-} from './questdb-sql';
-import {
   QUESTDB_EVENT_READ_TABLES,
   QUESTDB_EVENT_WRITE_TABLE,
   QUESTDB_LEGACY_EVENT_TABLE,
 } from './questdb-events';
+import {
+  assertExploreEventName,
+  assertQuestDbIdentifier,
+  escapeQuestDbString,
+} from './questdb-sql';
 
 const QUESTDB_HTTP = 'http://questdb:9000';
 const EVENT_TIMESTAMP_FORMAT = 'yyyy-MM-ddTHH:mm:ss.SSSUUUZ';
@@ -23,7 +23,7 @@ let initPromise: Promise<void> | null = null;
 let eventSchemaVerified = false;
 let eventSchemaError: string | null = null;
 
-const IDENTIFIER_REGEX = /^[a-zA-Z0-9_-]+$/;
+const _IDENTIFIER_REGEX = /^[a-zA-Z0-9_-]+$/;
 // biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally checking for control characters
 const CONTROL_CHARS_REGEX = /[\x00-\x1F\x7F]/;
 

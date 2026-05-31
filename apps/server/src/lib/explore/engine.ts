@@ -29,10 +29,10 @@ import {
 import {
   buildBaseEventConditions,
   buildEventPropertyCondition,
+  escapeExploreEventName,
   eventCountTimeseriesForExplore,
   eventParamExtractSql,
   getDistinctDeviceIdsFromEvents,
-  escapeExploreEventName,
   runEventsAggregateQuery,
 } from './questdb-helpers';
 import { resolveExploreDateRange } from './time-range';

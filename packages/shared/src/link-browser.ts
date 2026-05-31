@@ -25,7 +25,11 @@ export function normalizeLinkBrowserFamily(
     ) {
       return 'safari';
     }
-    if (name.includes('edg') || name.includes('opera') || name.includes('opr')) {
+    if (
+      name.includes('edg') ||
+      name.includes('opera') ||
+      name.includes('opr')
+    ) {
       return 'other';
     }
     return 'other';
@@ -58,7 +62,11 @@ export function normalizeLinkBrowserFamily(
     return 'other';
   }
 
-  if (ua.includes('chrome') || ua.includes('crios') || ua.includes('chromium')) {
+  if (
+    ua.includes('chrome') ||
+    ua.includes('crios') ||
+    ua.includes('chromium')
+  ) {
     return 'chrome';
   }
 

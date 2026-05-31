@@ -1,13 +1,5 @@
 export function getLinkRedirectUpstreamUrl(): string {
-  if (process.env.LINK_REDIRECT_UPSTREAM_URL) {
-    return process.env.LINK_REDIRECT_UPSTREAM_URL;
-  }
-
-  if (process.env.SERVER_INTERNAL_URL) {
-    return process.env.SERVER_INTERNAL_URL;
-  }
-
-  return 'http://127.0.0.1:3001';
+  return process.env.SERVER_INTERNAL_URL?.trim() || 'http://127.0.0.1:3001';
 }
 
 export const DEFAULT_LINK_HOSTS = new Set([

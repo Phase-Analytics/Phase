@@ -1,12 +1,12 @@
 import {
+  buildExploreEventsSubquery,
+  executeQuestDBReadQuery,
+} from '@/lib/questdb';
+import {
   assertExploreEventName,
   assertQuestDbIdentifier,
   escapeQuestDbString,
 } from '@/lib/questdb-sql';
-import {
-  buildExploreEventsSubquery,
-  executeQuestDBReadQuery,
-} from '@/lib/questdb';
 import { EXPLORE_MAX_COHORT_DEVICES } from './constants';
 import { ExploreEngineError } from './errors';
 import type { ExploreDateRange } from './time-range';
