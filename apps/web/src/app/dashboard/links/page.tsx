@@ -3,6 +3,7 @@
 import { Edit02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import Link from 'next/link';
+import { EditLinkDialog } from '@/components/links/edit-link-dialog';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useMemo } from 'react';
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
@@ -165,16 +166,15 @@ export default function LinksPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
-                              <Button asChild size="sm" variant="ghost">
-                                <Link
-                                  href={`/dashboard/links/${link.id}?app=${appId}`}
-                                >
-                                  <HugeiconsIcon
-                                    className="size-4"
-                                    icon={Edit02Icon}
-                                  />
-                                </Link>
+                            <EditLinkDialog appId={appId ?? ''} linkId={link.id}>
+                              <Button size="sm" type="button" variant="outline">
+                                <HugeiconsIcon
+                                  className="size-4"
+                                  icon={Edit02Icon}
+                                />
+                                Edit
                               </Button>
+                            </EditLinkDialog>
                               <RemoveLinkDialog
                                 appId={appId ?? ''}
                                 linkId={link.id}

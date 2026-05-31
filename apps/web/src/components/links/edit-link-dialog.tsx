@@ -1,13 +1,11 @@
 'use client';
 
-import { AddSquareIcon } from '@hugeicons/core-free-icons';
-import { HugeiconsIcon } from '@hugeicons/react';
-import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { LinkFormFields } from '@/components/links/link-form-fields';
 import {
   emptyLinkFormState,
   expiresAtToIso,
+  linkDetailToFormState,
   PHASE_HOST_VALUE,
 } from '@/components/links/link-form-utils';
 import {
@@ -27,52 +25,80 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import {
-  useCreateLink,
+  useLink,
   useLinkDomains,
   useLinkSlugAvailable,
+  useUpdateLink,
 } from '@/lib/queries';
+import { toast } from 'sonner';
 
-type CreateLinkDialogProps = {
+type EditLinkDialogProps = {
   appId: string;
+  linkId: string;
+  children: React.ReactNode;
 };
 
-export function CreateLinkDialog({ appId }: CreateLinkDialogProps) {
-  const router = useRouter();
-  const createLink = useCreateLink();
-  const { data: domainsData } = useLinkDomains(appId);
+export function EditLinkDialog({
+  appId,
+  linkId,
+  children,
+}: EditLinkDialogProps) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyLinkFormState);
+  const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { data: link, isPending: linkLoading } = useLink(
+    appId,
+    open ? linkId : ''
+  );
+  const { data: domainsData } = useLinkDomains(appId);
+  const updateLink = useUpdateLink(appId, linkId);
 
   const verifiedDomains = useMemo(
     () => domainsData?.domains.filter((d) => d.status === 'verified') ?? [],
     [domainsData?.domains]
   );
 
+  const slugChanged = link ? form.slug !== link.slug : false;
   const slugCheck = useLinkSlugAvailable(
     form.slug,
-    open && form.slug.length >= 3
+    open && slugChanged && form.slug.length >= 3
   );
 
   const slugInvalid =
-    form.slug.length >= 3 && slugCheck.data && !slugCheck.data.available;
+    slugChanged &&
+    form.slug.length >= 3 &&
+    slugCheck.data &&
+    !slugCheck.data.available;
 
   useEffect(() => {
     if (!open) {
       setForm(emptyLinkFormState());
+      setInitialized(false);
       setError(null);
+      updateLink.reset();
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !link || initialized) {
+      return;
+    }
+
+    setForm(linkDetailToFormState(link));
+    setInitialized(true);
+  }, [open, link, initialized]);
 
   const handleSubmit = async () => {
     setError(null);
 
     try {
-      const created = await createLink.mutateAsync({
-        appId,
-        slug: form.slug.toLowerCase(),
+      await updateLink.mutateAsync({
+        slug: slugChanged ? form.slug.toLowerCase() : undefined,
         destinationUrl: form.destinationUrl,
         ...(form.utmEnabled
           ? linkUtmToPayload(form.utm)
@@ -80,45 +106,50 @@ export function CreateLinkDialog({ appId }: CreateLinkDialogProps) {
         ...(form.deviceEnabled
           ? deviceRoutingToPayload(form.device)
           : deviceRoutingToPayload(emptyDeviceRoutingValues())),
-        domainIds:
-          form.hostValue === PHASE_HOST_VALUE ? [] : [form.hostValue],
+        domainIds: form.hostValue === PHASE_HOST_VALUE ? [] : [form.hostValue],
         expiresAt: expiresAtToIso(form.expiresAt),
         disabled: form.disabled,
       });
+      toast.success('Link updated');
       setOpen(false);
-      router.push(`/dashboard/links/${created.id}?app=${appId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create link');
+      setError(err instanceof Error ? err.message : 'Failed to update link');
     }
   };
 
   return (
     <Dialog onOpenChange={setOpen} open={open}>
-      <DialogTrigger asChild>
-        <Button>
-          <HugeiconsIcon className="size-4" icon={AddSquareIcon} />
-          New link
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Create link</DialogTitle>
+          <DialogTitle>Edit link</DialogTitle>
         </DialogHeader>
 
-        <LinkFormFields
-          form={form}
-          idPrefix="create-link"
-          onChange={setForm}
-          slugError={slugInvalid ? 'Link is taken' : null}
-          verifiedDomains={verifiedDomains}
-        />
+        {linkLoading || !initialized ? (
+          <div className="space-y-3">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        ) : (
+          <LinkFormFields
+            form={form}
+            idPrefix="edit-link"
+            onChange={setForm}
+            originalSlug={link?.slug}
+            slugError={slugInvalid ? 'Link is taken' : null}
+            verifiedDomains={verifiedDomains}
+          />
+        )}
 
         {error ? <p className="text-destructive text-sm">{error}</p> : null}
 
         <DialogFooter>
           <Button
             disabled={
-              createLink.isPending ||
+              updateLink.isPending ||
+              linkLoading ||
+              !initialized ||
               !form.slug ||
               !form.destinationUrl ||
               slugInvalid
@@ -128,7 +159,11 @@ export function CreateLinkDialog({ appId }: CreateLinkDialogProps) {
             }}
             type="button"
           >
-            {createLink.isPending ? <Spinner className="size-4" /> : 'Create'}
+            {updateLink.isPending ? (
+              <Spinner className="size-4" />
+            ) : (
+              'Save'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

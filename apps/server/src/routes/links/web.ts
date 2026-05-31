@@ -327,6 +327,7 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
           deviceAndroidUrl: parsed.data.deviceAndroidUrl ?? null,
           deviceOthersUrl: parsed.data.deviceOthersUrl ?? null,
           expiresAt,
+          disabledAt: parsed.data.disabled ? new Date() : null,
         })
         .returning();
 

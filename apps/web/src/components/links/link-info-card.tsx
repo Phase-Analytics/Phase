@@ -9,6 +9,7 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Card, CardContent } from '@/components/ui/card';
 import { CopyButton } from '@/components/ui/copy-button';
+import { LinkStatusBadge } from '@/components/links/link-status-badge';
 import {
   Tooltip,
   TooltipContent,
@@ -28,9 +29,9 @@ type LinkInfoCardProps = {
 };
 
 const DEVICE_ROWS = [
-  { key: 'deviceIosUrl' as const, icon: AppleIcon, label: 'iOS' },
-  { key: 'deviceAndroidUrl' as const, icon: AndroidIcon, label: 'Android' },
-  { key: 'deviceOthersUrl' as const, icon: BrowserIcon, label: 'Others' },
+  { key: 'deviceIosUrl' as const, icon: AppleIcon },
+  { key: 'deviceAndroidUrl' as const, icon: AndroidIcon },
+  { key: 'deviceOthersUrl' as const, icon: BrowserIcon },
 ];
 
 export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
@@ -84,11 +85,29 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
           </p>
         </div>
 
-        {hasLinkUtmValues(utm) ? (
-          <div className="space-y-2">
-            <p className="font-semibold text-muted-foreground text-sm uppercase">
-              UTM
-            </p>
+        <div className="space-y-1">
+          <p className="font-semibold text-muted-foreground text-sm uppercase">
+            Status
+          </p>
+          <LinkStatusBadge status={status} />
+        </div>
+
+        <div className="space-y-1">
+          <p className="font-semibold text-muted-foreground text-sm uppercase">
+            Expires
+          </p>
+          <p className="text-sm">
+            {link.expiresAt
+              ? new Date(link.expiresAt).toLocaleString()
+              : 'No expiry'}
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <p className="font-semibold text-muted-foreground text-sm uppercase">
+            UTM
+          </p>
+          {hasLinkUtmValues(utm) ? (
             <dl className="grid gap-2 sm:grid-cols-2">
               {utmEntries.map((entry) => (
                 <div className="space-y-0.5" key={entry.label}>
@@ -97,14 +116,16 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
                 </div>
               ))}
             </dl>
-          </div>
-        ) : null}
+          ) : (
+            <p className="text-muted-foreground text-sm">None</p>
+          )}
+        </div>
 
-        {hasDeviceRoutingValues(deviceValues) ? (
-          <div className="space-y-2">
-            <p className="font-semibold text-muted-foreground text-sm uppercase">
-              Device routing
-            </p>
+        <div className="space-y-2">
+          <p className="font-semibold text-muted-foreground text-sm uppercase">
+            Device routing
+          </p>
+          {hasDeviceRoutingValues(deviceValues) ? (
             <ul className="space-y-2">
               {DEVICE_ROWS.map((row) => {
                 const value = deviceValues[row.key];
@@ -125,23 +146,10 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
                 );
               })}
             </ul>
-          </div>
-        ) : null}
-
-        {link.expiresAt ? (
-          <div className="space-y-1">
-            <p className="font-semibold text-muted-foreground text-sm uppercase">
-              Expires
-            </p>
-            <p className="text-sm">
-              {new Date(link.expiresAt).toLocaleString()}
-            </p>
-          </div>
-        ) : null}
-
-        {status === 'disabled' ? (
-          <p className="text-destructive text-sm">Disabled</p>
-        ) : null}
+          ) : (
+            <p className="text-muted-foreground text-sm">None</p>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

@@ -58,6 +58,7 @@ export const CreateLinkRequestSchema = z
     deviceAndroidUrl: LinkUrlNullableSchema,
     deviceOthersUrl: LinkUrlNullableSchema,
     expiresAt: z.string().datetime().nullable().optional(),
+    disabled: z.boolean().optional(),
     domainIds: z.array(z.string()).optional(),
   })
   .merge(LinkUtmFieldsSchema);
