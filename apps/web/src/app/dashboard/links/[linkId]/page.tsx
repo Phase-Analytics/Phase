@@ -74,7 +74,7 @@ export default function LinkDetailPage({
           <>
             <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
               <LinkInfoCard domains={domains} link={link} />
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="flex flex-col gap-3">
                 <LinkOgPreviewCard link={link} />
                 <LinkQrCard shortUrl={primaryUrl.url} />
               </div>

@@ -70,12 +70,7 @@ export async function processLinkOgImage(input: Buffer): Promise<Buffer> {
         fit: 'cover',
         position: 'centre',
       })
-      .webp({
-        quality: 90,
-        nearLossless: true,
-        effort: 4,
-        smartSubsample: true,
-      })
+      .jpeg({ quality: 90, mozjpeg: true })
       .toBuffer();
 
     if (output.byteLength > LINK_OG_IMAGE.maxProcessedBytes) {

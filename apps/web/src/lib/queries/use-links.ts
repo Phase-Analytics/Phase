@@ -71,6 +71,7 @@ export function useLinkClicks(
       ),
     ...cacheConfig.list,
     enabled: Boolean(appId) && Boolean(linkId),
+    refetchInterval: 5000,
   });
 }
 
@@ -210,6 +211,9 @@ export function useUploadLinkOgImage(appId: string, linkId: string) {
       queryClient.invalidateQueries({
         queryKey: queryKeys.links.list(appId),
       });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.links.clicks(appId, linkId),
+      });
     },
   });
 }
@@ -229,6 +233,9 @@ export function useDeleteLinkOgImage(appId: string, linkId: string) {
       });
       queryClient.invalidateQueries({
         queryKey: queryKeys.links.list(appId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.links.clicks(appId, linkId),
       });
     },
   });

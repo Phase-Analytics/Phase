@@ -2,35 +2,22 @@
 
 import {
   Clock04Icon,
-  Image01Icon,
   Link01Icon,
   Link05Icon,
 } from '@hugeicons/core-free-icons';
-import type { IconSvgElement } from '@hugeicons/react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 import { DatePicker } from '@/components/date-picker';
 import { BuilderDropdown } from '@/components/explore/explore-filter-clause';
-import {
-  DEVICE_FIELDS,
-  hasDeviceRoutingValues,
-  LinkDeviceRoutingFields,
-} from '@/components/links/link-device-routing-fields';
-import { LinkFeatureSection } from '@/components/links/link-feature-section';
+import { LinkDeviceRoutingFields } from '@/components/links/link-device-routing-fields';
 import type { LinkFormState } from '@/components/links/link-form-utils';
 import { PHASE_HOST_VALUE } from '@/components/links/link-form-utils';
-import {
-  hasLinkOgTextValues,
-  LINK_OG_TEXT_FIELDS,
-  LinkOgFields,
-} from '@/components/links/link-og-fields';
-import {
-  getLinkUtmDisplayEntries,
-  LinkUtmFields,
-} from '@/components/links/link-utm-fields';
+import { LinkOgFields } from '@/components/links/link-og-fields';
+import { LinkOgPreviewCard } from '@/components/links/link-og-preview-card';
+import { LinkUtmFields } from '@/components/links/link-utm-fields';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { formatUrlWithoutProtocol } from '@/lib/link-urls';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type LinkFormFieldsProps = {
   appId: string;
@@ -43,34 +30,6 @@ type LinkFormFieldsProps = {
   idPrefix?: string;
 };
 
-function FeatureSummary({
-  items,
-}: {
-  items: Array<{ label: string; value: string; icon?: IconSvgElement }>;
-}) {
-  if (items.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="rounded-md border bg-muted/30 px-3 py-2">
-      <dl className="space-y-1">
-        {items.map((item) => (
-          <div className="flex gap-2 text-sm" key={item.label}>
-            <dt className="flex shrink-0 items-center gap-1.5 text-muted-foreground">
-              {item.icon ? (
-                <HugeiconsIcon className="size-3.5" icon={item.icon} />
-              ) : null}
-              {item.label}
-            </dt>
-            <dd className="min-w-0 break-all">{item.value}</dd>
-          </div>
-        ))}
-      </dl>
-    </div>
-  );
-}
-
 export function LinkFormFields({
   appId,
   linkId,
@@ -81,8 +40,6 @@ export function LinkFormFields({
   originalSlug,
   idPrefix = 'link',
 }: LinkFormFieldsProps) {
-  const deviceAutofillDone = useRef(false);
-
   const hostOptions = useMemo(
     () => [
       { value: PHASE_HOST_VALUE, label: 'phase.sh' },
@@ -100,134 +57,150 @@ export function LinkFormFields({
     onChange({ ...form, ...partial });
   };
 
-  const handleDeviceEnabledChange = (enabled: boolean) => {
-    patch({ deviceEnabled: enabled });
+  const previewLink = useMemo(
+    () => ({
+      destinationUrl: form.destinationUrl,
+      slug: form.slug,
+      ogTitle: form.og.title || null,
+      ogDescription: form.og.description || null,
+      ogImageUrl: form.ogImageUrl,
+      updatedAt: form.ogImageCacheKey ?? new Date().toISOString(),
+    }),
+    [
+      form.destinationUrl,
+      form.slug,
+      form.og.title,
+      form.og.description,
+      form.ogImageUrl,
+      form.ogImageCacheKey,
+    ]
+  );
 
-    if (!enabled || deviceAutofillDone.current || !form.destinationUrl) {
+  const pendingPreviewUrl = useMemo(() => {
+    if (!form.ogPendingFile) {
       return;
     }
+    return URL.createObjectURL(form.ogPendingFile);
+  }, [form.ogPendingFile]);
 
-    if (!hasDeviceRoutingValues(form.device)) {
-      patch({
-        deviceEnabled: enabled,
-        device: {
-          deviceIosUrl: form.destinationUrl,
-          deviceAndroidUrl: form.destinationUrl,
-          deviceOthersUrl: form.destinationUrl,
-        },
-      });
-    }
-
-    deviceAutofillDone.current = true;
-  };
-
-  const utmSummary = getLinkUtmDisplayEntries(form.utm).map((entry) => ({
-    label: entry.label,
-    value: entry.value,
-    icon: entry.icon,
-  }));
-
-  const deviceSummary = DEVICE_FIELDS.filter(
-    (field) => form.device[field.key]
-  ).map((field) => ({
-    label: field.label,
-    value: formatUrlWithoutProtocol(form.device[field.key]),
-    icon: field.icon,
-  }));
+  useEffect(
+    () => () => {
+      if (pendingPreviewUrl) {
+        URL.revokeObjectURL(pendingPreviewUrl);
+      }
+    },
+    [pendingPreviewUrl]
+  );
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <label
-          className="flex items-center gap-1.5 font-medium text-sm"
-          htmlFor={`${idPrefix}-destination`}
-        >
-          <HugeiconsIcon
-            className="size-4 shrink-0 text-muted-foreground"
-            icon={Link01Icon}
-          />
-          Destination URL
-        </label>
-        <Input
-          id={`${idPrefix}-destination`}
-          onChange={(e) => patch({ destinationUrl: e.target.value })}
-          placeholder="example.com/page"
-          type="text"
-          value={form.destinationUrl}
-        />
-      </div>
+    <Tabs defaultValue="overview">
+      <TabsList className="grid w-full grid-cols-4">
+        <TabsTrigger value="overview">Overview</TabsTrigger>
+        <TabsTrigger value="preview">Preview</TabsTrigger>
+        <TabsTrigger value="routing">Routing</TabsTrigger>
+        <TabsTrigger value="utm">UTM</TabsTrigger>
+      </TabsList>
 
-      <div className="space-y-2">
-        <label
-          className="flex items-center gap-1.5 font-medium text-sm"
-          htmlFor={`${idPrefix}-slug`}
-        >
-          <HugeiconsIcon
-            className="size-4 shrink-0 text-muted-foreground"
-            icon={Link05Icon}
-          />
-          Link
-        </label>
-        <div className="flex gap-2">
-          <BuilderDropdown
-            className="h-9 w-[min(42%,11rem)] shrink-0"
-            onValueChange={(hostValue) => patch({ hostValue })}
-            options={hostOptions}
-            value={form.hostValue}
-          />
-          <div className="flex min-w-0 flex-1 items-center gap-0">
-            <span className="flex h-9 shrink-0 items-center rounded-l-md border border-r-0 bg-muted/50 px-2 font-mono text-muted-foreground text-xs">
-              {slugPrefix}
-            </span>
-            <Input
-              className="rounded-l-none"
-              id={`${idPrefix}-slug`}
-              onChange={(e) => patch({ slug: e.target.value.toLowerCase() })}
-              placeholder="launch-2026"
-              value={form.slug}
+      <TabsContent className="space-y-4" value="overview">
+        <div className="space-y-2">
+          <label
+            className="flex items-center gap-1.5 font-medium text-sm"
+            htmlFor={`${idPrefix}-destination`}
+          >
+            <HugeiconsIcon
+              className="size-4 shrink-0 text-muted-foreground"
+              icon={Link01Icon}
             />
-          </div>
+            Destination URL
+          </label>
+          <Input
+            id={`${idPrefix}-destination`}
+            onChange={(e) => patch({ destinationUrl: e.target.value })}
+            placeholder="example.com/page"
+            type="text"
+            value={form.destinationUrl}
+          />
         </div>
-        {slugError ? (
-          <p className="text-destructive text-sm">{slugError}</p>
-        ) : null}
-        {originalSlug && originalSlug !== form.slug ? (
-          <p className="text-muted-foreground text-xs">
-            Current slug: {originalSlug}
+
+        <div className="space-y-2">
+          <label
+            className="flex items-center gap-1.5 font-medium text-sm"
+            htmlFor={`${idPrefix}-slug`}
+          >
+            <HugeiconsIcon
+              className="size-4 shrink-0 text-muted-foreground"
+              icon={Link05Icon}
+            />
+            Link
+          </label>
+          <div className="flex gap-2">
+            <BuilderDropdown
+              className="h-9 w-[min(42%,11rem)] shrink-0"
+              onValueChange={(hostValue) => patch({ hostValue })}
+              options={hostOptions}
+              value={form.hostValue}
+            />
+            <div className="flex min-w-0 flex-1 items-center gap-0">
+              <span className="flex h-9 shrink-0 items-center rounded-l-md border border-r-0 bg-muted/50 px-2 font-mono text-muted-foreground text-xs">
+                {slugPrefix}
+              </span>
+              <Input
+                className="rounded-l-none"
+                id={`${idPrefix}-slug`}
+                onChange={(e) => patch({ slug: e.target.value.toLowerCase() })}
+                placeholder="launch-2026"
+                value={form.slug}
+              />
+            </div>
+          </div>
+          {slugError ? (
+            <p className="text-destructive text-sm">{slugError}</p>
+          ) : null}
+          {originalSlug && originalSlug !== form.slug ? (
+            <p className="text-muted-foreground text-xs">
+              Current slug: {originalSlug}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="space-y-2">
+          <p className="flex items-center gap-1.5 font-medium text-sm">
+            <HugeiconsIcon
+              className="size-4 shrink-0 text-muted-foreground"
+              icon={Clock04Icon}
+            />
+            Expires
           </p>
-        ) : null}
-      </div>
+          <DatePicker
+            onChange={(expiresAt) => patch({ expiresAt })}
+            placeholder="No expiry"
+            value={form.expiresAt}
+          />
+          {form.expiresAt ? null : (
+            <p className="text-muted-foreground text-xs">No expiry set</p>
+          )}
+        </div>
 
-      <LinkFeatureSection
-        enabled={form.deviceEnabled}
-        onEnabledChange={handleDeviceEnabledChange}
-        title="Device routing"
-      >
-        <LinkDeviceRoutingFields
-          onChange={(device) => patch({ device })}
-          values={form.device}
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <p className="font-medium text-sm">Disabled</p>
+            <p className="text-muted-foreground text-xs">
+              Disabled links return 404
+            </p>
+          </div>
+          <Switch
+            checked={form.disabled}
+            onCheckedChange={(disabled) => patch({ disabled })}
+          />
+        </div>
+      </TabsContent>
+
+      <TabsContent className="space-y-4" value="preview">
+        <LinkOgPreviewCard
+          imageOverride={pendingPreviewUrl}
+          link={previewLink}
+          variant="inline"
         />
-      </LinkFeatureSection>
-      {!form.deviceEnabled && deviceSummary.length > 0 ? (
-        <FeatureSummary items={deviceSummary} />
-      ) : null}
-
-      <LinkFeatureSection
-        enabled={form.utmEnabled}
-        onEnabledChange={(utmEnabled) => patch({ utmEnabled })}
-        title="UTM parameters"
-      >
-        <LinkUtmFields onChange={(utm) => patch({ utm })} values={form.utm} />
-      </LinkFeatureSection>
-      {!form.utmEnabled && utmSummary.length > 0 ? (
-        <FeatureSummary items={utmSummary} />
-      ) : null}
-
-      <LinkFeatureSection
-        enabled={form.ogEnabled}
-        onEnabledChange={(ogEnabled) => patch({ ogEnabled })}
-        title="Social preview"
-      >
         <LinkOgFields
           appId={appId}
           linkId={linkId}
@@ -240,56 +213,21 @@ export function LinkFormFields({
           }
           onPendingFileChange={(ogPendingFile) => patch({ ogPendingFile })}
           pendingFile={form.ogPendingFile}
+          showSocialPreview={false}
           values={form.og}
         />
-      </LinkFeatureSection>
-      {!form.ogEnabled && (hasLinkOgTextValues(form.og) || form.ogImageUrl) ? (
-        <FeatureSummary
-          items={[
-            ...LINK_OG_TEXT_FIELDS.filter((field) =>
-              form.og[field.key].trim()
-            ).map((field) => ({
-              label: field.label,
-              value: form.og[field.key],
-              icon: field.icon,
-            })),
-            ...(form.ogImageUrl
-              ? [{ label: 'Image', value: 'Uploaded', icon: Image01Icon }]
-              : []),
-          ]}
-        />
-      ) : null}
+      </TabsContent>
 
-      <div className="space-y-2">
-        <p className="flex items-center gap-1.5 font-medium text-sm">
-          <HugeiconsIcon
-            className="size-4 shrink-0 text-muted-foreground"
-            icon={Clock04Icon}
-          />
-          Expires
-        </p>
-        <DatePicker
-          onChange={(expiresAt) => patch({ expiresAt })}
-          placeholder="No expiry"
-          value={form.expiresAt}
+      <TabsContent className="space-y-4" value="routing">
+        <LinkDeviceRoutingFields
+          onChange={(device) => patch({ device })}
+          values={form.device}
         />
-        {form.expiresAt ? null : (
-          <p className="text-muted-foreground text-xs">No expiry set</p>
-        )}
-      </div>
+      </TabsContent>
 
-      <div className="flex items-center justify-between gap-3">
-        <div className="space-y-0.5">
-          <p className="font-medium text-sm">Disabled</p>
-          <p className="text-muted-foreground text-xs">
-            Disabled links return 404
-          </p>
-        </div>
-        <Switch
-          checked={form.disabled}
-          onCheckedChange={(disabled) => patch({ disabled })}
-        />
-      </div>
-    </div>
+      <TabsContent className="space-y-4" value="utm">
+        <LinkUtmFields onChange={(utm) => patch({ utm })} values={form.utm} />
+      </TabsContent>
+    </Tabs>
   );
 }

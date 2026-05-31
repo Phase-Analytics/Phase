@@ -87,6 +87,7 @@ export function linkOgToPayload(values: LinkOgValues) {
 type LinkOgFieldsProps = {
   appId: string;
   linkId?: string;
+  showSocialPreview?: boolean;
   values: LinkOgValues;
   ogImageUrl: string | null;
   ogImageCacheKey?: string | null;
@@ -100,6 +101,7 @@ type LinkOgFieldsProps = {
 export function LinkOgFields({
   appId,
   linkId,
+  showSocialPreview = true,
   values,
   ogImageUrl,
   ogImageCacheKey,
@@ -235,14 +237,16 @@ export function LinkOgFields({
         ) : null}
         {previewUrl ? (
           <div className="space-y-2">
-            {/* biome-ignore lint/performance/noImgElement: user R2 preview URLs */}
-            <img
-              alt="Link preview"
-              className="aspect-[1200/630] w-full max-w-md rounded-md border object-cover"
-              height={630}
-              src={previewUrl}
-              width={1200}
-            />
+            {showSocialPreview ? (
+              // biome-ignore lint/performance/noImgElement: user R2 preview URLs
+              <img
+                alt="Link preview"
+                className="aspect-[1200/630] w-full max-w-md rounded-md border object-cover"
+                height={630}
+                src={previewUrl}
+                width={1200}
+              />
+            ) : null}
             <div className="flex flex-wrap gap-2">
               <Button
                 disabled={imageBusy}

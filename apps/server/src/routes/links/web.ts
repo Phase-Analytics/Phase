@@ -877,7 +877,7 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         const ogImageUrl = `${await uploadToR2({
           key: objectKey,
           body: processed,
-          contentType: 'image/webp',
+          contentType: 'image/jpeg',
         })}?v=${Date.now()}`;
 
         const [row] = await db

@@ -1,5 +1,8 @@
 import { isbot } from 'isbot';
 
+const SOCIAL_PREVIEW_UA =
+  /whatsapp|facebookexternalhit|facebot|twitterbot|linkedinbot|slackbot|telegrambot|discordbot|pinterest|googlebot/i;
+
 function isPrefetchRequest(headers: Headers): boolean {
   const secPurpose = headers.get('sec-purpose')?.toLowerCase() ?? '';
   const purpose = headers.get('purpose')?.toLowerCase() ?? '';
@@ -40,6 +43,10 @@ export function shouldServeLinkOgPreview(request: Request): boolean {
     return false;
   }
 
+  if (SOCIAL_PREVIEW_UA.test(userAgent)) {
+    return true;
+  }
+
   return isbot(userAgent);
 }
 
@@ -57,7 +64,7 @@ export function shouldRecordLinkClick(request: Request): boolean {
     return false;
   }
 
-  if (isbot(userAgent)) {
+  if (SOCIAL_PREVIEW_UA.test(userAgent) || isbot(userAgent)) {
     return false;
   }
 

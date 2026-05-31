@@ -113,9 +113,10 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
           Link details
         </h2>
 
-        <InfoRow label="Short link">
-          <div className="inline-flex max-w-full items-center gap-2 font-medium text-sm">
-            <code className="break-all">{shortDisplay}</code>
+        <div>
+          <p className="text-muted-foreground text-xs uppercase">Short link</p>
+          <div className="mt-0.5 flex max-w-full items-center gap-2 font-medium text-sm">
+            <code className="min-w-0 break-all">{shortDisplay}</code>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -132,7 +133,7 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
               <TooltipContent>Open link</TooltipContent>
             </Tooltip>
           </div>
-        </InfoRow>
+        </div>
 
         <InfoRow label="Destination">
           <p className="break-all font-medium text-sm">

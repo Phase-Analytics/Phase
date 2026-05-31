@@ -64,6 +64,10 @@ type DataTableServerProps<TData, TValue> = {
   filterAllIcon?: typeof CheckmarkSquare01Icon;
   enablePropertySearch?: boolean;
   onRowClick?: (row: TData) => void;
+  pageQueryKey?: string;
+  startDateQueryKey?: string;
+  endDateQueryKey?: string;
+  showDateRange?: boolean;
 };
 
 export function DataTableServer<TData, TValue>({
@@ -79,22 +83,42 @@ export function DataTableServer<TData, TValue>({
   filterAllIcon,
   enablePropertySearch = false,
   onRowClick,
+  pageQueryKey = 'page',
+  startDateQueryKey = 'startDate',
+  endDateQueryKey = 'endDate',
+  showDateRange = true,
 }: DataTableServerProps<TData, TValue>) {
   const { pageSize, setPageSize } = usePaginationStore();
 
   const [params, setParams] = useQueryStates(
     {
-      page: parseAsInteger.withDefault(1),
+      [pageQueryKey]: parseAsInteger.withDefault(1),
       search: parseAsString.withDefault(''),
       filter: parseAsString.withDefault(''),
-      startDate: parseAsString,
-      endDate: parseAsString,
+      ...(showDateRange
+        ? {
+            [startDateQueryKey]: parseAsString,
+            [endDateQueryKey]: parseAsString,
+          }
+        : {}),
       propertySearch: parseAsPropertySearch,
     },
     {
       history: 'push',
     }
   );
+
+  const currentPage =
+    (params as Record<string, number | null | undefined>)[pageQueryKey] ?? 1;
+  const currentStartDate = showDateRange
+    ? ((params as Record<string, string | null | undefined>)[
+        startDateQueryKey
+      ] ?? undefined)
+    : undefined;
+  const currentEndDate = showDateRange
+    ? ((params as Record<string, string | null | undefined>)[endDateQueryKey] ??
+      undefined)
+    : undefined;
 
   const [searchValue, setSearchValue] = useState(params.search);
   const [isMounted, setIsMounted] = useState(false);
@@ -114,19 +138,19 @@ export function DataTableServer<TData, TValue>({
   });
 
   const handlePreviousPage = () => {
-    if (params.page > 1) {
-      setParams({ page: params.page - 1 });
+    if (currentPage > 1) {
+      setParams({ [pageQueryKey]: currentPage - 1 });
     }
   };
 
   const handleNextPage = () => {
-    if (params.page < pagination.totalPages) {
-      setParams({ page: params.page + 1 });
+    if (currentPage < pagination.totalPages) {
+      setParams({ [pageQueryKey]: currentPage + 1 });
     }
   };
 
   const handleSearchSubmit = () => {
-    setParams({ search: searchValue.trim(), page: 1 });
+    setParams({ search: searchValue.trim(), [pageQueryKey]: 1 });
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -141,17 +165,17 @@ export function DataTableServer<TData, TValue>({
 
   const handlePageSizeChange = (newSize: number) => {
     setPageSize(newSize);
-    setParams({ page: 1 });
+    setParams({ [pageQueryKey]: 1 });
   };
 
   const handleFilterChange = (value: string) => {
-    setParams({ filter: value, page: 1 });
+    setParams({ filter: value, [pageQueryKey]: 1 });
   };
 
   const handlePropertySearchChange = (value: PropertySearchFilter) => {
     setParams({
       propertySearch: value.length > 0 ? value : [],
-      page: 1,
+      [pageQueryKey]: 1,
     });
   };
 
@@ -199,22 +223,22 @@ export function DataTableServer<TData, TValue>({
           </div>
         )}
 
-        {isMounted && (
+        {showDateRange && isMounted ? (
           <div className="w-full sm:ml-auto sm:w-auto">
             <DateRangePicker
-              endDate={params.endDate || undefined}
+              endDate={currentEndDate || undefined}
               isLoading={isLoading}
               onDateRangeChange={(startDate, endDate) => {
                 setParams({
-                  startDate,
-                  endDate,
-                  page: 1,
+                  [startDateQueryKey]: startDate,
+                  [endDateQueryKey]: endDate,
+                  [pageQueryKey]: 1,
                 });
               }}
-              startDate={params.startDate || undefined}
+              startDate={currentStartDate || undefined}
             />
           </div>
-        )}
+        ) : null}
 
         {filterKey && filterOptions.length > 0 && isMounted && (
           <div className="w-full sm:w-auto">
@@ -372,7 +396,7 @@ export function DataTableServer<TData, TValue>({
 
       <div className="flex items-center justify-between">
         <Button
-          disabled={params.page === 1 || isLoading}
+          disabled={currentPage === 1 || isLoading}
           onClick={handlePreviousPage}
           size="sm"
           type="button"
@@ -430,7 +454,7 @@ export function DataTableServer<TData, TValue>({
         </div>
 
         <Button
-          disabled={params.page >= pagination.totalPages || isLoading}
+          disabled={currentPage >= pagination.totalPages || isLoading}
           onClick={handleNextPage}
           size="sm"
           type="button"

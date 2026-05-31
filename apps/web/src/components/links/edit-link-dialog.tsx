@@ -2,26 +2,16 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import {
-  deviceRoutingToPayload,
-  emptyDeviceRoutingValues,
-} from '@/components/links/link-device-routing-fields';
+import { deviceRoutingToPayload } from '@/components/links/link-device-routing-fields';
 import { LinkFormFields } from '@/components/links/link-form-fields';
 import {
   emptyLinkFormState,
   expiresAtToIso,
   linkDetailToFormState,
-  linkOgEnabledFromForm,
   PHASE_HOST_VALUE,
 } from '@/components/links/link-form-utils';
-import {
-  emptyLinkOgValues,
-  linkOgToPayload,
-} from '@/components/links/link-og-fields';
-import {
-  emptyLinkUtmValues,
-  linkUtmToPayload,
-} from '@/components/links/link-utm-fields';
+import { linkOgToPayload } from '@/components/links/link-og-fields';
+import { linkUtmToPayload } from '@/components/links/link-utm-fields';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -105,18 +95,12 @@ export function EditLinkDialog({
       await updateLink.mutateAsync({
         slug: slugChanged ? form.slug.toLowerCase() : undefined,
         destinationUrl: form.destinationUrl,
-        ...(form.utmEnabled
-          ? linkUtmToPayload(form.utm)
-          : linkUtmToPayload(emptyLinkUtmValues())),
-        ...(form.deviceEnabled
-          ? deviceRoutingToPayload(form.device)
-          : deviceRoutingToPayload(emptyDeviceRoutingValues())),
+        ...linkUtmToPayload(form.utm),
+        ...deviceRoutingToPayload(form.device),
         domainIds: form.hostValue === PHASE_HOST_VALUE ? [] : [form.hostValue],
         expiresAt: expiresAtToIso(form.expiresAt),
         disabled: form.disabled,
-        ...(linkOgEnabledFromForm(form)
-          ? linkOgToPayload(form.og)
-          : linkOgToPayload(emptyLinkOgValues())),
+        ...linkOgToPayload(form.og),
       });
       toast.success('Link updated');
       setOpen(false);

@@ -53,9 +53,13 @@ function resolveOgTitle(link: CachedLinkConfig): string {
   }
 }
 
-function resolveOgDescription(link: CachedLinkConfig): string | null {
+function resolveOgDescription(link: CachedLinkConfig): string {
   const description = link.ogDescription?.trim();
-  return description || null;
+  if (description) {
+    return description;
+  }
+
+  return `Visit ${resolveOgTitle(link)}`;
 }
 
 export function buildLinkOgPreviewHtml(params: {
@@ -65,28 +69,29 @@ export function buildLinkOgPreviewHtml(params: {
 }): string {
   const { link, pageUrl, destinationUrl } = params;
   const title = escapeHtml(resolveOgTitle(link));
-  const description = resolveOgDescription(link);
+  const description = escapeHtml(resolveOgDescription(link));
   const rawImageUrl = link.ogImageUrl?.trim() || null;
   const imageUrl =
     rawImageUrl && isAllowedOgImageUrl(rawImageUrl) ? rawImageUrl : null;
+  const imageType = imageUrl?.includes('.webp') ? 'image/webp' : 'image/jpeg';
 
   const metaTags = [
     `<meta property="og:type" content="website" />`,
     `<meta property="og:url" content="${escapeHtml(pageUrl)}" />`,
     `<meta property="og:title" content="${title}" />`,
-    description
-      ? `<meta property="og:description" content="${escapeHtml(description)}" />`
-      : '',
+    `<meta property="og:description" content="${description}" />`,
     imageUrl
       ? `<meta property="og:image" content="${escapeHtml(imageUrl)}" />`
       : '',
+    imageUrl
+      ? `<meta property="og:image:secure_url" content="${escapeHtml(imageUrl)}" />`
+      : '',
     imageUrl ? `<meta property="og:image:width" content="1200" />` : '',
     imageUrl ? `<meta property="og:image:height" content="630" />` : '',
+    imageUrl ? `<meta property="og:image:type" content="${imageType}" />` : '',
     `<meta name="twitter:card" content="${imageUrl ? 'summary_large_image' : 'summary'}" />`,
     `<meta name="twitter:title" content="${title}" />`,
-    description
-      ? `<meta name="twitter:description" content="${escapeHtml(description)}" />`
-      : '',
+    `<meta name="twitter:description" content="${description}" />`,
     imageUrl
       ? `<meta name="twitter:image" content="${escapeHtml(imageUrl)}" />`
       : '',

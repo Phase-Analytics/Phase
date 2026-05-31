@@ -72,7 +72,7 @@ function getR2Client(config: R2Config): S3Client {
 }
 
 export function buildLinkOgObjectKey(appId: string, linkId: string): string {
-  return `links/${appId}/${linkId}/og.webp`;
+  return `links/${appId}/${linkId}/og.jpg`;
 }
 
 export function buildR2PublicUrl(config: R2Config, objectKey: string): string {

@@ -165,7 +165,7 @@ export const LinkAnalyticsTimeseriesPointSchema = z.object({
 
 export const LinkClickItemSchema = z.object({
   clickId: z.string(),
-  timestamp: z.string().datetime(),
+  timestamp: z.string(),
   platform: z.enum(['ios', 'android', 'others']),
   countryCode: z.string().nullable(),
 });

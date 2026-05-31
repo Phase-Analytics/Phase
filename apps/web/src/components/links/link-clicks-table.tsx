@@ -11,7 +11,7 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import type { LinkClickItem } from '@phase/shared';
 import type { ColumnDef } from '@tanstack/react-table';
-import { parseAsInteger, parseAsString, useQueryState } from 'nuqs';
+import { parseAsInteger, useQueryState } from 'nuqs';
 import 'flag-icons/css/flag-icons.min.css';
 import { ClientDate } from '@/components/client-date';
 import { Card, CardContent } from '@/components/ui/card';
@@ -145,16 +145,15 @@ type LinkClicksTableProps = {
 };
 
 export function LinkClicksTable({ appId, linkId }: LinkClicksTableProps) {
-  const [page] = useQueryState('page', parseAsInteger.withDefault(1));
-  const [startDate] = useQueryState('startDate', parseAsString);
-  const [endDate] = useQueryState('endDate', parseAsString);
+  const [clicksPage] = useQueryState(
+    'clicksPage',
+    parseAsInteger.withDefault(1)
+  );
   const { pageSize } = usePaginationStore();
 
   const { data, isLoading } = useLinkClicks(appId, linkId, {
-    page: page.toString(),
+    page: clicksPage.toString(),
     pageSize: pageSize.toString(),
-    startDate: startDate || undefined,
-    endDate: endDate || undefined,
   });
 
   return (
@@ -173,6 +172,7 @@ export function LinkClicksTable({ appId, linkId }: LinkClicksTableProps) {
           columns={columns}
           data={data?.clicks ?? []}
           isLoading={isLoading}
+          pageQueryKey="clicksPage"
           pagination={
             data?.pagination ?? {
               total: 0,
@@ -181,6 +181,7 @@ export function LinkClicksTable({ appId, linkId }: LinkClicksTableProps) {
               totalPages: 0,
             }
           }
+          showDateRange={false}
         />
       </CardContent>
     </Card>

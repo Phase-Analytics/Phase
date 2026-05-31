@@ -299,6 +299,8 @@ export async function getLinkClicks(options: {
   const pageSize = Math.min(Math.max(1, options.pageSize), 100);
   const offset = (page - 1) * pageSize;
   const where = buildLinkClicksWhereClause(options);
+  const limitClause =
+    offset > 0 ? `LIMIT ${offset}, ${offset + pageSize}` : `LIMIT ${pageSize}`;
 
   const [countRows, clickRows] = await Promise.all([
     executeQuestDBReadQuery<{ total: number }>(`
@@ -320,7 +322,7 @@ export async function getLinkClicks(options: {
         FROM ${QUESTDB_LINK_CLICKS_TABLE}
         WHERE ${where}
         ORDER BY timestamp DESC
-        LIMIT ${pageSize} OFFSET ${offset}
+        ${limitClause}
       `),
   ]);
 

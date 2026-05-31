@@ -6,25 +6,15 @@ import type { LinkDetail } from '@phase/shared';
 import { CreateLinkRequestSchema, formatZodError } from '@phase/shared';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import {
-  deviceRoutingToPayload,
-  emptyDeviceRoutingValues,
-} from '@/components/links/link-device-routing-fields';
+import { deviceRoutingToPayload } from '@/components/links/link-device-routing-fields';
 import { LinkFormFields } from '@/components/links/link-form-fields';
 import {
   emptyLinkFormState,
   expiresAtToIso,
-  linkOgEnabledFromForm,
   PHASE_HOST_VALUE,
 } from '@/components/links/link-form-utils';
-import {
-  emptyLinkOgValues,
-  linkOgToPayload,
-} from '@/components/links/link-og-fields';
-import {
-  emptyLinkUtmValues,
-  linkUtmToPayload,
-} from '@/components/links/link-utm-fields';
+import { linkOgToPayload } from '@/components/links/link-og-fields';
+import { linkUtmToPayload } from '@/components/links/link-utm-fields';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -97,18 +87,12 @@ export function CreateLinkDialog({ appId }: CreateLinkDialogProps) {
       appId,
       slug: form.slug.toLowerCase(),
       destinationUrl: form.destinationUrl,
-      ...(form.utmEnabled
-        ? linkUtmToPayload(form.utm)
-        : linkUtmToPayload(emptyLinkUtmValues())),
-      ...(form.deviceEnabled
-        ? deviceRoutingToPayload(form.device)
-        : deviceRoutingToPayload(emptyDeviceRoutingValues())),
+      ...linkUtmToPayload(form.utm),
+      ...deviceRoutingToPayload(form.device),
       domainIds: form.hostValue === PHASE_HOST_VALUE ? [] : [form.hostValue],
       expiresAt: expiresAtToIso(form.expiresAt),
       disabled: form.disabled,
-      ...(linkOgEnabledFromForm(form)
-        ? linkOgToPayload(form.og)
-        : linkOgToPayload(emptyLinkOgValues())),
+      ...linkOgToPayload(form.og),
     };
 
     const parsed = CreateLinkRequestSchema.safeParse(payload);

@@ -1,5 +1,13 @@
-import type { LinkDetail } from '@phase/shared';
 import { getLinkOgImageSrc } from '@/lib/link-og-image-url';
+
+export type LinkOgPreviewSource = {
+  destinationUrl: string;
+  slug: string;
+  ogTitle: string | null;
+  ogDescription: string | null;
+  ogImageUrl: string | null;
+  updatedAt: string;
+};
 
 export type LinkOgPreviewContent = {
   title: string;
@@ -17,15 +25,7 @@ function normalizeDestinationUrl(destinationUrl: string): string {
 }
 
 export function resolveLinkOgPreviewContent(
-  link: Pick<
-    LinkDetail,
-    | 'destinationUrl'
-    | 'slug'
-    | 'ogTitle'
-    | 'ogDescription'
-    | 'ogImageUrl'
-    | 'updatedAt'
-  >
+  link: LinkOgPreviewSource
 ): LinkOgPreviewContent {
   let title = link.ogTitle?.trim();
   if (!title) {
