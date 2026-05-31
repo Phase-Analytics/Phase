@@ -3,15 +3,19 @@
 import { AddSquareIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { DatePicker } from '@/components/date-picker';
+import { BuilderDropdown } from '@/components/explore/explore-filter-clause';
 import {
   deviceRoutingToPayload,
   emptyDeviceRoutingValues,
+  hasDeviceRoutingValues,
   LinkDeviceRoutingFields,
 } from '@/components/links/link-device-routing-fields';
-import { LinkDomainBindingsField } from '@/components/links/link-domain-bindings-field';
+import { LinkFeatureSection } from '@/components/links/link-feature-section';
 import {
   emptyLinkUtmValues,
+  hasLinkUtmValues,
   LinkUtmFields,
   linkUtmToPayload,
 } from '@/components/links/link-utm-fields';
@@ -19,7 +23,6 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -33,6 +36,8 @@ import {
   useLinkSlugAvailable,
 } from '@/lib/queries';
 
+const PHASE_HOST_VALUE = 'phase';
+
 type CreateLinkDialogProps = {
   appId: string;
 };
@@ -42,39 +47,98 @@ export function CreateLinkDialog({ appId }: CreateLinkDialogProps) {
   const createLink = useCreateLink();
   const { data: domainsData } = useLinkDomains(appId);
   const [open, setOpen] = useState(false);
+  const [hostValue, setHostValue] = useState(PHASE_HOST_VALUE);
   const [slug, setSlug] = useState('');
   const [destinationUrl, setDestinationUrl] = useState('');
+  const [utmEnabled, setUtmEnabled] = useState(false);
   const [utm, setUtm] = useState(emptyLinkUtmValues);
+  const [deviceEnabled, setDeviceEnabled] = useState(false);
   const [device, setDevice] = useState(emptyDeviceRoutingValues);
-  const [domainIds, setDomainIds] = useState<string[]>([]);
-  const [expiresAt, setExpiresAt] = useState('');
+  const [expiresAt, setExpiresAt] = useState<Date | undefined>();
   const [error, setError] = useState<string | null>(null);
+  const deviceAutofillDone = useRef(false);
+
+  const verifiedDomains = useMemo(
+    () => domainsData?.domains.filter((d) => d.status === 'verified') ?? [],
+    [domainsData?.domains]
+  );
+
+  const hostOptions = useMemo(
+    () => [
+      { value: PHASE_HOST_VALUE, label: 'phase.sh' },
+      ...verifiedDomains.map((domain) => ({
+        value: domain.id,
+        label: domain.hostname,
+      })),
+    ],
+    [verifiedDomains]
+  );
 
   const slugCheck = useLinkSlugAvailable(slug, open && slug.length >= 3);
 
+  const slugPrefix =
+    hostValue === PHASE_HOST_VALUE ? '/l/' : '/';
+
   useEffect(() => {
     if (!open) {
+      setHostValue(PHASE_HOST_VALUE);
       setSlug('');
       setDestinationUrl('');
+      setUtmEnabled(false);
       setUtm(emptyLinkUtmValues());
+      setDeviceEnabled(false);
       setDevice(emptyDeviceRoutingValues());
-      setDomainIds([]);
-      setExpiresAt('');
+      setExpiresAt(undefined);
       setError(null);
+      deviceAutofillDone.current = false;
     }
   }, [open]);
+
+  const handleDeviceEnabledChange = (enabled: boolean) => {
+    setDeviceEnabled(enabled);
+
+    if (!enabled || deviceAutofillDone.current || !destinationUrl) {
+      return;
+    }
+
+    const isEmpty = !hasDeviceRoutingValues(device);
+    if (isEmpty) {
+      setDevice({
+        deviceIosUrl: destinationUrl,
+        deviceAndroidUrl: destinationUrl,
+        deviceOthersUrl: destinationUrl,
+      });
+    }
+
+    deviceAutofillDone.current = true;
+  };
 
   const handleSubmit = async () => {
     setError(null);
     try {
+      const domainIds =
+        hostValue === PHASE_HOST_VALUE ? [] : [hostValue];
+
       const created = await createLink.mutateAsync({
         appId,
         slug: slug.toLowerCase(),
         destinationUrl,
-        ...linkUtmToPayload(utm),
-        ...deviceRoutingToPayload(device),
+        ...(utmEnabled ? linkUtmToPayload(utm) : linkUtmToPayload(emptyLinkUtmValues())),
+        ...(deviceEnabled
+          ? deviceRoutingToPayload(device)
+          : deviceRoutingToPayload(emptyDeviceRoutingValues())),
         domainIds,
-        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+        expiresAt: expiresAt
+          ? new Date(
+              expiresAt.getFullYear(),
+              expiresAt.getMonth(),
+              expiresAt.getDate(),
+              23,
+              59,
+              59,
+              999
+            ).toISOString()
+          : null,
       });
       setOpen(false);
       router.push(`/dashboard/links/${created.id}?app=${appId}`);
@@ -97,27 +161,9 @@ export function CreateLinkDialog({ appId }: CreateLinkDialogProps) {
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Create link</DialogTitle>
-          <DialogDescription>
-            Short URL: phase.sh/l/{slug || 'your-slug'}
-          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
-          <div className="space-y-2">
-            <label className="font-medium text-sm" htmlFor="slug">
-              Slug
-            </label>
-            <Input
-              id="slug"
-              onChange={(e) => setSlug(e.target.value.toLowerCase())}
-              placeholder="launch-2026"
-              value={slug}
-            />
-            {slugInvalid ? (
-              <p className="text-destructive text-sm">Slug is taken</p>
-            ) : null}
-          </div>
-
           <div className="space-y-2">
             <label className="font-medium text-sm" htmlFor="destination">
               Destination URL
@@ -131,23 +177,56 @@ export function CreateLinkDialog({ appId }: CreateLinkDialogProps) {
             />
           </div>
 
-          <LinkUtmFields onChange={setUtm} values={utm} />
-          <LinkDeviceRoutingFields onChange={setDevice} values={device} />
+          <div className="space-y-2">
+            <label className="font-medium text-sm" htmlFor="slug">
+              Link
+            </label>
+            <div className="flex gap-2">
+              <BuilderDropdown
+                className="h-9 w-[min(42%,11rem)] shrink-0"
+                onValueChange={setHostValue}
+                options={hostOptions}
+                value={hostValue}
+              />
+              <div className="flex min-w-0 flex-1 items-center gap-0">
+                <span className="flex h-9 shrink-0 items-center rounded-l-md border border-r-0 bg-muted/50 px-2 font-mono text-muted-foreground text-xs">
+                  {slugPrefix}
+                </span>
+                <Input
+                  className="rounded-l-none"
+                  id="slug"
+                  onChange={(e) => setSlug(e.target.value.toLowerCase())}
+                  placeholder="launch-2026"
+                  value={slug}
+                />
+              </div>
+            </div>
+            {slugInvalid ? (
+              <p className="text-destructive text-sm">Link is taken</p>
+            ) : null}
+          </div>
 
-          <LinkDomainBindingsField
-            domains={domainsData?.domains ?? []}
-            onChange={setDomainIds}
-            selectedIds={domainIds}
-          />
+          <LinkFeatureSection
+            enabled={deviceEnabled}
+            onEnabledChange={handleDeviceEnabledChange}
+            title="Device routing"
+          >
+            <LinkDeviceRoutingFields onChange={setDevice} values={device} />
+          </LinkFeatureSection>
+
+          <LinkFeatureSection
+            enabled={utmEnabled}
+            onEnabledChange={setUtmEnabled}
+            title="UTM parameters"
+          >
+            <LinkUtmFields onChange={setUtm} values={utm} />
+          </LinkFeatureSection>
 
           <div className="space-y-2">
-            <label className="font-medium text-sm" htmlFor="expires">
-              Expires (optional)
-            </label>
-            <Input
-              id="expires"
-              onChange={(e) => setExpiresAt(e.target.value)}
-              type="datetime-local"
+            <label className="font-medium text-sm">Expires</label>
+            <DatePicker
+              onChange={setExpiresAt}
+              placeholder="No expiry"
               value={expiresAt}
             />
           </div>

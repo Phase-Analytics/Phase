@@ -414,12 +414,6 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         return { code: ErrorCode.NOT_FOUND, detail: 'Domain not found' };
       }
 
-      console.info('[LinkDomainVerify] verify requested', {
-        domainId: row.id,
-        hostname: row.hostname,
-        appId: query.appId,
-      });
-
       const result = await verifyDomainCname(row.hostname);
       const [updated] = await db
         .update(linkDomains)

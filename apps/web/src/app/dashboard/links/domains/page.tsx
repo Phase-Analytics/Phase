@@ -49,10 +49,10 @@ export default function LinkDomainsPage() {
           toast.success('Domain verified');
           return;
         }
-        toast.error(domain.lastError ?? 'Could not verify domain');
+        toast.error('Could not verify domain');
       },
-      onError: (error) => {
-        toast.error(error.message || 'Could not verify domain');
+      onError: () => {
+        toast.error('Could not verify domain');
       },
     });
   };
@@ -123,20 +123,13 @@ export default function LinkDomainsPage() {
                         <TableCell className="font-medium">
                           {domain.hostname}
                         </TableCell>
-                        <TableCell className="max-w-md">
-                          <div className="space-y-1">
-                            <LinkDomainStatusBadge
-                              onDnsInfoClick={() =>
-                                setDnsDialogHostname(domain.hostname)
-                              }
-                              status={domain.status}
-                            />
-                            {domain.lastError ? (
-                              <p className="text-muted-foreground text-xs leading-snug">
-                                {domain.lastError}
-                              </p>
-                            ) : null}
-                          </div>
+                        <TableCell>
+                          <LinkDomainStatusBadge
+                            onDnsInfoClick={() =>
+                              setDnsDialogHostname(domain.hostname)
+                            }
+                            status={domain.status}
+                          />
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">

@@ -1,5 +1,11 @@
 'use client';
 
+import {
+  AndroidIcon,
+  AppleIcon,
+  BrowserIcon,
+} from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 import { Input } from '@/components/ui/input';
 
 export type LinkDeviceRoutingValues = {
@@ -13,60 +19,46 @@ type LinkDeviceRoutingFieldsProps = {
   onChange: (values: LinkDeviceRoutingValues) => void;
 };
 
+const DEVICE_FIELDS = [
+  {
+    key: 'deviceIosUrl' as const,
+    icon: AppleIcon,
+    id: 'device_ios',
+  },
+  {
+    key: 'deviceAndroidUrl' as const,
+    icon: AndroidIcon,
+    id: 'device_android',
+  },
+  {
+    key: 'deviceOthersUrl' as const,
+    icon: BrowserIcon,
+    id: 'device_others',
+  },
+];
+
 export function LinkDeviceRoutingFields({
   values,
   onChange,
 }: LinkDeviceRoutingFieldsProps) {
-  const set =
-    (key: keyof LinkDeviceRoutingValues) =>
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      onChange({ ...values, [key]: e.target.value });
-    };
-
   return (
     <div className="space-y-3">
-      <p className="font-medium text-sm">Device routing</p>
-      <p className="text-muted-foreground text-xs">
-        Optional overrides by platform. Empty uses the destination URL.
-      </p>
-      <div className="space-y-3">
-        <div className="space-y-2">
-          <label className="font-medium text-sm" htmlFor="device_ios">
-            iOS
-          </label>
+      {DEVICE_FIELDS.map(({ key, icon, id }) => (
+        <div className="flex items-center gap-2" key={key}>
+          <HugeiconsIcon
+            className="size-4 shrink-0 text-muted-foreground"
+            icon={icon}
+          />
           <Input
-            id="device_ios"
-            onChange={set('deviceIosUrl')}
-            placeholder="https://apps.apple.com/..."
+            className="min-w-0 flex-1"
+            id={id}
+            onChange={(e) => onChange({ ...values, [key]: e.target.value })}
+            placeholder="https://"
             type="url"
-            value={values.deviceIosUrl}
+            value={values[key]}
           />
         </div>
-        <div className="space-y-2">
-          <label className="font-medium text-sm" htmlFor="device_android">
-            Android
-          </label>
-          <Input
-            id="device_android"
-            onChange={set('deviceAndroidUrl')}
-            placeholder="https://play.google.com/..."
-            type="url"
-            value={values.deviceAndroidUrl}
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="font-medium text-sm" htmlFor="device_others">
-            Others (desktop, tablet, etc.)
-          </label>
-          <Input
-            id="device_others"
-            onChange={set('deviceOthersUrl')}
-            placeholder="https://example.com/landing"
-            type="url"
-            value={values.deviceOthersUrl}
-          />
-        </div>
-      </div>
+      ))}
     </div>
   );
 }
@@ -97,4 +89,10 @@ export function deviceRoutingFromDetail(link: {
     deviceAndroidUrl: link.deviceAndroidUrl ?? '',
     deviceOthersUrl: link.deviceOthersUrl ?? '',
   };
+}
+
+export function hasDeviceRoutingValues(values: LinkDeviceRoutingValues): boolean {
+  return Boolean(
+    values.deviceIosUrl || values.deviceAndroidUrl || values.deviceOthersUrl
+  );
 }

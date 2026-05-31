@@ -22,65 +22,59 @@ export function LinkUtmFields({ values, onChange }: LinkUtmFieldsProps) {
     };
 
   return (
-    <div className="space-y-3">
-      <p className="font-medium text-sm">UTM parameters</p>
-      <p className="text-muted-foreground text-xs">
-        Applied on redirect. Override duplicate keys on the destination URL.
-      </p>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-2">
-          <label className="font-medium text-sm" htmlFor="utm_source">
-            utm_source
-          </label>
-          <Input
-            id="utm_source"
-            onChange={set('utmSource')}
-            placeholder="newsletter"
-            value={values.utmSource}
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="font-medium text-sm" htmlFor="utm_medium">
-            utm_medium
-          </label>
-          <Input
-            id="utm_medium"
-            onChange={set('utmMedium')}
-            placeholder="email"
-            value={values.utmMedium}
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="font-medium text-sm" htmlFor="utm_campaign">
-            utm_campaign
-          </label>
-          <Input
-            id="utm_campaign"
-            onChange={set('utmCampaign')}
-            placeholder="spring_sale"
-            value={values.utmCampaign}
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="font-medium text-sm" htmlFor="utm_term">
-            utm_term
-          </label>
-          <Input
-            id="utm_term"
-            onChange={set('utmTerm')}
-            value={values.utmTerm}
-          />
-        </div>
-        <div className="space-y-2 sm:col-span-2">
-          <label className="font-medium text-sm" htmlFor="utm_content">
-            utm_content
-          </label>
-          <Input
-            id="utm_content"
-            onChange={set('utmContent')}
-            value={values.utmContent}
-          />
-        </div>
+    <div className="grid gap-3 sm:grid-cols-2">
+      <div className="space-y-2">
+        <label className="font-medium text-sm" htmlFor="utm_source">
+          utm_source
+        </label>
+        <Input
+          id="utm_source"
+          onChange={set('utmSource')}
+          placeholder="newsletter"
+          value={values.utmSource}
+        />
+      </div>
+      <div className="space-y-2">
+        <label className="font-medium text-sm" htmlFor="utm_medium">
+          utm_medium
+        </label>
+        <Input
+          id="utm_medium"
+          onChange={set('utmMedium')}
+          placeholder="email"
+          value={values.utmMedium}
+        />
+      </div>
+      <div className="space-y-2">
+        <label className="font-medium text-sm" htmlFor="utm_campaign">
+          utm_campaign
+        </label>
+        <Input
+          id="utm_campaign"
+          onChange={set('utmCampaign')}
+          placeholder="spring_sale"
+          value={values.utmCampaign}
+        />
+      </div>
+      <div className="space-y-2">
+        <label className="font-medium text-sm" htmlFor="utm_term">
+          utm_term
+        </label>
+        <Input
+          id="utm_term"
+          onChange={set('utmTerm')}
+          value={values.utmTerm}
+        />
+      </div>
+      <div className="space-y-2 sm:col-span-2">
+        <label className="font-medium text-sm" htmlFor="utm_content">
+          utm_content
+        </label>
+        <Input
+          id="utm_content"
+          onChange={set('utmContent')}
+          value={values.utmContent}
+        />
       </div>
     </div>
   );
@@ -120,4 +114,14 @@ export function linkUtmFromDetail(link: {
     utmTerm: link.utmTerm ?? '',
     utmContent: link.utmContent ?? '',
   };
+}
+
+export function hasLinkUtmValues(values: LinkUtmValues): boolean {
+  return Boolean(
+    values.utmSource ||
+      values.utmMedium ||
+      values.utmCampaign ||
+      values.utmTerm ||
+      values.utmContent
+  );
 }

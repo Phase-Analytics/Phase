@@ -37,13 +37,7 @@ export function LinkDomainBindingsField({
 
   return (
     <div className="space-y-3">
-      <div>
-        <p className="font-medium text-sm">Custom domains</p>
-        <p className="text-muted-foreground text-xs">
-          Leave all unchecked to allow every verified domain. Select specific
-          domains to restrict this link.
-        </p>
-      </div>
+      <p className="font-medium text-sm">Custom domains</p>
       <ul className="space-y-2">
         {verified.map((domain) => {
           const checked = selectedIds.includes(domain.id);

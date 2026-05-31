@@ -7,20 +7,6 @@ const TRAILING_DOT_REGEX = /\.$/;
 export const DOMAIN_VERIFY_PATH = '/phase/link-domain-verify';
 export const DOMAIN_VERIFY_HEADER = 'x-phase-domain-verify';
 
-export type DomainVerifyChecks = {
-  cname: string;
-  doh: string;
-  httpExternal: string;
-  httpLocal: string;
-  resolves: boolean;
-};
-
-export type DomainVerifyResult = {
-  verified: boolean;
-  error?: string;
-  checks: DomainVerifyChecks;
-};
-
 function normalizeHostname(hostname: string): string {
   return hostname.trim().toLowerCase().replace(TRAILING_DOT_REGEX, '');
 }
@@ -35,45 +21,15 @@ function cnameMatchesTarget(record: string, target: string): boolean {
   );
 }
 
-function formatChecks(checks: DomainVerifyChecks): string {
-  return [
-    `CNAME: ${checks.cname}`,
-    `DoH: ${checks.doh}`,
-    `HTTP: ${checks.httpExternal}`,
-    `Local: ${checks.httpLocal}`,
-    `Resolves: ${checks.resolves ? 'yes' : 'no'}`,
-  ].join(' | ');
-}
-
 async function verifyCnameRecord(
   hostname: string,
   target: string
-): Promise<{ verified: boolean; detail: string }> {
-  const normalizedHost = normalizeHostname(hostname);
-
+): Promise<boolean> {
   try {
-    const cnames = await dns.resolveCname(normalizedHost);
-    const match = cnames.some((record) => cnameMatchesTarget(record, target));
-
-    if (match) {
-      return { verified: true, detail: `ok (${cnames.join(', ')})` };
-    }
-
-    return {
-      verified: false,
-      detail: `points to ${cnames.join(', ') ?? 'unknown'}`,
-    };
-  } catch (error) {
-    const code =
-      error && typeof error === 'object' && 'code' in error
-        ? String(error.code)
-        : 'UNKNOWN';
-
-    if (code === 'ENODATA' || code === 'ENOTFOUND') {
-      return { verified: false, detail: 'no public CNAME (proxied DNS is ok)' };
-    }
-
-    return { verified: false, detail: `lookup error (${code})` };
+    const cnames = await dns.resolveCname(normalizeHostname(hostname));
+    return cnames.some((record) => cnameMatchesTarget(record, target));
+  } catch {
+    return false;
   }
 }
 
@@ -82,7 +38,7 @@ type DoHAnswer = { type: number; data: string };
 async function verifyCnameViaDoH(
   hostname: string,
   target: string
-): Promise<{ verified: boolean; detail: string }> {
+): Promise<boolean> {
   try {
     const url = new URL('https://cloudflare-dns.com/dns-query');
     url.searchParams.set('name', normalizeHostname(hostname));
@@ -94,28 +50,18 @@ async function verifyCnameViaDoH(
     });
 
     if (!response.ok) {
-      return { verified: false, detail: `DoH status ${response.status}` };
+      return false;
     }
 
     const payload = (await response.json()) as { Answer?: DoHAnswer[] };
     const answers = payload.Answer ?? [];
-    const cnames = answers
-      .filter((answer) => answer.type === 5)
-      .map((answer) => answer.data);
 
-    if (cnames.some((record) => cnameMatchesTarget(record, target))) {
-      return { verified: true, detail: `ok (${cnames.join(', ')})` };
-    }
-
-    return {
-      verified: false,
-      detail: cnames.length > 0 ? cnames.join(', ') : 'no CNAME answer',
-    };
-  } catch (error) {
-    return {
-      verified: false,
-      detail: error instanceof Error ? error.message : 'DoH failed',
-    };
+    return answers.some(
+      (answer) =>
+        answer.type === 5 && cnameMatchesTarget(answer.data, target)
+    );
+  } catch {
+    return false;
   }
 }
 
@@ -135,117 +81,84 @@ async function hostnameResolves(hostname: string): Promise<boolean> {
   }
 }
 
-async function verifyDomainHttpExternal(
-  hostname: string
-): Promise<{ verified: boolean; detail: string }> {
-  const url = `https://${normalizeHostname(hostname)}${DOMAIN_VERIFY_PATH}`;
-
+async function verifyDomainHttpExternal(hostname: string): Promise<boolean> {
   try {
-    const response = await fetch(url, {
-      method: 'GET',
-      signal: AbortSignal.timeout(12_000),
-      redirect: 'follow',
-      headers: {
-        Accept: '*/*',
-        'User-Agent': 'Phase-Domain-Verify/1',
-      },
-    });
+    const response = await fetch(
+      `https://${normalizeHostname(hostname)}${DOMAIN_VERIFY_PATH}`,
+      {
+        method: 'GET',
+        signal: AbortSignal.timeout(12_000),
+        redirect: 'follow',
+        headers: {
+          Accept: '*/*',
+          'User-Agent': 'Phase-Domain-Verify/1',
+        },
+      }
+    );
 
-    const header = response.headers.get(DOMAIN_VERIFY_HEADER)?.toLowerCase();
-
-    if (response.ok && header === '1') {
-      return { verified: true, detail: 'ok' };
-    }
-
-    return {
-      verified: false,
-      detail: `status ${response.status}, header=${header ?? 'missing'}`,
-    };
-  } catch (error) {
-    return {
-      verified: false,
-      detail: error instanceof Error ? error.message : 'fetch failed',
-    };
+    return (
+      response.ok &&
+      response.headers.get(DOMAIN_VERIFY_HEADER)?.toLowerCase() === '1'
+    );
+  } catch {
+    return false;
   }
 }
 
-async function verifyDomainHttpLocal(
-  hostname: string
-): Promise<{ verified: boolean; detail: string }> {
+async function verifyDomainHttpLocal(hostname: string): Promise<boolean> {
   const port = Number(process.env.PORT ?? 3001);
-  const url = `http://127.0.0.1:${port}${DOMAIN_VERIFY_PATH}`;
 
   try {
-    const response = await fetch(url, {
-      method: 'GET',
-      signal: AbortSignal.timeout(5000),
-      headers: {
-        Accept: '*/*',
-        Host: normalizeHostname(hostname),
-        'User-Agent': 'Phase-Domain-Verify/1',
-      },
-    });
+    const response = await fetch(
+      `http://127.0.0.1:${port}${DOMAIN_VERIFY_PATH}`,
+      {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000),
+        headers: {
+          Accept: '*/*',
+          Host: normalizeHostname(hostname),
+          'User-Agent': 'Phase-Domain-Verify/1',
+        },
+      }
+    );
 
-    const header = response.headers.get(DOMAIN_VERIFY_HEADER)?.toLowerCase();
-
-    if (response.ok && header === '1') {
-      return { verified: true, detail: 'ok' };
-    }
-
-    return {
-      verified: false,
-      detail: `status ${response.status}, header=${header ?? 'missing'}`,
-    };
-  } catch (error) {
-    return {
-      verified: false,
-      detail: error instanceof Error ? error.message : 'local fetch failed',
-    };
+    return (
+      response.ok &&
+      response.headers.get(DOMAIN_VERIFY_HEADER)?.toLowerCase() === '1'
+    );
+  } catch {
+    return false;
   }
 }
 
-export async function verifyDomainCname(
-  hostname: string
-): Promise<DomainVerifyResult> {
+export async function verifyDomainCname(hostname: string): Promise<{
+  verified: boolean;
+  error?: string;
+}> {
   const normalizedHost = normalizeHostname(hostname);
   const target = normalizeHostname(LINK_CNAME_TARGET);
 
-  const cname = await verifyCnameRecord(normalizedHost, target);
-  const doh = await verifyCnameViaDoH(normalizedHost, target);
-  const httpExternal = await verifyDomainHttpExternal(normalizedHost);
-  const resolves = await hostnameResolves(normalizedHost);
-  const httpLocal = await verifyDomainHttpLocal(normalizedHost);
-
-  const checks: DomainVerifyChecks = {
-    cname: cname.detail,
-    doh: doh.detail,
-    httpExternal: httpExternal.detail,
-    httpLocal: httpLocal.detail,
-    resolves,
-  };
-
-  const verified =
-    cname.verified ||
-    doh.verified ||
-    httpExternal.verified ||
-    (resolves && httpLocal.verified);
-
-  const result: DomainVerifyResult = {
-    verified,
-    checks,
-  };
-
-  console.info('[LinkDomainVerify]', {
-    hostname: normalizedHost,
-    verified,
-    checks,
-  });
-
-  if (!verified) {
-    result.error = `Could not verify ${normalizedHost}. ${formatChecks(checks)}`;
+  if (await verifyCnameRecord(normalizedHost, target)) {
+    return { verified: true };
   }
 
-  return result;
+  if (await verifyCnameViaDoH(normalizedHost, target)) {
+    return { verified: true };
+  }
+
+  if (await verifyDomainHttpExternal(normalizedHost)) {
+    return { verified: true };
+  }
+
+  const resolves = await hostnameResolves(normalizedHost);
+  if (resolves && (await verifyDomainHttpLocal(normalizedHost))) {
+    return { verified: true };
+  }
+
+  return {
+    verified: false,
+    error: `Could not verify ${normalizedHost}. Add CNAME → ${LINK_CNAME_TARGET} and try again.`,
+  };
 }
 
 export async function handleDomainVerifyRequest(
@@ -254,7 +167,6 @@ export async function handleDomainVerifyRequest(
   const normalizedHost = host ? normalizeHostname(host) : null;
 
   if (!normalizedHost) {
-    console.warn('[LinkDomainVerify] request missing host header');
     return new Response('Not Found', { status: 404 });
   }
 
@@ -263,13 +175,8 @@ export async function handleDomainVerifyRequest(
   });
 
   if (!row) {
-    console.warn('[LinkDomainVerify] host not in database', {
-      hostname: normalizedHost,
-    });
     return new Response('Not Found', { status: 404 });
   }
-
-  console.info('[LinkDomainVerify] probe ok', { hostname: normalizedHost });
 
   return new Response('ok', {
     status: 200,
