@@ -76,7 +76,9 @@ Recommended: **Cloudflare SSL for SaaS** (Custom Hostnames) on the zone that own
 3. Enable **Custom Hostnames** so any customer domain CNAME’d to `cname.phase.sh` gets an edge certificate automatically.
 4. Redirect service reads `Host` header → resolves `link_domains.hostname` → same slug routing as `phase.sh/l/{slug}`.
 
-**You do not touch Caddy/Nginx/Traefik in the container.** Dokploy stays as-is for Phase’s own domains. Customer SSL is Cloudflare’s job.
+**Traefik (once per environment):** add a **low-priority catch-all** router so any customer `Host` that is not `phase.sh` / `api.phase.sh` still reaches `phase-server:3001`. Copy `infrastructure/traefik/phase-link-fallback.yml` into Dokploy’s Traefik dynamic directory, or use the labels on the `server` service in `docker-compose.yml`. Do **not** add each customer domain in Dokploy.
+
+**You do not add customer domains in Dokploy’s domain tab.** Dokploy/Let’s Encrypt only covers Phase-owned hostnames. Customer SSL is Cloudflare’s job (proxied CNAME or SSL for SaaS).
 
 **If SSL for SaaS is not enabled yet:** MVP can still ship default `phase.sh/l/{slug}` links; custom domains stay “pending” until CF custom hostnames are configured. Document ops checklist in deploy notes.
 

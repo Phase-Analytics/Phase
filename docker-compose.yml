@@ -188,6 +188,20 @@ services:
     networks:
       - phase-network
       - dokploy-network
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.phase-links-fallback.rule=HostRegexp(`^.+$`)
+      - traefik.http.routers.phase-links-fallback.priority=1
+      - traefik.http.routers.phase-links-fallback.entrypoints=web
+      - traefik.http.routers.phase-links-fallback.middlewares=redirect-to-https@file
+      - traefik.http.routers.phase-links-fallback.service=phase-links-fallback
+      - traefik.http.routers.phase-links-fallback-secure.rule=HostRegexp(`^.+$`)
+      - traefik.http.routers.phase-links-fallback-secure.priority=1
+      - traefik.http.routers.phase-links-fallback-secure.entrypoints=websecure
+      - traefik.http.routers.phase-links-fallback-secure.tls=true
+      - traefik.http.routers.phase-links-fallback-secure.service=phase-links-fallback
+      - traefik.http.services.phase-links-fallback.loadbalancer.server.port=3001
     healthcheck:
       test: ["CMD", "/bin/busybox", "wget", "-q", "-O", "/dev/null", "http://localhost:3001/health"]
       interval: 10s

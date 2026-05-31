@@ -1,0 +1,28 @@
+# One-time ops: copy to /etc/dokploy/traefik/dynamic/phase-link-fallback.yml
+# Routes any hostname not matched by other Traefik routers to phase-server (link redirects).
+# Customer domains CNAME to cname.phase.sh; do NOT add each domain in Dokploy.
+# TLS for customer hostnames is handled at Cloudflare (SSL for SaaS / proxied CNAME).
+
+http:
+  routers:
+    phase-links-fallback-web:
+      rule: HostRegexp(`^.+$`)
+      priority: 1
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https
+      service: phase-links-fallback
+    phase-links-fallback-websecure:
+      rule: HostRegexp(`^.+$`)
+      priority: 1
+      entryPoints:
+        - websecure
+      service: phase-links-fallback
+      tls: {}
+  services:
+    phase-links-fallback:
+      loadBalancer:
+        servers:
+          - url: http://phase-server:3001
+        passHostHeader: true

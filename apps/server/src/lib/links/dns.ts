@@ -57,8 +57,7 @@ async function verifyCnameViaDoH(
     const answers = payload.Answer ?? [];
 
     return answers.some(
-      (answer) =>
-        answer.type === 5 && cnameMatchesTarget(answer.data, target)
+      (answer) => answer.type === 5 && cnameMatchesTarget(answer.data, target)
     );
   } catch {
     return false;

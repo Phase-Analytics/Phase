@@ -1,18 +1,12 @@
 import { Elysia, t } from 'elysia';
 import { LINK_DEFAULT_HOST } from '@/lib/links/constants';
-import {
-  DOMAIN_VERIFY_PATH,
-  handleDomainVerifyRequest,
-} from '@/lib/links/dns';
+import { DOMAIN_VERIFY_PATH, handleDomainVerifyRequest } from '@/lib/links/dns';
+import { resolveLinkRequestHost } from '@/lib/links/host';
 import { handleLinkRedirect } from '@/lib/links/redirect';
-
-function normalizeHost(host: string | null): string | null {
-  return host?.split(':')[0]?.toLowerCase() ?? null;
-}
 
 export const linkRedirectRouter = new Elysia()
   .get(DOMAIN_VERIFY_PATH, ({ request }) =>
-    handleDomainVerifyRequest(normalizeHost(request.headers.get('host')))
+    handleDomainVerifyRequest(resolveLinkRequestHost(request.headers))
   )
   .get(
     '/l/:slug',
@@ -27,7 +21,7 @@ export const linkRedirectRouter = new Elysia()
   .get(
     '/:slug',
     ({ request, params }) => {
-      const host = normalizeHost(request.headers.get('host'));
+      const host = resolveLinkRequestHost(request.headers);
       if (!host || host === LINK_DEFAULT_HOST || host === 'localhost') {
         return new Response('Not Found', { status: 404 });
       }
