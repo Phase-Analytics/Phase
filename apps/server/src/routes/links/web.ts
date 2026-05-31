@@ -790,8 +790,8 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
   .post(
     '/:linkId/og-image',
     async (ctx) => {
-      const { params, query, user, set, request } = ctx as typeof ctx &
-        AuthContext;
+      const { params, query, user, set, body } = ctx as typeof ctx &
+        AuthContext & { body: { file: File } };
 
       if (!user?.id) {
         set.status = HttpStatus.UNAUTHORIZED;
@@ -824,15 +824,7 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         return { code: ErrorCode.NOT_FOUND, detail: 'Link not found' };
       }
 
-      const formData = await request.formData();
-      const file = formData.get('file');
-      if (!(file instanceof File)) {
-        set.status = HttpStatus.BAD_REQUEST;
-        return {
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: 'Missing image file',
-        };
-      }
+      const file = body.file;
 
       if (file.size > LINK_OG_IMAGE.maxUploadBytes) {
         set.status = HttpStatus.BAD_REQUEST;
@@ -891,6 +883,10 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
     {
       params: t.Object({ linkId: t.String() }),
       query: t.Object({ appId: t.String() }),
+      body: t.Object({
+        file: t.File({ maxSize: LINK_OG_IMAGE.maxUploadBytes }),
+      }),
+      type: 'multipart/form-data',
       response: {
         200: LinkDetailSchema,
         400: ErrorResponseSchema,

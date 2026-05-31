@@ -2,6 +2,7 @@
 
 import {
   Clock04Icon,
+  Image01Icon,
   Link01Icon,
   Link05Icon,
 } from '@hugeicons/core-free-icons';
@@ -11,6 +12,7 @@ import { useMemo, useRef } from 'react';
 import { DatePicker } from '@/components/date-picker';
 import { BuilderDropdown } from '@/components/explore/explore-filter-clause';
 import {
+  DEVICE_FIELDS,
   hasDeviceRoutingValues,
   LinkDeviceRoutingFields,
 } from '@/components/links/link-device-routing-fields';
@@ -19,6 +21,7 @@ import type { LinkFormState } from '@/components/links/link-form-utils';
 import { PHASE_HOST_VALUE } from '@/components/links/link-form-utils';
 import {
   hasLinkOgTextValues,
+  LINK_OG_TEXT_FIELDS,
   LinkOgFields,
 } from '@/components/links/link-og-fields';
 import {
@@ -124,16 +127,13 @@ export function LinkFormFields({
     icon: entry.icon,
   }));
 
-  const deviceSummary = [
-    { label: 'iOS', value: form.device.deviceIosUrl },
-    { label: 'Android', value: form.device.deviceAndroidUrl },
-    { label: 'Others', value: form.device.deviceOthersUrl },
-  ]
-    .filter((entry) => entry.value)
-    .map((entry) => ({
-      label: entry.label,
-      value: formatUrlWithoutProtocol(entry.value),
-    }));
+  const deviceSummary = DEVICE_FIELDS.filter(
+    (field) => form.device[field.key]
+  ).map((field) => ({
+    label: field.label,
+    value: formatUrlWithoutProtocol(form.device[field.key]),
+    icon: field.icon,
+  }));
 
   return (
     <div className="space-y-6">
@@ -226,7 +226,7 @@ export function LinkFormFields({
       <LinkFeatureSection
         enabled={form.ogEnabled}
         onEnabledChange={(ogEnabled) => patch({ ogEnabled })}
-        title="Social preview (Open Graph)"
+        title="Social preview"
       >
         <LinkOgFields
           appId={appId}
@@ -242,48 +242,49 @@ export function LinkFormFields({
       {!form.ogEnabled && (hasLinkOgTextValues(form.og) || form.ogImageUrl) ? (
         <FeatureSummary
           items={[
-            ...(form.og.title
-              ? [{ label: 'Title', value: form.og.title }]
+            ...LINK_OG_TEXT_FIELDS.filter((field) =>
+              form.og[field.key].trim()
+            ).map((field) => ({
+              label: field.label,
+              value: form.og[field.key],
+              icon: field.icon,
+            })),
+            ...(form.ogImageUrl
+              ? [{ label: 'Image', value: 'Uploaded', icon: Image01Icon }]
               : []),
-            ...(form.og.description
-              ? [{ label: 'Description', value: form.og.description }]
-              : []),
-            ...(form.ogImageUrl ? [{ label: 'Image', value: 'Uploaded' }] : []),
           ]}
         />
       ) : null}
 
-      <div className="space-y-4 rounded-md border p-4">
-        <div className="space-y-2">
-          <p className="flex items-center gap-1.5 font-medium text-sm">
-            <HugeiconsIcon
-              className="size-4 shrink-0 text-muted-foreground"
-              icon={Clock04Icon}
-            />
-            Expires
-          </p>
-          <DatePicker
-            onChange={(expiresAt) => patch({ expiresAt })}
-            placeholder="No expiry"
-            value={form.expiresAt}
+      <div className="space-y-2">
+        <p className="flex items-center gap-1.5 font-medium text-sm">
+          <HugeiconsIcon
+            className="size-4 shrink-0 text-muted-foreground"
+            icon={Clock04Icon}
           />
-          {form.expiresAt ? null : (
-            <p className="text-muted-foreground text-xs">No expiry set</p>
-          )}
-        </div>
+          Expires
+        </p>
+        <DatePicker
+          onChange={(expiresAt) => patch({ expiresAt })}
+          placeholder="No expiry"
+          value={form.expiresAt}
+        />
+        {form.expiresAt ? null : (
+          <p className="text-muted-foreground text-xs">No expiry set</p>
+        )}
+      </div>
 
-        <div className="flex items-center justify-between gap-3">
-          <div className="space-y-0.5">
-            <p className="font-medium text-sm">Disabled</p>
-            <p className="text-muted-foreground text-xs">
-              Disabled links return 404
-            </p>
-          </div>
-          <Switch
-            checked={form.disabled}
-            onCheckedChange={(disabled) => patch({ disabled })}
-          />
+      <div className="flex items-center justify-between gap-3">
+        <div className="space-y-0.5">
+          <p className="font-medium text-sm">Disabled</p>
+          <p className="text-muted-foreground text-xs">
+            Disabled links return 404
+          </p>
         </div>
+        <Switch
+          checked={form.disabled}
+          onCheckedChange={(disabled) => patch({ disabled })}
+        />
       </div>
     </div>
   );

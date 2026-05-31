@@ -6,13 +6,11 @@ import { getPageImage, source } from '@/app/docs/docs-source';
 
 let logoDataUrlPromise: Promise<string> | null = null;
 
-async function getLogoDataUrl(): Promise<string> {
+function getLogoDataUrl(): Promise<string> {
   if (!logoDataUrlPromise) {
     logoDataUrlPromise = readFile(
       join(process.cwd(), 'public/web-app-manifest-192x192.png')
-    ).then(
-      (buffer) => `data:image/png;base64,${buffer.toString('base64')}`
-    );
+    ).then((buffer) => `data:image/png;base64,${buffer.toString('base64')}`);
   }
 
   return logoDataUrlPromise;

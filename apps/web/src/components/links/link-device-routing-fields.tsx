@@ -19,23 +19,26 @@ type LinkDeviceRoutingFieldsProps = {
   onChange: (values: LinkDeviceRoutingValues) => void;
 };
 
-const DEVICE_FIELDS = [
+export const DEVICE_FIELDS = [
   {
     key: 'deviceIosUrl' as const,
+    label: 'iOS',
     icon: AppleIcon,
     id: 'device_ios',
   },
   {
     key: 'deviceAndroidUrl' as const,
+    label: 'Android',
     icon: AndroidIcon,
     id: 'device_android',
   },
   {
     key: 'deviceOthersUrl' as const,
+    label: 'Others',
     icon: BrowserIcon,
     id: 'device_others',
   },
-];
+] as const;
 
 export function LinkDeviceRoutingFields({
   values,

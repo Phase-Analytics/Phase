@@ -1,7 +1,11 @@
 'use client';
 
-import { Image01Icon } from '@hugeicons/core-free-icons';
-import { HugeiconsIcon } from '@hugeicons/react';
+import {
+  Image01Icon,
+  TextAlignJustifyCenterIcon,
+  TextFontIcon,
+} from '@hugeicons/core-free-icons';
+import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
 import { LINK_OG_IMAGE } from '@phase/shared';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -48,6 +52,28 @@ export function hasLinkOgPreview(link: {
       link.ogImageUrl?.trim()
   );
 }
+
+export const LINK_OG_TEXT_FIELDS: Array<{
+  key: keyof Pick<LinkOgValues, 'title' | 'description'>;
+  label: string;
+  icon: IconSvgElement;
+  id: string;
+  multiline?: boolean;
+}> = [
+  {
+    key: 'title',
+    label: 'Title',
+    icon: TextFontIcon,
+    id: 'og-title',
+  },
+  {
+    key: 'description',
+    label: 'Description',
+    icon: TextAlignJustifyCenterIcon,
+    id: 'og-description',
+    multiline: true,
+  },
+];
 
 export function linkOgToPayload(values: LinkOgValues) {
   return {
@@ -139,46 +165,57 @@ export function LinkOgFields({
   return (
     <div className="space-y-4">
       <p className="text-muted-foreground text-xs">
-        Recommended image: {LINK_OG_IMAGE.width}×{LINK_OG_IMAGE.height}px (
-        {LINK_OG_IMAGE.aspectRatio}). Min {LINK_OG_IMAGE.minWidth}×
-        {LINK_OG_IMAGE.minHeight}px. JPEG, PNG, or WebP up to 5MB. We resize and
-        compress to WebP on upload.
+        Recommended: {LINK_OG_IMAGE.width}x{LINK_OG_IMAGE.height}, Min{' '}
+        {LINK_OG_IMAGE.minWidth}x{LINK_OG_IMAGE.minHeight}. JPEG, PNG or WEBP up
+        to 5MB.
       </p>
 
-      <div className="space-y-2">
-        <label className="font-medium text-sm" htmlFor="og-title">
-          Preview title
-        </label>
-        <Input
-          id="og-title"
-          onChange={(event) =>
-            onChange({ ...values, title: event.target.value })
-          }
-          placeholder="Defaults to destination hostname"
-          value={values.title}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <label className="font-medium text-sm" htmlFor="og-description">
-          Preview description
-        </label>
-        <textarea
-          className={cn(
-            'flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-[var(--shadow),var(--highlight)] outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50 dark:bg-input/30'
+      {LINK_OG_TEXT_FIELDS.map((field) => (
+        <div className="space-y-2" key={field.key}>
+          <label
+            className="flex items-center gap-1.5 font-medium text-sm"
+            htmlFor={field.id}
+          >
+            <HugeiconsIcon
+              className="size-4 shrink-0 text-muted-foreground"
+              icon={field.icon}
+            />
+            {field.label}
+          </label>
+          {field.multiline ? (
+            <textarea
+              className={cn(
+                'flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-[var(--shadow),var(--highlight)] outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50 dark:bg-input/30'
+              )}
+              id={field.id}
+              onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
+                onChange({ ...values, [field.key]: event.target.value })
+              }
+              placeholder="Optional"
+              rows={3}
+              value={values[field.key]}
+            />
+          ) : (
+            <Input
+              id={field.id}
+              onChange={(event) =>
+                onChange({ ...values, [field.key]: event.target.value })
+              }
+              placeholder="Defaults to destination hostname"
+              value={values[field.key]}
+            />
           )}
-          id="og-description"
-          onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
-            onChange({ ...values, description: event.target.value })
-          }
-          placeholder="Optional"
-          rows={3}
-          value={values.description}
-        />
-      </div>
+        </div>
+      ))}
 
       <div className="space-y-2">
-        <p className="font-medium text-sm">Preview image</p>
+        <p className="flex items-center gap-1.5 font-medium text-sm">
+          <HugeiconsIcon
+            className="size-4 shrink-0 text-muted-foreground"
+            icon={Image01Icon}
+          />
+          Image
+        </p>
         {previewUrl ? (
           <div className="space-y-2">
             {/* biome-ignore lint/performance/noImgElement: user R2 preview URLs */}

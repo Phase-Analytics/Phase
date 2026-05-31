@@ -1,12 +1,14 @@
 'use client';
 
-import { LinkSquare02Icon } from '@hugeicons/core-free-icons';
+import { Image01Icon, LinkSquare02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import type { LinkDetail } from '@phase/shared';
 import { ClientDate } from '@/components/client-date';
-import { hasDeviceRoutingValues } from '@/components/links/link-device-routing-fields';
-import { hasLinkOgPreview } from '@/components/links/link-og-fields';
-import { LinkStatusBadge } from '@/components/links/link-status-badge';
+import { DEVICE_FIELDS } from '@/components/links/link-device-routing-fields';
+import {
+  hasLinkOgPreview,
+  LINK_OG_TEXT_FIELDS,
+} from '@/components/links/link-og-fields';
 import {
   getLinkUtmDisplayEntries,
   hasLinkUtmValues,
@@ -19,22 +21,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-  formatUrlWithoutProtocol,
-  getLinkStatus,
-  getPrimaryLinkUrl,
-} from '@/lib/link-urls';
+import { formatUrlWithoutProtocol, getPrimaryLinkUrl } from '@/lib/link-urls';
 
 type LinkInfoCardProps = {
   link: LinkDetail;
   domains: Array<{ id: string; hostname: string; status: string }>;
 };
-
-const DEVICE_ROW_KEYS = [
-  'deviceIosUrl',
-  'deviceAndroidUrl',
-  'deviceOthersUrl',
-] as const;
 
 function InfoRow({
   label,
@@ -51,6 +43,33 @@ function InfoRow({
   );
 }
 
+function DetailEntries({
+  entries,
+}: {
+  entries: Array<{
+    key: string;
+    label: string;
+    value: string;
+    icon?: (typeof LINK_OG_TEXT_FIELDS)[number]['icon'];
+  }>;
+}) {
+  return (
+    <dl className="grid gap-2 sm:grid-cols-2">
+      {entries.map((entry) => (
+        <div className="space-y-0.5" key={entry.key}>
+          <dt className="flex items-center gap-1.5 text-muted-foreground text-xs">
+            {entry.icon ? (
+              <HugeiconsIcon className="size-3.5" icon={entry.icon} />
+            ) : null}
+            {entry.label}
+          </dt>
+          <dd className="break-all font-medium text-sm">{entry.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
   const { url: shortUrl, display: shortDisplay } = getPrimaryLinkUrl(
     link.slug,
@@ -58,14 +77,22 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
     domains
   );
   const utm = linkUtmFromDetail(link);
-  const status = getLinkStatus(link);
-  const deviceValues = {
-    deviceIosUrl: link.deviceIosUrl ?? '',
-    deviceAndroidUrl: link.deviceAndroidUrl ?? '',
-    deviceOthersUrl: link.deviceOthersUrl ?? '',
-  };
-
   const utmEntries = getLinkUtmDisplayEntries(utm);
+
+  const ogTextEntries = LINK_OG_TEXT_FIELDS.map((field) => ({
+    key: field.key,
+    label: field.label,
+    icon: field.icon,
+    value:
+      field.key === 'title' ? (link.ogTitle ?? '') : (link.ogDescription ?? ''),
+  })).filter((entry) => entry.value.trim());
+
+  const deviceEntries = DEVICE_FIELDS.map((field) => ({
+    key: field.key,
+    label: field.label,
+    icon: field.icon,
+    value: link[field.key] ?? '',
+  })).filter((entry) => entry.value.trim());
 
   return (
     <Card className="py-0">
@@ -101,10 +128,6 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
           </p>
         </InfoRow>
 
-        <InfoRow label="Status">
-          <LinkStatusBadge status={status} />
-        </InfoRow>
-
         <InfoRow label="Expires">
           <p className="font-medium text-sm">
             {link.expiresAt ? (
@@ -119,18 +142,7 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
           <p className="text-muted-foreground text-xs uppercase">UTM</p>
           <div className="mt-1">
             {hasLinkUtmValues(utm) ? (
-              <dl className="grid gap-2 sm:grid-cols-2">
-                {utmEntries.map((entry) => (
-                  <div className="space-y-0.5" key={entry.key}>
-                    <dt className="text-muted-foreground text-xs">
-                      {entry.label}
-                    </dt>
-                    <dd className="break-all font-medium text-sm">
-                      {entry.value}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
+              <DetailEntries entries={utmEntries} />
             ) : (
               <p className="text-muted-foreground text-sm">None</p>
             )}
@@ -144,23 +156,24 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
           <div className="mt-1">
             {hasLinkOgPreview(link) ? (
               <div className="space-y-2">
-                {link.ogTitle ? (
-                  <p className="font-medium text-sm">{link.ogTitle}</p>
-                ) : null}
-                {link.ogDescription ? (
-                  <p className="text-muted-foreground text-sm">
-                    {link.ogDescription}
-                  </p>
+                {ogTextEntries.length > 0 ? (
+                  <DetailEntries entries={ogTextEntries} />
                 ) : null}
                 {link.ogImageUrl ? (
-                  // biome-ignore lint/performance/noImgElement: external R2 preview URL
-                  <img
-                    alt="Link preview"
-                    className="aspect-[1200/630] w-full max-w-sm rounded-md border object-cover"
-                    height={630}
-                    src={link.ogImageUrl}
-                    width={1200}
-                  />
+                  <div className="space-y-1">
+                    <p className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                      <HugeiconsIcon className="size-3.5" icon={Image01Icon} />
+                      Image
+                    </p>
+                    {/* biome-ignore lint/performance/noImgElement: external R2 preview URL */}
+                    <img
+                      alt="Link preview"
+                      className="aspect-[1200/630] w-full max-w-sm rounded-md border object-cover"
+                      height={630}
+                      src={link.ogImageUrl}
+                      width={1200}
+                    />
+                  </div>
                 ) : null}
               </div>
             ) : (
@@ -174,21 +187,13 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
             Device routing
           </p>
           <div className="mt-1">
-            {hasDeviceRoutingValues(deviceValues) ? (
-              <ul className="space-y-2">
-                {DEVICE_ROW_KEYS.map((key) => {
-                  const value = deviceValues[key];
-                  if (!value) {
-                    return null;
-                  }
-
-                  return (
-                    <li className="break-all font-medium text-sm" key={key}>
-                      {formatUrlWithoutProtocol(value)}
-                    </li>
-                  );
-                })}
-              </ul>
+            {deviceEntries.length > 0 ? (
+              <DetailEntries
+                entries={deviceEntries.map((entry) => ({
+                  ...entry,
+                  value: formatUrlWithoutProtocol(entry.value),
+                }))}
+              />
             ) : (
               <p className="text-muted-foreground text-sm">None</p>
             )}
