@@ -1,5 +1,7 @@
 import type { ZodError } from 'zod';
 
+type ZodIssue = ZodError['issues'][number];
+
 const FIELD_LABELS: Record<string, string> = {
   slug: 'Link',
   destinationUrl: 'Destination URL',
@@ -20,7 +22,7 @@ function getFieldLabel(path: PropertyKey[]): string {
   return FIELD_LABELS[key] ?? key;
 }
 
-function formatIssue(issue: ZodError['issues'][number]): string {
+function formatIssue(issue: ZodIssue): string {
   const field = getFieldLabel(issue.path);
 
   if (issue.message && !issue.message.startsWith('[')) {
