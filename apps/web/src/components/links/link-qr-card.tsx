@@ -2,7 +2,6 @@
 
 import { Download01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,14 +10,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { renderStyledLinkQrDataUrl } from '@/lib/link-qr-render';
 
 const DISPLAY_QR_SIZE = 160;
 const EXPORT_QR_SIZE = 512;
-
-const QR_OPTIONS = {
-  margin: 2,
-  errorCorrectionLevel: 'Q' as const,
-};
 
 type LinkQrCardProps = {
   shortUrl: string;
@@ -28,18 +23,14 @@ export function LinkQrCard({ shortUrl }: LinkQrCardProps) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    QRCode.toDataURL(shortUrl, {
-      ...QR_OPTIONS,
-      width: DISPLAY_QR_SIZE,
-    })
+    renderStyledLinkQrDataUrl(shortUrl, { width: DISPLAY_QR_SIZE })
       .then(setDataUrl)
       .catch(() => setDataUrl(null));
   }, [shortUrl]);
 
   const handleDownload = async () => {
     try {
-      const exportUrl = await QRCode.toDataURL(shortUrl, {
-        ...QR_OPTIONS,
+      const exportUrl = await renderStyledLinkQrDataUrl(shortUrl, {
         width: EXPORT_QR_SIZE,
       });
       const link = document.createElement('a');
@@ -79,7 +70,7 @@ export function LinkQrCard({ shortUrl }: LinkQrCardProps) {
             // biome-ignore lint/performance/noImgElement: dynamic data URL QR preview
             <img
               alt="Link QR code"
-              className="size-40 rounded-md border border-border/60 bg-white p-2 shadow-sm"
+              className="size-40 rounded-lg border border-border/60 bg-white p-2 shadow-sm"
               height={DISPLAY_QR_SIZE}
               src={dataUrl}
               width={DISPLAY_QR_SIZE}

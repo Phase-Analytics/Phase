@@ -1,3 +1,4 @@
+import { normalizeLinkBrowserFamily } from '@phase/shared';
 import { UAParser } from 'ua-parser-js';
 import { getLocationFromIP } from '@/lib/geolocation';
 import { shouldRecordLinkClick } from './bot';
@@ -74,7 +75,10 @@ export async function handleLinkRedirect(
   const platform = resolveLinkDevicePlatform(userAgent);
   const parser = new UAParser(userAgent ?? undefined);
   const osFamily = parser.getOS().name ?? 'unknown';
-  const browserFamily = parser.getBrowser().name ?? 'unknown';
+  const browserFamily = normalizeLinkBrowserFamily(
+    parser.getBrowser().name ?? 'unknown',
+    userAgent
+  );
 
   const destination = resolveDestinationForPlatform(platform, {
     destinationUrl: link.destinationUrl,

@@ -1,5 +1,10 @@
 'use client';
 
+import {
+  Clock04Icon,
+  Link01Icon,
+  Link05Icon,
+} from '@hugeicons/core-free-icons';
 import type { IconSvgElement } from '@hugeicons/react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useMemo, useRef } from 'react';
@@ -126,9 +131,13 @@ export function LinkFormFields({
     <div className="space-y-6">
       <div className="space-y-2">
         <label
-          className="font-medium text-sm"
+          className="flex items-center gap-1.5 font-medium text-sm"
           htmlFor={`${idPrefix}-destination`}
         >
+          <HugeiconsIcon
+            className="size-4 shrink-0 text-muted-foreground"
+            icon={Link01Icon}
+          />
           Destination URL
         </label>
         <Input
@@ -141,7 +150,14 @@ export function LinkFormFields({
       </div>
 
       <div className="space-y-2">
-        <label className="font-medium text-sm" htmlFor={`${idPrefix}-slug`}>
+        <label
+          className="flex items-center gap-1.5 font-medium text-sm"
+          htmlFor={`${idPrefix}-slug`}
+        >
+          <HugeiconsIcon
+            className="size-4 shrink-0 text-muted-foreground"
+            icon={Link05Icon}
+          />
           Link
         </label>
         <div className="flex gap-2">
@@ -201,7 +217,13 @@ export function LinkFormFields({
 
       <div className="space-y-4 rounded-md border p-4">
         <div className="space-y-2">
-          <label className="font-medium text-sm">Expires</label>
+          <label className="flex items-center gap-1.5 font-medium text-sm">
+            <HugeiconsIcon
+              className="size-4 shrink-0 text-muted-foreground"
+              icon={Clock04Icon}
+            />
+            Expires
+          </label>
           <DatePicker
             onChange={(expiresAt) => patch({ expiresAt })}
             placeholder="No expiry"

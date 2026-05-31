@@ -7,19 +7,15 @@ import {
   AppleIcon,
   BrowserIcon,
   CommandIcon,
-  Flag02Icon,
   Link05Icon,
   WindowsOldIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
-import type { LinkAnalyticsRegionItem } from '@phase/shared';
+import { normalizeLinkBrowserFamily } from '@phase/shared';
 import Image from 'next/image';
 import type { ReactNode } from 'react';
-import 'flag-icons/css/flag-icons.min.css';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-
-const COUNTRY_CODE_REGEX = /^[A-Za-z]{2}$/;
 
 type BreakdownItem = {
   key: string;
@@ -66,18 +62,6 @@ function BreakdownBarRow({
         />
       </div>
     </div>
-  );
-}
-
-function getCountryLabel(countryCode: string) {
-  if (!(countryCode && COUNTRY_CODE_REGEX.test(countryCode))) {
-    return 'Unknown';
-  }
-
-  return (
-    new Intl.DisplayNames(['en'], { type: 'region' }).of(
-      countryCode.toUpperCase()
-    ) || countryCode
   );
 }
 
@@ -142,16 +126,15 @@ function getOsIcon(key: string): IconSvgElement {
 
 function normalizeBrowserKey(
   key: string
-): 'safari' | 'chrome' | 'firefox' | 'other' {
-  const lower = key.toLowerCase();
-  if (lower === 'webkit' || lower === 'safari') {
-    return 'safari';
-  }
-  if (lower.includes('chrome') || lower.includes('chromium')) {
-    return 'chrome';
-  }
-  if (lower.includes('firefox')) {
-    return 'firefox';
+): 'safari' | 'chrome' | 'firefox' | 'other' | 'unknown' {
+  const normalized = normalizeLinkBrowserFamily(key);
+  if (
+    normalized === 'safari' ||
+    normalized === 'chrome' ||
+    normalized === 'firefox' ||
+    normalized === 'other'
+  ) {
+    return normalized;
   }
   return 'other';
 }
@@ -254,29 +237,19 @@ export function LinkAnalyticsBreakdownCard({
   title,
   variant,
   items,
-  regionItems,
 }: {
   title: string;
-  variant:
-    | 'countries'
-    | 'regions'
-    | 'operatingSystems'
-    | 'browsers'
-    | 'referrers';
-  items?: BreakdownItem[];
-  regionItems?: LinkAnalyticsRegionItem[];
+  variant: 'operatingSystems' | 'browsers' | 'referrers';
+  items: BreakdownItem[];
 }) {
   const displayItems =
     variant === 'browsers'
-      ? mergeBrowserItems(items ?? [])
+      ? mergeBrowserItems(items)
       : variant === 'referrers'
-        ? mergeReferrerItems(items ?? [])
-        : (items ?? []);
+        ? mergeReferrerItems(items)
+        : items;
 
-  const total =
-    variant === 'regions'
-      ? (regionItems ?? []).reduce((sum, item) => sum + item.count, 0)
-      : displayItems.reduce((sum, item) => sum + item.count, 0);
+  const total = displayItems.reduce((sum, item) => sum + item.count, 0);
 
   return (
     <Card className="py-0">
@@ -284,86 +257,11 @@ export function LinkAnalyticsBreakdownCard({
         <h3 className="font-semibold text-muted-foreground text-sm uppercase">
           {title}
         </h3>
-        {(
-          variant === 'regions'
-            ? (regionItems?.length ?? 0) === 0
-            : displayItems.length === 0
-        ) ? (
+        {displayItems.length === 0 ? (
           <p className="text-muted-foreground text-sm">No data yet</p>
         ) : (
           <ScrollArea className="h-[220px]">
             <div className="space-y-3 pr-4">
-              {variant === 'regions' &&
-                regionItems?.map((item) => {
-                  const isValid =
-                    item.countryCode.length === 2 &&
-                    COUNTRY_CODE_REGEX.test(item.countryCode);
-                  const countryLabel = getCountryLabel(item.countryCode);
-                  const percentage = total ? (item.count / total) * 100 : 0;
-
-                  return (
-                    <BreakdownBarRow
-                      ariaLabel={`${item.region}: ${percentage.toFixed(1)}% of clicks`}
-                      count={item.count}
-                      key={`region-${item.region}-${item.countryCode}`}
-                      label={
-                        <>
-                          {isValid ? (
-                            <span
-                              className={`fi fi-${item.countryCode.toLowerCase()} rounded-xs text-[14px]`}
-                              title={countryLabel}
-                            />
-                          ) : (
-                            <HugeiconsIcon
-                              className="size-3.5 shrink-0 text-muted-foreground"
-                              icon={Flag02Icon}
-                            />
-                          )}
-                          <span className="truncate font-medium text-sm">
-                            {item.region}
-                          </span>
-                        </>
-                      }
-                      total={total}
-                    />
-                  );
-                })}
-
-              {variant === 'countries' &&
-                displayItems.map((item) => {
-                  const isValid =
-                    item.key.length === 2 && COUNTRY_CODE_REGEX.test(item.key);
-                  const label = getCountryLabel(item.key);
-                  const percentage = total ? (item.count / total) * 100 : 0;
-
-                  return (
-                    <BreakdownBarRow
-                      ariaLabel={`${label}: ${percentage.toFixed(1)}% of clicks`}
-                      count={item.count}
-                      key={`country-${item.key}`}
-                      label={
-                        <>
-                          {isValid ? (
-                            <span
-                              className={`fi fi-${item.key.toLowerCase()} rounded-xs text-[14px]`}
-                              title={label}
-                            />
-                          ) : (
-                            <HugeiconsIcon
-                              className="size-3.5 shrink-0 text-muted-foreground"
-                              icon={Flag02Icon}
-                            />
-                          )}
-                          <span className="truncate font-medium text-sm">
-                            {label}
-                          </span>
-                        </>
-                      }
-                      total={total}
-                    />
-                  );
-                })}
-
               {variant === 'operatingSystems' &&
                 displayItems.map((item) => {
                   const label = getOsLabel(item.key);

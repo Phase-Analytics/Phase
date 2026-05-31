@@ -5,6 +5,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useMemo, useState } from 'react';
 import { LinkAnalyticsBreakdownCard } from '@/components/links/link-analytics-breakdown';
+import { LinkAnalyticsGeoCard } from '@/components/links/link-analytics-geo-card';
 import { TimescaleChart } from '@/components/timescale-chart';
 import { Card, CardContent } from '@/components/ui/card';
 import { CountingNumber } from '@/components/ui/counting-number';
@@ -154,15 +155,9 @@ export function LinkAnalytics({ appId, linkId }: LinkAnalyticsProps) {
       />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <LinkAnalyticsBreakdownCard
-          items={data.countries}
-          title="Countries"
-          variant="countries"
-        />
-        <LinkAnalyticsBreakdownCard
-          regionItems={data.regions}
-          title="Regions"
-          variant="regions"
+        <LinkAnalyticsGeoCard
+          countries={data.countries}
+          regions={data.regions}
         />
         <LinkAnalyticsBreakdownCard
           items={data.operatingSystems}
