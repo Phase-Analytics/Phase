@@ -53,12 +53,12 @@ export function useLinkSlugAvailable(slug: string, enabled: boolean) {
   });
 }
 
-export function useLinkAnalytics(appId: string, linkId: string) {
+export function useLinkAnalytics(appId: string, linkId: string, range: string) {
   return useQuery({
-    queryKey: queryKeys.links.analytics(appId, linkId),
+    queryKey: queryKeys.links.analytics(appId, linkId, range),
     queryFn: () =>
       fetchApi<LinkAnalyticsResponse>(
-        `/web/links/${linkId}/analytics${buildQueryString({ appId })}`
+        `/web/links/${linkId}/analytics${buildQueryString({ appId, range })}`
       ),
     ...cacheConfig.list,
     enabled: Boolean(appId) && Boolean(linkId),

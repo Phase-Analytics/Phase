@@ -12,6 +12,7 @@ import {
   LinksListResponseSchema,
   SlugAvailableResponseSchema,
   UpdateLinkRequestSchema,
+  formatZodError,
 } from '@phase/shared';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
@@ -245,7 +246,7 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         set.status = HttpStatus.BAD_REQUEST;
         return {
           code: ErrorCode.VALIDATION_ERROR,
-          detail: parsed.error.message,
+          detail: formatZodError(parsed.error),
         };
       }
 
@@ -283,7 +284,7 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         set.status = HttpStatus.BAD_REQUEST;
         return {
           code: ErrorCode.VALIDATION_ERROR,
-          detail: parsed.error.message,
+          detail: formatZodError(parsed.error),
         };
       }
 
@@ -403,7 +404,7 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         set.status = HttpStatus.BAD_REQUEST;
         return {
           code: ErrorCode.VALIDATION_ERROR,
-          detail: parsed.error.message,
+          detail: formatZodError(parsed.error),
         };
       }
 
@@ -619,7 +620,7 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         set.status = HttpStatus.BAD_REQUEST;
         return {
           code: ErrorCode.VALIDATION_ERROR,
-          detail: parsed.error.message,
+          detail: formatZodError(parsed.error),
         };
       }
 
@@ -793,15 +794,18 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         return { code: ErrorCode.NOT_FOUND, detail: 'Link not found' };
       }
 
+      const range = query.range ?? '7d';
       return getLinkAnalytics({
         appId: query.appId,
         linkId: params.linkId,
+        range,
       });
     },
     {
       params: t.Object({ linkId: t.String() }),
       query: t.Object({
         appId: t.String(),
+        range: t.Optional(t.String()),
       }),
       response: {
         200: LinkAnalyticsResponseSchema,

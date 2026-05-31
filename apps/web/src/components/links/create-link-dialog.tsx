@@ -2,6 +2,7 @@
 
 import { AddSquareIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
+import { CreateLinkRequestSchema, formatZodError } from '@phase/shared';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -28,6 +29,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
+import { formatApiErrorMessage } from '@/lib/format-api-error';
 import {
   useCreateLink,
   useLinkDomains,
@@ -59,6 +61,21 @@ export function CreateLinkDialog({ appId }: CreateLinkDialogProps) {
   const slugInvalid =
     form.slug.length >= 3 && slugCheck.data && !slugCheck.data.available;
 
+  const slugValidationError = useMemo(() => {
+    if (!form.slug) {
+      return null;
+    }
+
+    const parsed = CreateLinkRequestSchema.shape.slug.safeParse(
+      form.slug.toLowerCase()
+    );
+    if (!parsed.success) {
+      return formatZodError(parsed.error);
+    }
+
+    return null;
+  }, [form.slug]);
+
   useEffect(() => {
     if (!open) {
       setForm(emptyLinkFormState());
@@ -69,25 +86,33 @@ export function CreateLinkDialog({ appId }: CreateLinkDialogProps) {
   const handleSubmit = async () => {
     setError(null);
 
+    const payload = {
+      appId,
+      slug: form.slug.toLowerCase(),
+      destinationUrl: form.destinationUrl,
+      ...(form.utmEnabled
+        ? linkUtmToPayload(form.utm)
+        : linkUtmToPayload(emptyLinkUtmValues())),
+      ...(form.deviceEnabled
+        ? deviceRoutingToPayload(form.device)
+        : deviceRoutingToPayload(emptyDeviceRoutingValues())),
+      domainIds: form.hostValue === PHASE_HOST_VALUE ? [] : [form.hostValue],
+      expiresAt: expiresAtToIso(form.expiresAt),
+      disabled: form.disabled,
+    };
+
+    const parsed = CreateLinkRequestSchema.safeParse(payload);
+    if (!parsed.success) {
+      setError(formatZodError(parsed.error));
+      return;
+    }
+
     try {
-      const created = await createLink.mutateAsync({
-        appId,
-        slug: form.slug.toLowerCase(),
-        destinationUrl: form.destinationUrl,
-        ...(form.utmEnabled
-          ? linkUtmToPayload(form.utm)
-          : linkUtmToPayload(emptyLinkUtmValues())),
-        ...(form.deviceEnabled
-          ? deviceRoutingToPayload(form.device)
-          : deviceRoutingToPayload(emptyDeviceRoutingValues())),
-        domainIds: form.hostValue === PHASE_HOST_VALUE ? [] : [form.hostValue],
-        expiresAt: expiresAtToIso(form.expiresAt),
-        disabled: form.disabled,
-      });
+      const created = await createLink.mutateAsync(parsed.data);
       setOpen(false);
       router.push(`/dashboard/links/${created.id}?app=${appId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create link');
+      setError(formatApiErrorMessage(err));
     }
   };
 
@@ -108,7 +133,9 @@ export function CreateLinkDialog({ appId }: CreateLinkDialogProps) {
           form={form}
           idPrefix="create-link"
           onChange={setForm}
-          slugError={slugInvalid ? 'Link is taken' : null}
+          slugError={
+            slugValidationError ?? (slugInvalid ? 'Link is taken' : null)
+          }
           verifiedDomains={verifiedDomains}
         />
 
@@ -120,7 +147,8 @@ export function CreateLinkDialog({ appId }: CreateLinkDialogProps) {
               createLink.isPending ||
               !form.slug ||
               !form.destinationUrl ||
-              slugInvalid
+              slugInvalid ||
+              Boolean(slugValidationError)
             }
             onClick={() => {
               handleSubmit();
