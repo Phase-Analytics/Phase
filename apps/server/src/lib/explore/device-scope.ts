@@ -1,6 +1,7 @@
 import type { ExploreFilter } from '@phase/shared';
 import { and } from 'drizzle-orm';
 import { db, devices } from '@/db';
+import { escapeQuestDbString } from '@/lib/questdb-sql';
 import { resolveEventCohortDeviceIds } from './cohort';
 import { EXPLORE_MAX_COHORT_DEVICES } from './constants';
 import { ExploreEngineError } from './errors';
@@ -73,7 +74,7 @@ export function deviceIdSqlCondition(deviceIds: string[] | null): string[] {
   }
 
   const escaped = deviceIds
-    .map((id) => `'${id.replace(/\\/g, '\\\\').replace(/'/g, "''")}'`)
+    .map((id) => `'${escapeQuestDbString(id)}'`)
     .join(', ');
 
   return [`device_id IN (${escaped})`];

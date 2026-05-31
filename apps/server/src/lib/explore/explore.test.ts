@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import type { ExploreQueryV1 } from '@phase/shared';
+import { escapeQuestDbString } from '@/lib/questdb-sql';
 import { ExploreEngineError } from './errors';
+import { escapeExploreEventName } from './questdb-helpers';
 import { resolveExploreDateRange } from './time-range';
 import { validateExploreQuery } from './validate';
 
@@ -129,5 +131,20 @@ describe('validateExploreQuery', () => {
       },
     };
     expect(() => validateExploreQuery(query)).not.toThrow();
+  });
+});
+
+describe('explore questdb string safety', () => {
+  test('escapeQuestDbString neutralizes quote injection', () => {
+    const payload = "x' OR 1=1 --";
+    const escaped = escapeQuestDbString(payload);
+    expect(escaped).toBe("x'' OR 1=1 --");
+    expect(`name = '${escaped}'`).toBe("name = 'x'' OR 1=1 --'");
+  });
+
+  test('escapeExploreEventName rejects injection payloads', () => {
+    expect(() => escapeExploreEventName("x' OR 1=1 --")).toThrow(
+      ExploreEngineError
+    );
   });
 });

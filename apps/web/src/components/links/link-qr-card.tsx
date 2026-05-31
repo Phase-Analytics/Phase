@@ -12,8 +12,9 @@ import {
 } from '@/components/ui/tooltip';
 import { renderStyledLinkQrDataUrl } from '@/lib/link-qr-render';
 
-const DISPLAY_QR_SIZE = 160;
-const EXPORT_QR_SIZE = 512;
+const DISPLAY_QR_SIZE = 224;
+const DISPLAY_PIXEL_RATIO = 3;
+const EXPORT_QR_SIZE = 1024;
 
 type LinkQrCardProps = {
   shortUrl: string;
@@ -23,7 +24,10 @@ export function LinkQrCard({ shortUrl }: LinkQrCardProps) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    renderStyledLinkQrDataUrl(shortUrl, { width: DISPLAY_QR_SIZE })
+    renderStyledLinkQrDataUrl(shortUrl, {
+      width: DISPLAY_QR_SIZE,
+      pixelRatio: DISPLAY_PIXEL_RATIO,
+    })
       .then(setDataUrl)
       .catch(() => setDataUrl(null));
   }, [shortUrl]);
@@ -32,6 +36,7 @@ export function LinkQrCard({ shortUrl }: LinkQrCardProps) {
     try {
       const exportUrl = await renderStyledLinkQrDataUrl(shortUrl, {
         width: EXPORT_QR_SIZE,
+        pixelRatio: 1,
       });
       const link = document.createElement('a');
       link.href = exportUrl;
@@ -65,14 +70,15 @@ export function LinkQrCard({ shortUrl }: LinkQrCardProps) {
           </Tooltip>
         </div>
 
-        <div className="mt-4 flex min-h-0 flex-1 items-center justify-center rounded-lg bg-muted [background-image:linear-gradient(to_right,color-mix(in_oklab,var(--foreground)_10%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklab,var(--foreground)_10%,transparent)_1px,transparent_1px)] [background-size:20px_20px]">
+        <div className="mt-4 flex min-h-[240px] flex-1 items-center justify-center rounded-lg bg-muted p-2 [background-image:linear-gradient(to_right,color-mix(in_oklab,var(--foreground)_10%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklab,var(--foreground)_10%,transparent)_1px,transparent_1px)] [background-size:20px_20px]">
           {dataUrl ? (
             // biome-ignore lint/performance/noImgElement: dynamic data URL QR preview
             <img
               alt="Link QR code"
-              className="size-40 rounded-lg border border-border/60 bg-white p-2 shadow-sm"
+              className="aspect-square w-[min(100%,14rem)] rounded-lg border border-border/60 bg-white shadow-sm"
               height={DISPLAY_QR_SIZE}
               src={dataUrl}
+              style={{ imageRendering: 'auto' }}
               width={DISPLAY_QR_SIZE}
             />
           ) : null}

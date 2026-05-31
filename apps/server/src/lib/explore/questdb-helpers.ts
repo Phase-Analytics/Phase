@@ -1,4 +1,9 @@
 import {
+  assertExploreEventName,
+  assertQuestDbIdentifier,
+  escapeQuestDbString,
+} from '@/lib/questdb-sql';
+import {
   buildExploreEventsSubquery,
   executeQuestDBReadQuery,
 } from '@/lib/questdb';
@@ -6,16 +11,27 @@ import { EXPLORE_MAX_COHORT_DEVICES } from './constants';
 import { ExploreEngineError } from './errors';
 import type { ExploreDateRange } from './time-range';
 
-const IDENTIFIER_REGEX = /^[a-zA-Z0-9_-]+$/;
-
-function escapeSqlString(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/'/g, "''");
+function validateIdentifier(value: string, fieldName: string): void {
+  try {
+    assertQuestDbIdentifier(value, fieldName);
+  } catch (error) {
+    throw new ExploreEngineError(
+      error instanceof Error ? error.message : `Invalid ${fieldName}`
+    );
+  }
 }
 
-function validateIdentifier(value: string, fieldName: string): void {
-  if (!IDENTIFIER_REGEX.test(value)) {
-    throw new ExploreEngineError(`Invalid ${fieldName}`);
+function escapeSqlString(value: string): string {
+  return escapeQuestDbString(value);
+}
+
+export function escapeExploreEventName(eventName: string): string {
+  try {
+    assertExploreEventName(eventName);
+  } catch {
+    throw new ExploreEngineError('Invalid event name');
   }
+  return escapeQuestDbString(eventName);
 }
 
 function validateParamKey(key: string): void {
@@ -239,7 +255,6 @@ export async function getEventParamKeysSample(options: {
   eventName: string;
 }): Promise<string[]> {
   validateIdentifier(options.appId, 'appId');
-  validateIdentifier(options.eventName, 'eventName');
 
   const dateRange: ExploreDateRange = {
     startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
@@ -247,7 +262,7 @@ export async function getEventParamKeysSample(options: {
   };
 
   const base = buildBaseEventConditions(options.appId, dateRange, [
-    `name = '${escapeSqlString(options.eventName)}'`,
+    `name = '${escapeExploreEventName(options.eventName)}'`,
   ]);
 
   const subquery = buildExploreEventsSubquery({

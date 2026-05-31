@@ -147,13 +147,9 @@ function mergeBrowserItems(items: BreakdownItem[]): BreakdownItem[] {
     merged.set(bucket, (merged.get(bucket) ?? 0) + item.count);
   }
 
-  const order = ['safari', 'chrome', 'firefox', 'other'] as const;
-  return order
-    .filter((key) => (merged.get(key) ?? 0) > 0)
-    .map((key) => ({
-      key,
-      count: merged.get(key) ?? 0,
-    }));
+  return [...merged.entries()]
+    .map(([key, count]) => ({ key, count }))
+    .sort((a, b) => b.count - a.count);
 }
 
 function getBrowserLabel(key: string): string {

@@ -1,5 +1,10 @@
 import { decodeTime } from 'ulid';
 import {
+  assertExploreEventName,
+  assertQuestDbIdentifier,
+  escapeQuestDbString,
+} from './questdb-sql';
+import {
   QUESTDB_EVENT_READ_TABLES,
   QUESTDB_EVENT_WRITE_TABLE,
   QUESTDB_LEGACY_EVENT_TABLE,
@@ -81,18 +86,11 @@ export type QuestDBEventStorageDiagnostics = {
 };
 
 function escapeSqlString(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/'/g, "''");
+  return escapeQuestDbString(value);
 }
 
 function validateIdentifier(value: string, fieldName: string): void {
-  if (!IDENTIFIER_REGEX.test(value)) {
-    throw new Error(
-      `Invalid ${fieldName}: contains unexpected characters. Only alphanumeric, hyphens, and underscores are allowed.`
-    );
-  }
-  if (value.length > 128) {
-    throw new Error(`Invalid ${fieldName}: exceeds maximum length of 128`);
-  }
+  assertQuestDbIdentifier(value, fieldName);
 }
 
 function validateTableName(tableName: string): string {
@@ -516,6 +514,7 @@ export async function getEvents(
 
   if (options.eventName) {
     validateSymbol(options.eventName, 'eventName');
+    assertExploreEventName(options.eventName);
     conditions.push(`name = '${escapeSqlString(options.eventName)}'`);
   }
 

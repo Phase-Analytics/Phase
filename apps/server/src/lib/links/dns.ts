@@ -1,6 +1,7 @@
 import { promises as dns } from 'node:dns';
 import { eq } from 'drizzle-orm';
 import { db, linkDomains } from '@/db';
+import { safeHttpsGet } from '@/lib/safe-fetch';
 import { LINK_CNAME_TARGET } from './constants';
 
 const TRAILING_DOT_REGEX = /\.$/;
@@ -64,58 +65,18 @@ async function verifyCnameViaDoH(
   }
 }
 
-async function hostnameResolves(hostname: string): Promise<boolean> {
+async function verifyDomainHttpExternal(hostname: string): Promise<boolean> {
   const normalizedHost = normalizeHostname(hostname);
 
   try {
-    await dns.resolve4(normalizedHost);
-    return true;
-  } catch {
-    try {
-      await dns.resolve6(normalizedHost);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-}
-
-async function verifyDomainHttpExternal(hostname: string): Promise<boolean> {
-  try {
-    const response = await fetch(
-      `https://${normalizeHostname(hostname)}${DOMAIN_VERIFY_PATH}`,
+    const response = await safeHttpsGet(
+      `https://${normalizedHost}${DOMAIN_VERIFY_PATH}`,
       {
-        method: 'GET',
-        signal: AbortSignal.timeout(12_000),
-        redirect: 'follow',
+        allowedHostnames: [normalizedHost],
+        timeoutMs: 12_000,
+        maxRedirects: 3,
         headers: {
           Accept: '*/*',
-          'User-Agent': 'Phase-Domain-Verify/1',
-        },
-      }
-    );
-
-    return (
-      response.ok &&
-      response.headers.get(DOMAIN_VERIFY_HEADER)?.toLowerCase() === '1'
-    );
-  } catch {
-    return false;
-  }
-}
-
-async function verifyDomainHttpLocal(hostname: string): Promise<boolean> {
-  const port = Number(process.env.PORT ?? 3001);
-
-  try {
-    const response = await fetch(
-      `http://127.0.0.1:${port}${DOMAIN_VERIFY_PATH}`,
-      {
-        method: 'GET',
-        signal: AbortSignal.timeout(5000),
-        headers: {
-          Accept: '*/*',
-          Host: normalizeHostname(hostname),
           'User-Agent': 'Phase-Domain-Verify/1',
         },
       }
@@ -146,11 +107,6 @@ export async function verifyDomainCname(hostname: string): Promise<{
   }
 
   if (await verifyDomainHttpExternal(normalizedHost)) {
-    return { verified: true };
-  }
-
-  const resolves = await hostnameResolves(normalizedHost);
-  if (resolves && (await verifyDomainHttpLocal(normalizedHost))) {
     return { verified: true };
   }
 

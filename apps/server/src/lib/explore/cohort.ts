@@ -3,13 +3,10 @@ import { eq } from 'drizzle-orm';
 import { db, devices } from '@/db';
 import {
   buildEventPropertyCondition,
+  escapeExploreEventName,
   getDistinctDeviceIdsFromEvents,
 } from './questdb-helpers';
 import type { ExploreDateRange } from './time-range';
-
-function escapeEventName(eventName: string): string {
-  return eventName.replace(/'/g, "''");
-}
 
 export async function resolveEventCohortDeviceIds(
   appId: string,
@@ -28,7 +25,7 @@ export async function resolveEventCohortDeviceIds(
 
   for (const filter of eventFilters) {
     if (filter.type === 'event_performed') {
-      const eventCondition = `name = '${escapeEventName(filter.eventName)}'`;
+      const eventCondition = `name = '${escapeExploreEventName(filter.eventName)}'`;
 
       if (!filter.performed) {
         const performed = await getDistinctDeviceIdsFromEvents({
@@ -59,7 +56,7 @@ export async function resolveEventCohortDeviceIds(
 
     if (filter.type === 'event_property') {
       const conditions = [
-        `name = '${escapeEventName(filter.eventName)}'`,
+        `name = '${escapeExploreEventName(filter.eventName)}'`,
         buildEventPropertyCondition(filter.key, filter.operator, filter.value),
       ];
       const ids = await getDistinctDeviceIdsFromEvents({

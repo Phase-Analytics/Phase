@@ -32,14 +32,11 @@ import {
   eventCountTimeseriesForExplore,
   eventParamExtractSql,
   getDistinctDeviceIdsFromEvents,
+  escapeExploreEventName,
   runEventsAggregateQuery,
 } from './questdb-helpers';
 import { resolveExploreDateRange } from './time-range';
 import { validateExploreQuery } from './validate';
-
-function escapeSqlString(value: string): string {
-  return value.replace(/\\/g, "''");
-}
 
 function buildEventFilterConditions(
   _appId: string,
@@ -50,7 +47,7 @@ function buildEventFilterConditions(
   const conditions: string[] = [];
 
   if (eventName) {
-    conditions.push(`name = '${escapeSqlString(eventName)}'`);
+    conditions.push(`name = '${escapeExploreEventName(eventName)}'`);
   }
 
   for (const filter of filters) {
@@ -58,7 +55,7 @@ function buildEventFilterConditions(
       if (eventName && filter.eventName !== eventName) {
         continue;
       }
-      conditions.push(`name = '${escapeSqlString(filter.eventName)}'`);
+      conditions.push(`name = '${escapeExploreEventName(filter.eventName)}'`);
       conditions.push(
         buildEventPropertyCondition(filter.key, filter.operator, filter.value)
       );

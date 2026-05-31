@@ -1,3 +1,4 @@
+import { escapeQuestDbString } from '@/lib/questdb-sql';
 import { executeQuestDBReadQuery } from '@/lib/questdb';
 import { QUESTDB_LINK_CLICKS_TABLE } from './constants';
 
@@ -25,7 +26,7 @@ export function resolveLinkAnalyticsWindow(range: string): RangeWindow {
 }
 
 function escapeSqlString(value: string): string {
-  return value.replace(/'/g, "''");
+  return escapeQuestDbString(value);
 }
 
 function computePercentChange(current: number, previous: number): number {

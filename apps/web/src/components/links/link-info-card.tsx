@@ -1,14 +1,6 @@
 'use client';
 
-import {
-  AndroidIcon,
-  AppleIcon,
-  BrowserIcon,
-  Clock04Icon,
-  Link01Icon,
-  Link05Icon,
-  LinkSquare02Icon,
-} from '@hugeicons/core-free-icons';
+import { LinkSquare02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import type { LinkDetail } from '@phase/shared';
 import { ClientDate } from '@/components/client-date';
@@ -37,11 +29,11 @@ type LinkInfoCardProps = {
   domains: Array<{ id: string; hostname: string; status: string }>;
 };
 
-const DEVICE_ROWS = [
-  { key: 'deviceIosUrl' as const, icon: AppleIcon },
-  { key: 'deviceAndroidUrl' as const, icon: AndroidIcon },
-  { key: 'deviceOthersUrl' as const, icon: BrowserIcon },
-];
+const DEVICE_ROW_KEYS = [
+  'deviceIosUrl',
+  'deviceAndroidUrl',
+  'deviceOthersUrl',
+] as const;
 
 function InfoRow({
   label,
@@ -82,14 +74,8 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
         </h2>
 
         <InfoRow label="Short link">
-          <div className="flex items-center gap-2">
-            <p className="flex min-w-0 flex-1 items-center gap-1.5 font-medium text-sm">
-              <HugeiconsIcon
-                className="size-4 shrink-0 text-muted-foreground"
-                icon={Link05Icon}
-              />
-              <code className="break-all">{shortDisplay}</code>
-            </p>
+          <div className="inline-flex max-w-full items-center gap-2 font-medium text-sm">
+            <code className="break-all">{shortDisplay}</code>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -116,14 +102,8 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
         </InfoRow>
 
         <InfoRow label="Destination">
-          <p className="flex items-start gap-1.5 font-medium text-sm">
-            <HugeiconsIcon
-              className="mt-0.5 size-4 shrink-0 text-muted-foreground"
-              icon={Link01Icon}
-            />
-            <span className="break-all">
-              {formatUrlWithoutProtocol(link.destinationUrl)}
-            </span>
+          <p className="break-all font-medium text-sm">
+            {formatUrlWithoutProtocol(link.destinationUrl)}
           </p>
         </InfoRow>
 
@@ -132,15 +112,11 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
         </InfoRow>
 
         <InfoRow label="Expires">
-          <p className="flex items-center gap-1.5 font-medium text-sm">
-            <HugeiconsIcon
-              className="size-4 shrink-0 text-muted-foreground"
-              icon={Clock04Icon}
-            />
+          <p className="font-medium text-sm">
             {link.expiresAt ? (
               <ClientDate date={link.expiresAt} format="datetime-long" />
             ) : (
-              <span>No expiry</span>
+              'No expiry'
             )}
           </p>
         </InfoRow>
@@ -149,17 +125,13 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
           <p className="text-muted-foreground text-xs uppercase">UTM</p>
           <div className="mt-1">
             {hasLinkUtmValues(utm) ? (
-              <dl className="space-y-2">
+              <dl className="grid gap-2 sm:grid-cols-2">
                 {utmEntries.map((entry) => (
-                  <div key={entry.key}>
-                    <dt className="flex items-center gap-1.5 text-muted-foreground text-xs">
-                      <HugeiconsIcon
-                        className="size-3.5 shrink-0"
-                        icon={entry.icon}
-                      />
+                  <div className="space-y-0.5" key={entry.key}>
+                    <dt className="text-muted-foreground text-xs">
                       {entry.label}
                     </dt>
-                    <dd className="mt-0.5 break-all pl-5 font-medium text-sm">
+                    <dd className="break-all font-medium text-sm">
                       {entry.value}
                     </dd>
                   </div>
@@ -178,21 +150,15 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
           <div className="mt-1">
             {hasDeviceRoutingValues(deviceValues) ? (
               <ul className="space-y-2">
-                {DEVICE_ROWS.map((row) => {
-                  const value = deviceValues[row.key];
+                {DEVICE_ROW_KEYS.map((key) => {
+                  const value = deviceValues[key];
                   if (!value) {
                     return null;
                   }
 
                   return (
-                    <li className="flex items-start gap-2" key={row.key}>
-                      <HugeiconsIcon
-                        className="mt-0.5 size-4 shrink-0 text-muted-foreground"
-                        icon={row.icon}
-                      />
-                      <span className="break-all font-medium text-sm">
-                        {formatUrlWithoutProtocol(value)}
-                      </span>
+                    <li className="break-all font-medium text-sm" key={key}>
+                      {formatUrlWithoutProtocol(value)}
                     </li>
                   );
                 })}
