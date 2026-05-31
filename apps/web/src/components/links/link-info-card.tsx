@@ -17,11 +17,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-  formatUrlWithoutProtocol,
-  getLinkDisplayName,
-  getPrimaryLinkUrl,
-} from '@/lib/link-urls';
+import { formatUrlWithoutProtocol, getPrimaryLinkUrl } from '@/lib/link-urls';
 import { cn } from '@/lib/utils';
 
 type LinkInfoCardProps = {
@@ -104,7 +100,6 @@ export function LinkInfoCard({ link, domains, className }: LinkInfoCardProps) {
     link.domainIds,
     domains
   );
-  const displayName = getLinkDisplayName(link.name, shortDisplay);
   const utm = linkUtmFromDetail(link);
   const utmEntries = getLinkUtmDisplayEntries(utm);
   const deviceEntries = DEVICE_FIELDS.map((field) => ({
@@ -119,12 +114,6 @@ export function LinkInfoCard({ link, domains, className }: LinkInfoCardProps) {
         <h2 className="font-semibold text-muted-foreground text-sm uppercase">
           Link details
         </h2>
-
-        {link.name?.trim() ? (
-          <InfoRow label="Name">
-            <p className="font-medium text-sm">{displayName}</p>
-          </InfoRow>
-        ) : null}
 
         <div>
           <p className="text-muted-foreground text-xs uppercase">Short link</p>

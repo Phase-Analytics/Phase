@@ -173,6 +173,7 @@ export const LinkClickItemSchema = z.object({
   timestamp: z.string(),
   os: z.string(),
   browser: z.string(),
+  referrer: z.string(),
   countryCode: z.string().nullable(),
 });
 

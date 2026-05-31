@@ -1,4 +1,8 @@
-import { formatLinkBrowserFamilyLabel } from '@phase/shared';
+import {
+  formatLinkBrowserFamilyLabel,
+  getLinkOsLabel,
+  trimLinkReferrerDisplay,
+} from '@phase/shared';
 import { executeQuestDBReadQuery } from '@/lib/questdb';
 import { escapeQuestDbString } from '@/lib/questdb-sql';
 import { QUESTDB_LINK_CLICKS_TABLE } from './constants';
@@ -296,6 +300,7 @@ export async function getLinkClicks(options: {
       timestamp: string;
       os: string;
       browser: string;
+      referrer: string;
       country_code: string;
     }>(`
         SELECT
@@ -303,6 +308,7 @@ export async function getLinkClicks(options: {
           timestamp,
           os,
           browser,
+          referrer,
           country_code
         FROM ${QUESTDB_LINK_CLICKS_TABLE}
         WHERE ${where}
@@ -318,8 +324,9 @@ export async function getLinkClicks(options: {
     clicks: clickRows.map((row) => ({
       clickId: row.click_id,
       timestamp: new Date(row.timestamp).toISOString(),
-      os: normalizeLinkClickOs(row.os ?? ''),
+      os: getLinkOsLabel(row.os ?? ''),
       browser: normalizeLinkClickBrowser(row.browser ?? ''),
+      referrer: trimLinkReferrerDisplay(row.referrer ?? ''),
       countryCode: normalizeLinkClickCountry(row.country_code),
     })),
     pagination: {
@@ -329,13 +336,6 @@ export async function getLinkClicks(options: {
       totalPages,
     },
   };
-}
-
-function normalizeLinkClickOs(value: string): string {
-  if (!value || value === 'unknown') {
-    return 'Unknown';
-  }
-  return value;
 }
 
 function normalizeLinkClickBrowser(value: string): string {

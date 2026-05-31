@@ -1,21 +1,18 @@
 'use client';
 
+import { BrowserIcon, Link05Icon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  AndroidIcon,
-  AnonymousIcon,
-  AppleFinderIcon,
-  AppleIcon,
-  BrowserIcon,
-  CommandIcon,
-  Link05Icon,
-  WindowsOldIcon,
-} from '@hugeicons/core-free-icons';
-import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
-import { normalizeLinkBrowserFamily } from '@phase/shared';
+  getLinkOsLabel,
+  getLinkReferrerLabel,
+  normalizeLinkBrowserFamily,
+  normalizeReferrerKey,
+} from '@phase/shared';
 import Image from 'next/image';
 import type { ReactNode } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { getLinkOsIcon } from '@/lib/link-os-icon';
 
 type BreakdownItem = {
   key: string;
@@ -63,65 +60,6 @@ function BreakdownBarRow({
       </div>
     </div>
   );
-}
-
-function normalizeOsKey(key: string): string {
-  const lower = key.toLowerCase();
-  if (!key || lower === 'unknown') {
-    return 'unknown';
-  }
-  if (lower.includes('windows')) {
-    return 'windows';
-  }
-  if (lower === 'ios' || lower.includes('iphone') || lower.includes('ipad')) {
-    return 'ios';
-  }
-  if (lower.includes('android')) {
-    return 'android';
-  }
-  if (lower.includes('mac') || lower.includes('os x')) {
-    return 'macos';
-  }
-  if (lower.includes('linux')) {
-    return 'linux';
-  }
-  return lower;
-}
-
-function getOsLabel(key: string): string {
-  switch (normalizeOsKey(key)) {
-    case 'windows':
-      return 'Windows';
-    case 'macos':
-      return 'macOS';
-    case 'android':
-      return 'Android';
-    case 'ios':
-      return 'iOS';
-    case 'linux':
-      return 'Linux';
-    case 'unknown':
-      return 'Unknown';
-    default:
-      return key;
-  }
-}
-
-function getOsIcon(key: string): IconSvgElement {
-  switch (normalizeOsKey(key)) {
-    case 'windows':
-      return WindowsOldIcon;
-    case 'macos':
-      return AppleFinderIcon;
-    case 'android':
-      return AndroidIcon;
-    case 'ios':
-      return AppleIcon;
-    case 'linux':
-      return CommandIcon;
-    default:
-      return AnonymousIcon;
-  }
 }
 
 function normalizeBrowserKey(
@@ -194,20 +132,6 @@ function BrowserLabel({ browser }: { browser: string }) {
   );
 }
 
-function normalizeReferrerKey(key: string): string {
-  const trimmed = key.trim();
-  if (!trimmed) {
-    return 'direct';
-  }
-
-  const lower = trimmed.toLowerCase();
-  if (lower === 'direct' || lower === '(direct)' || lower === 'null') {
-    return 'direct';
-  }
-
-  return trimmed;
-}
-
 function mergeReferrerItems(items: BreakdownItem[]): BreakdownItem[] {
   const merged = new Map<string, number>();
 
@@ -219,14 +143,6 @@ function mergeReferrerItems(items: BreakdownItem[]): BreakdownItem[] {
   return [...merged.entries()]
     .map(([key, count]) => ({ key, count }))
     .sort((a, b) => b.count - a.count);
-}
-
-function getReferrerLabel(key: string): string {
-  if (normalizeReferrerKey(key) === 'direct') {
-    return 'Direct';
-  }
-
-  return key;
 }
 
 export function LinkAnalyticsBreakdownCard({
@@ -260,7 +176,7 @@ export function LinkAnalyticsBreakdownCard({
             <div className="space-y-3 pr-4">
               {variant === 'operatingSystems' &&
                 displayItems.map((item) => {
-                  const label = getOsLabel(item.key);
+                  const label = getLinkOsLabel(item.key);
                   const percentage = total ? (item.count / total) * 100 : 0;
 
                   return (
@@ -272,7 +188,7 @@ export function LinkAnalyticsBreakdownCard({
                         <>
                           <HugeiconsIcon
                             className="size-4 shrink-0 text-muted-foreground"
-                            icon={getOsIcon(item.key)}
+                            icon={getLinkOsIcon(item.key)}
                           />
                           <span className="truncate font-medium text-sm">
                             {label}
@@ -302,7 +218,7 @@ export function LinkAnalyticsBreakdownCard({
 
               {variant === 'referrers' &&
                 displayItems.map((item) => {
-                  const label = getReferrerLabel(item.key);
+                  const label = getLinkReferrerLabel(item.key);
                   const percentage = total ? (item.count / total) * 100 : 0;
 
                   return (

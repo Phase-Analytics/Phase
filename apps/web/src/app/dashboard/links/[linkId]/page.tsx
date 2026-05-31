@@ -47,12 +47,13 @@ export default function LinkDetailPage({
       <div className="flex flex-1 flex-col gap-6">
         <div className="flex items-center justify-between gap-2">
           <Button
-            className="w-fit font-normal"
+            className="font-normal"
             onClick={() => router.back()}
+            size="sm"
             type="button"
             variant="outline"
           >
-            <HugeiconsIcon icon={ArrowTurnBackwardIcon} />
+            <HugeiconsIcon className="size-4" icon={ArrowTurnBackwardIcon} />
             Back
           </Button>
           {link && appId ? (

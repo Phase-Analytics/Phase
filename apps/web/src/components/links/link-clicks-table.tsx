@@ -1,12 +1,10 @@
 'use client';
 
 import {
-  AndroidIcon,
-  AppleIcon,
-  BrowserIcon,
   Calendar03Icon,
   CursorPointer02Icon,
   Flag02Icon,
+  Link05Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import type { LinkClickItem } from '@phase/shared';
@@ -17,27 +15,11 @@ import { ClientDate } from '@/components/client-date';
 import { LinkBrowserIcon } from '@/components/links/link-browser-icon';
 import { Card, CardContent } from '@/components/ui/card';
 import { DataTableServer } from '@/components/ui/data-table-server';
+import { getLinkOsIcon } from '@/lib/link-os-icon';
 import { useLinkClicks } from '@/lib/queries/use-links';
 import { usePaginationStore } from '@/stores/pagination-store';
 
 const COUNTRY_CODE_REGEX = /^[A-Za-z]{2}$/;
-
-function getOsIcon(os: string | null | undefined) {
-  const normalized = (os ?? 'unknown').toLowerCase();
-  if (
-    normalized.includes('ios') ||
-    normalized.includes('iphone') ||
-    normalized.includes('ipad') ||
-    normalized === 'mac os' ||
-    normalized === 'macos'
-  ) {
-    return AppleIcon;
-  }
-  if (normalized.includes('android')) {
-    return AndroidIcon;
-  }
-  return BrowserIcon;
-}
 
 function getCountryLabel(countryCode: string) {
   return (
@@ -55,16 +37,14 @@ const columns: ColumnDef<LinkClickItem>[] = [
     cell: () => (
       <div
         className="flex max-w-xs items-center gap-2 lg:max-w-sm"
-        title="New Click"
+        title="Click"
       >
         <HugeiconsIcon
           className="shrink-0 text-muted-foreground"
           icon={CursorPointer02Icon}
           size={16}
         />
-        <span className="truncate font-medium text-primary text-sm">
-          New Click
-        </span>
+        <span className="truncate font-medium text-primary text-sm">Click</span>
       </div>
     ),
   },
@@ -79,7 +59,7 @@ const columns: ColumnDef<LinkClickItem>[] = [
         <div className="flex items-center gap-1.5">
           <HugeiconsIcon
             className="size-3.5 text-muted-foreground"
-            icon={getOsIcon(os)}
+            icon={getLinkOsIcon(os)}
           />
           <span className="text-sm">{os}</span>
         </div>
@@ -98,6 +78,28 @@ const columns: ColumnDef<LinkClickItem>[] = [
         <div className="flex items-center gap-1.5">
           <LinkBrowserIcon browser={browser} size={14} />
           <span className="text-sm">{browser}</span>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: 'referrer',
+    header: 'Referrer',
+    size: 180,
+    cell: ({ row }) => {
+      const referrer =
+        (row.getValue('referrer') as string | undefined) ?? 'Direct';
+
+      return (
+        <div
+          className="flex max-w-[12rem] items-center gap-1.5 lg:max-w-xs"
+          title={referrer}
+        >
+          <HugeiconsIcon
+            className="size-3.5 shrink-0 text-muted-foreground"
+            icon={Link05Icon}
+          />
+          <span className="truncate text-sm">{referrer}</span>
         </div>
       );
     },

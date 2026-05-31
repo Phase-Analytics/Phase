@@ -13,7 +13,7 @@ import {
 import { renderStyledLinkQrDataUrl } from '@/lib/link-qr-render';
 import { cn } from '@/lib/utils';
 
-const DISPLAY_QR_SIZE = 128;
+const DISPLAY_QR_SIZE = 256;
 const DISPLAY_PIXEL_RATIO = 3;
 const EXPORT_QR_SIZE = 1024;
 
@@ -72,12 +72,12 @@ export function LinkQrCard({ shortUrl, className }: LinkQrCardProps) {
           </Tooltip>
         </div>
 
-        <div className="mt-2 flex flex-1 items-center justify-center rounded-lg bg-muted p-1.5 [background-image:linear-gradient(to_right,color-mix(in_oklab,var(--foreground)_10%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklab,var(--foreground)_10%,transparent)_1px,transparent_1px)] [background-size:14px_14px]">
+        <div className="mt-2 flex flex-1 items-center justify-center rounded-lg bg-muted p-1 [background-image:linear-gradient(to_right,color-mix(in_oklab,var(--foreground)_6%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklab,var(--foreground)_6%,transparent)_1px,transparent_1px)] [background-size:28px_28px]">
           {dataUrl ? (
             // biome-ignore lint/performance/noImgElement: dynamic data URL QR preview
             <img
               alt="Link QR code"
-              className="aspect-square w-[min(100%,6.5rem)] rounded-md border border-border/60 bg-white shadow-sm"
+              className="aspect-square w-[min(100%,13rem)] rounded-md border border-border/60 bg-white shadow-sm"
               height={DISPLAY_QR_SIZE}
               src={dataUrl}
               style={{ imageRendering: 'auto' }}
