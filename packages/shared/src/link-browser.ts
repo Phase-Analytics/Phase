@@ -34,7 +34,20 @@ function hasChromiumUaSignals(ua: string): boolean {
     'edg/',
     'edgios/',
     'opr/',
+    'opera',
   ]);
+}
+
+function familyFromUaProductTokens(ua: string): LinkBrowserFamily | null {
+  if (includesAny(ua, ['fxios', 'firefox/'])) {
+    return 'firefox';
+  }
+
+  if (hasChromiumUaSignals(ua)) {
+    return 'chrome';
+  }
+
+  return null;
 }
 
 function familyFromEngine(
@@ -50,37 +63,47 @@ function familyFromEngine(
   }
 
   if (engine.includes('webkit')) {
-    return hasChromiumUaSignals(ua) ? 'chrome' : 'safari';
+    const fromTokens = familyFromUaProductTokens(ua);
+    if (fromTokens) {
+      return fromTokens;
+    }
+
+    if (
+      ua.includes('safari') &&
+      !includesAny(ua, ['chrome', 'chromium', 'crios', 'fxios'])
+    ) {
+      return 'safari';
+    }
   }
 
   return null;
 }
 
-function familyFromUa(ua: string): LinkBrowserFamily | null {
-  if (includesAny(ua, ['firefox/', 'fxios/', 'gecko/'])) {
+function familyFromBrowserName(browser: string): LinkBrowserFamily | null {
+  if (!browser || browser === 'unknown') {
+    return null;
+  }
+
+  if (browser.includes('firefox')) {
     return 'firefox';
   }
 
-  if (hasChromiumUaSignals(ua) || ua.includes('chromium')) {
+  if (
+    browser.includes('chrome') ||
+    browser.includes('chromium') ||
+    browser.includes('edg') ||
+    browser.includes('opera') ||
+    browser.includes('opr') ||
+    browser.includes('brave')
+  ) {
     return 'chrome';
   }
 
-  if (
-    ua.includes('safari') &&
-    !includesAny(ua, ['chrome', 'chromium', 'crios', 'fxios'])
-  ) {
+  if (browser.includes('safari')) {
     return 'safari';
   }
 
-  if (
-    includesAny(ua, ['iphone', 'ipad', 'mac os']) &&
-    !hasChromiumUaSignals(ua) &&
-    !includesAny(ua, ['firefox', 'fxios'])
-  ) {
-    return 'safari';
-  }
-
-  return null;
+  return 'other';
 }
 
 export function normalizeLinkBrowserFamily(
@@ -92,34 +115,19 @@ export function normalizeLinkBrowserFamily(
   const engine = (engineName ?? '').toLowerCase();
   const browser = browserName.trim().toLowerCase();
 
+  const fromUaTokens = familyFromUaProductTokens(ua);
+  if (fromUaTokens) {
+    return fromUaTokens;
+  }
+
   const fromEngine = familyFromEngine(engine, ua);
   if (fromEngine) {
     return fromEngine;
   }
 
-  const fromUa = familyFromUa(ua);
-  if (fromUa) {
-    return fromUa;
-  }
-
-  if (browser.includes('gecko')) {
-    return 'firefox';
-  }
-
-  if (browser.includes('webkit') && !hasChromiumUaSignals(ua)) {
-    return 'safari';
-  }
-
-  if (
-    browser.includes('blink') ||
-    browser.includes('chromium') ||
-    browser.includes('chrome')
-  ) {
-    return 'chrome';
-  }
-
-  if (browser && browser !== 'unknown') {
-    return 'other';
+  const fromBrowser = familyFromBrowserName(browser);
+  if (fromBrowser) {
+    return fromBrowser;
   }
 
   return 'unknown';

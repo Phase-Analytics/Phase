@@ -11,6 +11,7 @@ import { LinkAnalytics } from '@/components/links/link-analytics';
 import { LinkClicksTable } from '@/components/links/link-clicks-table';
 import { LinkInfoCard } from '@/components/links/link-info-card';
 import { LinkOgPreviewCard } from '@/components/links/link-og-preview-card';
+import { LinkQrCard } from '@/components/links/link-qr-card';
 import { RequireApp } from '@/components/require-app';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -81,11 +82,10 @@ export default function LinkDetailPage({
           <>
             <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
               <LinkInfoCard className="h-full" domains={domains} link={link} />
-              <LinkOgPreviewCard
-                className="h-full"
-                link={link}
-                shortUrl={primaryUrl.url}
-              />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <LinkOgPreviewCard className="h-full" link={link} />
+                <LinkQrCard className="h-full" shortUrl={primaryUrl.url} />
+              </div>
             </div>
 
             <LinkAnalytics appId={appId} linkId={linkId} />

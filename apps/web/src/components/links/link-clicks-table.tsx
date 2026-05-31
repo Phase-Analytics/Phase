@@ -14,6 +14,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { parseAsInteger, useQueryState } from 'nuqs';
 import 'flag-icons/css/flag-icons.min.css';
 import { ClientDate } from '@/components/client-date';
+import { LinkBrowserIcon } from '@/components/links/link-browser-icon';
 import { Card, CardContent } from '@/components/ui/card';
 import { DataTableServer } from '@/components/ui/data-table-server';
 import { useLinkClicks } from '@/lib/queries/use-links';
@@ -95,10 +96,7 @@ const columns: ColumnDef<LinkClickItem>[] = [
 
       return (
         <div className="flex items-center gap-1.5">
-          <HugeiconsIcon
-            className="size-3.5 text-muted-foreground"
-            icon={BrowserIcon}
-          />
+          <LinkBrowserIcon browser={browser} size={14} />
           <span className="text-sm">{browser}</span>
         </div>
       );
