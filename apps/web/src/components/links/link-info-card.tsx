@@ -153,11 +153,13 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
                   </p>
                 ) : null}
                 {link.ogImageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
+                  // biome-ignore lint/performance/noImgElement: external R2 preview URL
                   <img
                     alt="Link preview"
                     className="aspect-[1200/630] w-full max-w-sm rounded-md border object-cover"
+                    height={630}
                     src={link.ogImageUrl}
+                    width={1200}
                   />
                 ) : null}
               </div>

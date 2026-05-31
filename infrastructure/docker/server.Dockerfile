@@ -12,28 +12,17 @@ RUN bun install --frozen-lockfile --filter server
 COPY packages/shared/ ./packages/shared/
 COPY apps/server/ ./apps/server/
 
-WORKDIR /app/apps/server
-
-RUN bun build \
-    --compile \
-    --minify-whitespace \
-    --minify-syntax \
-    --target bun \
-    --outfile server \
-    src/index.ts
-
-FROM busybox:1.36-musl AS busybox
-
-FROM gcr.io/distroless/base AS runtime
-
+FROM oven/bun:1.3.3-slim AS runtime
 WORKDIR /app
 
-COPY --from=builder --chown=65532:65532 /app/apps/server/server .
-COPY --from=builder --chown=65532:65532 /app/apps/server/drizzle ./drizzle
-COPY --from=busybox --chown=65532:65532 /bin/busybox /bin/busybox
+ENV NODE_ENV=production
 
-USER 65532:65532
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages/shared ./packages/shared
+COPY --from=builder /app/apps/server ./apps/server
+
+WORKDIR /app/apps/server
 
 EXPOSE 3001
 
-CMD ["./server"]
+CMD ["bun", "run", "src/index.ts"]

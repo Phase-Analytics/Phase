@@ -38,6 +38,34 @@ const METRIC_OPTIONS = [
   { value: 'sessions_per_user', label: 'Sessions per device' },
 ];
 
+function getBreakdownSelectValue(
+  breakdown: ExploreQueryV1['breakdown']
+): string {
+  if (breakdown?.type === 'event_name') {
+    return 'event_name';
+  }
+  if (breakdown?.type === 'device_pair') {
+    return 'country_platform';
+  }
+  if (breakdown?.type === 'device') {
+    return breakdown.field;
+  }
+  return 'none';
+}
+
+function getFieldSelectValue(
+  metric: ExploreQueryV1['metric'],
+  fieldOptions: Array<{ value: string }>
+): string {
+  if (metric.field?.kind === 'session_duration') {
+    return 'session_duration';
+  }
+  if (metric.field?.kind === 'event_param') {
+    return `${metric.field.eventName}::${metric.field.paramKey}`;
+  }
+  return fieldOptions[0]?.value ?? '';
+}
+
 const BREAKDOWN_OPTIONS = [
   { value: 'none', label: 'No split' },
   { value: 'platform', label: 'Platform' },
@@ -115,21 +143,8 @@ export function ExploreQueryBuilder({
         query.grain !== 'sessions'),
   }));
 
-  const breakdownValue =
-    query.breakdown?.type === 'event_name'
-      ? 'event_name'
-      : query.breakdown?.type === 'device_pair'
-        ? 'country_platform'
-        : query.breakdown?.type === 'device'
-          ? query.breakdown.field
-          : 'none';
-
-  const fieldValue =
-    query.metric.field?.kind === 'session_duration'
-      ? 'session_duration'
-      : query.metric.field?.kind === 'event_param'
-        ? `${query.metric.field.eventName}::${query.metric.field.paramKey}`
-        : (fieldOptions[0]?.value ?? '');
+  const breakdownValue = getBreakdownSelectValue(query.breakdown);
+  const fieldValue = getFieldSelectValue(query.metric, fieldOptions);
 
   const showDayTrend =
     (query.grain === 'users' &&

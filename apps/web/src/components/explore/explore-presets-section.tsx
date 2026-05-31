@@ -47,6 +47,15 @@ type ExplorePresetsSectionProps = {
 
 type DialogMode = 'save' | 'rename' | 'duplicate';
 
+const PRESET_SKELETON_KEYS = [
+  'preset-skeleton-1',
+  'preset-skeleton-2',
+  'preset-skeleton-3',
+  'preset-skeleton-4',
+  'preset-skeleton-5',
+  'preset-skeleton-6',
+] as const;
+
 function uniqueDuplicateName(base: string, existing: string[]): string {
   const trimmed = base.trim();
   let candidate = `${trimmed} (copy)`;
@@ -175,15 +184,17 @@ export function ExplorePresetsSection({
       <div className="p-4">
         {isPending ? (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <Skeleton className="h-[72px] rounded-lg" key={index} />
+            {PRESET_SKELETON_KEYS.map((key) => (
+              <Skeleton className="h-[72px] rounded-lg" key={key} />
             ))}
           </div>
-        ) : presets.length === 0 ? (
+        ) : null}
+        {!isPending && presets.length === 0 ? (
           <p className="text-muted-foreground text-sm">
             No presets yet. Generate a query and save it.
           </p>
-        ) : (
+        ) : null}
+        {!isPending && presets.length > 0 ? (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {presets.map((preset) => (
               <div className="group relative" key={preset.id}>
@@ -243,7 +254,7 @@ export function ExplorePresetsSection({
               </div>
             ))}
           </div>
-        )}
+        ) : null}
       </div>
 
       <PresetNameDialog

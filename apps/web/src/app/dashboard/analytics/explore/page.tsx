@@ -22,6 +22,7 @@ import { normalizeExploreFiltersClient } from '@/components/explore/normalize-ex
 import { RequireApp } from '@/components/require-app';
 import { Card, CardContent } from '@/components/ui/card';
 import { toExploreTimeRange } from '@/lib/analytics-time-range';
+import { ignorePromiseRejection } from '@/lib/ignore-promise-rejection';
 import { useExploreRun } from '@/lib/queries/use-explore';
 
 export default function ExplorePage() {
@@ -75,14 +76,14 @@ export default function ExplorePage() {
   );
 
   const handleRun = useCallback(() => {
-    void executeRun(query);
+    executeRun(query).catch(ignorePromiseRejection);
   }, [executeRun, query]);
 
   useEffect(() => {
     if (!(hasRunRef.current && appId)) {
       return;
     }
-    void executeRun(queryRef.current);
+    executeRun(queryRef.current).catch(ignorePromiseRejection);
   }, [appId, executeRun]);
 
   const handleLoadPreset = useCallback(

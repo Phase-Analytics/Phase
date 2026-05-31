@@ -195,14 +195,16 @@ export async function eventCountTimeseriesForExplore(
   conditions: string[],
   deviceIds: string[] | null
 ): Promise<Array<{ date: string; value: number }>> {
-  const deviceConditions =
-    deviceIds === null
-      ? []
-      : deviceIds.length === 0
-        ? ['1 = 0']
-        : [
-            `device_id IN (${deviceIds.map((id) => `'${escapeSqlString(id)}'`).join(', ')})`,
-          ];
+  let deviceConditions: string[] = [];
+  if (deviceIds === null) {
+    deviceConditions = [];
+  } else if (deviceIds.length === 0) {
+    deviceConditions = ['1 = 0'];
+  } else {
+    deviceConditions = [
+      `device_id IN (${deviceIds.map((id) => `'${escapeSqlString(id)}'`).join(', ')})`,
+    ];
+  }
 
   const base = buildBaseEventConditions(appId, dateRange, [
     ...conditions,

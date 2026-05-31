@@ -1,12 +1,44 @@
+import { getR2Config } from '@/lib/r2';
 import type { CachedLinkConfig } from './cache';
 import { LINK_DEFAULT_HOST } from './constants';
 
+function stripControlChars(value: string): string {
+  let result = '';
+  for (const char of value) {
+    const code = char.charCodeAt(0);
+    if (code > 31 && code !== 127) {
+      result += char;
+    }
+  }
+  return result;
+}
+
 function escapeHtml(value: string): string {
-  return value
+  return stripControlChars(value)
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function isAllowedOgImageUrl(url: string): boolean {
+  const config = getR2Config();
+  if (!config) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') {
+      return false;
+    }
+
+    const allowedOrigin = new URL(config.publicBaseUrl).origin;
+    return parsed.origin === allowedOrigin;
+  } catch {
+    return false;
+  }
 }
 
 function resolveOgTitle(link: CachedLinkConfig): string {
@@ -34,7 +66,9 @@ export function buildLinkOgPreviewHtml(params: {
   const { link, pageUrl, destinationUrl } = params;
   const title = escapeHtml(resolveOgTitle(link));
   const description = resolveOgDescription(link);
-  const imageUrl = link.ogImageUrl?.trim() || null;
+  const rawImageUrl = link.ogImageUrl?.trim() || null;
+  const imageUrl =
+    rawImageUrl && isAllowedOgImageUrl(rawImageUrl) ? rawImageUrl : null;
 
   const metaTags = [
     `<meta property="og:type" content="website" />`,

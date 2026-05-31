@@ -34,6 +34,10 @@
     "ua-parser-js": "^2.0.10",
     "ulid": "^3.0.1"
   },
+  "optionalDependencies": {
+    "@img/sharp-linux-x64": "0.34.5",
+    "@img/sharp-linuxmusl-x64": "0.34.5"
+  },
   "devDependencies": {
     "@biomejs/biome": "2.2.5",
     "@types/bun": "latest",

@@ -6,12 +6,13 @@ import { LINK_OG_IMAGE } from '@phase/shared';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
 import { formatApiErrorMessage } from '@/lib/format-api-error';
+import { ignorePromiseRejection } from '@/lib/ignore-promise-rejection';
 import {
   useDeleteLinkOgImage,
   useUploadLinkOgImage,
 } from '@/lib/queries/use-links';
+import { cn } from '@/lib/utils';
 
 export type LinkOgValues = {
   title: string;
@@ -180,11 +181,13 @@ export function LinkOgFields({
         <p className="font-medium text-sm">Preview image</p>
         {previewUrl ? (
           <div className="space-y-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {/* biome-ignore lint/performance/noImgElement: user R2 preview URLs */}
             <img
               alt="Link preview"
               className="aspect-[1200/630] w-full max-w-md rounded-md border object-cover"
+              height={630}
               src={previewUrl}
+              width={1200}
             />
             <div className="flex flex-wrap gap-2">
               <Button
@@ -198,7 +201,9 @@ export function LinkOgFields({
               </Button>
               <Button
                 disabled={imageBusy}
-                onClick={() => void handleRemoveImage()}
+                onClick={() => {
+                  handleRemoveImage().catch(ignorePromiseRejection);
+                }}
                 size="sm"
                 type="button"
                 variant="ghost"
@@ -234,7 +239,7 @@ export function LinkOgFields({
         className="hidden"
         onChange={(event) => {
           const file = event.target.files?.[0] ?? null;
-          void handleFile(file);
+          handleFile(file).catch(ignorePromiseRejection);
           event.target.value = '';
         }}
         ref={inputRef}

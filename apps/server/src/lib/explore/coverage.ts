@@ -11,7 +11,7 @@ import {
 import { countEventsInRange } from './questdb-helpers';
 import type { ExploreDateRange } from './time-range';
 
-async function countAllSessionsInRange(
+function countAllSessionsInRange(
   appId: string,
   dateRange: ExploreDateRange
 ): Promise<number> {

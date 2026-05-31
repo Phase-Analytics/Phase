@@ -5,19 +5,25 @@ import { buildPropertySearchFilters } from '@/lib/property-search';
 import { EXPLORE_MAX_BREAKDOWN_ROWS } from './constants';
 import type { ExploreDateRange } from './time-range';
 
+function deviceColumn(field: 'platform' | 'country' | 'city' | 'locale') {
+  if (field === 'platform') {
+    return devices.platform;
+  }
+  if (field === 'country') {
+    return devices.country;
+  }
+  if (field === 'city') {
+    return devices.city;
+  }
+  return devices.locale;
+}
+
 function deviceFiltersFromExplore(filters: ExploreFilter[]): SQL[] {
   const sqlFilters: SQL[] = [];
 
   for (const filter of filters) {
     if (filter.type === 'device') {
-      const column =
-        filter.field === 'platform'
-          ? devices.platform
-          : filter.field === 'country'
-            ? devices.country
-            : filter.field === 'city'
-              ? devices.city
-              : devices.locale;
+      const column = deviceColumn(filter.field);
 
       if (filter.operator === 'eq') {
         sqlFilters.push(eq(column, filter.value));
@@ -94,14 +100,7 @@ export async function breakdownDevicesForExplore(
     return [];
   }
 
-  const column =
-    field === 'platform'
-      ? devices.platform
-      : field === 'country'
-        ? devices.country
-        : field === 'city'
-          ? devices.city
-          : devices.locale;
+  const column = deviceColumn(field);
 
   const rows = await db
     .select({
@@ -285,16 +284,6 @@ export async function sessionsPerUserTimeseriesForExplore(
     date: row.date,
     value: Number(row.value),
   }));
-}
-
-function deviceColumn(field: 'platform' | 'country' | 'city' | 'locale') {
-  return field === 'platform'
-    ? devices.platform
-    : field === 'country'
-      ? devices.country
-      : field === 'city'
-        ? devices.city
-        : devices.locale;
 }
 
 export async function breakdownDevicesPairForExplore(

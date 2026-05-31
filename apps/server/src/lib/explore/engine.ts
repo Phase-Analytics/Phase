@@ -415,14 +415,12 @@ export async function runExploreQuery(
       throw new ExploreEngineError('Unsupported grain');
   }
 
-  const rowCount =
-    result.kind === 'breakdown'
-      ? result.rows.length
-      : result.kind === 'timeseries'
-        ? result.points.length
-        : result.kind === 'percentiles'
-          ? result.rows.length
-          : 1;
+  let rowCount = 1;
+  if (result.kind === 'breakdown' || result.kind === 'percentiles') {
+    rowCount = result.rows.length;
+  } else if (result.kind === 'timeseries') {
+    rowCount = result.points.length;
+  }
 
   const coverage = await buildExploreCoverage(
     appId,

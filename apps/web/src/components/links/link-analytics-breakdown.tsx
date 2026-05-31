@@ -238,12 +238,12 @@ export function LinkAnalyticsBreakdownCard({
   variant: 'operatingSystems' | 'browsers' | 'referrers';
   items: BreakdownItem[];
 }) {
-  const displayItems =
-    variant === 'browsers'
-      ? mergeBrowserItems(items)
-      : variant === 'referrers'
-        ? mergeReferrerItems(items)
-        : items;
+  let displayItems = items;
+  if (variant === 'browsers') {
+    displayItems = mergeBrowserItems(items);
+  } else if (variant === 'referrers') {
+    displayItems = mergeReferrerItems(items);
+  }
 
   const total = displayItems.reduce((sum, item) => sum + item.count, 0);
 

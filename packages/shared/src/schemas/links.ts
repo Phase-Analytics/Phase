@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 const LINK_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,62}[a-z0-9])?$/;
+const HTTP_PREFIX_RE = /^https?:\/\//i;
 
 export const LinkSlugSchema = z
   .string()
@@ -18,7 +19,7 @@ export const LinkUrlSchema = z
     if (!value) {
       return value;
     }
-    if (/^https?:\/\//i.test(value)) {
+    if (HTTP_PREFIX_RE.test(value)) {
       return value;
     }
     return `https://${value}`;
@@ -32,7 +33,7 @@ export const LinkUrlNullableSchema = z
     if (!value) {
       return value;
     }
-    if (/^https?:\/\//i.test(value)) {
+    if (HTTP_PREFIX_RE.test(value)) {
       return value;
     }
     return `https://${value}`;

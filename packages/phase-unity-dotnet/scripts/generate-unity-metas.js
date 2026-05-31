@@ -8,6 +8,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const packageRoot = path.resolve(__dirname, '../../phase-unity');
+const TRAILING_SLASH_RE = /\/$/;
 
 function guidFor(relativePath) {
   return crypto
@@ -140,7 +141,7 @@ function walk(dir, relative = '') {
 function writeMeta(relativePath, content) {
   const metaPath = path.join(
     packageRoot,
-    `${relativePath.replace(/\/$/, '')}.meta`
+    `${relativePath.replace(TRAILING_SLASH_RE, '')}.meta`
   );
   fs.mkdirSync(path.dirname(metaPath), { recursive: true });
   fs.writeFileSync(metaPath, content, 'utf8');

@@ -1,4 +1,6 @@
 const LINK_DEFAULT_HOST = 'phase.sh';
+const HTTP_PREFIX_RE = /^https?:\/\//i;
+const TRAILING_SLASH_RE = /\/$/;
 
 export function buildDefaultShortUrl(slug: string): string {
   return `https://${LINK_DEFAULT_HOST}/l/${slug}`;
@@ -9,7 +11,7 @@ export function buildCustomShortUrl(hostname: string, slug: string): string {
 }
 
 export function formatUrlWithoutProtocol(url: string): string {
-  return url.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+  return url.replace(HTTP_PREFIX_RE, '').replace(TRAILING_SLASH_RE, '');
 }
 
 export function getPrimaryLinkUrl(

@@ -52,14 +52,17 @@ function isInLogoClearZone(
   );
 }
 
-function drawRoundRectCorners(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radii: { tl: number; tr: number; br: number; bl: number }
-) {
+type RoundRectCornersOptions = {
+  ctx: CanvasRenderingContext2D;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  radii: { tl: number; tr: number; br: number; bl: number };
+};
+
+function drawRoundRectCorners(options: RoundRectCornersOptions) {
+  const { ctx, x, y, width, height, radii } = options;
   const maxR = Math.min(width, height) / 2;
   const tl = Math.min(radii.tl, maxR);
   const tr = Math.min(radii.tr, maxR);
@@ -80,14 +83,17 @@ function drawRoundRectCorners(
   ctx.fill();
 }
 
-function drawLiquidModule(
-  ctx: CanvasRenderingContext2D,
-  modules: QRCodeType['modules'],
-  row: number,
-  col: number,
-  cellSize: number,
-  margin: number
-) {
+type LiquidModuleOptions = {
+  ctx: CanvasRenderingContext2D;
+  modules: QRCodeType['modules'];
+  row: number;
+  col: number;
+  cellSize: number;
+  margin: number;
+};
+
+function drawLiquidModule(options: LiquidModuleOptions) {
+  const { ctx, modules, row, col, cellSize, margin } = options;
   const neighbors: Neighbors = {
     top: isDark(modules, row - 1, col),
     bottom: isDark(modules, row + 1, col),
@@ -99,11 +105,18 @@ function drawLiquidModule(
   const x = (col + margin) * cellSize;
   const y = (row + margin) * cellSize;
 
-  drawRoundRectCorners(ctx, x, y, cellSize, cellSize, {
-    tl: neighbors.top || neighbors.left ? 0 : radius,
-    tr: neighbors.top || neighbors.right ? 0 : radius,
-    br: neighbors.bottom || neighbors.right ? 0 : radius,
-    bl: neighbors.bottom || neighbors.left ? 0 : radius,
+  drawRoundRectCorners({
+    ctx,
+    x,
+    y,
+    width: cellSize,
+    height: cellSize,
+    radii: {
+      tl: neighbors.top || neighbors.left ? 0 : radius,
+      tr: neighbors.top || neighbors.right ? 0 : radius,
+      br: neighbors.bottom || neighbors.right ? 0 : radius,
+      bl: neighbors.bottom || neighbors.left ? 0 : radius,
+    },
   });
 }
 
@@ -143,7 +156,14 @@ export async function renderStyledLinkQrDataUrl(
         continue;
       }
 
-      drawLiquidModule(ctx, modules, row, col, cellSize, MARGIN_MODULES);
+      drawLiquidModule({
+        ctx,
+        modules,
+        row,
+        col,
+        cellSize,
+        margin: MARGIN_MODULES,
+      });
     }
   }
 

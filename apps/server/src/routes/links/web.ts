@@ -6,6 +6,7 @@ import {
   ErrorResponseSchema,
   formatZodError,
   HttpStatus,
+  LINK_OG_IMAGE,
   LinkAnalyticsResponseSchema,
   LinkDetailSchema,
   LinkDomainSchema,
@@ -830,6 +831,14 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         return {
           code: ErrorCode.VALIDATION_ERROR,
           detail: 'Missing image file',
+        };
+      }
+
+      if (file.size > LINK_OG_IMAGE.maxUploadBytes) {
+        set.status = HttpStatus.BAD_REQUEST;
+        return {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: `Image must be ${Math.round(LINK_OG_IMAGE.maxUploadBytes / (1024 * 1024))}MB or smaller`,
         };
       }
 

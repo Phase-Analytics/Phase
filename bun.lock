@@ -42,6 +42,10 @@
         "typescript": "^5",
         "ultracite": "5.6.1",
       },
+      "optionalDependencies": {
+        "@img/sharp-linux-x64": "0.34.5",
+        "@img/sharp-linuxmusl-x64": "0.34.5",
+      },
     },
     "apps/web": {
       "name": "web",

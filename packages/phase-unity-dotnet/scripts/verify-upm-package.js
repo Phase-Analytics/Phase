@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const packageRoot = path.resolve(__dirname, '../../phase-unity');
+const FILE_SCOPED_NAMESPACE_RE = /^namespace .+;$/;
 
 const forbiddenRootFiles = [
   'Phase.Analytics.csproj',
@@ -104,7 +105,7 @@ function scanCs(dir) {
       continue;
     }
     const firstLine = fs.readFileSync(full, 'utf8').split('\n')[0].trim();
-    if (/^namespace .+;$/.test(firstLine)) {
+    if (FILE_SCOPED_NAMESPACE_RE.test(firstLine)) {
       fileScoped.push(path.relative(packageRoot, full));
     }
   }

@@ -255,13 +255,13 @@ export function LinkFormFields({
 
       <div className="space-y-4 rounded-md border p-4">
         <div className="space-y-2">
-          <label className="flex items-center gap-1.5 font-medium text-sm">
+          <p className="flex items-center gap-1.5 font-medium text-sm">
             <HugeiconsIcon
               className="size-4 shrink-0 text-muted-foreground"
               icon={Clock04Icon}
             />
             Expires
-          </label>
+          </p>
           <DatePicker
             onChange={(expiresAt) => patch({ expiresAt })}
             placeholder="No expiry"
