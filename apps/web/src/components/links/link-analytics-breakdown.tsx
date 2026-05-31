@@ -12,8 +12,10 @@ import {
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
 import Image from 'next/image';
+import type { ReactNode } from 'react';
 import 'flag-icons/css/flag-icons.min.css';
 import { Card, CardContent } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const COUNTRY_CODE_REGEX = /^[A-Za-z]{2}$/;
 
@@ -21,6 +23,47 @@ type BreakdownItem = {
   key: string;
   count: number;
 };
+
+function BreakdownBarRow({
+  label,
+  count,
+  total,
+  ariaLabel,
+}: {
+  label: ReactNode;
+  count: number;
+  total: number;
+  ariaLabel: string;
+}) {
+  const percentage = total ? (count / total) * 100 : 0;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1.5">{label}</div>
+        <div className="flex shrink-0 items-baseline gap-2">
+          <span className="font-semibold text-sm">{count.toLocaleString()}</span>
+          <span className="text-muted-foreground text-xs">
+            ({percentage.toFixed(1)}%)
+          </span>
+        </div>
+      </div>
+      <div
+        aria-label={ariaLabel}
+        aria-valuemax={100}
+        aria-valuemin={0}
+        aria-valuenow={percentage}
+        className="h-2 w-full overflow-hidden rounded-full bg-secondary"
+        role="progressbar"
+      >
+        <div
+          className="h-full bg-primary transition-all"
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
 function getCountryLabel(countryCode: string) {
   if (!(countryCode && COUNTRY_CODE_REGEX.test(countryCode))) {
@@ -139,24 +182,32 @@ function getBrowserLabel(key: string): string {
   }
 }
 
-function BrowserIconMark({ browser }: { browser: string }) {
+function BrowserLabel({ browser }: { browser: string }) {
   if (browser === 'other') {
     return (
-      <HugeiconsIcon
-        className="size-4 text-muted-foreground"
-        icon={BrowserIcon}
-      />
+      <>
+        <HugeiconsIcon
+          className="size-4 shrink-0 text-muted-foreground"
+          icon={BrowserIcon}
+        />
+        <span className="truncate font-medium text-sm">Others</span>
+      </>
     );
   }
 
   return (
-    <Image
-      alt=""
-      className="size-4 shrink-0"
-      height={16}
-      src={`/svg/browsers/${browser}.svg`}
-      width={16}
-    />
+    <>
+      <Image
+        alt=""
+        className="size-4 shrink-0"
+        height={16}
+        src={`/svg/browsers/${browser}.svg`}
+        width={16}
+      />
+      <span className="truncate font-medium text-sm">
+        {getBrowserLabel(browser)}
+      </span>
+    </>
   );
 }
 
@@ -195,60 +246,6 @@ function getReferrerLabel(key: string): string {
   return key;
 }
 
-function CountryRow({
-  countryCode,
-  count,
-}: {
-  countryCode: string;
-  count: number;
-}) {
-  const isValid =
-    countryCode.length === 2 && COUNTRY_CODE_REGEX.test(countryCode);
-
-  return (
-    <li className="flex items-center justify-between gap-2 text-sm">
-      <div className="flex min-w-0 items-center gap-1.5">
-        {isValid ? (
-          <span
-            className={`fi fi-${countryCode.toLowerCase()} rounded-xs text-[14px]`}
-            title={getCountryLabel(countryCode)}
-          />
-        ) : (
-          <HugeiconsIcon
-            className="size-3.5 shrink-0 text-muted-foreground"
-            icon={Flag02Icon}
-          />
-        )}
-        <span className="truncate">{getCountryLabel(countryCode)}</span>
-      </div>
-      <span className="shrink-0 font-medium tabular-nums">{count}</span>
-    </li>
-  );
-}
-
-function IconRow({
-  icon,
-  label,
-  count,
-}: {
-  icon: IconSvgElement;
-  label: string;
-  count: number;
-}) {
-  return (
-    <li className="flex items-center justify-between gap-2 text-sm">
-      <div className="flex min-w-0 items-center gap-2">
-        <HugeiconsIcon
-          className="size-4 shrink-0 text-muted-foreground"
-          icon={icon}
-        />
-        <span className="truncate">{label}</span>
-      </div>
-      <span className="shrink-0 font-medium tabular-nums">{count}</span>
-    </li>
-  );
-}
-
 export function LinkAnalyticsBreakdownCard({
   title,
   variant,
@@ -265,6 +262,8 @@ export function LinkAnalyticsBreakdownCard({
         ? mergeReferrerItems(items)
         : items;
 
+  const total = displayItems.reduce((sum, item) => sum + item.count, 0);
+
   return (
     <Card className="py-0">
       <CardContent className="space-y-3 p-4">
@@ -274,54 +273,107 @@ export function LinkAnalyticsBreakdownCard({
         {displayItems.length === 0 ? (
           <p className="text-muted-foreground text-sm">No data yet</p>
         ) : (
-          <ul className="space-y-2">
-            {variant === 'countries' &&
-              displayItems.map((item) => (
-                <CountryRow
-                  count={item.count}
-                  countryCode={item.key}
-                  key={`country-${item.key}`}
-                />
-              ))}
-            {variant === 'operatingSystems' &&
-              displayItems.map((item) => (
-                <IconRow
-                  count={item.count}
-                  icon={getOsIcon(item.key)}
-                  key={`os-${item.key}`}
-                  label={getOsLabel(item.key)}
-                />
-              ))}
-            {variant === 'browsers' &&
-              displayItems.map((item) => (
-                <li
-                  className="flex items-center justify-between gap-2 text-sm"
-                  key={`browser-${item.key}`}
-                >
-                  <div className="flex min-w-0 items-center gap-2">
-                    <BrowserIconMark browser={item.key} />
-                    <span className="truncate">
-                      {getBrowserLabel(item.key)}
-                    </span>
-                  </div>
-                  <span className="shrink-0 font-medium tabular-nums">
-                    {item.count}
-                  </span>
-                </li>
-              ))}
-            {variant === 'referrers' &&
-              displayItems.map((item) => (
-                <li
-                  className="flex items-center justify-between gap-2 text-sm"
-                  key={`referrer-${item.key}`}
-                >
-                  <span className="truncate">{getReferrerLabel(item.key)}</span>
-                  <span className="shrink-0 font-medium tabular-nums">
-                    {item.count}
-                  </span>
-                </li>
-              ))}
-          </ul>
+          <ScrollArea className="h-[220px]">
+            <div className="space-y-3 pr-4">
+              {variant === 'countries' &&
+                displayItems.map((item) => {
+                  const isValid =
+                    item.key.length === 2 &&
+                    COUNTRY_CODE_REGEX.test(item.key);
+                  const label = getCountryLabel(item.key);
+                  const percentage = total ? (item.count / total) * 100 : 0;
+
+                  return (
+                    <BreakdownBarRow
+                      ariaLabel={`${label}: ${percentage.toFixed(1)}% of clicks`}
+                      count={item.count}
+                      key={`country-${item.key}`}
+                      label={
+                        <>
+                          {isValid ? (
+                            <span
+                              className={`fi fi-${item.key.toLowerCase()} rounded-xs text-[14px]`}
+                              title={label}
+                            />
+                          ) : (
+                            <HugeiconsIcon
+                              className="size-3.5 shrink-0 text-muted-foreground"
+                              icon={Flag02Icon}
+                            />
+                          )}
+                          <span className="truncate font-medium text-sm">
+                            {label}
+                          </span>
+                        </>
+                      }
+                      total={total}
+                    />
+                  );
+                })}
+
+              {variant === 'operatingSystems' &&
+                displayItems.map((item) => {
+                  const label = getOsLabel(item.key);
+                  const percentage = total ? (item.count / total) * 100 : 0;
+
+                  return (
+                    <BreakdownBarRow
+                      ariaLabel={`${label}: ${percentage.toFixed(1)}% of clicks`}
+                      count={item.count}
+                      key={`os-${item.key}`}
+                      label={
+                        <>
+                          <HugeiconsIcon
+                            className="size-4 shrink-0 text-muted-foreground"
+                            icon={getOsIcon(item.key)}
+                          />
+                          <span className="truncate font-medium text-sm">
+                            {label}
+                          </span>
+                        </>
+                      }
+                      total={total}
+                    />
+                  );
+                })}
+
+              {variant === 'browsers' &&
+                displayItems.map((item) => {
+                  const label = getBrowserLabel(item.key);
+                  const percentage = total ? (item.count / total) * 100 : 0;
+
+                  return (
+                    <BreakdownBarRow
+                      ariaLabel={`${label}: ${percentage.toFixed(1)}% of clicks`}
+                      count={item.count}
+                      key={`browser-${item.key}`}
+                      label={<BrowserLabel browser={item.key} />}
+                      total={total}
+                    />
+                  );
+                })}
+
+              {variant === 'referrers' &&
+                displayItems.map((item) => {
+                  const label = getReferrerLabel(item.key);
+                  const percentage = total ? (item.count / total) * 100 : 0;
+
+                  return (
+                    <BreakdownBarRow
+                      ariaLabel={`${label}: ${percentage.toFixed(1)}% of clicks`}
+                      count={item.count}
+                      key={`referrer-${item.key}`}
+                      label={
+                        <span className="truncate font-medium text-sm">
+                          {label}
+                        </span>
+                      }
+                      total={total}
+                    />
+                  );
+                })}
+            </div>
+          </ScrollArea>
         )}
       </CardContent>
     </Card>

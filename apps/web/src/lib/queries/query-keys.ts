@@ -102,8 +102,8 @@ export const queryKeys = {
       [...queryKeys.links.all, 'detail', appId, linkId] as const,
     slugAvailable: (slug: string) =>
       [...queryKeys.links.all, 'slug-available', slug] as const,
-    analytics: (appId: string, linkId: string, range: string) =>
-      [...queryKeys.links.all, 'analytics', appId, linkId, range] as const,
+    analytics: (appId: string, linkId: string) =>
+      [...queryKeys.links.all, 'analytics', appId, linkId] as const,
     domains: (appId: string) =>
       [...queryKeys.links.all, 'domains', appId] as const,
   },

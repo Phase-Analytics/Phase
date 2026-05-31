@@ -793,18 +793,15 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         return { code: ErrorCode.NOT_FOUND, detail: 'Link not found' };
       }
 
-      const range = query.range ?? '7d';
       return getLinkAnalytics({
         appId: query.appId,
         linkId: params.linkId,
-        range,
       });
     },
     {
       params: t.Object({ linkId: t.String() }),
       query: t.Object({
         appId: t.String(),
-        range: t.Optional(t.String()),
       }),
       response: {
         200: LinkAnalyticsResponseSchema,

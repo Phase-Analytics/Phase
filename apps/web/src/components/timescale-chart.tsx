@@ -47,9 +47,10 @@ type TimescaleChartProps = {
   description: string;
   data: Array<{ date: string; value: number }>;
   isPending: boolean;
-  timeRange: string;
-  timeRangeOptions: TimeRangeOption[];
-  onTimeRangeChange: (value: string) => void;
+  showTimeRange?: boolean;
+  timeRange?: string;
+  timeRangeOptions?: TimeRangeOption[];
+  onTimeRangeChange?: (value: string) => void;
   metric?: string;
   metricOptions?: MetricOption[];
   onMetricChange?: (value: string) => void;
@@ -65,8 +66,9 @@ export function TimescaleChart({
   description,
   data,
   isPending,
-  timeRange,
-  timeRangeOptions,
+  showTimeRange = true,
+  timeRange = '',
+  timeRangeOptions = [],
   onTimeRangeChange,
   metric,
   metricOptions,
@@ -91,6 +93,34 @@ export function TimescaleChart({
 
   const currentOption = timeRangeOptions.find((opt) => opt.value === timeRange);
   const currentLabel = currentOption?.label || timeRangeOptions[0]?.label;
+
+  const timeRangeControl =
+    showTimeRange && onTimeRangeChange ? (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="sm" variant="outline">
+            <HugeiconsIcon icon={Calendar03Icon} />
+            {currentLabel}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {timeRangeOptions.map((option) => (
+            <DropdownMenuItem
+              key={option.value}
+              onClick={() => onTimeRangeChange(option.value)}
+            >
+              <HugeiconsIcon
+                className={
+                  timeRange === option.value ? 'opacity-100' : 'opacity-0'
+                }
+                icon={CheckmarkSquare01Icon}
+              />
+              {option.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    ) : null;
 
   const defaultFormatter = (value: number) => value;
 
@@ -121,32 +151,7 @@ export function TimescaleChart({
                   ))}
                 </TabsList>
               </Tabs>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button size="sm" variant="outline">
-                    <HugeiconsIcon icon={Calendar03Icon} />
-                    {currentLabel}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {timeRangeOptions.map((option) => (
-                    <DropdownMenuItem
-                      key={option.value}
-                      onClick={() => onTimeRangeChange(option.value)}
-                    >
-                      <HugeiconsIcon
-                        className={
-                          timeRange === option.value
-                            ? 'opacity-100'
-                            : 'opacity-0'
-                        }
-                        icon={CheckmarkSquare01Icon}
-                      />
-                      {option.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {timeRangeControl}
             </div>
             <CardDescription>{description}</CardDescription>
           </div>
@@ -156,30 +161,7 @@ export function TimescaleChart({
               <CardTitle>{title}</CardTitle>
               <CardDescription className="pt-1">{description}</CardDescription>
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="outline">
-                  <HugeiconsIcon icon={Calendar03Icon} />
-                  {currentLabel}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {timeRangeOptions.map((option) => (
-                  <DropdownMenuItem
-                    key={option.value}
-                    onClick={() => onTimeRangeChange(option.value)}
-                  >
-                    <HugeiconsIcon
-                      className={
-                        timeRange === option.value ? 'opacity-100' : 'opacity-0'
-                      }
-                      icon={CheckmarkSquare01Icon}
-                    />
-                    {option.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {timeRangeControl}
           </div>
         )}
       </CardHeader>
