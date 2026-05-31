@@ -1,6 +1,4 @@
-export function normalizeReferrer(
-  referrer: string | null | undefined
-): string {
+export function normalizeReferrer(referrer: string | null | undefined): string {
   const trimmed = referrer?.trim();
   if (!trimmed) {
     return 'direct';

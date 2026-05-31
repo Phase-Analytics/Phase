@@ -74,7 +74,7 @@ export function UsersDistributionCardSkeleton() {
               className="text-muted-foreground text-xs uppercase"
               value="city"
             >
-              <span>Cities</span>
+              <span>Regions</span>
             </TabsTrigger>
             <TabsTrigger
               className="text-muted-foreground text-xs uppercase"

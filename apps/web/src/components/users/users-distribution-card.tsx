@@ -91,7 +91,7 @@ export function UsersDistributionCard() {
       case 'country':
         return 'User distribution by country';
       case 'city':
-        return 'User distribution by city';
+        return 'User distribution by region';
       default:
         return 'User distribution';
     }
@@ -117,7 +117,7 @@ export function UsersDistributionCard() {
               className="text-muted-foreground text-xs uppercase"
               value="city"
             >
-              <span>Cities</span>
+              <span>Regions</span>
             </TabsTrigger>
             <TabsTrigger
               className="text-muted-foreground text-xs uppercase"
@@ -257,7 +257,7 @@ export function UsersDistributionCard() {
                   icon={Flag02Icon}
                 />
                 <p className="text-center font-medium text-muted-foreground text-sm">
-                  No city data available
+                  No region data available
                 </p>
               </div>
             )}

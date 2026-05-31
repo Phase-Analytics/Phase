@@ -10,6 +10,7 @@ import type { LinkDetail } from '@phase/shared';
 import { hasDeviceRoutingValues } from '@/components/links/link-device-routing-fields';
 import { LinkStatusBadge } from '@/components/links/link-status-badge';
 import {
+  getLinkUtmDisplayEntries,
   hasLinkUtmValues,
   linkUtmFromDetail,
 } from '@/components/links/link-utm-fields';
@@ -51,13 +52,7 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
     deviceOthersUrl: link.deviceOthersUrl ?? '',
   };
 
-  const utmEntries = [
-    { label: 'utm_source', value: utm.utmSource },
-    { label: 'utm_medium', value: utm.utmMedium },
-    { label: 'utm_campaign', value: utm.utmCampaign },
-    { label: 'utm_term', value: utm.utmTerm },
-    { label: 'utm_content', value: utm.utmContent },
-  ].filter((entry) => entry.value);
+  const utmEntries = getLinkUtmDisplayEntries(utm);
 
   return (
     <Card className="py-0">
@@ -113,8 +108,12 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
           {hasLinkUtmValues(utm) ? (
             <dl className="grid gap-2 sm:grid-cols-2">
               {utmEntries.map((entry) => (
-                <div className="space-y-0.5" key={entry.label}>
-                  <dt className="text-muted-foreground text-xs">
+                <div className="space-y-0.5" key={entry.key}>
+                  <dt className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                    <HugeiconsIcon
+                      className="size-3.5 shrink-0"
+                      icon={entry.icon}
+                    />
                     {entry.label}
                   </dt>
                   <dd className="break-all text-sm">{entry.value}</dd>

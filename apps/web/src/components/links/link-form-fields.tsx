@@ -1,5 +1,7 @@
 'use client';
 
+import type { IconSvgElement } from '@hugeicons/react';
+import { HugeiconsIcon } from '@hugeicons/react';
 import { useMemo, useRef } from 'react';
 import { DatePicker } from '@/components/date-picker';
 import { BuilderDropdown } from '@/components/explore/explore-filter-clause';
@@ -10,7 +12,10 @@ import {
 import { LinkFeatureSection } from '@/components/links/link-feature-section';
 import type { LinkFormState } from '@/components/links/link-form-utils';
 import { PHASE_HOST_VALUE } from '@/components/links/link-form-utils';
-import { LinkUtmFields } from '@/components/links/link-utm-fields';
+import {
+  getLinkUtmDisplayEntries,
+  LinkUtmFields,
+} from '@/components/links/link-utm-fields';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { formatUrlWithoutProtocol } from '@/lib/link-urls';
@@ -27,7 +32,7 @@ type LinkFormFieldsProps = {
 function FeatureSummary({
   items,
 }: {
-  items: Array<{ label: string; value: string }>;
+  items: Array<{ label: string; value: string; icon?: IconSvgElement }>;
 }) {
   if (items.length === 0) {
     return null;
@@ -38,7 +43,12 @@ function FeatureSummary({
       <dl className="space-y-1">
         {items.map((item) => (
           <div className="flex gap-2 text-sm" key={item.label}>
-            <dt className="shrink-0 text-muted-foreground">{item.label}</dt>
+            <dt className="flex shrink-0 items-center gap-1.5 text-muted-foreground">
+              {item.icon ? (
+                <HugeiconsIcon className="size-3.5" icon={item.icon} />
+              ) : null}
+              {item.label}
+            </dt>
             <dd className="min-w-0 break-all">{item.value}</dd>
           </div>
         ))}
@@ -95,13 +105,11 @@ export function LinkFormFields({
     deviceAutofillDone.current = true;
   };
 
-  const utmSummary = [
-    { label: 'utm_source', value: form.utm.utmSource },
-    { label: 'utm_medium', value: form.utm.utmMedium },
-    { label: 'utm_campaign', value: form.utm.utmCampaign },
-    { label: 'utm_term', value: form.utm.utmTerm },
-    { label: 'utm_content', value: form.utm.utmContent },
-  ].filter((entry) => entry.value);
+  const utmSummary = getLinkUtmDisplayEntries(form.utm).map((entry) => ({
+    label: entry.label,
+    value: entry.value,
+    icon: entry.icon,
+  }));
 
   const deviceSummary = [
     { label: 'iOS', value: form.device.deviceIosUrl },

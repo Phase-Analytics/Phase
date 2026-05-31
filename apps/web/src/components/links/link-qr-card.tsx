@@ -12,7 +12,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-const DISPLAY_QR_SIZE = 128;
+const DISPLAY_QR_SIZE = 160;
 const EXPORT_QR_SIZE = 512;
 
 const QR_OPTIONS = {
@@ -74,14 +74,12 @@ export function LinkQrCard({ shortUrl }: LinkQrCardProps) {
           </Tooltip>
         </div>
 
-        <div
-          className="mt-4 flex min-h-0 flex-1 items-center justify-center rounded-lg bg-muted [background-image:linear-gradient(to_right,color-mix(in_oklab,var(--foreground)_10%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklab,var(--foreground)_10%,transparent)_1px,transparent_1px)] [background-size:20px_20px]"
-        >
+        <div className="mt-4 flex min-h-0 flex-1 items-center justify-center rounded-lg bg-muted [background-image:linear-gradient(to_right,color-mix(in_oklab,var(--foreground)_10%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklab,var(--foreground)_10%,transparent)_1px,transparent_1px)] [background-size:20px_20px]">
           {dataUrl ? (
             // biome-ignore lint/performance/noImgElement: dynamic data URL QR preview
             <img
               alt="Link QR code"
-              className="size-32 rounded-md border border-border/60 bg-white p-2 shadow-sm"
+              className="size-40 rounded-md border border-border/60 bg-white p-2 shadow-sm"
               height={DISPLAY_QR_SIZE}
               src={dataUrl}
               width={DISPLAY_QR_SIZE}

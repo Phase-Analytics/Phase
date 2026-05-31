@@ -1,5 +1,13 @@
 'use client';
 
+import {
+  FilterIcon,
+  Globe02Icon,
+  Megaphone01Icon,
+  Tag01Icon,
+  Target01Icon,
+} from '@hugeicons/core-free-icons';
+import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
 import { Input } from '@/components/ui/input';
 
 export type LinkUtmValues = {
@@ -10,6 +18,52 @@ export type LinkUtmValues = {
   utmContent: string;
 };
 
+type LinkUtmFieldKey = keyof LinkUtmValues;
+
+export const LINK_UTM_FIELDS: Array<{
+  key: LinkUtmFieldKey;
+  label: string;
+  icon: IconSvgElement;
+  id: string;
+  placeholder?: string;
+  fullWidth?: boolean;
+}> = [
+  {
+    key: 'utmSource',
+    label: 'Source',
+    icon: Globe02Icon,
+    id: 'utm_source',
+    placeholder: 'newsletter',
+  },
+  {
+    key: 'utmMedium',
+    label: 'Medium',
+    icon: Megaphone01Icon,
+    id: 'utm_medium',
+    placeholder: 'email',
+  },
+  {
+    key: 'utmCampaign',
+    label: 'Campaign',
+    icon: Target01Icon,
+    id: 'utm_campaign',
+    placeholder: 'spring_sale',
+  },
+  {
+    key: 'utmTerm',
+    label: 'Term',
+    icon: FilterIcon,
+    id: 'utm_term',
+  },
+  {
+    key: 'utmContent',
+    label: 'Content',
+    icon: Tag01Icon,
+    id: 'utm_content',
+    fullWidth: true,
+  },
+];
+
 type LinkUtmFieldsProps = {
   values: LinkUtmValues;
   onChange: (values: LinkUtmValues) => void;
@@ -17,61 +71,35 @@ type LinkUtmFieldsProps = {
 
 export function LinkUtmFields({ values, onChange }: LinkUtmFieldsProps) {
   const set =
-    (key: keyof LinkUtmValues) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    (key: LinkUtmFieldKey) => (e: React.ChangeEvent<HTMLInputElement>) => {
       onChange({ ...values, [key]: e.target.value });
     };
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      <div className="space-y-2">
-        <label className="font-medium text-sm" htmlFor="utm_source">
-          utm_source
-        </label>
-        <Input
-          id="utm_source"
-          onChange={set('utmSource')}
-          placeholder="newsletter"
-          value={values.utmSource}
-        />
-      </div>
-      <div className="space-y-2">
-        <label className="font-medium text-sm" htmlFor="utm_medium">
-          utm_medium
-        </label>
-        <Input
-          id="utm_medium"
-          onChange={set('utmMedium')}
-          placeholder="email"
-          value={values.utmMedium}
-        />
-      </div>
-      <div className="space-y-2">
-        <label className="font-medium text-sm" htmlFor="utm_campaign">
-          utm_campaign
-        </label>
-        <Input
-          id="utm_campaign"
-          onChange={set('utmCampaign')}
-          placeholder="spring_sale"
-          value={values.utmCampaign}
-        />
-      </div>
-      <div className="space-y-2">
-        <label className="font-medium text-sm" htmlFor="utm_term">
-          utm_term
-        </label>
-        <Input id="utm_term" onChange={set('utmTerm')} value={values.utmTerm} />
-      </div>
-      <div className="space-y-2 sm:col-span-2">
-        <label className="font-medium text-sm" htmlFor="utm_content">
-          utm_content
-        </label>
-        <Input
-          id="utm_content"
-          onChange={set('utmContent')}
-          value={values.utmContent}
-        />
-      </div>
+      {LINK_UTM_FIELDS.map((field) => (
+        <div
+          className={field.fullWidth ? 'space-y-2 sm:col-span-2' : 'space-y-2'}
+          key={field.key}
+        >
+          <label
+            className="flex items-center gap-1.5 font-medium text-sm"
+            htmlFor={field.id}
+          >
+            <HugeiconsIcon
+              className="size-4 shrink-0 text-muted-foreground"
+              icon={field.icon}
+            />
+            {field.label}
+          </label>
+          <Input
+            id={field.id}
+            onChange={set(field.key)}
+            placeholder={field.placeholder}
+            value={values[field.key]}
+          />
+        </div>
+      ))}
     </div>
   );
 }
@@ -120,4 +148,11 @@ export function hasLinkUtmValues(values: LinkUtmValues): boolean {
       values.utmTerm ||
       values.utmContent
   );
+}
+
+export function getLinkUtmDisplayEntries(values: LinkUtmValues) {
+  return LINK_UTM_FIELDS.map((field) => ({
+    ...field,
+    value: values[field.key],
+  })).filter((entry) => entry.value);
 }

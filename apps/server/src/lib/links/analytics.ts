@@ -138,6 +138,7 @@ export async function getLinkAnalytics(options: {
     summaryRows,
     timeseriesRows,
     countryRows,
+    regionRows,
     osRows,
     browserRows,
     referrerRows,
@@ -172,6 +173,23 @@ export async function getLinkAnalytics(options: {
         FROM ${QUESTDB_LINK_CLICKS_TABLE}
         WHERE ${baseWhere}
         GROUP BY country_code
+        ORDER BY count DESC
+      `),
+    executeQuestDBReadQuery<{
+      region: string;
+      country_code: string;
+      count: number;
+    }>(`
+        SELECT
+          region,
+          country_code,
+          count() AS count
+        FROM ${QUESTDB_LINK_CLICKS_TABLE}
+        WHERE ${baseWhere}
+          AND region IS NOT NULL
+          AND region != ''
+          AND region != 'unknown'
+        GROUP BY region, country_code
         ORDER BY count DESC
       `),
     executeQuestDBReadQuery<{ key: string; count: number }>(`
@@ -221,6 +239,11 @@ export async function getLinkAnalytics(options: {
     })),
     countries: countryRows.map((row) => ({
       key: row.key,
+      count: Number(row.count),
+    })),
+    regions: regionRows.map((row) => ({
+      region: row.region,
+      countryCode: row.country_code,
       count: Number(row.count),
     })),
     operatingSystems: osRows.map((row) => ({

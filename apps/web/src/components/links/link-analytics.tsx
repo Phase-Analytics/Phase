@@ -160,6 +160,11 @@ export function LinkAnalytics({ appId, linkId }: LinkAnalyticsProps) {
           variant="countries"
         />
         <LinkAnalyticsBreakdownCard
+          regionItems={data.regions}
+          title="Regions"
+          variant="regions"
+        />
+        <LinkAnalyticsBreakdownCard
           items={data.operatingSystems}
           title="Operating systems"
           variant="operatingSystems"

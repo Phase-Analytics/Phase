@@ -17,6 +17,7 @@ export type BufferedLinkClick = {
   linkId: string;
   visitorKey: string;
   countryCode: string | null;
+  region: string | null;
   os: string;
   browser: string;
   platform: LinkDevicePlatform;
@@ -43,6 +44,7 @@ function buildILPLine(click: BufferedLinkClick): string {
     `link_id=${escapeILPTag(click.linkId)}`,
     `visitor_key=${escapeILPTag(click.visitorKey)}`,
     `country_code=${escapeILPTag(click.countryCode ?? 'unknown')}`,
+    `region=${escapeILPTag(click.region ?? 'unknown')}`,
     `os=${escapeILPTag(click.os)}`,
     `browser=${escapeILPTag(click.browser)}`,
     `platform=${escapeILPTag(click.platform)}`,
@@ -170,6 +172,7 @@ export async function initLinkClicksTable(): Promise<void> {
       link_id SYMBOL INDEX,
       visitor_key SYMBOL,
       country_code SYMBOL,
+      region SYMBOL,
       os SYMBOL,
       browser SYMBOL,
       platform SYMBOL,
@@ -186,5 +189,16 @@ export async function initLinkClicksTable(): Promise<void> {
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`Failed to init link_clicks table: ${text}`);
+  }
+
+  const alterResponse = await fetch(
+    `http://questdb:9000/exec?query=${encodeURIComponent('ALTER TABLE link_clicks ADD COLUMN region SYMBOL;')}`
+  );
+
+  if (!alterResponse.ok) {
+    const text = await alterResponse.text();
+    if (!text.includes('already exists')) {
+      console.warn(`[LinkClicks] region column migration: ${text}`);
+    }
   }
 }

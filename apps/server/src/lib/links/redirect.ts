@@ -2,12 +2,12 @@ import { UAParser } from 'ua-parser-js';
 import { getLocationFromIP } from '@/lib/geolocation';
 import { shouldRecordLinkClick } from './bot';
 import { getLinkClickBuffer } from './click-buffer';
-import { normalizeReferrer } from './referrer';
 import { LINK_DEFAULT_HOST } from './constants';
 import {
   resolveDestinationForPlatform,
   resolveLinkDevicePlatform,
 } from './device';
+import { normalizeReferrer } from './referrer';
 import {
   isLinkAllowedOnDomain,
   isLinkUnavailable,
@@ -107,6 +107,7 @@ export async function handleLinkRedirect(
         acceptLanguage: request.headers.get('accept-language'),
       }),
       countryCode: geo?.countryCode ?? null,
+      region: geo?.city ?? null,
       os: osFamily,
       browser: browserFamily,
       platform,
