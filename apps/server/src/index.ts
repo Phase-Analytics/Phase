@@ -7,6 +7,10 @@ import { authCors, publicCors, sdkCors, webCors } from '@/lib/cors';
 import { initEventBuffer } from '@/lib/event-buffer';
 import { initGeoIP, shutdownGeoIP } from '@/lib/geolocation';
 import { hashPublicApiToken } from '@/lib/keys';
+import {
+  initLinkClickBuffer,
+  initLinkClicksTable,
+} from '@/lib/links/click-buffer';
 import { runMigrations } from '@/lib/migrate';
 import { initQuestDB } from '@/lib/questdb';
 import {
@@ -26,6 +30,8 @@ import { deviceSdkRouter, deviceWebRouter } from '@/routes/device';
 import { eventSdkRouter, eventWebRouter } from '@/routes/event';
 import { exploreWebRouter } from '@/routes/explore';
 import health from '@/routes/health';
+import { linkRedirectRouter } from '@/routes/links/redirect';
+import { linksWebRouter } from '@/routes/links/web';
 import { pingSdkRouter } from '@/routes/ping';
 import { publicApiRouter } from '@/routes/public-api';
 import { realtimeWebRouter } from '@/routes/realtime';
@@ -149,6 +155,7 @@ const webRoutes = new Elysia({ prefix: '/web' })
   .use(deviceWebRouter)
   .use(eventWebRouter)
   .use(exploreWebRouter)
+  .use(linksWebRouter)
   .use(realtimeWebRouter)
   .use(sessionWebRouter);
 
@@ -189,6 +196,7 @@ const app = new Elysia()
   .use(webRoutes)
   .use(publicRoutes)
   .use(publicApiRoutes)
+  .use(linkRedirectRouter)
   .onError(({ error, set }) => {
     console.error('[Server] Unhandled error:', error);
     set.status = 500;
@@ -211,11 +219,13 @@ let redisClient: Redis | null = null;
 try {
   await runMigrations();
   await initQuestDB();
+  await initLinkClicksTable();
 
   if (process.env.REDIS_URL) {
     redisClient = new Redis(process.env.REDIS_URL);
     eventBuffer = initEventBuffer(process.env.REDIS_URL);
     eventBuffer.start();
+    initLinkClickBuffer(process.env.REDIS_URL);
   } else {
     console.warn(
       '[Server] REDIS_URL not set, event buffering disabled - events will not be persisted'

@@ -1,0 +1,110 @@
+import { UAParser } from 'ua-parser-js';
+import { getLocationFromIP } from '@/lib/geolocation';
+import { isLinkBotRequest } from './bot';
+import { getLinkClickBuffer } from './click-buffer';
+import { LINK_DEFAULT_HOST } from './constants';
+import {
+  resolveDestinationForPlatform,
+  resolveLinkDevicePlatform,
+} from './device';
+import {
+  isLinkAllowedOnDomain,
+  isLinkUnavailable,
+  resolveLinkBySlug,
+  resolveVerifiedDomain,
+} from './resolve';
+import { mergeUtmIntoUrl } from './utm';
+import { buildVisitorKey } from './visitor';
+
+function extractClientIp(request: Request): string | null {
+  const cfConnectingIp = request.headers.get('cf-connecting-ip');
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  const realIp = request.headers.get('x-real-ip');
+
+  return (
+    cfConnectingIp || forwardedFor?.split(',')[0]?.trim() || realIp || null
+  );
+}
+
+function notFound(): Response {
+  return new Response('Not Found', { status: 404 });
+}
+
+export async function handleLinkRedirect(
+  request: Request,
+  slug: string,
+  options: { mode: 'default' | 'custom'; host?: string }
+): Promise<Response> {
+  if (isLinkBotRequest(request.headers)) {
+    return notFound();
+  }
+
+  const link = await resolveLinkBySlug(slug);
+  if (!link || isLinkUnavailable(link)) {
+    return notFound();
+  }
+
+  let domainHost = LINK_DEFAULT_HOST;
+
+  if (options.mode === 'custom') {
+    const host = options.host?.split(':')[0]?.toLowerCase();
+    if (!host) {
+      return notFound();
+    }
+
+    const domain = await resolveVerifiedDomain(host);
+    if (!(domain && isLinkAllowedOnDomain(link, domain))) {
+      return notFound();
+    }
+
+    domainHost = domain.hostname;
+  }
+
+  const userAgent = request.headers.get('user-agent');
+  const platform = resolveLinkDevicePlatform(userAgent);
+  const parser = new UAParser(userAgent ?? undefined);
+  const osFamily = parser.getOS().name ?? 'unknown';
+  const browserFamily = parser.getBrowser().name ?? 'unknown';
+
+  const destination = resolveDestinationForPlatform(platform, {
+    destinationUrl: link.destinationUrl,
+    deviceIosUrl: link.deviceIosUrl,
+    deviceAndroidUrl: link.deviceAndroidUrl,
+    deviceOthersUrl: link.deviceOthersUrl,
+  });
+
+  const finalUrl = mergeUtmIntoUrl(destination, {
+    utmSource: link.utmSource,
+    utmMedium: link.utmMedium,
+    utmCampaign: link.utmCampaign,
+    utmTerm: link.utmTerm,
+    utmContent: link.utmContent,
+  });
+
+  const clientIp = extractClientIp(request);
+  const geo = clientIp ? getLocationFromIP(clientIp) : null;
+
+  const buffer = getLinkClickBuffer();
+  if (buffer) {
+    await buffer.push({
+      appId: link.appId,
+      linkId: link.id,
+      visitorKey: buildVisitorKey({
+        linkId: link.id,
+        platform,
+        osFamily,
+        browserFamily,
+        acceptLanguage: request.headers.get('accept-language'),
+      }),
+      countryCode: geo?.countryCode ?? null,
+      os: osFamily,
+      browser: browserFamily,
+      platform,
+      referrer: request.headers.get('referer'),
+      domainHost,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  return Response.redirect(finalUrl, 302);
+}

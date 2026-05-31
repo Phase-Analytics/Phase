@@ -11,6 +11,7 @@ import {
   GlobalIcon,
   Key01Icon,
   Layers01Icon,
+  Link01Icon,
   Logout01Icon,
   Mail01Icon,
   PlaySquareIcon,
@@ -126,6 +127,21 @@ const _comingSoonNavItems = [
     label: 'Funnels',
     icon: PyramidStructure02Icon,
     tooltip: 'Funnels - Coming Soon',
+  },
+];
+
+const linkNavItems: NavItem[] = [
+  {
+    label: 'Links',
+    icon: Link01Icon,
+    path: '/dashboard/links',
+    tooltip: 'Links',
+  },
+  {
+    label: 'Domains',
+    icon: GlobalIcon,
+    path: '/dashboard/links/domains',
+    tooltip: 'Domains',
   },
 ];
 
@@ -397,6 +413,55 @@ export function DashboardSidebar() {
                   )}
                 </SidebarMenuItem>
               ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>LINK</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {linkNavItems.map((item) => {
+                const isLinkNavActive =
+                  item.path === '/dashboard/links/domains'
+                    ? pathname.includes('/dashboard/links/domains')
+                    : pathname.startsWith('/dashboard/links') &&
+                      !pathname.includes('/domains');
+
+                return (
+                  <SidebarMenuItem key={item.label}>
+                    {appId ? (
+                      <SidebarMenuButton
+                        asChild
+                        className="[&>a]:flex [&>a]:items-center [&>a]:gap-2"
+                        isActive={isLinkNavActive}
+                        tooltip={item.tooltip}
+                      >
+                        <Link
+                          href={`${item.path}?app=${appId}`}
+                          onClick={() => {
+                            if (isMobile) {
+                              setOpenMobile(false);
+                            }
+                          }}
+                        >
+                          <SidebarNavLinkContent
+                            icon={item.icon}
+                            label={item.label}
+                          />
+                        </Link>
+                      </SidebarMenuButton>
+                    ) : (
+                      <SidebarMenuButton disabled tooltip={item.tooltip}>
+                        <SidebarNavLinkContent
+                          icon={item.icon}
+                          label={item.label}
+                        />
+                      </SidebarMenuButton>
+                    )}
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

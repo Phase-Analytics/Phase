@@ -94,4 +94,17 @@ export const queryKeys = {
     run: (appId: string, query: unknown) =>
       [...queryKeys.explore.all, 'run', appId, query] as const,
   },
+
+  links: {
+    all: ['links'] as const,
+    list: (appId: string) => [...queryKeys.links.all, 'list', appId] as const,
+    detail: (appId: string, linkId: string) =>
+      [...queryKeys.links.all, 'detail', appId, linkId] as const,
+    slugAvailable: (slug: string) =>
+      [...queryKeys.links.all, 'slug-available', slug] as const,
+    analytics: (appId: string, linkId: string, range: string) =>
+      [...queryKeys.links.all, 'analytics', appId, linkId, range] as const,
+    domains: (appId: string) =>
+      [...queryKeys.links.all, 'domains', appId] as const,
+  },
 } as const;

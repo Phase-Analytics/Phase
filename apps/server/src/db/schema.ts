@@ -187,6 +187,74 @@ export const devices = pgTable(
   })
 );
 
+export const links = pgTable(
+  'links',
+  {
+    id: text('id').primaryKey(),
+    appId: text('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'cascade' }),
+    slug: text('slug').notNull().unique(),
+    destinationUrl: text('destination_url').notNull(),
+    utmSource: text('utm_source'),
+    utmMedium: text('utm_medium'),
+    utmCampaign: text('utm_campaign'),
+    utmTerm: text('utm_term'),
+    utmContent: text('utm_content'),
+    deviceIosUrl: text('device_ios_url'),
+    deviceAndroidUrl: text('device_android_url'),
+    deviceOthersUrl: text('device_others_url'),
+    expiresAt: timestamp('expires_at'),
+    disabledAt: timestamp('disabled_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    appIdCreatedAtIdx: index('links_app_id_created_at_idx').on(
+      table.appId,
+      table.createdAt.desc()
+    ),
+    slugIdx: index('links_slug_idx').on(table.slug),
+  })
+);
+
+export const linkDomains = pgTable(
+  'link_domains',
+  {
+    id: text('id').primaryKey(),
+    appId: text('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'cascade' }),
+    hostname: text('hostname').notNull().unique(),
+    status: text('status').notNull().default('pending'),
+    lastCheckAt: timestamp('last_check_at'),
+    lastError: text('last_error'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    appIdIdx: index('link_domains_app_id_idx').on(table.appId),
+    hostnameIdx: index('link_domains_hostname_idx').on(table.hostname),
+  })
+);
+
+export const linkDomainBindings = pgTable(
+  'link_domain_bindings',
+  {
+    linkId: text('link_id')
+      .notNull()
+      .references(() => links.id, { onDelete: 'cascade' }),
+    domainId: text('domain_id')
+      .notNull()
+      .references(() => linkDomains.id, { onDelete: 'cascade' }),
+  },
+  (table) => ({
+    pk: index('link_domain_bindings_pk').on(table.linkId, table.domainId),
+  })
+);
+
 export const explorePresets = pgTable(
   'explore_presets',
   {
@@ -248,7 +316,39 @@ export const appRelations = relations(apps, ({ one, many }) => ({
   devices: many(devices),
   publicApiTokens: many(publicApiTokens),
   explorePresets: many(explorePresets),
+  links: many(links),
+  linkDomains: many(linkDomains),
 }));
+
+export const linksRelations = relations(links, ({ one, many }) => ({
+  app: one(apps, {
+    fields: [links.appId],
+    references: [apps.id],
+  }),
+  domainBindings: many(linkDomainBindings),
+}));
+
+export const linkDomainsRelations = relations(linkDomains, ({ one, many }) => ({
+  app: one(apps, {
+    fields: [linkDomains.appId],
+    references: [apps.id],
+  }),
+  bindings: many(linkDomainBindings),
+}));
+
+export const linkDomainBindingsRelations = relations(
+  linkDomainBindings,
+  ({ one }) => ({
+    link: one(links, {
+      fields: [linkDomainBindings.linkId],
+      references: [links.id],
+    }),
+    domain: one(linkDomains, {
+      fields: [linkDomainBindings.domainId],
+      references: [linkDomains.id],
+    }),
+  })
+);
 
 export const explorePresetsRelations = relations(explorePresets, ({ one }) => ({
   app: one(apps, {
@@ -319,3 +419,12 @@ export type NewWaitlist = typeof waitlist.$inferInsert;
 
 export type ExplorePresetRow = typeof explorePresets.$inferSelect;
 export type NewExplorePresetRow = typeof explorePresets.$inferInsert;
+
+export type Link = typeof links.$inferSelect;
+export type NewLink = typeof links.$inferInsert;
+
+export type LinkDomain = typeof linkDomains.$inferSelect;
+export type NewLinkDomain = typeof linkDomains.$inferInsert;
+
+export type LinkDomainBinding = typeof linkDomainBindings.$inferSelect;
+export type NewLinkDomainBinding = typeof linkDomainBindings.$inferInsert;

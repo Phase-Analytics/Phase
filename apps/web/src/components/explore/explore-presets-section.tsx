@@ -205,7 +205,7 @@ export function ExplorePresetsSection({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
-                      className="absolute top-1.5 right-1.5 size-7 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+                      className="absolute top-1.5 right-1.5 size-7 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
                       onClick={(event) => event.stopPropagation()}
                       size="icon"
                       type="button"
