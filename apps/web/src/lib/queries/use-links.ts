@@ -14,6 +14,7 @@ type LinkDomainsListResponse = z.infer<typeof LinkDomainsListResponseSchema>;
 type SlugAvailableResponse = z.infer<typeof SlugAvailableResponseSchema>;
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { LinkDomain } from '@phase/shared';
 import { buildQueryString, fetchApi } from '@/lib/api/client';
 import { cacheConfig } from './query-client';
 import { queryKeys } from './query-keys';
@@ -155,7 +156,7 @@ export function useVerifyLinkDomain(appId: string) {
 
   return useMutation({
     mutationFn: (domainId: string) =>
-      fetchApi(
+      fetchApi<LinkDomain>(
         `/web/links/domains/${domainId}/verify${buildQueryString({ appId })}`,
         {
           method: 'POST',

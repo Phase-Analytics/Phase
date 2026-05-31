@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { parseAsString, useQueryState } from 'nuqs';
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { CreateLinkDialog } from '@/components/links/create-link-dialog';
+import { LinksIntroCard } from '@/components/links/links-intro-card';
 import { RequireApp } from '@/components/require-app';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -31,9 +32,11 @@ export default function LinksPage() {
       <div className="flex flex-1 flex-col gap-6">
         <DashboardPageHeader
           actions={appId ? <CreateLinkDialog appId={appId} /> : null}
-          description="Branded short links with click analytics"
+          description="Create and manage short links"
           title="Links"
         />
+
+        {appId ? <LinksIntroCard appId={appId} /> : null}
 
         <Card className="py-0">
           <CardContent className="p-0">
