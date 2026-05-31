@@ -8,30 +8,46 @@ export function buildCustomShortUrl(hostname: string, slug: string): string {
   return `https://${hostname}/${slug}`;
 }
 
-export function getLinkShortUrls(
+export function formatUrlWithoutProtocol(url: string): string {
+  return url.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+}
+
+export function getPrimaryLinkUrl(
   slug: string,
-  domains: Array<{ id: string; hostname: string; status: string }>,
-  boundDomainIds: string[]
-): Array<{ label: string; url: string }> {
-  const urls: Array<{ label: string; url: string }> = [
-    { label: 'Default', url: buildDefaultShortUrl(slug) },
-  ];
-
-  const boundSet = new Set(boundDomainIds);
-  const hasBindings = boundDomainIds.length > 0;
-
-  for (const domain of domains) {
-    if (domain.status !== 'verified') {
-      continue;
+  domainIds: string[],
+  domains: Array<{ id: string; hostname: string; status: string }>
+): { url: string; display: string } {
+  if (domainIds.length === 1) {
+    const domain = domains.find(
+      (entry) => entry.id === domainIds[0] && entry.status === 'verified'
+    );
+    if (domain) {
+      const url = buildCustomShortUrl(domain.hostname, slug);
+      return {
+        url,
+        display: formatUrlWithoutProtocol(url),
+      };
     }
-    if (hasBindings && !boundSet.has(domain.id)) {
-      continue;
-    }
-    urls.push({
-      label: domain.hostname,
-      url: buildCustomShortUrl(domain.hostname, slug),
-    });
   }
 
-  return urls;
+  const url = buildDefaultShortUrl(slug);
+  return {
+    url,
+    display: formatUrlWithoutProtocol(url),
+  };
+}
+
+export function getLinkStatus(link: {
+  disabledAt: string | null;
+  expiresAt: string | null;
+}): 'active' | 'disabled' | 'expired' {
+  if (link.disabledAt) {
+    return 'disabled';
+  }
+
+  if (link.expiresAt && new Date(link.expiresAt).getTime() <= Date.now()) {
+    return 'expired';
+  }
+
+  return 'active';
 }

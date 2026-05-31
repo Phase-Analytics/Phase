@@ -28,6 +28,28 @@ function escapeSqlString(value: string): string {
   return value.replace(/'/g, "''");
 }
 
+export async function getLinkClickTotalsByApp(
+  appId: string
+): Promise<Map<string, number>> {
+  try {
+    const rows = await executeQuestDBReadQuery<{
+      link_id: string;
+      total_clicks: number;
+    }>(`
+        SELECT link_id, count() AS total_clicks
+        FROM ${QUESTDB_LINK_CLICKS_TABLE}
+        WHERE app_id = '${escapeSqlString(appId)}'
+        GROUP BY link_id
+      `);
+
+    return new Map(
+      rows.map((row) => [row.link_id, Number(row.total_clicks ?? 0)])
+    );
+  } catch {
+    return new Map();
+  }
+}
+
 export async function getLinkAnalytics(options: {
   appId: string;
   linkId: string;

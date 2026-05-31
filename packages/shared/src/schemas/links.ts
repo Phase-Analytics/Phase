@@ -11,6 +11,36 @@ export const LinkSlugSchema = z
       'Slug must be 3-64 characters, lowercase letters, numbers, and hyphens only',
   });
 
+export const LinkUrlSchema = z
+  .string()
+  .trim()
+  .transform((value) => {
+    if (!value) {
+      return value;
+    }
+    if (/^https?:\/\//i.test(value)) {
+      return value;
+    }
+    return `https://${value}`;
+  })
+  .pipe(z.string().url().max(2048));
+
+export const LinkUrlNullableSchema = z
+  .string()
+  .trim()
+  .transform((value) => {
+    if (!value) {
+      return value;
+    }
+    if (/^https?:\/\//i.test(value)) {
+      return value;
+    }
+    return `https://${value}`;
+  })
+  .pipe(z.string().url().max(2048))
+  .nullable()
+  .optional();
+
 export const LinkUtmFieldsSchema = z.object({
   utmSource: z.string().max(256).nullable().optional(),
   utmMedium: z.string().max(256).nullable().optional(),
@@ -23,10 +53,10 @@ export const CreateLinkRequestSchema = z
   .object({
     appId: z.string().min(1),
     slug: LinkSlugSchema,
-    destinationUrl: z.string().url().max(2048),
-    deviceIosUrl: z.string().url().max(2048).nullable().optional(),
-    deviceAndroidUrl: z.string().url().max(2048).nullable().optional(),
-    deviceOthersUrl: z.string().url().max(2048).nullable().optional(),
+    destinationUrl: LinkUrlSchema,
+    deviceIosUrl: LinkUrlNullableSchema,
+    deviceAndroidUrl: LinkUrlNullableSchema,
+    deviceOthersUrl: LinkUrlNullableSchema,
     expiresAt: z.string().datetime().nullable().optional(),
     domainIds: z.array(z.string()).optional(),
   })
@@ -34,11 +64,11 @@ export const CreateLinkRequestSchema = z
 
 export const UpdateLinkRequestSchema = z
   .object({
-    destinationUrl: z.string().url().max(2048).optional(),
+    destinationUrl: LinkUrlSchema.optional(),
     slug: LinkSlugSchema.optional(),
-    deviceIosUrl: z.string().url().max(2048).nullable().optional(),
-    deviceAndroidUrl: z.string().url().max(2048).nullable().optional(),
-    deviceOthersUrl: z.string().url().max(2048).nullable().optional(),
+    deviceIosUrl: LinkUrlNullableSchema,
+    deviceAndroidUrl: LinkUrlNullableSchema,
+    deviceOthersUrl: LinkUrlNullableSchema,
     expiresAt: z.string().datetime().nullable().optional(),
     disabled: z.boolean().optional(),
     domainIds: z.array(z.string()).optional(),

@@ -13,12 +13,15 @@ import {
   SlugAvailableResponseSchema,
   UpdateLinkRequestSchema,
 } from '@phase/shared';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 import { db, linkDomainBindings, linkDomains, links } from '@/db';
 import { auth } from '@/lib/auth';
 import { assertAppAccess } from '@/lib/links/access';
-import { getLinkAnalytics } from '@/lib/links/analytics';
+import {
+  getLinkAnalytics,
+  getLinkClickTotalsByApp,
+} from '@/lib/links/analytics';
 import {
   invalidateCachedDomain,
   invalidateCachedLink,
@@ -26,7 +29,7 @@ import {
 } from '@/lib/links/cache';
 import { LINK_CNAME_TARGET } from '@/lib/links/constants';
 import { verifyDomainCname } from '@/lib/links/dns';
-import { buildDefaultShortUrl } from '@/lib/links/urls';
+import { buildDefaultShortUrl, resolvePrimaryShortUrl } from '@/lib/links/urls';
 import {
   authPlugin,
   type BetterAuthSession,
@@ -34,6 +37,19 @@ import {
 } from '@/lib/middleware';
 
 type AuthContext = { user: BetterAuthUser; session: BetterAuthSession };
+
+async function loadDomainsByIdForApp(appId: string): Promise<DomainLookup> {
+  const domainRows = await db.query.linkDomains.findMany({
+    where: eq(linkDomains.appId, appId),
+  });
+
+  return new Map(
+    domainRows.map((domain) => [
+      domain.id,
+      { hostname: domain.hostname, status: domain.status },
+    ])
+  );
+}
 
 async function loadLinkDomainIds(linkId: string): Promise<string[]> {
   const rows = await db
@@ -64,29 +80,36 @@ async function replaceLinkDomainBindings(
   );
 }
 
+type DomainLookup = Map<string, { hostname: string; status: string }>;
+
 function serializeLinkListItem(
   row: typeof links.$inferSelect,
-  totalClicks?: number
+  options?: { shortUrl?: string; totalClicks?: number }
 ) {
   return {
     id: row.id,
     slug: row.slug,
     destinationUrl: row.destinationUrl,
-    shortUrl: buildDefaultShortUrl(row.slug),
+    shortUrl: options?.shortUrl ?? buildDefaultShortUrl(row.slug),
     expiresAt: row.expiresAt?.toISOString() ?? null,
     disabledAt: row.disabledAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
-    ...(totalClicks !== undefined ? { totalClicks } : {}),
+    ...(options?.totalClicks !== undefined
+      ? { totalClicks: options.totalClicks }
+      : {}),
   };
 }
 
 function serializeLinkDetail(
   row: typeof links.$inferSelect,
-  domainIds: string[]
+  domainIds: string[],
+  domainsById: DomainLookup
 ) {
+  const shortUrl = resolvePrimaryShortUrl(row.slug, domainIds, domainsById);
+
   return {
-    ...serializeLinkListItem(row),
+    ...serializeLinkListItem(row, { shortUrl }),
     appId: row.appId,
     utmSource: row.utmSource,
     utmMedium: row.utmMedium,
@@ -148,8 +171,51 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         .where(eq(links.appId, query.appId))
         .orderBy(desc(links.createdAt));
 
+      const linkIds = rows.map((row) => row.id);
+      const domainRows = await db.query.linkDomains.findMany({
+        where: eq(linkDomains.appId, query.appId),
+      });
+      const domainsById: DomainLookup = new Map(
+        domainRows.map((domain) => [
+          domain.id,
+          { hostname: domain.hostname, status: domain.status },
+        ])
+      );
+
+      const bindingRows =
+        linkIds.length > 0
+          ? await db
+              .select({
+                linkId: linkDomainBindings.linkId,
+                domainId: linkDomainBindings.domainId,
+              })
+              .from(linkDomainBindings)
+              .where(inArray(linkDomainBindings.linkId, linkIds))
+          : [];
+
+      const domainIdsByLinkId = new Map<string, string[]>();
+      for (const binding of bindingRows) {
+        const existing = domainIdsByLinkId.get(binding.linkId) ?? [];
+        existing.push(binding.domainId);
+        domainIdsByLinkId.set(binding.linkId, existing);
+      }
+
+      const clickTotals = await getLinkClickTotalsByApp(query.appId);
+
       return {
-        links: rows.map((row) => serializeLinkListItem(row)),
+        links: rows.map((row) => {
+          const domainIds = domainIdsByLinkId.get(row.id) ?? [];
+          const shortUrl = resolvePrimaryShortUrl(
+            row.slug,
+            domainIds,
+            domainsById
+          );
+
+          return serializeLinkListItem(row, {
+            shortUrl,
+            totalClicks: clickTotals.get(row.id) ?? 0,
+          });
+        }),
       };
     },
     {
@@ -271,7 +337,8 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
       await invalidateCachedLink(parsed.data.slug);
 
       const domainIds = await loadLinkDomainIds(linkId);
-      return serializeLinkDetail(row, domainIds);
+      const domainsById = await loadDomainsByIdForApp(parsed.data.appId);
+      return serializeLinkDetail(row, domainIds, domainsById);
     },
     {
       response: {
@@ -520,7 +587,8 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
       }
 
       const domainIds = await loadLinkDomainIds(row.id);
-      return serializeLinkDetail(row, domainIds);
+      const domainsById = await loadDomainsByIdForApp(query.appId);
+      return serializeLinkDetail(row, domainIds, domainsById);
     },
     {
       params: t.Object({ linkId: t.String() }),
@@ -643,7 +711,8 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
       }
 
       const domainIds = await loadLinkDomainIds(row.id);
-      return serializeLinkDetail(row, domainIds);
+      const domainsById = await loadDomainsByIdForApp(existing.appId);
+      return serializeLinkDetail(row, domainIds, domainsById);
     },
     {
       params: t.Object({ linkId: t.String() }),

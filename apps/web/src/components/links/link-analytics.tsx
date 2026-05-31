@@ -2,7 +2,6 @@
 
 import { parseAsString, useQueryState } from 'nuqs';
 import { useMemo, useState } from 'react';
-import { AnalyticsTimeRangePicker } from '@/components/analytics/analytics-time-range-picker';
 import { TimescaleChart } from '@/components/timescale-chart';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -46,11 +45,7 @@ function BreakdownList({
                 className="flex items-center justify-between text-sm"
                 key={`${title}-${item.key}`}
               >
-                <span className="truncate">
-                  {item.key === 'unknown' || item.key === 'direct'
-                    ? item.key
-                    : item.key}
-                </span>
+                <span className="truncate">{item.key}</span>
                 <span className="font-medium tabular-nums">{item.count}</span>
               </li>
             ))}
@@ -102,7 +97,6 @@ export function LinkAnalytics({ appId, linkId }: LinkAnalyticsProps) {
   if (isPending) {
     return (
       <div className="space-y-4">
-        <Skeleton className="h-10 w-48" />
         <div className="grid gap-4 md:grid-cols-2">
           <Skeleton className="h-28" />
           <Skeleton className="h-28" />
@@ -118,10 +112,6 @@ export function LinkAnalytics({ appId, linkId }: LinkAnalyticsProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <AnalyticsTimeRangePicker />
-      </div>
-
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="py-0">
           <CardContent className="p-4">
