@@ -23,6 +23,7 @@ import { formatUrlWithoutProtocol } from '@/lib/link-urls';
 export const PHASE_HOST_VALUE = 'phase';
 
 export type LinkFormState = {
+  name: string;
   hostValue: string;
   slug: string;
   destinationUrl: string;
@@ -41,6 +42,7 @@ export type LinkFormState = {
 
 export function emptyLinkFormState(): LinkFormState {
   return {
+    name: '',
     hostValue: PHASE_HOST_VALUE,
     slug: '',
     destinationUrl: '',
@@ -64,6 +66,7 @@ export function linkDetailToFormState(link: LinkDetail): LinkFormState {
   const og = linkOgFromDetail(link);
 
   return {
+    name: link.name ?? '',
     hostValue:
       link.domainIds.length === 1 ? link.domainIds[0] : PHASE_HOST_VALUE,
     slug: link.slug,

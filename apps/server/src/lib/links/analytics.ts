@@ -1,3 +1,4 @@
+import { formatLinkBrowserFamilyLabel } from '@phase/shared';
 import { executeQuestDBReadQuery } from '@/lib/questdb';
 import { escapeQuestDbString } from '@/lib/questdb-sql';
 import { QUESTDB_LINK_CLICKS_TABLE } from './constants';
@@ -265,26 +266,10 @@ export async function getLinkAnalytics(options: {
 function buildLinkClicksWhereClause(options: {
   appId: string;
   linkId: string;
-  startDate?: string;
-  endDate?: string;
 }): string {
   const appId = escapeSqlString(options.appId);
   const linkId = escapeSqlString(options.linkId);
-  const clauses = [`app_id = '${appId}'`, `link_id = '${linkId}'`];
-
-  if (options.startDate) {
-    clauses.push(
-      `timestamp >= '${escapeSqlString(new Date(options.startDate).toISOString())}'`
-    );
-  }
-
-  if (options.endDate) {
-    clauses.push(
-      `timestamp < '${escapeSqlString(new Date(options.endDate).toISOString())}'`
-    );
-  }
-
-  return clauses.join(' AND ');
+  return [`app_id = '${appId}'`, `link_id = '${linkId}'`].join(' AND ');
 }
 
 export async function getLinkClicks(options: {
@@ -292,8 +277,6 @@ export async function getLinkClicks(options: {
   linkId: string;
   page: number;
   pageSize: number;
-  startDate?: string;
-  endDate?: string;
 }) {
   const page = Math.max(1, options.page);
   const pageSize = Math.min(Math.max(1, options.pageSize), 100);
@@ -311,13 +294,15 @@ export async function getLinkClicks(options: {
     executeQuestDBReadQuery<{
       click_id: string;
       timestamp: string;
-      platform: string;
+      os: string;
+      browser: string;
       country_code: string;
     }>(`
         SELECT
           click_id,
           timestamp,
-          platform,
+          os,
+          browser,
           country_code
         FROM ${QUESTDB_LINK_CLICKS_TABLE}
         WHERE ${where}
@@ -333,7 +318,8 @@ export async function getLinkClicks(options: {
     clicks: clickRows.map((row) => ({
       clickId: row.click_id,
       timestamp: new Date(row.timestamp).toISOString(),
-      platform: normalizeLinkClickPlatform(row.platform),
+      os: normalizeLinkClickOs(row.os),
+      browser: normalizeLinkClickBrowser(row.browser),
       countryCode: normalizeLinkClickCountry(row.country_code),
     })),
     pagination: {
@@ -345,13 +331,18 @@ export async function getLinkClicks(options: {
   };
 }
 
-function normalizeLinkClickPlatform(
-  value: string
-): 'ios' | 'android' | 'others' {
-  if (value === 'ios' || value === 'android') {
-    return value;
+function normalizeLinkClickOs(value: string): string {
+  if (!value || value === 'unknown') {
+    return 'Unknown';
   }
-  return 'others';
+  return value;
+}
+
+function normalizeLinkClickBrowser(value: string): string {
+  if (!value || value === 'unknown') {
+    return 'Unknown';
+  }
+  return formatLinkBrowserFamilyLabel(value);
 }
 
 function normalizeLinkClickCountry(value: string): string | null {

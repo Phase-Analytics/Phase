@@ -78,7 +78,8 @@ export async function handleLinkRedirect(
   const osFamily = parser.getOS().name ?? 'unknown';
   const browserFamily = normalizeLinkBrowserFamily(
     parser.getBrowser().name ?? 'unknown',
-    userAgent
+    userAgent,
+    parser.getEngine().name ?? undefined
   );
 
   const destination = resolveDestinationForPlatform(platform, {

@@ -55,7 +55,7 @@ function OverviewChange({ change }: { change: number }) {
 
 export function LinkAnalytics({ appId, linkId }: LinkAnalyticsProps) {
   const [range, setRange] = useQueryState(
-    'range',
+    'linkRange',
     parseAsString.withDefault('7d')
   );
   const [metric, setMetric] = useState<'clicks' | 'unique'>('clicks');

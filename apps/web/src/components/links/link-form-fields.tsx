@@ -103,6 +103,19 @@ export function LinkFormFields({
 
       <TabsContent className="space-y-4" value="overview">
         <div className="space-y-2">
+          <label className="font-medium text-sm" htmlFor={`${idPrefix}-name`}>
+            Name
+          </label>
+          <Input
+            id={`${idPrefix}-name`}
+            onChange={(e) => patch({ name: e.target.value })}
+            placeholder="Product launch"
+            type="text"
+            value={form.name}
+          />
+        </div>
+
+        <div className="space-y-2">
           <label
             className="flex items-center gap-1.5 font-medium text-sm"
             htmlFor={`${idPrefix}-destination`}

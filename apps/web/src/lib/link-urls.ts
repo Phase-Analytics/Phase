@@ -14,6 +14,17 @@ export function formatUrlWithoutProtocol(url: string): string {
   return url.replace(HTTP_PREFIX_RE, '').replace(TRAILING_SLASH_RE, '');
 }
 
+export function getLinkDisplayName(
+  name: string | null | undefined,
+  shortUrlDisplay: string
+): string {
+  const trimmed = name?.trim();
+  if (trimmed) {
+    return trimmed;
+  }
+  return shortUrlDisplay;
+}
+
 export function getPrimaryLinkUrl(
   slug: string,
   domainIds: string[],

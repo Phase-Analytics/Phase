@@ -21,26 +21,21 @@ import { usePaginationStore } from '@/stores/pagination-store';
 
 const COUNTRY_CODE_REGEX = /^[A-Za-z]{2}$/;
 
-function getPlatformIcon(platform: LinkClickItem['platform']) {
-  switch (platform) {
-    case 'android':
-      return AndroidIcon;
-    case 'ios':
-      return AppleIcon;
-    default:
-      return BrowserIcon;
+function getOsIcon(os: string) {
+  const normalized = os.toLowerCase();
+  if (
+    normalized.includes('ios') ||
+    normalized.includes('iphone') ||
+    normalized.includes('ipad') ||
+    normalized === 'mac os' ||
+    normalized === 'macos'
+  ) {
+    return AppleIcon;
   }
-}
-
-function getPlatformLabel(platform: LinkClickItem['platform']) {
-  switch (platform) {
-    case 'android':
-      return 'Android';
-    case 'ios':
-      return 'iOS';
-    default:
-      return 'Other';
+  if (normalized.includes('android')) {
+    return AndroidIcon;
   }
+  return BrowserIcon;
 }
 
 function getCountryLabel(countryCode: string) {
@@ -73,37 +68,37 @@ const columns: ColumnDef<LinkClickItem>[] = [
     ),
   },
   {
-    accessorKey: 'timestamp',
-    header: 'Date',
-    size: 200,
+    accessorKey: 'os',
+    header: 'OS',
+    size: 140,
     cell: ({ row }) => {
-      const timestamp = row.getValue('timestamp') as string;
-      return (
-        <div className="flex items-center gap-2">
-          <HugeiconsIcon
-            className="text-muted-foreground"
-            icon={Calendar03Icon}
-            size={16}
-          />
-          <ClientDate className="text-primary text-sm" date={timestamp} />
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: 'platform',
-    header: 'Platform',
-    size: 120,
-    cell: ({ row }) => {
-      const platform = row.getValue('platform') as LinkClickItem['platform'];
+      const os = row.getValue('os') as string;
 
       return (
         <div className="flex items-center gap-1.5">
           <HugeiconsIcon
             className="size-3.5 text-muted-foreground"
-            icon={getPlatformIcon(platform)}
+            icon={getOsIcon(os)}
           />
-          <span className="text-sm">{getPlatformLabel(platform)}</span>
+          <span className="text-sm">{os}</span>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: 'browser',
+    header: 'Browser',
+    size: 120,
+    cell: ({ row }) => {
+      const browser = row.getValue('browser') as string;
+
+      return (
+        <div className="flex items-center gap-1.5">
+          <HugeiconsIcon
+            className="size-3.5 text-muted-foreground"
+            icon={BrowserIcon}
+          />
+          <span className="text-sm">{browser}</span>
         </div>
       );
     },
@@ -133,6 +128,24 @@ const columns: ColumnDef<LinkClickItem>[] = [
           <span className="text-sm">
             {country ? getCountryLabel(country) : 'Unknown'}
           </span>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: 'timestamp',
+    header: 'Date',
+    size: 200,
+    cell: ({ row }) => {
+      const timestamp = row.getValue('timestamp') as string;
+      return (
+        <div className="flex items-center gap-2">
+          <HugeiconsIcon
+            className="text-muted-foreground"
+            icon={Calendar03Icon}
+            size={16}
+          />
+          <ClientDate className="text-primary text-sm" date={timestamp} />
         </div>
       );
     },

@@ -93,6 +93,7 @@ export function EditLinkDialog({
 
     try {
       await updateLink.mutateAsync({
+        name: form.name.trim() || null,
         slug: slugChanged ? form.slug.toLowerCase() : undefined,
         destinationUrl: form.destinationUrl,
         ...linkUtmToPayload(form.utm),

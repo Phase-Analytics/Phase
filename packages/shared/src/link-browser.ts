@@ -1,71 +1,105 @@
+export type LinkBrowserFamily =
+  | 'chrome'
+  | 'firefox'
+  | 'safari'
+  | 'other'
+  | 'unknown';
+
+function includesAny(haystack: string, needles: string[]): boolean {
+  return needles.some((needle) => haystack.includes(needle));
+}
+
+export function formatLinkBrowserFamilyLabel(
+  family: LinkBrowserFamily | string
+): string {
+  switch (family) {
+    case 'chrome':
+      return 'Chrome';
+    case 'firefox':
+      return 'Firefox';
+    case 'safari':
+      return 'Safari';
+    case 'other':
+      return 'Other';
+    default:
+      return 'Unknown';
+  }
+}
+
 export function normalizeLinkBrowserFamily(
   browserName: string,
-  userAgent?: string | null
-): string {
-  const name = browserName.trim().toLowerCase();
+  userAgent?: string | null,
+  engineName?: string | null
+): LinkBrowserFamily {
   const ua = (userAgent ?? '').toLowerCase();
+  const engine = (engineName ?? '').toLowerCase();
+  const browser = browserName.trim().toLowerCase();
 
-  if (name && name !== 'unknown') {
-    if (name.includes('fxios') || name.includes('firefox')) {
-      return 'firefox';
-    }
-    if (name.includes('crios')) {
-      return 'chrome';
-    }
-    if (
-      (name.includes('chrome') || name.includes('chromium')) &&
-      !name.includes('safari')
-    ) {
-      return 'chrome';
-    }
-    if (
-      name.includes('safari') ||
-      name.includes('webkit') ||
-      name.includes('mobile safari')
-    ) {
-      return 'safari';
-    }
-    if (
-      name.includes('edg') ||
-      name.includes('opera') ||
-      name.includes('opr')
-    ) {
-      return 'other';
-    }
-    return 'other';
-  }
+  const isGecko =
+    engine.includes('gecko') ||
+    includesAny(browser, ['firefox', 'fxios']) ||
+    includesAny(ua, ['firefox', 'fxios']);
 
-  if (
-    ua.includes('safari') &&
-    !ua.includes('chrome') &&
-    !ua.includes('crios') &&
-    !ua.includes('fxios') &&
-    !ua.includes('chromium')
-  ) {
-    return 'safari';
-  }
-
-  if (
-    (ua.includes('iphone') || ua.includes('ipad') || ua.includes('mac os')) &&
-    !ua.includes('crios') &&
-    !ua.includes('fxios') &&
-    !ua.includes('chrome')
-  ) {
-    return 'safari';
-  }
-
-  if (ua.includes('firefox') || ua.includes('fxios')) {
+  if (isGecko) {
     return 'firefox';
   }
 
-  if (ua.includes('edg/')) {
+  const isChromium =
+    engine.includes('blink') ||
+    engine.includes('chromium') ||
+    includesAny(browser, [
+      'chrome',
+      'chromium',
+      'crios',
+      'edg',
+      'edge',
+      'opera',
+      'opr',
+      'brave',
+      'vivaldi',
+      'zen',
+    ]) ||
+    includesAny(ua, [
+      'chrome/',
+      'crios/',
+      'chromium',
+      'edg/',
+      'edgios/',
+      'opr/',
+      'opera',
+    ]);
+
+  if (isChromium) {
+    return 'chrome';
+  }
+
+  const isSafari =
+    engine.includes('webkit') ||
+    includesAny(browser, ['safari', 'mobile safari']) ||
+    (includesAny(ua, ['safari']) &&
+      !includesAny(ua, ['chrome', 'chromium', 'crios', 'fxios']));
+
+  if (isSafari) {
+    return 'safari';
+  }
+
+  if (browser && browser !== 'unknown') {
     return 'other';
   }
 
   if (
-    ua.includes('chrome') ||
-    ua.includes('crios') ||
-    ua.includes('chromium')
+    includesAny(ua, ['iphone', 'ipad', 'mac os']) &&
+    !includesAny(ua, ['crios', 'fxios', 'chrome', 'chromium'])
+  ) {
+    return 'safari';
+  }
+
+  if (includesAny(ua, ['firefox', 'fxios'])) {
+    return 'firefox';
+  }
+
+  if (
+    includesAny(ua, ['chrome', 'crios', 'chromium', 'edg/', 'opr/', 'opera'])
   ) {
     return 'chrome';
   }

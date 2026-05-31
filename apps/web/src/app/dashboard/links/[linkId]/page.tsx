@@ -11,11 +11,14 @@ import { LinkAnalytics } from '@/components/links/link-analytics';
 import { LinkClicksTable } from '@/components/links/link-clicks-table';
 import { LinkInfoCard } from '@/components/links/link-info-card';
 import { LinkOgPreviewCard } from '@/components/links/link-og-preview-card';
-import { LinkQrCard } from '@/components/links/link-qr-card';
 import { RequireApp } from '@/components/require-app';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatUrlWithoutProtocol, getPrimaryLinkUrl } from '@/lib/link-urls';
+import {
+  formatUrlWithoutProtocol,
+  getLinkDisplayName,
+  getPrimaryLinkUrl,
+} from '@/lib/link-urls';
 import { useLink, useLinkDomains } from '@/lib/queries';
 
 export default function LinkDetailPage({
@@ -65,19 +68,24 @@ export default function LinkDetailPage({
           <Skeleton className="h-12 w-64" />
         ) : (
           <DashboardPageHeader
-            description={formatUrlWithoutProtocol(link.destinationUrl)}
-            title={primaryUrl.display}
+            description={
+              link.name?.trim()
+                ? primaryUrl.display
+                : formatUrlWithoutProtocol(link.destinationUrl)
+            }
+            title={getLinkDisplayName(link.name, primaryUrl.display)}
           />
         )}
 
         {link && appId && primaryUrl ? (
           <>
-            <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
-              <LinkInfoCard domains={domains} link={link} />
-              <div className="flex flex-col gap-3">
-                <LinkOgPreviewCard link={link} />
-                <LinkQrCard shortUrl={primaryUrl.url} />
-              </div>
+            <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
+              <LinkInfoCard className="h-full" domains={domains} link={link} />
+              <LinkOgPreviewCard
+                className="h-full"
+                link={link}
+                shortUrl={primaryUrl.url}
+              />
             </div>
 
             <LinkAnalytics appId={appId} linkId={linkId} />

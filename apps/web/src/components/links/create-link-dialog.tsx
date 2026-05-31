@@ -85,6 +85,7 @@ export function CreateLinkDialog({ appId }: CreateLinkDialogProps) {
 
     const payload = {
       appId,
+      name: form.name.trim() || null,
       slug: form.slug.toLowerCase(),
       destinationUrl: form.destinationUrl,
       ...linkUtmToPayload(form.utm),

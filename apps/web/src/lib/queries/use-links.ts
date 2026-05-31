@@ -17,7 +17,7 @@ type SlugAvailableResponse = z.infer<typeof SlugAvailableResponseSchema>;
 import type { LinkDomain } from '@phase/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { buildQueryString, fetchApi, fetchApiFormData } from '@/lib/api/client';
-import type { DateRangeParams, PaginationQueryParams } from '@/lib/api/types';
+import type { PaginationQueryParams } from '@/lib/api/types';
 import { cacheConfig } from './query-client';
 import { queryKeys } from './query-keys';
 
@@ -58,7 +58,7 @@ export function useLinkSlugAvailable(slug: string, enabled: boolean) {
 export function useLinkClicks(
   appId: string,
   linkId: string,
-  params: PaginationQueryParams & DateRangeParams
+  params: PaginationQueryParams
 ) {
   return useQuery({
     queryKey: queryKeys.links.clicks(appId, linkId, params),

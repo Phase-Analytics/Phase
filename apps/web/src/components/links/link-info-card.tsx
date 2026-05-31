@@ -17,11 +17,17 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { formatUrlWithoutProtocol, getPrimaryLinkUrl } from '@/lib/link-urls';
+import {
+  formatUrlWithoutProtocol,
+  getLinkDisplayName,
+  getPrimaryLinkUrl,
+} from '@/lib/link-urls';
+import { cn } from '@/lib/utils';
 
 type LinkInfoCardProps = {
   link: LinkDetail;
   domains: Array<{ id: string; hostname: string; status: string }>;
+  className?: string;
 };
 
 function InfoRow({
@@ -92,12 +98,13 @@ function IconValueRows({
   );
 }
 
-export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
+export function LinkInfoCard({ link, domains, className }: LinkInfoCardProps) {
   const { url: shortUrl, display: shortDisplay } = getPrimaryLinkUrl(
     link.slug,
     link.domainIds,
     domains
   );
+  const displayName = getLinkDisplayName(link.name, shortDisplay);
   const utm = linkUtmFromDetail(link);
   const utmEntries = getLinkUtmDisplayEntries(utm);
   const deviceEntries = DEVICE_FIELDS.map((field) => ({
@@ -107,11 +114,17 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
   })).filter((entry) => entry.value);
 
   return (
-    <Card className="py-0">
-      <CardContent className="space-y-4 p-4">
+    <Card className={cn('flex h-full flex-col py-0', className)}>
+      <CardContent className="flex flex-1 flex-col space-y-4 p-4">
         <h2 className="font-semibold text-muted-foreground text-sm uppercase">
           Link details
         </h2>
+
+        {link.name?.trim() ? (
+          <InfoRow label="Name">
+            <p className="font-medium text-sm">{displayName}</p>
+          </InfoRow>
+        ) : null}
 
         <div>
           <p className="text-muted-foreground text-xs uppercase">Short link</p>

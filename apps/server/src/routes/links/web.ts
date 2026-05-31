@@ -102,6 +102,7 @@ function serializeLinkListItem(
 ) {
   return {
     id: row.id,
+    name: row.name,
     slug: row.slug,
     destinationUrl: row.destinationUrl,
     shortUrl: options?.shortUrl ?? buildDefaultShortUrl(row.slug),
@@ -333,6 +334,7 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         .values({
           id: linkId,
           appId: parsed.data.appId,
+          name: parsed.data.name?.trim() || null,
           slug: parsed.data.slug,
           destinationUrl: parsed.data.destinationUrl,
           utmSource: parsed.data.utmSource ?? null,
@@ -675,6 +677,9 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
       const [row] = await db
         .update(links)
         .set({
+          ...(parsed.data.name !== undefined
+            ? { name: parsed.data.name?.trim() || null }
+            : {}),
           ...(parsed.data.slug ? { slug: parsed.data.slug } : {}),
           ...(parsed.data.destinationUrl
             ? { destinationUrl: parsed.data.destinationUrl }
@@ -1056,8 +1061,6 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         linkId: params.linkId,
         page,
         pageSize,
-        startDate: query.startDate,
-        endDate: query.endDate,
       });
     },
     {
@@ -1066,8 +1069,6 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         appId: t.String(),
         page: t.Optional(t.String()),
         pageSize: t.Optional(t.String()),
-        startDate: t.Optional(t.String()),
-        endDate: t.Optional(t.String()),
       }),
       response: {
         200: LinkClicksListResponseSchema,

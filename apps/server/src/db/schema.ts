@@ -195,6 +195,7 @@ export const links = pgTable(
       .notNull()
       .references(() => apps.id, { onDelete: 'cascade' }),
     slug: text('slug').notNull().unique(),
+    name: text('name'),
     destinationUrl: text('destination_url').notNull(),
     utmSource: text('utm_source'),
     utmMedium: text('utm_medium'),

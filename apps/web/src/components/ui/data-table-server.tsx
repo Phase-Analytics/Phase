@@ -119,7 +119,9 @@ export function DataTableServer<TData, TValue>({
       ? startDateParam
       : undefined;
   const currentEndDate =
-    showDateRange && typeof endDateParam === 'string' ? endDateParam : undefined;
+    showDateRange && typeof endDateParam === 'string'
+      ? endDateParam
+      : undefined;
 
   const [searchValue, setSearchValue] = useState(params.search);
   const [isMounted, setIsMounted] = useState(false);

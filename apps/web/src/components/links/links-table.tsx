@@ -19,7 +19,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { formatUrlWithoutProtocol, getLinkStatus } from '@/lib/link-urls';
+import {
+  formatUrlWithoutProtocol,
+  getLinkDisplayName,
+  getLinkStatus,
+} from '@/lib/link-urls';
 
 type LinksTableProps = {
   appId: string;
@@ -30,6 +34,7 @@ type LinksTableProps = {
 function linkMatchesSearch(link: LinkListItem, query: string): boolean {
   const q = query.toLowerCase();
   return (
+    (link.name?.toLowerCase().includes(q) ?? false) ||
     link.slug.toLowerCase().includes(q) ||
     link.shortUrl.toLowerCase().includes(q) ||
     link.destinationUrl.toLowerCase().includes(q)
@@ -39,8 +44,8 @@ function linkMatchesSearch(link: LinkListItem, query: string): boolean {
 export function LinksTable({ appId, links, isLoading }: LinksTableProps) {
   const columns: ColumnDef<LinkListItem>[] = [
     {
-      accessorKey: 'shortUrl',
-      header: 'Short link',
+      accessorKey: 'name',
+      header: 'Name',
       filterFn: (row, _columnId, filterValue) => {
         const query = String(filterValue ?? '').trim();
         if (!query) {
@@ -51,14 +56,16 @@ export function LinksTable({ appId, links, isLoading }: LinksTableProps) {
       cell: ({ row }) => {
         const link = row.original;
         const shortDisplay = formatUrlWithoutProtocol(link.shortUrl);
+        const displayName = getLinkDisplayName(link.name, shortDisplay);
 
         return (
           <div className="flex items-center gap-2">
             <Link
-              className="font-medium hover:underline"
+              className="max-w-xs truncate font-medium hover:underline lg:max-w-sm"
               href={`/dashboard/links/${link.id}?app=${appId}`}
+              title={displayName}
             >
-              {shortDisplay}
+              {displayName}
             </Link>
             <Tooltip>
               <TooltipTrigger asChild>

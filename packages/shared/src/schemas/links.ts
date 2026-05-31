@@ -56,9 +56,12 @@ export const LinkOgTextFieldsSchema = z.object({
   ogDescription: z.string().max(500).nullable().optional(),
 });
 
+export const LinkNameSchema = z.string().trim().max(128).nullable().optional();
+
 export const CreateLinkRequestSchema = z
   .object({
     appId: z.string().min(1),
+    name: LinkNameSchema,
     slug: LinkSlugSchema,
     destinationUrl: LinkUrlSchema,
     deviceIosUrl: LinkUrlNullableSchema,
@@ -73,6 +76,7 @@ export const CreateLinkRequestSchema = z
 
 export const UpdateLinkRequestSchema = z
   .object({
+    name: LinkNameSchema,
     destinationUrl: LinkUrlSchema.optional(),
     slug: LinkSlugSchema.optional(),
     deviceIosUrl: LinkUrlNullableSchema,
@@ -87,6 +91,7 @@ export const UpdateLinkRequestSchema = z
 
 export const LinkListItemSchema = z.object({
   id: z.string(),
+  name: z.string().nullable(),
   slug: z.string(),
   destinationUrl: z.string(),
   shortUrl: z.string(),
@@ -166,7 +171,8 @@ export const LinkAnalyticsTimeseriesPointSchema = z.object({
 export const LinkClickItemSchema = z.object({
   clickId: z.string(),
   timestamp: z.string(),
-  platform: z.enum(['ios', 'android', 'others']),
+  os: z.string(),
+  browser: z.string(),
   countryCode: z.string().nullable(),
 });
 
