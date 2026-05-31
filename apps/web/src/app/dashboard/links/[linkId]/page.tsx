@@ -8,7 +8,9 @@ import { use, useMemo } from 'react';
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { EditLinkDialog } from '@/components/links/edit-link-dialog';
 import { LinkAnalytics } from '@/components/links/link-analytics';
+import { LinkClicksTable } from '@/components/links/link-clicks-table';
 import { LinkInfoCard } from '@/components/links/link-info-card';
+import { LinkOgPreviewCard } from '@/components/links/link-og-preview-card';
 import { LinkQrCard } from '@/components/links/link-qr-card';
 import { RequireApp } from '@/components/require-app';
 import { Button } from '@/components/ui/button';
@@ -72,8 +74,17 @@ export default function LinkDetailPage({
           <>
             <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
               <LinkInfoCard domains={domains} link={link} />
-              <LinkQrCard shortUrl={primaryUrl.url} />
+              <div className="flex min-h-0 flex-col gap-4">
+                <LinkOgPreviewCard
+                  className="min-h-0 flex-1"
+                  link={link}
+                  siteLabel={primaryUrl.display}
+                />
+                <LinkQrCard shortUrl={primaryUrl.url} />
+              </div>
             </div>
+
+            <LinkClicksTable appId={appId} linkId={linkId} />
 
             <LinkAnalytics appId={appId} linkId={linkId} />
           </>

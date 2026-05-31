@@ -262,6 +262,103 @@ export async function getLinkAnalytics(options: {
   };
 }
 
+function buildLinkClicksWhereClause(options: {
+  appId: string;
+  linkId: string;
+  startDate?: string;
+  endDate?: string;
+}): string {
+  const appId = escapeSqlString(options.appId);
+  const linkId = escapeSqlString(options.linkId);
+  const clauses = [`app_id = '${appId}'`, `link_id = '${linkId}'`];
+
+  if (options.startDate) {
+    clauses.push(
+      `timestamp >= '${escapeSqlString(new Date(options.startDate).toISOString())}'`
+    );
+  }
+
+  if (options.endDate) {
+    clauses.push(
+      `timestamp < '${escapeSqlString(new Date(options.endDate).toISOString())}'`
+    );
+  }
+
+  return clauses.join(' AND ');
+}
+
+export async function getLinkClicks(options: {
+  appId: string;
+  linkId: string;
+  page: number;
+  pageSize: number;
+  startDate?: string;
+  endDate?: string;
+}) {
+  const page = Math.max(1, options.page);
+  const pageSize = Math.min(Math.max(1, options.pageSize), 100);
+  const offset = (page - 1) * pageSize;
+  const where = buildLinkClicksWhereClause(options);
+
+  const [countRows, clickRows] = await Promise.all([
+    executeQuestDBReadQuery<{ total: number }>(`
+        SELECT count() AS total
+        FROM ${QUESTDB_LINK_CLICKS_TABLE}
+        WHERE ${where}
+      `),
+    executeQuestDBReadQuery<{
+      click_id: string;
+      timestamp: string;
+      platform: string;
+      country_code: string;
+    }>(`
+        SELECT
+          click_id,
+          timestamp,
+          platform,
+          country_code
+        FROM ${QUESTDB_LINK_CLICKS_TABLE}
+        WHERE ${where}
+        ORDER BY timestamp DESC
+        LIMIT ${pageSize} OFFSET ${offset}
+      `),
+  ]);
+
+  const total = Number(countRows[0]?.total ?? 0);
+  const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
+
+  return {
+    clicks: clickRows.map((row) => ({
+      clickId: row.click_id,
+      timestamp: new Date(row.timestamp).toISOString(),
+      platform: normalizeLinkClickPlatform(row.platform),
+      countryCode: normalizeLinkClickCountry(row.country_code),
+    })),
+    pagination: {
+      total,
+      page,
+      pageSize,
+      totalPages,
+    },
+  };
+}
+
+function normalizeLinkClickPlatform(
+  value: string
+): 'ios' | 'android' | 'others' {
+  if (value === 'ios' || value === 'android') {
+    return value;
+  }
+  return 'others';
+}
+
+function normalizeLinkClickCountry(value: string): string | null {
+  if (!value || value === 'unknown') {
+    return null;
+  }
+  return value;
+}
+
 export async function getLinkClickCount(linkId: string): Promise<number> {
   const rows = await executeQuestDBReadQuery<{ count: number }>(`
     SELECT count() AS count

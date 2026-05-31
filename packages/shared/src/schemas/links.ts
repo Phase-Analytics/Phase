@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PaginationMetaSchema } from './common';
 
 const LINK_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,62}[a-z0-9])?$/;
 const HTTP_PREFIX_RE = /^https?:\/\//i;
@@ -162,6 +163,18 @@ export const LinkAnalyticsTimeseriesPointSchema = z.object({
   uniqueVisits: z.number().int().nonnegative(),
 });
 
+export const LinkClickItemSchema = z.object({
+  clickId: z.string(),
+  timestamp: z.string().datetime(),
+  platform: z.enum(['ios', 'android', 'others']),
+  countryCode: z.string().nullable(),
+});
+
+export const LinkClicksListResponseSchema = z.object({
+  clicks: z.array(LinkClickItemSchema),
+  pagination: PaginationMetaSchema,
+});
+
 export const LinkAnalyticsResponseSchema = z.object({
   totalClicks: z.number().int().nonnegative(),
   totalClicksChange24h: z.number(),
@@ -187,4 +200,8 @@ export type LinkDomain = z.infer<typeof LinkDomainSchema>;
 export type LinkAnalyticsResponse = z.infer<typeof LinkAnalyticsResponseSchema>;
 export type LinkAnalyticsRegionItem = z.infer<
   typeof LinkAnalyticsRegionItemSchema
+>;
+export type LinkClickItem = z.infer<typeof LinkClickItemSchema>;
+export type LinkClicksListResponse = z.infer<
+  typeof LinkClicksListResponseSchema
 >;

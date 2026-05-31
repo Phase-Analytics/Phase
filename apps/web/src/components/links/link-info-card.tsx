@@ -1,14 +1,10 @@
 'use client';
 
-import { Image01Icon, LinkSquare02Icon } from '@hugeicons/core-free-icons';
+import { LinkSquare02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
 import type { LinkDetail } from '@phase/shared';
 import { ClientDate } from '@/components/client-date';
 import { DEVICE_FIELDS } from '@/components/links/link-device-routing-fields';
-import {
-  hasLinkOgPreview,
-  LINK_OG_TEXT_FIELDS,
-} from '@/components/links/link-og-fields';
 import {
   getLinkUtmDisplayEntries,
   hasLinkUtmValues,
@@ -21,7 +17,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { getLinkOgImageSrc } from '@/lib/link-og-image-url';
 import { formatUrlWithoutProtocol, getPrimaryLinkUrl } from '@/lib/link-urls';
 
 type LinkInfoCardProps = {
@@ -105,15 +100,6 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
   );
   const utm = linkUtmFromDetail(link);
   const utmEntries = getLinkUtmDisplayEntries(utm);
-  const ogImageSrc = getLinkOgImageSrc(link.ogImageUrl, link.updatedAt);
-
-  const ogTextEntries = LINK_OG_TEXT_FIELDS.map((field) => ({
-    key: field.key,
-    icon: field.icon,
-    value:
-      field.key === 'title' ? (link.ogTitle ?? '') : (link.ogDescription ?? ''),
-  })).filter((entry) => entry.value.trim());
-
   const deviceEntries = DEVICE_FIELDS.map((field) => ({
     key: field.key,
     icon: field.icon,
@@ -169,39 +155,6 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
           <div className="mt-1">
             {hasLinkUtmValues(utm) ? (
               <DetailEntries entries={utmEntries} />
-            ) : (
-              <p className="text-muted-foreground text-sm">None</p>
-            )}
-          </div>
-        </div>
-
-        <div>
-          <p className="text-muted-foreground text-xs uppercase">
-            Social preview
-          </p>
-          <div className="mt-1">
-            {hasLinkOgPreview(link) ? (
-              <div className="space-y-2">
-                {ogTextEntries.length > 0 ? (
-                  <IconValueRows entries={ogTextEntries} />
-                ) : null}
-                {ogImageSrc ? (
-                  <div className="flex items-start gap-2">
-                    <HugeiconsIcon
-                      className="mt-0.5 size-4 shrink-0 text-muted-foreground"
-                      icon={Image01Icon}
-                    />
-                    {/* biome-ignore lint/performance/noImgElement: external R2 preview URL */}
-                    <img
-                      alt="Link preview"
-                      className="aspect-[1200/630] w-full max-w-[200px] rounded-md border object-cover"
-                      height={105}
-                      src={ogImageSrc}
-                      width={200}
-                    />
-                  </div>
-                ) : null}
-              </div>
             ) : (
               <p className="text-muted-foreground text-sm">None</p>
             )}

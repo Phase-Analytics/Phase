@@ -2,6 +2,7 @@ import type {
   CreateLinkDomainRequest,
   CreateLinkRequest,
   LinkAnalyticsResponse,
+  LinkClicksListResponse,
   LinkDetail,
   LinkDomainsListResponseSchema,
   LinksListResponse,
@@ -16,6 +17,7 @@ type SlugAvailableResponse = z.infer<typeof SlugAvailableResponseSchema>;
 import type { LinkDomain } from '@phase/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { buildQueryString, fetchApi, fetchApiFormData } from '@/lib/api/client';
+import type { DateRangeParams, PaginationQueryParams } from '@/lib/api/types';
 import { cacheConfig } from './query-client';
 import { queryKeys } from './query-keys';
 
@@ -50,6 +52,25 @@ export function useLinkSlugAvailable(slug: string, enabled: boolean) {
       ),
     enabled: enabled && slug.length >= 3,
     staleTime: 10_000,
+  });
+}
+
+export function useLinkClicks(
+  appId: string,
+  linkId: string,
+  params: PaginationQueryParams & DateRangeParams
+) {
+  return useQuery({
+    queryKey: queryKeys.links.clicks(appId, linkId, params),
+    queryFn: () =>
+      fetchApi<LinkClicksListResponse>(
+        `/web/links/${linkId}/clicks${buildQueryString({
+          appId,
+          ...params,
+        })}`
+      ),
+    ...cacheConfig.list,
+    enabled: Boolean(appId) && Boolean(linkId),
   });
 }
 

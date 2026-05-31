@@ -11,16 +11,18 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { renderStyledLinkQrDataUrl } from '@/lib/link-qr-render';
+import { cn } from '@/lib/utils';
 
-const DISPLAY_QR_SIZE = 224;
+const DISPLAY_QR_SIZE = 128;
 const DISPLAY_PIXEL_RATIO = 3;
 const EXPORT_QR_SIZE = 1024;
 
 type LinkQrCardProps = {
   shortUrl: string;
+  className?: string;
 };
 
-export function LinkQrCard({ shortUrl }: LinkQrCardProps) {
+export function LinkQrCard({ shortUrl, className }: LinkQrCardProps) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,9 +50,9 @@ export function LinkQrCard({ shortUrl }: LinkQrCardProps) {
   };
 
   return (
-    <Card className="flex h-full flex-col py-0">
-      <CardContent className="flex min-h-0 flex-1 flex-col p-4">
-        <div className="flex shrink-0 items-center justify-between gap-2">
+    <Card className={cn('shrink-0 py-0', className)}>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between gap-2">
           <h2 className="font-semibold text-muted-foreground text-sm uppercase">
             QR code
           </h2>
@@ -70,12 +72,12 @@ export function LinkQrCard({ shortUrl }: LinkQrCardProps) {
           </Tooltip>
         </div>
 
-        <div className="mt-4 flex min-h-[240px] flex-1 items-center justify-center rounded-lg bg-muted p-2 [background-image:linear-gradient(to_right,color-mix(in_oklab,var(--foreground)_10%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklab,var(--foreground)_10%,transparent)_1px,transparent_1px)] [background-size:20px_20px]">
+        <div className="mt-3 flex items-center justify-center rounded-lg bg-muted p-2 [background-image:linear-gradient(to_right,color-mix(in_oklab,var(--foreground)_10%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklab,var(--foreground)_10%,transparent)_1px,transparent_1px)] [background-size:16px_16px]">
           {dataUrl ? (
             // biome-ignore lint/performance/noImgElement: dynamic data URL QR preview
             <img
               alt="Link QR code"
-              className="aspect-square w-[min(100%,14rem)] rounded-lg border border-border/60 bg-white shadow-sm"
+              className="aspect-square w-[min(100%,8rem)] rounded-md border border-border/60 bg-white shadow-sm"
               height={DISPLAY_QR_SIZE}
               src={dataUrl}
               style={{ imageRendering: 'auto' }}

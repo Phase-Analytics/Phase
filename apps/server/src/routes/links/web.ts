@@ -8,6 +8,7 @@ import {
   HttpStatus,
   LINK_OG_IMAGE,
   LinkAnalyticsResponseSchema,
+  LinkClicksListResponseSchema,
   LinkDetailSchema,
   LinkDomainSchema,
   LinkDomainsListResponseSchema,
@@ -22,6 +23,7 @@ import { auth } from '@/lib/auth';
 import { assertAppAccess } from '@/lib/links/access';
 import {
   getLinkAnalytics,
+  getLinkClicks,
   getLinkClickTotalsByApp,
 } from '@/lib/links/analytics';
 import {
@@ -1008,6 +1010,67 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
       }),
       response: {
         200: LinkAnalyticsResponseSchema,
+        401: ErrorResponseSchema,
+        403: ErrorResponseSchema,
+        404: ErrorResponseSchema,
+      },
+    }
+  )
+  .get(
+    '/:linkId/clicks',
+    async (ctx) => {
+      const { params, query, user, set } = ctx as typeof ctx & AuthContext;
+
+      if (!user?.id) {
+        set.status = HttpStatus.UNAUTHORIZED;
+        return {
+          code: ErrorCode.UNAUTHORIZED,
+          detail: 'Authentication required',
+        };
+      }
+
+      const app = await assertAppAccess(query.appId, user.id);
+      if (!app) {
+        set.status = HttpStatus.FORBIDDEN;
+        return { code: ErrorCode.FORBIDDEN, detail: 'Access denied' };
+      }
+
+      const row = await db.query.links.findFirst({
+        where: and(eq(links.id, params.linkId), eq(links.appId, query.appId)),
+        columns: { id: true },
+      });
+
+      if (!row) {
+        set.status = HttpStatus.NOT_FOUND;
+        return { code: ErrorCode.NOT_FOUND, detail: 'Link not found' };
+      }
+
+      const page = Math.max(1, Number.parseInt(query.page ?? '1', 10) || 1);
+      const pageSize = Math.min(
+        Math.max(1, Number.parseInt(query.pageSize ?? '10', 10) || 10),
+        100
+      );
+
+      return getLinkClicks({
+        appId: query.appId,
+        linkId: params.linkId,
+        page,
+        pageSize,
+        startDate: query.startDate,
+        endDate: query.endDate,
+      });
+    },
+    {
+      params: t.Object({ linkId: t.String() }),
+      query: t.Object({
+        appId: t.String(),
+        page: t.Optional(t.String()),
+        pageSize: t.Optional(t.String()),
+        startDate: t.Optional(t.String()),
+        endDate: t.Optional(t.String()),
+      }),
+      response: {
+        200: LinkClicksListResponseSchema,
         401: ErrorResponseSchema,
         403: ErrorResponseSchema,
         404: ErrorResponseSchema,

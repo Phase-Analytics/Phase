@@ -104,6 +104,11 @@ export const queryKeys = {
       [...queryKeys.links.all, 'slug-available', slug] as const,
     analytics: (appId: string, linkId: string, range: string) =>
       [...queryKeys.links.all, 'analytics', appId, linkId, range] as const,
+    clicks: (
+      appId: string,
+      linkId: string,
+      filters?: PaginationQueryParams & DateRangeParams
+    ) => [...queryKeys.links.all, 'clicks', appId, linkId, filters] as const,
     domains: (appId: string) =>
       [...queryKeys.links.all, 'domains', appId] as const,
   },
