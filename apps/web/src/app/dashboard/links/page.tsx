@@ -4,6 +4,7 @@ import { Edit02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import Link from 'next/link';
 import { parseAsString, useQueryState } from 'nuqs';
+import { useMemo } from 'react';
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { CreateLinkDialog } from '@/components/links/create-link-dialog';
 import { LinksIntroCard } from '@/components/links/links-intro-card';
@@ -27,6 +28,25 @@ export default function LinksPage() {
   const { data, isPending } = useLinks(appId ?? '');
   const deleteLink = useDeleteLink(appId ?? '');
 
+  const counts = useMemo(() => {
+    const links = data?.links ?? [];
+    const now = Date.now();
+    let active = 0;
+    let inactive = 0;
+
+    for (const link of links) {
+      const expired =
+        link.expiresAt && new Date(link.expiresAt).getTime() <= now;
+      if (link.disabledAt || expired) {
+        inactive += 1;
+      } else {
+        active += 1;
+      }
+    }
+
+    return { total: links.length, active, inactive };
+  }, [data?.links]);
+
   return (
     <RequireApp>
       <div className="flex flex-1 flex-col gap-6">
@@ -37,6 +57,31 @@ export default function LinksPage() {
         />
 
         {appId ? <LinksIntroCard appId={appId} /> : null}
+
+        {!isPending && data ? (
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Card className="py-0">
+              <CardContent className="p-4">
+                <p className="text-muted-foreground text-sm">Total</p>
+                <p className="font-bold text-2xl tabular-nums">{counts.total}</p>
+              </CardContent>
+            </Card>
+            <Card className="py-0">
+              <CardContent className="p-4">
+                <p className="text-muted-foreground text-sm">Active</p>
+                <p className="font-bold text-2xl tabular-nums">{counts.active}</p>
+              </CardContent>
+            </Card>
+            <Card className="py-0">
+              <CardContent className="p-4">
+                <p className="text-muted-foreground text-sm">Inactive</p>
+                <p className="font-bold text-2xl tabular-nums">
+                  {counts.inactive}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        ) : null}
 
         <Card className="py-0">
           <CardContent className="p-0">

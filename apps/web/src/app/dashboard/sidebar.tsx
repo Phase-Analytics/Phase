@@ -12,6 +12,7 @@ import {
   Key01Icon,
   Layers01Icon,
   Link01Icon,
+  Saturn01Icon,
   Logout01Icon,
   Mail01Icon,
   PlaySquareIcon,
@@ -90,7 +91,7 @@ const analyticsNavItems: NavItem[] = [
   },
   {
     label: 'Realtime',
-    icon: GlobalIcon,
+    icon: Saturn01Icon,
     path: '/dashboard/analytics/realtime',
     tooltip: 'Realtime',
   },

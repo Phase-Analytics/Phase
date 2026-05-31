@@ -1,5 +1,9 @@
 import { Elysia, t } from 'elysia';
 import { LINK_DEFAULT_HOST } from '@/lib/links/constants';
+import {
+  DOMAIN_VERIFY_PATH,
+  handleDomainVerifyRequest,
+} from '@/lib/links/dns';
 import { handleLinkRedirect } from '@/lib/links/redirect';
 
 function normalizeHost(host: string | null): string | null {
@@ -7,6 +11,9 @@ function normalizeHost(host: string | null): string | null {
 }
 
 export const linkRedirectRouter = new Elysia()
+  .get(DOMAIN_VERIFY_PATH, ({ request }) =>
+    handleDomainVerifyRequest(normalizeHost(request.headers.get('host')))
+  )
   .get(
     '/l/:slug',
     ({ request, params }) =>
