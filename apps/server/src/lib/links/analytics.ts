@@ -318,8 +318,8 @@ export async function getLinkClicks(options: {
     clicks: clickRows.map((row) => ({
       clickId: row.click_id,
       timestamp: new Date(row.timestamp).toISOString(),
-      os: normalizeLinkClickOs(row.os),
-      browser: normalizeLinkClickBrowser(row.browser),
+      os: normalizeLinkClickOs(row.os ?? ''),
+      browser: normalizeLinkClickBrowser(row.browser ?? ''),
       countryCode: normalizeLinkClickCountry(row.country_code),
     })),
     pagination: {

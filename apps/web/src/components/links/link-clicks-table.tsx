@@ -21,8 +21,8 @@ import { usePaginationStore } from '@/stores/pagination-store';
 
 const COUNTRY_CODE_REGEX = /^[A-Za-z]{2}$/;
 
-function getOsIcon(os: string) {
-  const normalized = os.toLowerCase();
+function getOsIcon(os: string | null | undefined) {
+  const normalized = (os ?? 'unknown').toLowerCase();
   if (
     normalized.includes('ios') ||
     normalized.includes('iphone') ||
@@ -72,7 +72,7 @@ const columns: ColumnDef<LinkClickItem>[] = [
     header: 'OS',
     size: 140,
     cell: ({ row }) => {
-      const os = row.getValue('os') as string;
+      const os = (row.getValue('os') as string | undefined) ?? 'Unknown';
 
       return (
         <div className="flex items-center gap-1.5">
@@ -90,7 +90,8 @@ const columns: ColumnDef<LinkClickItem>[] = [
     header: 'Browser',
     size: 120,
     cell: ({ row }) => {
-      const browser = row.getValue('browser') as string;
+      const browser =
+        (row.getValue('browser') as string | undefined) ?? 'Unknown';
 
       return (
         <div className="flex items-center gap-1.5">

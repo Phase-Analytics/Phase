@@ -35,9 +35,9 @@ function linkMatchesSearch(link: LinkListItem, query: string): boolean {
   const q = query.toLowerCase();
   return (
     (link.name?.toLowerCase().includes(q) ?? false) ||
-    link.slug.toLowerCase().includes(q) ||
-    link.shortUrl.toLowerCase().includes(q) ||
-    link.destinationUrl.toLowerCase().includes(q)
+    (link.slug?.toLowerCase().includes(q) ?? false) ||
+    (link.shortUrl?.toLowerCase().includes(q) ?? false) ||
+    (link.destinationUrl?.toLowerCase().includes(q) ?? false)
   );
 }
 

@@ -46,18 +46,23 @@ export function LinkDeviceRoutingFields({
 }: LinkDeviceRoutingFieldsProps) {
   return (
     <div className="space-y-3">
-      {DEVICE_FIELDS.map(({ key, icon, id }) => (
-        <div className="flex items-center gap-2" key={key}>
-          <HugeiconsIcon
-            className="size-4 shrink-0 text-muted-foreground"
-            icon={icon}
-          />
+      {DEVICE_FIELDS.map(({ key, label, icon, id }) => (
+        <div className="space-y-2" key={key}>
+          <label
+            className="flex items-center gap-1.5 font-medium text-sm"
+            htmlFor={id}
+          >
+            <HugeiconsIcon
+              className="size-4 shrink-0 text-muted-foreground"
+              icon={icon}
+            />
+            {label}
+          </label>
           <Input
-            className="min-w-0 flex-1"
             id={id}
             onChange={(e) => onChange({ ...values, [key]: e.target.value })}
-            placeholder="https://"
-            type="url"
+            placeholder="example.com/ios"
+            type="text"
             value={values[key]}
           />
         </div>
