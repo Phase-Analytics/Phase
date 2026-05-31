@@ -108,17 +108,18 @@ export function DataTableServer<TData, TValue>({
     }
   );
 
+  const queryParams = params as unknown as Record<string, unknown>;
+  const pageParam = queryParams[pageQueryKey];
   const currentPage =
-    (params as Record<string, number | null | undefined>)[pageQueryKey] ?? 1;
-  const currentStartDate = showDateRange
-    ? ((params as Record<string, string | null | undefined>)[
-        startDateQueryKey
-      ] ?? undefined)
-    : undefined;
-  const currentEndDate = showDateRange
-    ? ((params as Record<string, string | null | undefined>)[endDateQueryKey] ??
-      undefined)
-    : undefined;
+    typeof pageParam === 'number' && Number.isFinite(pageParam) ? pageParam : 1;
+  const startDateParam = queryParams[startDateQueryKey];
+  const endDateParam = queryParams[endDateQueryKey];
+  const currentStartDate =
+    showDateRange && typeof startDateParam === 'string'
+      ? startDateParam
+      : undefined;
+  const currentEndDate =
+    showDateRange && typeof endDateParam === 'string' ? endDateParam : undefined;
 
   const [searchValue, setSearchValue] = useState(params.search);
   const [isMounted, setIsMounted] = useState(false);
