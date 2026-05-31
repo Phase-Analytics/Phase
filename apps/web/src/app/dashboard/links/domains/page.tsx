@@ -49,10 +49,10 @@ export default function LinkDomainsPage() {
           toast.success('Domain verified');
           return;
         }
-        toast.error(domain.lastError ?? 'Verification failed');
+        toast.error('Could not verify domain. Check CNAME and try again.');
       },
-      onError: (error) => {
-        toast.error(error.message || 'Verification failed');
+      onError: () => {
+        toast.error('Could not verify domain. Check CNAME and try again.');
       },
     });
   };

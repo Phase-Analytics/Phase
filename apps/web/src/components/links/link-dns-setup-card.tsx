@@ -27,8 +27,8 @@ export function LinkDnsSetupCard({ hostname }: LinkDnsSetupCardProps) {
           <div className="space-y-1">
             <h3 className="font-semibold text-sm">DNS setup</h3>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Add this CNAME at your DNS provider. Cloudflare proxy is fine.
-              Propagation can take a few minutes.
+              Add this CNAME at your DNS provider. Propagation can take a few
+              minutes.
             </p>
           </div>
         </div>
