@@ -1,7 +1,7 @@
 'use client';
 
 import { Image01Icon, LinkSquare02Icon } from '@hugeicons/core-free-icons';
-import { HugeiconsIcon } from '@hugeicons/react';
+import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
 import type { LinkDetail } from '@phase/shared';
 import { ClientDate } from '@/components/client-date';
 import { DEVICE_FIELDS } from '@/components/links/link-device-routing-fields';
@@ -21,6 +21,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { getLinkOgImageSrc } from '@/lib/link-og-image-url';
 import { formatUrlWithoutProtocol, getPrimaryLinkUrl } from '@/lib/link-urls';
 
 type LinkInfoCardProps = {
@@ -50,7 +51,7 @@ function DetailEntries({
     key: string;
     label: string;
     value: string;
-    icon?: (typeof LINK_OG_TEXT_FIELDS)[number]['icon'];
+    icon?: IconSvgElement;
   }>;
 }) {
   return (
@@ -70,6 +71,32 @@ function DetailEntries({
   );
 }
 
+function IconValueRows({
+  entries,
+}: {
+  entries: Array<{
+    key: string;
+    value: string;
+    icon: IconSvgElement;
+  }>;
+}) {
+  return (
+    <ul className="space-y-2">
+      {entries.map((entry) => (
+        <li className="flex items-start gap-2" key={entry.key}>
+          <HugeiconsIcon
+            className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+            icon={entry.icon}
+          />
+          <span className="min-w-0 break-all font-medium text-sm">
+            {entry.value}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
   const { url: shortUrl, display: shortDisplay } = getPrimaryLinkUrl(
     link.slug,
@@ -78,10 +105,10 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
   );
   const utm = linkUtmFromDetail(link);
   const utmEntries = getLinkUtmDisplayEntries(utm);
+  const ogImageSrc = getLinkOgImageSrc(link.ogImageUrl, link.updatedAt);
 
   const ogTextEntries = LINK_OG_TEXT_FIELDS.map((field) => ({
     key: field.key,
-    label: field.label,
     icon: field.icon,
     value:
       field.key === 'title' ? (link.ogTitle ?? '') : (link.ogDescription ?? ''),
@@ -89,10 +116,9 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
 
   const deviceEntries = DEVICE_FIELDS.map((field) => ({
     key: field.key,
-    label: field.label,
     icon: field.icon,
-    value: link[field.key] ?? '',
-  })).filter((entry) => entry.value.trim());
+    value: formatUrlWithoutProtocol(link[field.key] ?? ''),
+  })).filter((entry) => entry.value);
 
   return (
     <Card className="py-0">
@@ -157,21 +183,21 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
             {hasLinkOgPreview(link) ? (
               <div className="space-y-2">
                 {ogTextEntries.length > 0 ? (
-                  <DetailEntries entries={ogTextEntries} />
+                  <IconValueRows entries={ogTextEntries} />
                 ) : null}
-                {link.ogImageUrl ? (
-                  <div className="space-y-1">
-                    <p className="flex items-center gap-1.5 text-muted-foreground text-xs">
-                      <HugeiconsIcon className="size-3.5" icon={Image01Icon} />
-                      Image
-                    </p>
+                {ogImageSrc ? (
+                  <div className="flex items-start gap-2">
+                    <HugeiconsIcon
+                      className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                      icon={Image01Icon}
+                    />
                     {/* biome-ignore lint/performance/noImgElement: external R2 preview URL */}
                     <img
                       alt="Link preview"
-                      className="aspect-[1200/630] w-full max-w-sm rounded-md border object-cover"
-                      height={630}
-                      src={link.ogImageUrl}
-                      width={1200}
+                      className="aspect-[1200/630] w-full max-w-[200px] rounded-md border object-cover"
+                      height={105}
+                      src={ogImageSrc}
+                      width={200}
                     />
                   </div>
                 ) : null}
@@ -188,12 +214,7 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
           </p>
           <div className="mt-1">
             {deviceEntries.length > 0 ? (
-              <DetailEntries
-                entries={deviceEntries.map((entry) => ({
-                  ...entry,
-                  value: formatUrlWithoutProtocol(entry.value),
-                }))}
-              />
+              <IconValueRows entries={deviceEntries} />
             ) : (
               <p className="text-muted-foreground text-sm">None</p>
             )}

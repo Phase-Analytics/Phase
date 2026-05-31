@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { formatApiErrorMessage } from '@/lib/format-api-error';
 import { ignorePromiseRejection } from '@/lib/ignore-promise-rejection';
+import { getLinkOgImageSrc } from '@/lib/link-og-image-url';
 import {
   useDeleteLinkOgImage,
   useUploadLinkOgImage,
@@ -88,8 +89,10 @@ type LinkOgFieldsProps = {
   linkId?: string;
   values: LinkOgValues;
   ogImageUrl: string | null;
+  ogImageCacheKey?: string | null;
   onChange: (values: LinkOgValues) => void;
   onImageUrlChange: (url: string | null) => void;
+  onOgImageCacheKeyChange?: (key: string | null) => void;
   pendingFile: File | null;
   onPendingFileChange: (file: File | null) => void;
 };
@@ -99,8 +102,10 @@ export function LinkOgFields({
   linkId,
   values,
   ogImageUrl,
+  ogImageCacheKey,
   onChange,
   onImageUrlChange,
+  onOgImageCacheKeyChange,
   pendingFile,
   onPendingFileChange,
 }: LinkOgFieldsProps) {
@@ -111,7 +116,7 @@ export function LinkOgFields({
 
   const previewUrl = pendingFile
     ? URL.createObjectURL(pendingFile)
-    : ogImageUrl;
+    : getLinkOgImageSrc(ogImageUrl, ogImageCacheKey);
 
   const handleFile = async (file: File | null) => {
     setUploadError(null);
@@ -138,6 +143,7 @@ export function LinkOgFields({
           return;
         }
         onImageUrlChange(updated.ogImageUrl);
+        onOgImageCacheKeyChange?.(updated.updatedAt);
         onPendingFileChange(null);
       } catch (err) {
         setUploadError(formatApiErrorMessage(err));

@@ -79,10 +79,7 @@ export function TimescaleChart({
   valueFormatter,
   emptyMessage = 'No data available for this period',
 }: TimescaleChartProps) {
-  const chartId = useMemo(
-    () => `${dataKey}-${Math.random().toString(36).slice(2, 11)}`,
-    [dataKey]
-  );
+  const chartId = useMemo(() => `chart-${dataKey}`, [dataKey]);
 
   const chartConfig = {
     [dataKey]: {

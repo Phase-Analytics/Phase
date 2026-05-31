@@ -27,10 +27,7 @@ export function ExploreTimeseriesChart({
   points,
   formatAsDuration = false,
 }: ExploreTimeseriesChartProps) {
-  const chartId = useMemo(
-    () => `explore-ts-${Math.random().toString(36).slice(2, 9)}`,
-    []
-  );
+  const chartId = useMemo(() => 'explore-ts-chart', []);
 
   if (points.length === 0) {
     return <p className="text-muted-foreground text-sm">No timeseries data.</p>;

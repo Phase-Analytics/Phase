@@ -83,12 +83,13 @@ export function extractR2ObjectKeyFromPublicUrl(
   publicUrl: string,
   config: R2Config
 ): string | null {
+  const baseUrl = publicUrl.split('?')[0] ?? publicUrl;
   const prefix = `${config.publicBaseUrl}/`;
-  if (!publicUrl.startsWith(prefix)) {
+  if (!baseUrl.startsWith(prefix)) {
     return null;
   }
 
-  return publicUrl.slice(prefix.length);
+  return baseUrl.slice(prefix.length);
 }
 
 export async function uploadToR2(params: {

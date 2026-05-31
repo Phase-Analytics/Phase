@@ -231,9 +231,13 @@ export function LinkFormFields({
         <LinkOgFields
           appId={appId}
           linkId={linkId}
+          ogImageCacheKey={form.ogImageCacheKey}
           ogImageUrl={form.ogImageUrl}
           onChange={(og) => patch({ og })}
           onImageUrlChange={(ogImageUrl) => patch({ ogImageUrl })}
+          onOgImageCacheKeyChange={(ogImageCacheKey) =>
+            patch({ ogImageCacheKey })
+          }
           onPendingFileChange={(ogPendingFile) => patch({ ogPendingFile })}
           pendingFile={form.ogPendingFile}
           values={form.og}

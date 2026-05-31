@@ -116,7 +116,7 @@ export function LinkAnalytics({ appId, linkId }: LinkAnalyticsProps) {
               Total clicks
             </p>
             <p className="font-bold text-3xl tabular-nums">
-              <CountingNumber number={data.totalClicks} />
+              <CountingNumber initiallyStable number={data.totalClicks} />
             </p>
             <OverviewChange change={data.totalClicksChange24h} />
           </CardContent>
@@ -127,7 +127,7 @@ export function LinkAnalytics({ appId, linkId }: LinkAnalyticsProps) {
               Unique visits
             </p>
             <p className="font-bold text-3xl tabular-nums">
-              <CountingNumber number={data.uniqueVisits} />
+              <CountingNumber initiallyStable number={data.uniqueVisits} />
             </p>
             <OverviewChange change={data.uniqueVisitsChange24h} />
           </CardContent>

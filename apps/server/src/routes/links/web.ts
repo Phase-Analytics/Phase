@@ -872,11 +872,11 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
       try {
         await deleteR2ObjectByPublicUrl(existing.ogImageUrl);
 
-        const ogImageUrl = await uploadToR2({
+        const ogImageUrl = `${await uploadToR2({
           key: objectKey,
           body: processed,
           contentType: 'image/webp',
-        });
+        })}?v=${Date.now()}`;
 
         const [row] = await db
           .update(links)

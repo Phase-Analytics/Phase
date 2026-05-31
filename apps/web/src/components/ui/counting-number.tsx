@@ -117,7 +117,12 @@ function CountingNumber({
   const initialText = initiallyStable ? formatValue(number) : zeroText;
 
   return (
-    <span data-slot="counting-number" ref={localRef} {...props}>
+    <span
+      data-slot="counting-number"
+      ref={localRef}
+      suppressHydrationWarning
+      {...props}
+    >
       {initialText}
     </span>
   );

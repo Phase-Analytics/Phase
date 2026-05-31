@@ -33,6 +33,7 @@ export type LinkFormState = {
   ogEnabled: boolean;
   og: LinkOgValues;
   ogImageUrl: string | null;
+  ogImageCacheKey: string | null;
   ogPendingFile: File | null;
   expiresAt?: Date;
   disabled: boolean;
@@ -50,6 +51,7 @@ export function emptyLinkFormState(): LinkFormState {
     ogEnabled: false,
     og: emptyLinkOgValues(),
     ogImageUrl: null,
+    ogImageCacheKey: null,
     ogPendingFile: null,
     expiresAt: undefined,
     disabled: false,
@@ -73,6 +75,7 @@ export function linkDetailToFormState(link: LinkDetail): LinkFormState {
     ogEnabled: hasLinkOgPreview(link),
     og,
     ogImageUrl: link.ogImageUrl,
+    ogImageCacheKey: link.updatedAt,
     ogPendingFile: null,
     expiresAt: link.expiresAt ? new Date(link.expiresAt) : undefined,
     disabled: Boolean(link.disabledAt),
