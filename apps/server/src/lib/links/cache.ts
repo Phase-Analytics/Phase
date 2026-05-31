@@ -50,7 +50,11 @@ export async function getCachedLink(
   }
 
   try {
-    return JSON.parse(raw) as CachedLinkConfig;
+    const parsed = JSON.parse(raw) as CachedLinkConfig;
+    if (parsed.allowedDomainIds?.length === 0) {
+      parsed.allowedDomainIds = null;
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -96,7 +100,11 @@ export async function getCachedDomain(
   }
 
   try {
-    return JSON.parse(raw) as CachedDomainConfig;
+    const parsed = JSON.parse(raw) as CachedDomainConfig;
+    if (parsed.status !== 'verified') {
+      return null;
+    }
+    return parsed;
   } catch {
     return null;
   }

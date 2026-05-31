@@ -2,8 +2,8 @@
 
 import { InformationCircleIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { CopyButton } from '@/components/ui/copy-button';
 import { Card, CardContent } from '@/components/ui/card';
+import { CopyButton } from '@/components/ui/copy-button';
 
 export const LINK_CNAME_TARGET = 'cname.phase.sh';
 
@@ -50,13 +50,18 @@ export function LinkDnsSetupCard({ hostname }: LinkDnsSetupCardProps) {
             <span className="break-all">{recordName}</span>
             <div className="flex items-center gap-1 break-all">
               <span>{LINK_CNAME_TARGET}</span>
-              <CopyButton content={LINK_CNAME_TARGET} size="xs" variant="ghost" />
+              <CopyButton
+                content={LINK_CNAME_TARGET}
+                size="xs"
+                variant="ghost"
+              />
             </div>
           </div>
         </div>
 
         <p className="text-muted-foreground text-xs">
-          Full host: <span className="font-mono text-foreground">{hostname}</span>
+          Full host:{' '}
+          <span className="font-mono text-foreground">{hostname}</span>
         </p>
       </CardContent>
     </Card>

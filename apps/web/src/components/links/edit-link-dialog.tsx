@@ -1,6 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import {
+  deviceRoutingToPayload,
+  emptyDeviceRoutingValues,
+} from '@/components/links/link-device-routing-fields';
 import { LinkFormFields } from '@/components/links/link-form-fields';
 import {
   emptyLinkFormState,
@@ -8,10 +13,6 @@ import {
   linkDetailToFormState,
   PHASE_HOST_VALUE,
 } from '@/components/links/link-form-utils';
-import {
-  deviceRoutingToPayload,
-  emptyDeviceRoutingValues,
-} from '@/components/links/link-device-routing-fields';
 import {
   emptyLinkUtmValues,
   linkUtmToPayload,
@@ -33,7 +34,6 @@ import {
   useLinkSlugAvailable,
   useUpdateLink,
 } from '@/lib/queries';
-import { toast } from 'sonner';
 
 type EditLinkDialogProps = {
   appId: string;
@@ -82,10 +82,10 @@ export function EditLinkDialog({
       setError(null);
       updateLink.reset();
     }
-  }, [open]);
+  }, [open, updateLink.reset]);
 
   useEffect(() => {
-    if (!open || !link || initialized) {
+    if (!(open && link) || initialized) {
       return;
     }
 
@@ -159,11 +159,7 @@ export function EditLinkDialog({
             }}
             type="button"
           >
-            {updateLink.isPending ? (
-              <Spinner className="size-4" />
-            ) : (
-              'Save'
-            )}
+            {updateLink.isPending ? <Spinner className="size-4" /> : 'Save'}
           </Button>
         </DialogFooter>
       </DialogContent>

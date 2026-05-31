@@ -10,7 +10,7 @@ import {
 import { LinkFeatureSection } from '@/components/links/link-feature-section';
 import type { LinkFormState } from '@/components/links/link-form-utils';
 import { PHASE_HOST_VALUE } from '@/components/links/link-form-utils';
-import { hasLinkUtmValues, LinkUtmFields } from '@/components/links/link-utm-fields';
+import { LinkUtmFields } from '@/components/links/link-utm-fields';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { formatUrlWithoutProtocol } from '@/lib/link-urls';
@@ -117,7 +117,10 @@ export function LinkFormFields({
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <label className="font-medium text-sm" htmlFor={`${idPrefix}-destination`}>
+        <label
+          className="font-medium text-sm"
+          htmlFor={`${idPrefix}-destination`}
+        >
           Destination URL
         </label>
         <Input
@@ -196,9 +199,9 @@ export function LinkFormFields({
             placeholder="No expiry"
             value={form.expiresAt}
           />
-          {!form.expiresAt ? (
+          {form.expiresAt ? null : (
             <p className="text-muted-foreground text-xs">No expiry set</p>
-          ) : null}
+          )}
         </div>
 
         <div className="flex items-center justify-between gap-3">

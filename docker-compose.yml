@@ -211,6 +211,7 @@ services:
       - NEXT_TELEMETRY_DISABLED=1
       - BETTER_AUTH_TELEMETRY=0
       - NEXT_PUBLIC_SERVER_URL=${SERVER_URL}
+      - LINK_REDIRECT_UPSTREAM_URL=http://phase-server:3001
     deploy:
       resources:
         limits:

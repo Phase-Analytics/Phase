@@ -1,35 +1,33 @@
-import { type NextRequest, NextResponse } from 'next/server';
-
-const API_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
+import type { NextRequest } from 'next/server';
+import {
+  buildLinkRedirectProxyHeaders,
+  getLinkRedirectUpstreamUrl,
+} from '@/lib/link-redirect-upstream';
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await context.params;
-  const upstream = await fetch(`${API_URL}/l/${encodeURIComponent(slug)}`, {
-    method: 'GET',
-    redirect: 'manual',
-    headers: {
-      'user-agent': request.headers.get('user-agent') ?? '',
-      'accept-language': request.headers.get('accept-language') ?? '',
-      referer: request.headers.get('referer') ?? '',
-      host: request.headers.get('host') ?? '',
-      'x-forwarded-for': request.headers.get('x-forwarded-for') ?? '',
-      'sec-ch-ua': request.headers.get('sec-ch-ua') ?? '',
-      'sec-purpose': request.headers.get('sec-purpose') ?? '',
-      purpose: request.headers.get('purpose') ?? '',
-    },
-  });
+  const host = request.headers.get('host')?.split(':')[0]?.toLowerCase() ?? '';
+
+  const upstream = await fetch(
+    `${getLinkRedirectUpstreamUrl()}/l/${encodeURIComponent(slug)}`,
+    {
+      method: 'GET',
+      redirect: 'manual',
+      headers: buildLinkRedirectProxyHeaders(request, host),
+    }
+  );
 
   if (upstream.status === 302) {
     const location = upstream.headers.get('location');
     if (location) {
-      return NextResponse.redirect(location, 302);
+      return Response.redirect(location, 302);
     }
   }
 
-  return new NextResponse('Not Found', {
+  return new Response(await upstream.text(), {
     status: upstream.status === 404 ? 404 : 502,
   });
 }

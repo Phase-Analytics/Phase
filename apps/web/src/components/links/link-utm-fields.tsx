@@ -60,11 +60,7 @@ export function LinkUtmFields({ values, onChange }: LinkUtmFieldsProps) {
         <label className="font-medium text-sm" htmlFor="utm_term">
           utm_term
         </label>
-        <Input
-          id="utm_term"
-          onChange={set('utmTerm')}
-          value={values.utmTerm}
-        />
+        <Input id="utm_term" onChange={set('utmTerm')} value={values.utmTerm} />
       </div>
       <div className="space-y-2 sm:col-span-2">
         <label className="font-medium text-sm" htmlFor="utm_content">

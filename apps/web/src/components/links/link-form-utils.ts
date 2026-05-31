@@ -8,8 +8,8 @@ import {
 import {
   emptyLinkUtmValues,
   hasLinkUtmValues,
-  linkUtmFromDetail,
   type LinkUtmValues,
+  linkUtmFromDetail,
 } from '@/components/links/link-utm-fields';
 import { formatUrlWithoutProtocol } from '@/lib/link-urls';
 

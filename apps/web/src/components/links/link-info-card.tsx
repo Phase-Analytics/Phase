@@ -1,15 +1,20 @@
 'use client';
 
-import type { LinkDetail } from '@phase/shared';
 import {
   AndroidIcon,
   AppleIcon,
   BrowserIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
+import type { LinkDetail } from '@phase/shared';
+import { hasDeviceRoutingValues } from '@/components/links/link-device-routing-fields';
+import { LinkStatusBadge } from '@/components/links/link-status-badge';
+import {
+  hasLinkUtmValues,
+  linkUtmFromDetail,
+} from '@/components/links/link-utm-fields';
 import { Card, CardContent } from '@/components/ui/card';
 import { CopyButton } from '@/components/ui/copy-button';
-import { LinkStatusBadge } from '@/components/links/link-status-badge';
 import {
   Tooltip,
   TooltipContent,
@@ -20,8 +25,6 @@ import {
   getLinkStatus,
   getPrimaryLinkUrl,
 } from '@/lib/link-urls';
-import { hasDeviceRoutingValues } from '@/components/links/link-device-routing-fields';
-import { hasLinkUtmValues, linkUtmFromDetail } from '@/components/links/link-utm-fields';
 
 type LinkInfoCardProps = {
   link: LinkDetail;
@@ -111,7 +114,9 @@ export function LinkInfoCard({ link, domains }: LinkInfoCardProps) {
             <dl className="grid gap-2 sm:grid-cols-2">
               {utmEntries.map((entry) => (
                 <div className="space-y-0.5" key={entry.label}>
-                  <dt className="text-muted-foreground text-xs">{entry.label}</dt>
+                  <dt className="text-muted-foreground text-xs">
+                    {entry.label}
+                  </dt>
                   <dd className="break-all text-sm">{entry.value}</dd>
                 </div>
               ))}

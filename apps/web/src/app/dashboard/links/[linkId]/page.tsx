@@ -1,25 +1,19 @@
 'use client';
 
-import {
-  ArrowTurnBackwardIcon,
-  Edit02Icon,
-} from '@hugeicons/core-free-icons';
+import { ArrowTurnBackwardIcon, Edit02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { EditLinkDialog } from '@/components/links/edit-link-dialog';
 import { useRouter } from 'next/navigation';
 import { parseAsString, useQueryState } from 'nuqs';
 import { use, useMemo } from 'react';
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
+import { EditLinkDialog } from '@/components/links/edit-link-dialog';
 import { LinkAnalytics } from '@/components/links/link-analytics';
 import { LinkInfoCard } from '@/components/links/link-info-card';
 import { LinkQrCard } from '@/components/links/link-qr-card';
 import { RequireApp } from '@/components/require-app';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  formatUrlWithoutProtocol,
-  getPrimaryLinkUrl,
-} from '@/lib/link-urls';
+import { formatUrlWithoutProtocol, getPrimaryLinkUrl } from '@/lib/link-urls';
 import { useLink, useLinkDomains } from '@/lib/queries';
 
 export default function LinkDetailPage({
@@ -76,7 +70,7 @@ export default function LinkDetailPage({
 
         {link && appId && primaryUrl ? (
           <>
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
               <LinkInfoCard domains={domains} link={link} />
               <LinkQrCard shortUrl={primaryUrl.url} />
             </div>

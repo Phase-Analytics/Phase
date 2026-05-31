@@ -20,8 +20,7 @@ export function LinksIntroCard({ appId }: LinksIntroCardProps) {
           <div className="space-y-1">
             <h3 className="font-semibold text-sm">Short links</h3>
             <p className="text-muted-foreground text-sm">
-              Default URLs use phase.sh/l/your-slug. Attach custom domains
-              under{' '}
+              Default URLs use phase.sh/l/your-slug. Attach custom domains under{' '}
               <Link
                 className="font-medium text-foreground underline-offset-4 hover:underline"
                 href={`/dashboard/links/domains?app=${appId}`}

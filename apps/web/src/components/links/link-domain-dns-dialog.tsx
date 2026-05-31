@@ -1,5 +1,6 @@
 'use client';
 
+import { LinkDnsSetupCard } from '@/components/links/link-dns-setup-card';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -9,7 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { LinkDnsSetupCard } from '@/components/links/link-dns-setup-card';
 
 type LinkDomainDnsDialogProps = {
   hostname: string;

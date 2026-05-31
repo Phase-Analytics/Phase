@@ -13,8 +13,8 @@ import type { z } from 'zod';
 type LinkDomainsListResponse = z.infer<typeof LinkDomainsListResponseSchema>;
 type SlugAvailableResponse = z.infer<typeof SlugAvailableResponseSchema>;
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { LinkDomain } from '@phase/shared';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { buildQueryString, fetchApi } from '@/lib/api/client';
 import { cacheConfig } from './query-client';
 import { queryKeys } from './query-keys';

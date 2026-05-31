@@ -4,16 +4,16 @@ import { AddSquareIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import {
+  deviceRoutingToPayload,
+  emptyDeviceRoutingValues,
+} from '@/components/links/link-device-routing-fields';
 import { LinkFormFields } from '@/components/links/link-form-fields';
 import {
   emptyLinkFormState,
   expiresAtToIso,
   PHASE_HOST_VALUE,
 } from '@/components/links/link-form-utils';
-import {
-  deviceRoutingToPayload,
-  emptyDeviceRoutingValues,
-} from '@/components/links/link-device-routing-fields';
 import {
   emptyLinkUtmValues,
   linkUtmToPayload,
@@ -80,8 +80,7 @@ export function CreateLinkDialog({ appId }: CreateLinkDialogProps) {
         ...(form.deviceEnabled
           ? deviceRoutingToPayload(form.device)
           : deviceRoutingToPayload(emptyDeviceRoutingValues())),
-        domainIds:
-          form.hostValue === PHASE_HOST_VALUE ? [] : [form.hostValue],
+        domainIds: form.hostValue === PHASE_HOST_VALUE ? [] : [form.hostValue],
         expiresAt: expiresAtToIso(form.expiresAt),
         disabled: form.disabled,
       });

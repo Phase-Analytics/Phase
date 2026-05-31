@@ -73,7 +73,9 @@ export default function LinkDomainsPage() {
             <Card className="py-0">
               <CardContent className="p-4">
                 <p className="text-muted-foreground text-sm">Total</p>
-                <p className="font-bold text-2xl tabular-nums">{counts.total}</p>
+                <p className="font-bold text-2xl tabular-nums">
+                  {counts.total}
+                </p>
               </CardContent>
             </Card>
             <Card className="py-0">

@@ -3,6 +3,7 @@
 import { AddSquareIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { LinkDnsSetupCard } from '@/components/links/link-dns-setup-card';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,7 +18,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { useCreateLinkDomain } from '@/lib/queries';
-import { toast } from 'sonner';
 
 type AddDomainDialogProps = {
   appId: string;

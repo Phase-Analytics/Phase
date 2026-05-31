@@ -91,7 +91,9 @@ export function deviceRoutingFromDetail(link: {
   };
 }
 
-export function hasDeviceRoutingValues(values: LinkDeviceRoutingValues): boolean {
+export function hasDeviceRoutingValues(
+  values: LinkDeviceRoutingValues
+): boolean {
   return Boolean(
     values.deviceIosUrl || values.deviceAndroidUrl || values.deviceOthersUrl
   );

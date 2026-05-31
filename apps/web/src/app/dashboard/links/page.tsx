@@ -3,13 +3,13 @@
 import { Edit02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import Link from 'next/link';
-import { EditLinkDialog } from '@/components/links/edit-link-dialog';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useMemo } from 'react';
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { CreateLinkDialog } from '@/components/links/create-link-dialog';
-import { LinksIntroCard } from '@/components/links/links-intro-card';
+import { EditLinkDialog } from '@/components/links/edit-link-dialog';
 import { LinkStatusBadge } from '@/components/links/link-status-badge';
+import { LinksIntroCard } from '@/components/links/links-intro-card';
 import { RemoveLinkDialog } from '@/components/links/remove-link-dialog';
 import { RequireApp } from '@/components/require-app';
 import { Button } from '@/components/ui/button';
@@ -29,10 +29,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-  formatUrlWithoutProtocol,
-  getLinkStatus,
-} from '@/lib/link-urls';
+import { formatUrlWithoutProtocol, getLinkStatus } from '@/lib/link-urls';
 import { useLinks } from '@/lib/queries';
 
 export default function LinksPage() {
@@ -74,13 +71,17 @@ export default function LinksPage() {
             <Card className="py-0">
               <CardContent className="p-4">
                 <p className="text-muted-foreground text-sm">Total</p>
-                <p className="font-bold text-2xl tabular-nums">{counts.total}</p>
+                <p className="font-bold text-2xl tabular-nums">
+                  {counts.total}
+                </p>
               </CardContent>
             </Card>
             <Card className="py-0">
               <CardContent className="p-4">
                 <p className="text-muted-foreground text-sm">Active</p>
-                <p className="font-bold text-2xl tabular-nums">{counts.active}</p>
+                <p className="font-bold text-2xl tabular-nums">
+                  {counts.active}
+                </p>
               </CardContent>
             </Card>
             <Card className="py-0">
@@ -166,15 +167,22 @@ export default function LinksPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
-                            <EditLinkDialog appId={appId ?? ''} linkId={link.id}>
-                              <Button size="sm" type="button" variant="outline">
-                                <HugeiconsIcon
-                                  className="size-4"
-                                  icon={Edit02Icon}
-                                />
-                                Edit
-                              </Button>
-                            </EditLinkDialog>
+                              <EditLinkDialog
+                                appId={appId ?? ''}
+                                linkId={link.id}
+                              >
+                                <Button
+                                  size="sm"
+                                  type="button"
+                                  variant="outline"
+                                >
+                                  <HugeiconsIcon
+                                    className="size-4"
+                                    icon={Edit02Icon}
+                                  />
+                                  Edit
+                                </Button>
+                              </EditLinkDialog>
                               <RemoveLinkDialog
                                 appId={appId ?? ''}
                                 linkId={link.id}

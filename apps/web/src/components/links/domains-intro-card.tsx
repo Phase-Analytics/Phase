@@ -2,8 +2,8 @@
 
 import { GlobalIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Card, CardContent } from '@/components/ui/card';
 import { LINK_CNAME_TARGET } from '@/components/links/link-dns-setup-card';
+import { Card, CardContent } from '@/components/ui/card';
 
 export function DomainsIntroCard() {
   return (

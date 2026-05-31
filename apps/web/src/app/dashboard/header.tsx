@@ -11,9 +11,9 @@ import {
   GlobalIcon,
   Key01Icon,
   Link01Icon,
-  Saturn01Icon,
   PlaySquareIcon,
   QuestionIcon,
+  Saturn01Icon,
   Setting07Icon,
   UserGroupIcon,
 } from '@hugeicons/core-free-icons';
