@@ -26,8 +26,13 @@ function extractClientIp(request: Request): string | null {
   );
 }
 
-function notFound(): Response {
-  return new Response('Not Found', { status: 404 });
+function notFound(reason: string): Response {
+  return new Response('Not Found', {
+    status: 404,
+    headers: {
+      'X-Phase-Link-Error': reason,
+    },
+  });
 }
 
 export async function handleLinkRedirect(
@@ -36,12 +41,16 @@ export async function handleLinkRedirect(
   options: { mode: 'default' | 'custom'; host?: string }
 ): Promise<Response> {
   if (isLinkBotRequest(request.headers)) {
-    return notFound();
+    return notFound('bot');
   }
 
   const link = await resolveLinkBySlug(slug);
-  if (!link || isLinkUnavailable(link)) {
-    return notFound();
+  if (!link) {
+    return notFound('link_not_found');
+  }
+
+  if (isLinkUnavailable(link)) {
+    return notFound('link_unavailable');
   }
 
   let domainHost = LINK_DEFAULT_HOST;
@@ -49,12 +58,16 @@ export async function handleLinkRedirect(
   if (options.mode === 'custom') {
     const host = options.host?.split(':')[0]?.toLowerCase();
     if (!host) {
-      return notFound();
+      return notFound('missing_host');
     }
 
     const domain = await resolveVerifiedDomain(host);
-    if (!(domain && isLinkAllowedOnDomain(link, domain))) {
-      return notFound();
+    if (!domain) {
+      return notFound('domain_not_verified');
+    }
+
+    if (!isLinkAllowedOnDomain(link, domain)) {
+      return notFound('domain_not_allowed');
     }
 
     domainHost = domain.hostname;

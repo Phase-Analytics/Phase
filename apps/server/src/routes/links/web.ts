@@ -331,9 +331,7 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         })
         .returning();
 
-      if (parsed.data.domainIds) {
-        await replaceLinkDomainBindings(linkId, parsed.data.domainIds);
-      }
+      await replaceLinkDomainBindings(linkId, parsed.data.domainIds ?? []);
 
       await invalidateCachedLink(parsed.data.slug);
 
@@ -702,7 +700,7 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         .where(eq(links.id, params.linkId))
         .returning();
 
-      if (parsed.data.domainIds) {
+      if (parsed.data.domainIds !== undefined) {
         await replaceLinkDomainBindings(params.linkId, parsed.data.domainIds);
       }
 

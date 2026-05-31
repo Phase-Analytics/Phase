@@ -4,7 +4,7 @@ export function isLinkBotRequest(headers: Headers): boolean {
   const userAgent = headers.get('user-agent');
 
   if (!userAgent?.trim()) {
-    return true;
+    return false;
   }
 
   if (isbot(userAgent)) {

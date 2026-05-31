@@ -99,7 +99,7 @@ export function isLinkAllowedOnDomain(
     return false;
   }
 
-  if (!link.allowedDomainIds) {
+  if (!link.allowedDomainIds || link.allowedDomainIds.length === 0) {
     return true;
   }
 
