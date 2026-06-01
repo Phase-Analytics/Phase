@@ -42,6 +42,7 @@ export async function resolveLinkBySlug(
     id: row.id,
     appId: row.appId,
     slug: row.slug,
+    name: row.name,
     destinationUrl: row.destinationUrl,
     utmSource: row.utmSource,
     utmMedium: row.utmMedium,

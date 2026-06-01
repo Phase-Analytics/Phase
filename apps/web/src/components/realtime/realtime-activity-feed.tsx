@@ -4,10 +4,12 @@ import {
   ComputerPhoneSyncIcon,
   CursorPointer02Icon,
   Flag02Icon,
+  Link01Icon,
   PlaySquareIcon,
   ViewIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
+import { formatLinkBrowserFamilyLabel } from '@phase/shared';
 import { AnimatePresence, motion } from 'motion/react';
 import { useRouter } from 'next/navigation';
 import { parseAsString, useQueryState } from 'nuqs';
@@ -123,7 +125,7 @@ export function RealtimeActivityFeed({
                     {activity.type === 'linkClick' && (
                       <HugeiconsIcon
                         className="size-3.5 text-muted-foreground"
-                        icon={CursorPointer02Icon}
+                        icon={Link01Icon}
                       />
                     )}
                     <span className="font-medium text-xs">
@@ -190,7 +192,7 @@ export function RealtimeActivityFeed({
                                 size={14}
                               />
                               <span className="truncate text-muted-foreground">
-                                {activity.browser}
+                                {formatLinkBrowserFamilyLabel(activity.browser)}
                               </span>
                             </>
                           )}

@@ -7,6 +7,7 @@ export type CachedLinkConfig = {
   id: string;
   appId: string;
   slug: string;
+  name: string | null;
   destinationUrl: string;
   utmSource: string | null;
   utmMedium: string | null;

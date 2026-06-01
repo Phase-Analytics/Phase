@@ -230,7 +230,7 @@ export default function RealtimePage() {
       newActivities.push({
         id: click.clickId,
         type: 'linkClick',
-        name: 'Link Click',
+        name: `${click.linkName} Click`,
         deviceId: click.linkId,
         country: click.countryCode,
         platform: null,

@@ -28,6 +28,7 @@ export const RealtimeDeviceSchema = z.object({
 export const RealtimeLinkClickSchema = z.object({
   clickId: z.string(),
   linkId: z.string(),
+  linkName: z.string(),
   timestamp: z.string().datetime(),
   countryCode: z.string().nullable(),
   region: z.string().nullable(),

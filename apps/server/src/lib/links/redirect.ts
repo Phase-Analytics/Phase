@@ -146,9 +146,12 @@ export async function handleLinkRedirect(
       timestamp,
     });
 
+    const linkName = link.name?.trim() || link.slug;
+
     sseManager.pushLinkClick(link.appId, {
       clickId,
       linkId: link.id,
+      linkName,
       timestamp,
       countryCode,
       region,
