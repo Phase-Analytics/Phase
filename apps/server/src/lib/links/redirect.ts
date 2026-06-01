@@ -153,6 +153,7 @@ export async function handleLinkRedirect(
       countryCode,
       region,
       os: osFamily,
+      browser: browserFamily,
     });
   }
 

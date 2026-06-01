@@ -17,6 +17,7 @@ import type { ActivityItem } from '@/app/dashboard/analytics/realtime/page';
 import { ClientDate } from '@/components/client-date';
 import { DebugDataBadge } from '@/components/debug-data-badge';
 import { EventsSheet } from '@/components/events/event-details-sheet';
+import { LinkBrowserIcon } from '@/components/links/link-browser-icon';
 import { SessionDetailsDialog } from '@/components/sessions/session-details-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getGeneratedName, UserAvatar } from '@/components/user-profile';
@@ -178,6 +179,18 @@ export function RealtimeActivityFeed({
                               />
                               <span className="truncate text-muted-foreground">
                                 {activity.os}
+                              </span>
+                            </>
+                          )}
+                          {activity.browser && (
+                            <>
+                              <span className="text-muted-foreground">·</span>
+                              <LinkBrowserIcon
+                                browser={activity.browser}
+                                size={14}
+                              />
+                              <span className="truncate text-muted-foreground">
+                                {activity.browser}
                               </span>
                             </>
                           )}

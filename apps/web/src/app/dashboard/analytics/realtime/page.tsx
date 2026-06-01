@@ -22,6 +22,7 @@ export type ActivityItem = {
   isDebug?: boolean;
   region?: string | null;
   os?: string | null;
+  browser?: string | null;
 };
 
 type CountryData = {
@@ -29,6 +30,55 @@ type CountryData = {
   lng: number;
   name: string;
 };
+
+const COUNTRY_CODE_REGEX = /^[A-Za-z]{2}$/;
+
+function isValidCountryCode(code: string | null | undefined): code is string {
+  return Boolean(code && code.length === 2 && COUNTRY_CODE_REGEX.test(code));
+}
+
+type GlobeMarker = {
+  location: [number, number];
+  color: [number, number, number];
+  size: number;
+};
+
+function buildMarkersForCountries(
+  activeCountries: Set<string>,
+  coords: Record<string, CountryData>,
+  cache: Record<string, GlobeMarker[]>
+): GlobeMarker[] {
+  const newMarkers: GlobeMarker[] = [];
+
+  for (const upperCountryCode of activeCountries) {
+    if (!cache[upperCountryCode]) {
+      const countryCoordsEntry = coords[upperCountryCode];
+      if (countryCoordsEntry) {
+        const markerCount = Math.floor(Math.random() * 3) + 7;
+        const countryMarkers: GlobeMarker[] = [];
+
+        for (let i = 0; i < markerCount; i++) {
+          const randomLat = countryCoordsEntry.lat + (Math.random() - 0.5) * 4;
+          const randomLng = countryCoordsEntry.lng + (Math.random() - 0.5) * 4;
+
+          countryMarkers.push({
+            location: [randomLat, randomLng],
+            color: [0, 1, 0],
+            size: 0.04,
+          });
+        }
+
+        cache[upperCountryCode] = countryMarkers;
+      }
+    }
+
+    if (cache[upperCountryCode]) {
+      newMarkers.push(...cache[upperCountryCode]);
+    }
+  }
+
+  return newMarkers;
+}
 
 export default function RealtimePage() {
   const [appId] = useQueryState('app', parseAsString);
@@ -50,16 +100,48 @@ export default function RealtimePage() {
       color?: [number, number, number];
     }>
   >([]);
-  const countryMarkersCache = useRef<
-    Record<
-      string,
-      Array<{
-        location: [number, number];
-        color: [number, number, number];
-        size: number;
-      }>
-    >
-  >({});
+  const countryMarkersCache = useRef<Record<string, GlobeMarker[]>>({});
+  const activeCountryCodesRef = useRef<Set<string>>(new Set());
+
+  const syncGlobeMarkers = (coords: Record<string, CountryData>) => {
+    if (
+      activeCountryCodesRef.current.size === 0 ||
+      Object.keys(coords).length === 0
+    ) {
+      return;
+    }
+
+    setMarkers(
+      buildMarkersForCountries(
+        activeCountryCodesRef.current,
+        coords,
+        countryMarkersCache.current
+      )
+    );
+  };
+
+  const trackActivityCountries = (
+    codes: Array<string | null | undefined>,
+    coords: Record<string, CountryData>
+  ) => {
+    let changed = false;
+
+    for (const code of codes) {
+      if (!isValidCountryCode(code)) {
+        continue;
+      }
+
+      const upperCountryCode = code.toUpperCase();
+      if (!activeCountryCodesRef.current.has(upperCountryCode)) {
+        activeCountryCodesRef.current.add(upperCountryCode);
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      syncGlobeMarkers(coords);
+    }
+  };
 
   useEffect(() => {
     fetch('/countries.json')
@@ -72,6 +154,23 @@ export default function RealtimePage() {
       });
   }, []);
 
+  useEffect(() => {
+    if (
+      Object.keys(countryCoords).length === 0 ||
+      activeCountryCodesRef.current.size === 0
+    ) {
+      return;
+    }
+
+    setMarkers(
+      buildMarkersForCountries(
+        activeCountryCodesRef.current,
+        countryCoords,
+        countryMarkersCache.current
+      )
+    );
+  }, [countryCoords]);
+
   const handleMessage = (data: RealtimeMessage) => {
     if (data.appName && !appName) {
       setAppName(data.appName);
@@ -80,54 +179,13 @@ export default function RealtimePage() {
     if (data.onlineUsers) {
       setOnlineUsers(data.onlineUsers.total);
       setPlatforms(data.onlineUsers.platforms);
-
-      if (Object.keys(countryCoords).length > 0) {
-        const newMarkers: Array<{
-          location: [number, number];
-          color: [number, number, number];
-          size: number;
-        }> = [];
-
-        for (const countryCode of Object.keys(data.onlineUsers.countries)) {
-          const upperCountryCode = countryCode.toUpperCase();
-
-          if (!countryMarkersCache.current[upperCountryCode]) {
-            const coords = countryCoords[upperCountryCode];
-            if (coords) {
-              const markerCount = Math.floor(Math.random() * 2) + 5;
-              const countryMarkers: Array<{
-                location: [number, number];
-                color: [number, number, number];
-                size: number;
-              }> = [];
-
-              for (let i = 0; i < markerCount; i++) {
-                const randomLat = coords.lat + (Math.random() - 0.5) * 3;
-                const randomLng = coords.lng + (Math.random() - 0.5) * 3;
-
-                countryMarkers.push({
-                  location: [randomLat, randomLng],
-                  color: [0, 1, 0],
-                  size: 0.04,
-                });
-              }
-
-              countryMarkersCache.current[upperCountryCode] = countryMarkers;
-            }
-          }
-
-          if (countryMarkersCache.current[upperCountryCode]) {
-            newMarkers.push(...countryMarkersCache.current[upperCountryCode]);
-          }
-        }
-
-        setMarkers(newMarkers);
-      }
     }
 
     const newActivities: ActivityItem[] = [];
+    const activityCountries: Array<string | null | undefined> = [];
 
     for (const event of data.events) {
+      activityCountries.push(event.country);
       newActivities.push({
         id: event.eventId,
         type: 'event',
@@ -142,6 +200,7 @@ export default function RealtimePage() {
     }
 
     for (const session of data.sessions) {
+      activityCountries.push(session.country);
       newActivities.push({
         id: session.sessionId,
         type: 'session',
@@ -154,6 +213,7 @@ export default function RealtimePage() {
     }
 
     for (const device of data.devices) {
+      activityCountries.push(device.country);
       newActivities.push({
         id: device.deviceId,
         type: 'device',
@@ -166,6 +226,7 @@ export default function RealtimePage() {
     }
 
     for (const click of data.linkClicks ?? []) {
+      activityCountries.push(click.countryCode);
       newActivities.push({
         id: click.clickId,
         type: 'linkClick',
@@ -175,8 +236,13 @@ export default function RealtimePage() {
         platform: null,
         region: click.region,
         os: click.os,
+        browser: click.browser,
         timestamp: click.timestamp,
       });
+    }
+
+    if (activityCountries.length > 0) {
+      trackActivityCountries(activityCountries, countryCoords);
     }
 
     if (newActivities.length > 0) {
@@ -196,6 +262,7 @@ export default function RealtimePage() {
     setPlatforms({});
     setMarkers([]);
     countryMarkersCache.current = {};
+    activeCountryCodesRef.current = new Set();
   };
 
   const handleResume = () => {

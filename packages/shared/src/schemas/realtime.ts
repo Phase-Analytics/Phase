@@ -32,6 +32,7 @@ export const RealtimeLinkClickSchema = z.object({
   countryCode: z.string().nullable(),
   region: z.string().nullable(),
   os: z.string(),
+  browser: z.string(),
 });
 
 export const OnlineUsersSchema = z.object({
