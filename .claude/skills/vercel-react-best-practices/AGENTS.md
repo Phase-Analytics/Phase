@@ -1,3 +1,8 @@
+---
+description: 
+alwaysApply: false
+---
+
 # React Best Practices
 
 **Version 1.0.0**  

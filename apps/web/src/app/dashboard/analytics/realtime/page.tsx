@@ -6,14 +6,13 @@ import { RealtimeActivityFeed } from '@/components/realtime/realtime-activity-fe
 import { RealtimeHeader } from '@/components/realtime/realtime-header';
 import { RequireApp } from '@/components/require-app';
 import Earth from '@/components/ui/cobe-globe';
-import { useSidebar } from '@/components/ui/sidebar';
 import { Sparkles } from '@/components/ui/sparkles';
 import type { RealtimeMessage } from '@/lib/api/types';
 import { useRealtime } from '@/lib/queries/use-realtime';
 
 export type ActivityItem = {
   id: string;
-  type: 'event' | 'session' | 'device';
+  type: 'event' | 'session' | 'device' | 'linkClick';
   name: string;
   deviceId: string;
   country: string | null;
@@ -21,6 +20,8 @@ export type ActivityItem = {
   timestamp: string;
   isScreen?: boolean;
   isDebug?: boolean;
+  region?: string | null;
+  os?: string | null;
 };
 
 type CountryData = {
@@ -30,7 +31,6 @@ type CountryData = {
 };
 
 export default function RealtimePage() {
-  const { setOpen, isMobile } = useSidebar();
   const [appId] = useQueryState('app', parseAsString);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [appName, setAppName] = useState<string | null>(null);
@@ -60,12 +60,6 @@ export default function RealtimePage() {
       }>
     >
   >({});
-
-  useEffect(() => {
-    if (!isMobile) {
-      setOpen(false);
-    }
-  }, [isMobile, setOpen]);
 
   useEffect(() => {
     fetch('/countries.json')
@@ -168,6 +162,20 @@ export default function RealtimePage() {
         country: device.country,
         platform: device.platform,
         timestamp: data.timestamp,
+      });
+    }
+
+    for (const click of data.linkClicks ?? []) {
+      newActivities.push({
+        id: click.clickId,
+        type: 'linkClick',
+        name: 'Link Click',
+        deviceId: click.linkId,
+        country: click.countryCode,
+        platform: null,
+        region: click.region,
+        os: click.os,
+        timestamp: click.timestamp,
       });
     }
 

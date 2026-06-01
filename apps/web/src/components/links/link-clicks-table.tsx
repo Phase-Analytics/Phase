@@ -83,28 +83,6 @@ const columns: ColumnDef<LinkClickItem>[] = [
     },
   },
   {
-    accessorKey: 'referrer',
-    header: 'Referrer',
-    size: 180,
-    cell: ({ row }) => {
-      const referrer =
-        (row.getValue('referrer') as string | undefined) ?? 'Direct';
-
-      return (
-        <div
-          className="flex max-w-[12rem] items-center gap-1.5 lg:max-w-xs"
-          title={referrer}
-        >
-          <HugeiconsIcon
-            className="size-3.5 shrink-0 text-muted-foreground"
-            icon={Link05Icon}
-          />
-          <span className="truncate text-sm">{referrer}</span>
-        </div>
-      );
-    },
-  },
-  {
     accessorKey: 'countryCode',
     header: 'Country',
     size: 150,
@@ -129,6 +107,28 @@ const columns: ColumnDef<LinkClickItem>[] = [
           <span className="text-sm">
             {country ? getCountryLabel(country) : 'Unknown'}
           </span>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: 'referrer',
+    header: 'Referrer',
+    size: 180,
+    cell: ({ row }) => {
+      const referrer =
+        (row.getValue('referrer') as string | undefined) ?? 'Direct';
+
+      return (
+        <div
+          className="flex max-w-[12rem] items-center gap-1.5 lg:max-w-xs"
+          title={referrer}
+        >
+          <HugeiconsIcon
+            className="size-3.5 shrink-0 text-muted-foreground"
+            icon={Link05Icon}
+          />
+          <span className="truncate text-sm">{referrer}</span>
         </div>
       );
     },

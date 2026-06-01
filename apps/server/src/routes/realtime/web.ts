@@ -88,6 +88,7 @@ export const realtimeWebRouter = new Elysia({ prefix: '/realtime' })
             events: [],
             sessions: [],
             devices: [],
+            linkClicks: [],
             onlineUsers,
           },
         });

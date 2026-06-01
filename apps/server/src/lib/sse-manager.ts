@@ -2,6 +2,7 @@ import type {
   OnlineUsers,
   RealtimeDevice,
   RealtimeEvent,
+  RealtimeLinkClick,
   RealtimeMessage,
   RealtimeSession,
 } from '@phase/shared';
@@ -29,6 +30,7 @@ type RealtimeBuffer = {
   events: RealtimeEvent[];
   sessions: RealtimeSession[];
   devices: RealtimeDevice[];
+  linkClicks: RealtimeLinkClick[];
 };
 
 type SSEConnection = {
@@ -96,7 +98,12 @@ export class SSEManager {
       this.connections.set(appId, new Map());
     }
     if (!this.buffers.has(appId)) {
-      this.buffers.set(appId, { events: [], sessions: [], devices: [] });
+      this.buffers.set(appId, {
+        events: [],
+        sessions: [],
+        devices: [],
+        linkClicks: [],
+      });
     }
 
     const connection: SSEConnection = {
@@ -186,6 +193,19 @@ export class SSEManager {
     }
   }
 
+  pushLinkClick(appId: string, linkClick: RealtimeLinkClick): void {
+    const buffer = this.buffers.get(appId);
+    if (!buffer) {
+      return;
+    }
+
+    buffer.linkClicks.push(linkClick);
+
+    if (buffer.linkClicks.length > this.maxBufferSize) {
+      buffer.linkClicks = buffer.linkClicks.slice(-this.maxBufferSize);
+    }
+  }
+
   setOnlineUsers(appId: string, data: OnlineUsers): void {
     this.onlineUsersCache.set(appId, {
       data,
@@ -244,6 +264,7 @@ export class SSEManager {
         events: [...buffer.events],
         sessions: [...buffer.sessions],
         devices: [...buffer.devices],
+        linkClicks: [...buffer.linkClicks],
         onlineUsers: this.getOnlineUsers(appId),
       };
 
@@ -252,6 +273,7 @@ export class SSEManager {
       buffer.events = [];
       buffer.sessions = [];
       buffer.devices = [];
+      buffer.linkClicks = [];
     }
   }
 
@@ -337,6 +359,10 @@ export class SSEManager {
       ),
       bufferedDevices: Array.from(this.buffers.values()).reduce(
         (sum, buffer) => sum + buffer.devices.length,
+        0
+      ),
+      bufferedLinkClicks: Array.from(this.buffers.values()).reduce(
+        (sum, buffer) => sum + buffer.linkClicks.length,
         0
       ),
     };

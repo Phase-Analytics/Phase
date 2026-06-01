@@ -1,6 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import { normalizeLinkBrowserFamily } from '@phase/shared';
 import { UAParser } from 'ua-parser-js';
 import { getLocationFromIP } from '@/lib/geolocation';
+import { sseManager } from '@/lib/sse-manager';
 import { shouldRecordLinkClick, shouldServeLinkOgPreview } from './bot';
 import { getLinkClickBuffer } from './click-buffer';
 import { LINK_DEFAULT_HOST } from './constants';
@@ -119,6 +121,11 @@ export async function handleLinkRedirect(
 
   const buffer = getLinkClickBuffer();
   if (buffer && shouldRecordLinkClick(request)) {
+    const clickId = randomUUID();
+    const timestamp = new Date().toISOString();
+    const countryCode = geo?.countryCode ?? null;
+    const region = geo?.city ?? null;
+
     await buffer.push({
       appId: link.appId,
       linkId: link.id,
@@ -129,14 +136,23 @@ export async function handleLinkRedirect(
         browserFamily,
         acceptLanguage: request.headers.get('accept-language'),
       }),
-      countryCode: geo?.countryCode ?? null,
-      region: geo?.city ?? null,
+      countryCode,
+      region,
       os: osFamily,
       browser: browserFamily,
       platform,
       referrer: normalizeReferrer(request.headers.get('referer')),
       domainHost,
-      timestamp: new Date().toISOString(),
+      timestamp,
+    });
+
+    sseManager.pushLinkClick(link.appId, {
+      clickId,
+      linkId: link.id,
+      timestamp,
+      countryCode,
+      region,
+      os: osFamily,
     });
   }
 

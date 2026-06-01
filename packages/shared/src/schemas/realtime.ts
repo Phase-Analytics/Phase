@@ -25,6 +25,15 @@ export const RealtimeDeviceSchema = z.object({
   platform: z.string().nullable(),
 });
 
+export const RealtimeLinkClickSchema = z.object({
+  clickId: z.string(),
+  linkId: z.string(),
+  timestamp: z.string().datetime(),
+  countryCode: z.string().nullable(),
+  region: z.string().nullable(),
+  os: z.string(),
+});
+
 export const OnlineUsersSchema = z.object({
   total: z.number().min(0),
   platforms: z.record(z.string(), z.number().min(1)),
@@ -37,11 +46,13 @@ export const RealtimeMessageSchema = z.object({
   events: z.array(RealtimeEventSchema),
   sessions: z.array(RealtimeSessionSchema),
   devices: z.array(RealtimeDeviceSchema),
+  linkClicks: z.array(RealtimeLinkClickSchema),
   onlineUsers: OnlineUsersSchema,
 });
 
 export type RealtimeEvent = z.infer<typeof RealtimeEventSchema>;
 export type RealtimeSession = z.infer<typeof RealtimeSessionSchema>;
 export type RealtimeDevice = z.infer<typeof RealtimeDeviceSchema>;
+export type RealtimeLinkClick = z.infer<typeof RealtimeLinkClickSchema>;
 export type OnlineUsers = z.infer<typeof OnlineUsersSchema>;
 export type RealtimeMessage = z.infer<typeof RealtimeMessageSchema>;
