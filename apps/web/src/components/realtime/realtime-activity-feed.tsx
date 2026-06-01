@@ -142,23 +142,16 @@ export function RealtimeActivityFeed({
                     <div className="flex min-w-0 items-center gap-1.5">
                       {activity.type === 'linkClick' ? (
                         <>
-                          {activity.region ? (
+                          {activity.country &&
+                          activity.country.length === 2 &&
+                          COUNTRY_CODE_REGEX.test(activity.country) ? (
                             <>
-                              {activity.country &&
-                              activity.country.length === 2 &&
-                              COUNTRY_CODE_REGEX.test(activity.country) ? (
-                                <span
-                                  className={`fi fi-${activity.country.toLowerCase()} shrink-0 rounded-xs text-[12px]`}
-                                  title={getCountryLabel(activity.country)}
-                                />
-                              ) : (
-                                <HugeiconsIcon
-                                  className="size-3.5 shrink-0 text-muted-foreground"
-                                  icon={Flag02Icon}
-                                />
-                              )}
-                              <span className="truncate text-muted-foreground">
-                                {activity.region}
+                              <span
+                                className={`fi fi-${activity.country.toLowerCase()} shrink-0 rounded-xs text-[12px]`}
+                                title={getCountryLabel(activity.country)}
+                              />
+                              <span className="text-primary">
+                                {activity.country.toUpperCase()}
                               </span>
                             </>
                           ) : (
