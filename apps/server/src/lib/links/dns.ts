@@ -65,7 +65,14 @@ async function verifyCnameViaDoH(
   }
 }
 
-async function verifyDomainHttpExternal(hostname: string): Promise<boolean> {
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Unknown error';
+}
+
+async function verifyDomainHttpExternalWithError(hostname: string): Promise<{
+  verified: boolean;
+  error?: string;
+}> {
   const normalizedHost = normalizeHostname(hostname);
 
   try {
@@ -82,12 +89,20 @@ async function verifyDomainHttpExternal(hostname: string): Promise<boolean> {
       }
     );
 
-    return (
-      response.ok &&
-      response.headers.get(DOMAIN_VERIFY_HEADER)?.toLowerCase() === '1'
-    );
-  } catch {
-    return false;
+    const verifyHeader = response.headers.get(DOMAIN_VERIFY_HEADER);
+    if (response.ok && verifyHeader?.toLowerCase() === '1') {
+      return { verified: true };
+    }
+
+    return {
+      verified: false,
+      error: `HTTP verification failed for ${normalizedHost}: status ${response.status}, ${DOMAIN_VERIFY_HEADER}=${verifyHeader ?? 'missing'}, server=${response.headers.get('server') ?? 'missing'}, cf-ray=${response.headers.get('cf-ray') ?? 'missing'}.`,
+    };
+  } catch (error) {
+    return {
+      verified: false,
+      error: `HTTP verification failed for ${normalizedHost}: ${getErrorMessage(error)}.`,
+    };
   }
 }
 
@@ -106,13 +121,20 @@ export async function verifyDomainCname(hostname: string): Promise<{
     return { verified: true };
   }
 
-  if (await verifyDomainHttpExternal(normalizedHost)) {
+  const httpResult = await verifyDomainHttpExternalWithError(normalizedHost);
+  if (httpResult.verified) {
     return { verified: true };
   }
 
+  console.warn('[LinkDomain.Verify] Verification failed:', {
+    hostname: normalizedHost,
+    cnameTarget: LINK_CNAME_TARGET,
+    httpError: httpResult.error,
+  });
+
   return {
     verified: false,
-    error: `Could not verify ${normalizedHost}. Add CNAME → ${LINK_CNAME_TARGET} and try again.`,
+    error: `Could not verify ${normalizedHost}. Add CNAME → ${LINK_CNAME_TARGET} and try again. ${httpResult.error}`,
   };
 }
 
