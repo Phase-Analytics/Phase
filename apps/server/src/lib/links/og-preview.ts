@@ -46,11 +46,11 @@ function resolveOgTitle(link: CachedLinkConfig): string {
     return link.ogTitle.trim();
   }
 
-  try {
-    return new URL(link.destinationUrl).hostname;
-  } catch {
-    return link.slug;
+  if (link.name?.trim()) {
+    return link.name.trim();
   }
+
+  return link.slug;
 }
 
 function resolveOgDescription(link: CachedLinkConfig): string {
@@ -59,7 +59,7 @@ function resolveOgDescription(link: CachedLinkConfig): string {
     return description;
   }
 
-  return `Visit ${resolveOgTitle(link)}`;
+  return '';
 }
 
 export function buildLinkOgPreviewHtml(params: {
