@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import type { ExploreQueryV1 } from '@phase/shared';
 import { escapeQuestDbString } from '@/lib/questdb-sql';
 import { ExploreEngineError } from './errors';
-import { escapeExploreEventName } from './questdb-helpers';
+import { escapeExploreEventName, buildEventPropertyCondition, eventParamExtractSql } from './questdb-helpers';
 import { resolveExploreDateRange } from './time-range';
 import { validateExploreQuery } from './validate';
 
@@ -145,6 +145,15 @@ describe('explore questdb string safety', () => {
   test('escapeExploreEventName rejects injection payloads', () => {
     expect(() => escapeExploreEventName("x' OR 1=1 --")).toThrow(
       ExploreEngineError
+    );
+  });
+
+  test('event param SQL uses QuestDB json_extract with JSONPath', () => {
+    expect(eventParamExtractSql('level_number')).toBe(
+      "json_extract(params, '$.level_number')::double"
+    );
+    expect(buildEventPropertyCondition('level_number', 'eq', 4)).toBe(
+      "json_extract(params, '$.level_number')::double = 4"
     );
   });
 });

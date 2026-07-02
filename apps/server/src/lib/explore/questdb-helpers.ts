@@ -62,9 +62,13 @@ export function buildBaseEventConditions(
   ];
 }
 
-export function eventParamExtractSql(paramKey: string): string {
+function eventParamJsonPath(paramKey: string): string {
   validateParamKey(paramKey);
-  return `cast(json_extract_str(params, '${escapeSqlString(paramKey)}') as double)`;
+  return `$.${paramKey}`;
+}
+
+export function eventParamExtractSql(paramKey: string): string {
+  return `json_extract(params, '${escapeSqlString(eventParamJsonPath(paramKey))}')::double`;
 }
 
 export function buildEventPropertyCondition(
@@ -76,13 +80,14 @@ export function buildEventPropertyCondition(
 
   if (value === null) {
     if (operator === 'eq') {
-      return `(${extract} IS NULL OR json_extract_str(params, '${escapeSqlString(paramKey)}') IS NULL)`;
+      const rawExtract = `json_extract(params, '${escapeSqlString(eventParamJsonPath(paramKey))}')`;
+      return `(${extract} IS NULL OR ${rawExtract} IS NULL)`;
     }
     return `${extract} IS NOT NULL`;
   }
 
   if (typeof value === 'boolean' || typeof value === 'string') {
-    const strExtract = `json_extract_str(params, '${escapeSqlString(paramKey)}')`;
+    const strExtract = `json_extract(params, '${escapeSqlString(eventParamJsonPath(paramKey))}')`;
     const escaped = escapeSqlString(String(value).toLowerCase());
     if (operator === 'eq') {
       return `LOWER(${strExtract}) = '${escaped}'`;
