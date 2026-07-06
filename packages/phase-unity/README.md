@@ -15,7 +15,7 @@ Privacy-first mobile analytics for Unity (iOS/Android).
 ## Installation
 
 ```
-https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.9
+https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.10
 ```
 
 **Or** `Packages/manifest.json`:
@@ -23,7 +23,7 @@ https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.9
 ```json
 {
   "dependencies": {
-    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.9"
+    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.10"
   }
 }
 ```

@@ -3,6 +3,7 @@ import {
   DeviceDetailSchema,
   DeviceLiveResponseSchema,
   DeviceOverviewResponseSchema,
+  DeviceRetentionResponseSchema,
   DevicesListResponseSchema,
   DeviceTimeseriesResponseSchema,
   ErrorCode,
@@ -31,6 +32,7 @@ import {
   type BetterAuthUser,
 } from '@/lib/middleware';
 import { buildPropertySearchFilters } from '@/lib/property-search';
+import { calculateRetentionSummary } from '@/lib/retention';
 import {
   buildFilters,
   formatPaginationResponse,
@@ -570,6 +572,138 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
     }
   )
 
+  .get(
+    '/retention',
+    async (ctx) => {
+      const { query, set } = ctx as typeof ctx & AuthContext;
+      try {
+        const appId = query.appId as string;
+        const dateRangeValidation = validateDateRange(
+          query.startDate as string | undefined,
+          query.endDate as string | undefined
+        );
+        if (!dateRangeValidation.success) {
+          set.status = dateRangeValidation.error.status;
+          return {
+            code: dateRangeValidation.error.code,
+            detail: dateRangeValidation.error.detail,
+          };
+        }
+
+        const now = new Date();
+        const defaultStart = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+        const start = query.startDate
+          ? new Date(query.startDate as string)
+          : defaultStart;
+        const end = query.endDate ? new Date(query.endDate as string) : now;
+
+        const result = await db.execute<{
+          date: string;
+          cohortSize: number;
+          d1: number | null;
+          d3: number | null;
+          d7: number | null;
+          d14: number | null;
+          d30: number | null;
+        }>(sql`
+          WITH cohorts AS (
+            SELECT device_id, DATE(first_seen) AS cohort_date
+            FROM devices
+            WHERE app_id = ${appId}
+              AND DATE(first_seen) BETWEEN DATE(${start}::timestamp) AND DATE(${end}::timestamp)
+          ), activity AS (
+            SELECT DISTINCT s.device_id, DATE(s.started_at) AS activity_date
+            FROM sessions_analytics s
+            INNER JOIN devices d ON d.device_id = s.device_id
+            WHERE d.app_id = ${appId}
+              AND s.started_at >= DATE(${start}::timestamp) + INTERVAL '1 day'
+              AND s.started_at < DATE(${end}::timestamp) + INTERVAL '31 days'
+          ), cohort_retention AS (
+            SELECT
+              c.cohort_date,
+              COUNT(*)::int AS cohort_size,
+              COUNT(*) FILTER (WHERE EXISTS (
+                SELECT 1 FROM activity a WHERE a.device_id = c.device_id AND a.activity_date = c.cohort_date + 1
+              ))::int AS retained_d1,
+              COUNT(*) FILTER (WHERE EXISTS (
+                SELECT 1 FROM activity a WHERE a.device_id = c.device_id AND a.activity_date = c.cohort_date + 3
+              ))::int AS retained_d3,
+              COUNT(*) FILTER (WHERE EXISTS (
+                SELECT 1 FROM activity a WHERE a.device_id = c.device_id AND a.activity_date = c.cohort_date + 7
+              ))::int AS retained_d7,
+              COUNT(*) FILTER (WHERE EXISTS (
+                SELECT 1 FROM activity a WHERE a.device_id = c.device_id AND a.activity_date = c.cohort_date + 14
+              ))::int AS retained_d14,
+              COUNT(*) FILTER (WHERE EXISTS (
+                SELECT 1 FROM activity a WHERE a.device_id = c.device_id AND a.activity_date = c.cohort_date + 30
+              ))::int AS retained_d30
+            FROM cohorts c
+            GROUP BY c.cohort_date
+          )
+          SELECT
+            cohort_date::text AS date,
+            cohort_size AS "cohortSize",
+            CASE WHEN cohort_date + 1 <= CURRENT_DATE
+              THEN ROUND(retained_d1 * 100.0 / NULLIF(cohort_size, 0), 2)::float END AS d1,
+            CASE WHEN cohort_date + 3 <= CURRENT_DATE
+              THEN ROUND(retained_d3 * 100.0 / NULLIF(cohort_size, 0), 2)::float END AS d3,
+            CASE WHEN cohort_date + 7 <= CURRENT_DATE
+              THEN ROUND(retained_d7 * 100.0 / NULLIF(cohort_size, 0), 2)::float END AS d7,
+            CASE WHEN cohort_date + 14 <= CURRENT_DATE
+              THEN ROUND(retained_d14 * 100.0 / NULLIF(cohort_size, 0), 2)::float END AS d14,
+            CASE WHEN cohort_date + 30 <= CURRENT_DATE
+              THEN ROUND(retained_d30 * 100.0 / NULLIF(cohort_size, 0), 2)::float END AS d30
+          FROM cohort_retention
+          ORDER BY cohort_date
+        `);
+
+        const data = result.rows.map((row) => ({
+          date: row.date,
+          cohortSize: Number(row.cohortSize),
+          d1: row.d1 === null ? null : Number(row.d1),
+          d3: row.d3 === null ? null : Number(row.d3),
+          d7: row.d7 === null ? null : Number(row.d7),
+          d14: row.d14 === null ? null : Number(row.d14),
+          d30: row.d30 === null ? null : Number(row.d30),
+        }));
+
+        const summary = calculateRetentionSummary(data);
+
+        set.status = HttpStatus.OK;
+        return {
+          summary,
+          data,
+          period: {
+            startDate: start.toISOString(),
+            endDate: end.toISOString(),
+          },
+        };
+      } catch (error) {
+        console.error('[Device.Retention] Error:', error);
+        set.status = HttpStatus.INTERNAL_SERVER_ERROR;
+        return {
+          code: ErrorCode.INTERNAL_SERVER_ERROR,
+          detail: 'Failed to fetch device retention',
+        };
+      }
+    },
+    {
+      requireAuth: true,
+      verifyAppAccess: true,
+      query: t.Object({
+        appId: t.String(),
+        startDate: t.Optional(t.String()),
+        endDate: t.Optional(t.String()),
+      }),
+      response: {
+        200: DeviceRetentionResponseSchema,
+        400: ErrorResponseSchema,
+        401: ErrorResponseSchema,
+        403: ErrorResponseSchema,
+        500: ErrorResponseSchema,
+      },
+    }
+  )
   .get(
     '/:deviceId',
     async (ctx) => {

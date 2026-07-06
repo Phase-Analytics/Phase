@@ -40,6 +40,8 @@ export const SESSION_MAX_AGE = {
   offline: 7 * 24 * 60 * 60 * 1000,
 } as const;
 
+export const SESSION_MAX_DURATION_MS = 60 * 60 * 1000;
+
 const ID_VALIDATION = {
   deviceId: {
     minLength: DEVICE_ID.MIN_LENGTH,

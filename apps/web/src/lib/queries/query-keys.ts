@@ -26,6 +26,8 @@ export const queryKeys = {
     overview: (appId: string) =>
       [...queryKeys.devices.all, 'overview', appId] as const,
     live: (appId: string) => [...queryKeys.devices.all, 'live', appId] as const,
+    retention: (appId: string, params?: DateRangeParams) =>
+      [...queryKeys.devices.all, 'retention', appId, params] as const,
     timeseries: (appId: string, params?: Record<string, unknown>) =>
       [...queryKeys.devices.all, 'timeseries', appId, params] as const,
     activityTimeseries: (

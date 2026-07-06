@@ -19,6 +19,7 @@ public sealed class SessionManager : IDisposable
     private Task<string>? _startTask;
     private bool _isOnline = true;
     private long? _pausedAtMs;
+    private long? _startedAtMs;
 
     public SessionManager(
         SdkHttpClient httpClient,
@@ -74,6 +75,7 @@ public sealed class SessionManager : IDisposable
         }
 
         var startedAt = DateTime.UtcNow.ToString("o");
+        _startedAtMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var payload = new CreateSessionRequest
         {
             SessionId = _sessionId,
@@ -149,6 +151,7 @@ public sealed class SessionManager : IDisposable
             {
                 Logger.Info("Session too old, starting new session");
                 _sessionId = null;
+                _startedAtMs = null;
                 _pausedAtMs = null;
                 await StartAsync(_isOnline).ConfigureAwait(false);
                 return;
@@ -162,6 +165,7 @@ public sealed class SessionManager : IDisposable
             {
                 Logger.Info("Session inactive for too long, starting new session");
                 _sessionId = null;
+                _startedAtMs = null;
                 _pausedAtMs = null;
                 await StartAsync(_isOnline).ConfigureAwait(false);
                 return;
@@ -199,6 +203,19 @@ public sealed class SessionManager : IDisposable
     {
         if (string.IsNullOrEmpty(_sessionId))
         {
+            return;
+        }
+
+        if (
+            _startedAtMs.HasValue
+            && DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - _startedAtMs.Value
+                >= ValidationConstants.MaxSessionAgeMs
+        )
+        {
+            Logger.Info("Session reached maximum age, starting new session");
+            _sessionId = null;
+            _startedAtMs = null;
+            await StartAsync(_isOnline).ConfigureAwait(false);
             return;
         }
 
