@@ -603,7 +603,7 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
           retainedUsers: number;
         }>(sql`
           WITH day_series AS (
-            SELECT generate_series(0, 42)::int AS day
+            SELECT generate_series(0, 30)::int AS day
           ),
           cohorts AS (
             SELECT device_id, DATE(first_seen) AS cohort_date

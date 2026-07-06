@@ -15,8 +15,6 @@ import { UsersCountryMapCard } from '@/components/users/users-country-map-card';
 import { UsersDistributionCard } from '@/components/users/users-distribution-card';
 import { UsersOverviewCards } from '@/components/users/users-overview-cards';
 import {
-  UsersRetentionCards,
-  UsersRetentionCardsSkeleton,
   UsersRetentionChart,
   UsersRetentionChartSkeleton,
 } from '@/components/users/users-retention';
@@ -178,12 +176,6 @@ export default function UsersPage() {
         <ErrorBoundary>
           <Suspense fallback={<UsersOverviewCardsSkeleton />}>
             <UsersOverviewCards />
-          </Suspense>
-        </ErrorBoundary>
-
-        <ErrorBoundary>
-          <Suspense fallback={<UsersRetentionCardsSkeleton />}>
-            <UsersRetentionCards />
           </Suspense>
         </ErrorBoundary>
 
