@@ -5,7 +5,7 @@ import {
   CheckmarkSquare01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { useMemo } from 'react';
+import { useId, useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
 import { ClientDate } from '@/components/client-date';
 import { Button } from '@/components/ui/button';
@@ -79,7 +79,7 @@ export function TimescaleChart({
   valueFormatter,
   emptyMessage = 'No data available for this period',
 }: TimescaleChartProps) {
-  const chartId = useMemo(() => `chart-${dataKey}`, [dataKey]);
+  const chartId = `chart-${useId().replaceAll(':', '')}`;
 
   const chartConfig = {
     [dataKey]: {
