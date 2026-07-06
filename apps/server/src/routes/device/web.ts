@@ -616,30 +616,30 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
             c.cohort_date::text AS date,
             COUNT(DISTINCT c.device_id)::int AS "cohortSize",
             CASE WHEN c.cohort_date + 1 <= CURRENT_DATE THEN ROUND(
-              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) >= c.cohort_date + 1)
+              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.cohort_date + 1)
                 * 100.0 / NULLIF(COUNT(DISTINCT c.device_id), 0), 2
             )::float END AS d1,
             CASE WHEN c.cohort_date + 3 <= CURRENT_DATE THEN ROUND(
-              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) >= c.cohort_date + 3)
+              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.cohort_date + 3)
                 * 100.0 / NULLIF(COUNT(DISTINCT c.device_id), 0), 2
             )::float END AS d3,
             CASE WHEN c.cohort_date + 7 <= CURRENT_DATE THEN ROUND(
-              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) >= c.cohort_date + 7)
+              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.cohort_date + 7)
                 * 100.0 / NULLIF(COUNT(DISTINCT c.device_id), 0), 2
             )::float END AS d7,
             CASE WHEN c.cohort_date + 14 <= CURRENT_DATE THEN ROUND(
-              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) >= c.cohort_date + 14)
+              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.cohort_date + 14)
                 * 100.0 / NULLIF(COUNT(DISTINCT c.device_id), 0), 2
             )::float END AS d14,
             CASE WHEN c.cohort_date + 30 <= CURRENT_DATE THEN ROUND(
-              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) >= c.cohort_date + 30)
+              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.cohort_date + 30)
                 * 100.0 / NULLIF(COUNT(DISTINCT c.device_id), 0), 2
             )::float END AS d30
           FROM cohorts c
           LEFT JOIN sessions_analytics s
             ON s.device_id = c.device_id
             AND s.started_at >= c.cohort_date + INTERVAL '1 day'
-            AND s.started_at < CURRENT_DATE + INTERVAL '1 day'
+            AND s.started_at < c.cohort_date + INTERVAL '31 days'
           GROUP BY c.cohort_date
           ORDER BY c.cohort_date
         `);

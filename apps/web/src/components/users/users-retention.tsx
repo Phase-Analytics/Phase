@@ -184,7 +184,7 @@ export function UsersRetentionChart() {
   return (
     <MultiLineTimescaleChart
       data={chartData}
-      description="Cumulative rolling retention through each day"
+      description="Cumulative cohort retention through each day"
       isPending={isLoading}
       onTimeRangeChange={setTimeRange}
       series={RETENTION_SERIES}
