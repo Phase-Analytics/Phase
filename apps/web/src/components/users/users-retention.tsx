@@ -1,7 +1,8 @@
 'use client';
 
-import type { RetentionPeriod } from '@phase/shared';
+import type { DeviceRetentionResponse, RetentionPeriod } from '@phase/shared';
 import { parseAsString, useQueryState } from 'nuqs';
+import { useMemo } from 'react';
 import { MultiLineTimescaleChart } from '@/components/multi-line-timescale-chart';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -28,6 +29,97 @@ const RETENTION_SERIES = RETENTION_PERIODS.map((period, index) => ({
   color: `var(--color-chart-${index + 1})`,
 }));
 
+const RETENTION_PERIOD_DAYS: Record<RetentionPeriod, number> = {
+  d1: 1,
+  d3: 3,
+  d7: 7,
+  d14: 14,
+  d30: 30,
+};
+
+type CumulativeRetentionPoint = { date: string } & Record<
+  RetentionPeriod,
+  number
+>;
+
+function addUtcDays(date: string, days: number): string {
+  const result = new Date(`${date}T00:00:00Z`);
+  result.setUTCDate(result.getUTCDate() + days);
+  return result.toISOString().slice(0, 10);
+}
+
+export function buildCumulativeRetentionData(
+  cohorts: DeviceRetentionResponse['data']
+) {
+  const maturities = new Map<
+    string,
+    Array<{ period: RetentionPeriod; rate: number; cohortSize: number }>
+  >();
+
+  for (const cohort of cohorts) {
+    for (const { value: period } of RETENTION_PERIODS) {
+      const rate = cohort[period];
+      if (rate === null) {
+        continue;
+      }
+
+      const maturityDate = addUtcDays(
+        cohort.date,
+        RETENTION_PERIOD_DAYS[period]
+      );
+      const entries = maturities.get(maturityDate) ?? [];
+      entries.push({ period, rate, cohortSize: cohort.cohortSize });
+      maturities.set(maturityDate, entries);
+    }
+  }
+
+  const maturityDates = [...maturities.keys()].sort();
+  if (maturityDates.length === 0) {
+    return [];
+  }
+
+  const totals = Object.fromEntries(
+    RETENTION_PERIODS.map(({ value }) => [
+      value,
+      { weightedRates: 0, eligibleUsers: 0 },
+    ])
+  ) as Record<
+    RetentionPeriod,
+    { weightedRates: number; eligibleUsers: number }
+  >;
+  const result: CumulativeRetentionPoint[] = [];
+  const currentDate = new Date(`${maturityDates[0]}T00:00:00Z`);
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  while (currentDate <= today) {
+    const date = currentDate.toISOString().slice(0, 10);
+    for (const maturity of maturities.get(date) ?? []) {
+      const total = totals[maturity.period];
+      total.weightedRates += maturity.rate * maturity.cohortSize;
+      total.eligibleUsers += maturity.cohortSize;
+    }
+
+    result.push({
+      date,
+      ...Object.fromEntries(
+        RETENTION_PERIODS.map(({ value }) => {
+          const total = totals[value];
+          return [
+            value,
+            total.eligibleUsers > 0
+              ? Number((total.weightedRates / total.eligibleUsers).toFixed(2))
+              : 0,
+          ];
+        })
+      ),
+    } as CumulativeRetentionPoint);
+    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+  }
+
+  return result;
+}
+
 export function UsersRetentionCards() {
   const [appId] = useQueryState('app', parseAsString);
   const { data } = useDeviceRetention(appId || '', '360d');
@@ -44,11 +136,10 @@ export function UsersRetentionCards() {
             <p className="text-muted-foreground text-xs uppercase">
               {label} Retention
             </p>
-            <p className="font-bold text-3xl">
-              {data.summary[value].toLocaleString(undefined, {
+            <p className="font-bold text-3xl tabular-nums tracking-[-0.04em]">
+              {`${data.summary[value].toLocaleString(undefined, {
                 maximumFractionDigits: 2,
-              })}
-              %
+              })}%`}
             </p>
           </CardContent>
         </Card>
@@ -64,6 +155,10 @@ export function UsersRetentionChart() {
     parseAsString.withDefault('30d')
   );
   const { data, isLoading } = useDeviceRetention(appId || '', '360d');
+  const cumulativeData = useMemo(
+    () => buildCumulativeRetentionData(data.data),
+    [data.data]
+  );
 
   if (!appId) {
     return null;
@@ -74,21 +169,14 @@ export function UsersRetentionChart() {
   const firstCohortDate = new Date();
   firstCohortDate.setUTCDate(firstCohortDate.getUTCDate() - rangeDays);
   const firstCohortDateString = firstCohortDate.toISOString().slice(0, 10);
-  const chartData = data.data
-    .filter((cohort) => cohort.date >= firstCohortDateString)
-    .map((cohort) => ({
-      date: cohort.date,
-      d1: cohort.d1 ?? 0,
-      d3: cohort.d3 ?? 0,
-      d7: cohort.d7 ?? 0,
-      d14: cohort.d14 ?? 0,
-      d30: cohort.d30 ?? 0,
-    }));
+  const chartData = cumulativeData.filter(
+    (point) => point.date >= firstCohortDateString
+  );
 
   return (
     <MultiLineTimescaleChart
       data={chartData}
-      description="Retention by signup cohort"
+      description="Cumulative retention through each day"
       isPending={isLoading}
       onTimeRangeChange={setTimeRange}
       series={RETENTION_SERIES}

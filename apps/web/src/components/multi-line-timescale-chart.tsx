@@ -5,7 +5,8 @@ import {
   CheckmarkSquare01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts';
+import { useId } from 'react';
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { ClientDate } from '@/components/client-date';
 import { Button } from '@/components/ui/button';
 import {
@@ -61,12 +62,21 @@ export function MultiLineTimescaleChart({
   onTimeRangeChange,
   emptyMessage = 'No data available for this period',
 }: MultiLineTimescaleChartProps) {
+  const chartId = useId().replaceAll(':', '');
   const chartConfig = Object.fromEntries(
     series.map(({ dataKey, label, color }) => [dataKey, { label, color }])
   ) satisfies ChartConfig;
   const currentLabel =
     timeRangeOptions.find((option) => option.value === timeRange)?.label ??
     timeRangeOptions[0]?.label;
+  const variableSeries = new Set(
+    series
+      .filter(({ dataKey }) => {
+        const firstValue = data[0]?.[dataKey];
+        return data.some((point) => point[dataKey] !== firstValue);
+      })
+      .map(({ dataKey }) => dataKey)
+  );
 
   return (
     <Card className="py-0">
@@ -114,7 +124,52 @@ export function MultiLineTimescaleChart({
             className="aspect-auto h-[250px] w-full"
             config={chartConfig}
           >
-            <LineChart accessibilityLayer data={data}>
+            <AreaChart accessibilityLayer data={data}>
+              <defs>
+                {series.map(({ dataKey }) => (
+                  <linearGradient
+                    id={`fill-${chartId}-${dataKey}`}
+                    key={`fill-${dataKey}`}
+                    x1="0"
+                    x2="0"
+                    y1="0"
+                    y2="1"
+                  >
+                    <stop
+                      offset="5%"
+                      stopColor={`var(--color-${dataKey})`}
+                      stopOpacity={0.16}
+                    />
+                    <stop
+                      offset="95%"
+                      stopColor={`var(--color-${dataKey})`}
+                      stopOpacity={0.02}
+                    />
+                  </linearGradient>
+                ))}
+                {data.length >= 2 &&
+                  series.map(({ dataKey }) => (
+                    <linearGradient
+                      id={`stroke-${chartId}-${dataKey}`}
+                      key={`stroke-${dataKey}`}
+                      x1="0"
+                      x2="1"
+                      y1="0"
+                      y2="0"
+                    >
+                      <stop
+                        offset={`${((data.length - 2) / (data.length - 1)) * 100}%`}
+                        stopColor={`var(--color-${dataKey})`}
+                        stopOpacity={1}
+                      />
+                      <stop
+                        offset={`${((data.length - 2) / (data.length - 1)) * 100}%`}
+                        stopColor={`var(--color-${dataKey})`}
+                        stopOpacity={0}
+                      />
+                    </linearGradient>
+                  ))}
+              </defs>
               <CartesianGrid vertical={false} />
               <XAxis
                 axisLine={false}
@@ -127,9 +182,10 @@ export function MultiLineTimescaleChart({
               />
               <YAxis
                 axisLine={false}
-                domain={[0, 100]}
+                domain={[0, 50]}
                 tickFormatter={(value) => `${value}%`}
                 tickLine={false}
+                ticks={[0, 10, 20, 30, 50]}
                 width={42}
               />
               <ChartTooltip
@@ -166,8 +222,27 @@ export function MultiLineTimescaleChart({
                 }}
               />
               <ChartLegend content={<ChartLegendContent />} />
+              {series.map(
+                ({ dataKey }) =>
+                  data.length >= 2 &&
+                  variableSeries.has(dataKey) && (
+                    <Area
+                      activeDot={false}
+                      dataKey={dataKey}
+                      fill="none"
+                      key={`dashed-${dataKey}`}
+                      legendType="none"
+                      name="__dashed"
+                      stroke={`var(--color-${dataKey})`}
+                      strokeDasharray="5 5"
+                      strokeWidth={2}
+                      tooltipType="none"
+                      type="monotone"
+                    />
+                  )
+              )}
               {series.map(({ dataKey }) => (
-                <Line
+                <Area
                   activeDot={{
                     fill: 'hsl(var(--background))',
                     r: 5,
@@ -175,14 +250,18 @@ export function MultiLineTimescaleChart({
                     strokeWidth: 2,
                   }}
                   dataKey={dataKey}
-                  dot={false}
+                  fill={`url(#fill-${chartId}-${dataKey})`}
                   key={dataKey}
-                  stroke={`var(--color-${dataKey})`}
+                  stroke={
+                    data.length >= 2 && variableSeries.has(dataKey)
+                      ? `url(#stroke-${chartId}-${dataKey})`
+                      : `var(--color-${dataKey})`
+                  }
                   strokeWidth={2}
                   type="monotone"
                 />
               ))}
-            </LineChart>
+            </AreaChart>
           </ChartContainer>
         )}
       </CardContent>
