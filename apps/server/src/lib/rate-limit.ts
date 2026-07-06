@@ -181,9 +181,11 @@ export async function checkPasswordResetRateLimit(
 }
 
 export async function checkWebApiRateLimit(
-  ip: string
+  sessionIdentifier: string
 ): Promise<RateLimitResult> {
-  return await checkRateLimit(RATE_LIMIT_STRATEGIES.WEB_API, { ip });
+  return await checkRateLimit(RATE_LIMIT_STRATEGIES.WEB_API, {
+    deviceId: sessionIdentifier,
+  });
 }
 
 export async function checkWaitlistRateLimit(

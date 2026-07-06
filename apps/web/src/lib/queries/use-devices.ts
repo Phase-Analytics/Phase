@@ -108,13 +108,8 @@ export function useDeviceRetention(
   appId: string,
   range?: TimeRange | DateRangeParams
 ) {
-  const dateParams =
-    range && typeof range === 'string'
-      ? getTimeRangeDates(range)
-      : (range as DateRangeParams | undefined);
-
   return useSuspenseQuery({
-    queryKey: queryKeys.devices.retention(appId, dateParams),
+    queryKey: queryKeys.devices.retention(appId, { range }),
     queryFn: () => {
       if (!appId) {
         const now = new Date().toISOString();
@@ -124,6 +119,11 @@ export function useDeviceRetention(
           period: { startDate: now, endDate: now },
         });
       }
+
+      const dateParams =
+        range && typeof range === 'string'
+          ? getTimeRangeDates(range)
+          : (range as DateRangeParams | undefined);
 
       return fetchApi<DeviceRetentionResponse>(
         `/web/devices/retention${buildQueryString({ appId, ...dateParams })}`

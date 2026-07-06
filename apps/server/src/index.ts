@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { ErrorCode, HttpStatus } from '@phase/shared';
 import { Elysia } from 'elysia';
 import Redis from 'ioredis';
@@ -67,6 +68,16 @@ function extractBearerToken(request: Request): string | null {
   }
 
   return token;
+}
+
+function getWebRateLimitIdentifier(request: Request, ip: string): string {
+  const cookie = request.headers.get('cookie');
+  if (!cookie) {
+    return `ip:${ip}`;
+  }
+
+  const sessionHash = createHash('sha256').update(cookie).digest('hex');
+  return `session:${sessionHash}`;
 }
 
 function handleRateLimitResponse(
@@ -142,7 +153,9 @@ const webRoutes = new Elysia({ prefix: '/web' })
       return;
     }
 
-    const rateLimitResult = await checkWebApiRateLimit(ip);
+    const rateLimitResult = await checkWebApiRateLimit(
+      getWebRateLimitIdentifier(request, ip)
+    );
 
     return handleRateLimitResponse(
       rateLimitResult,
