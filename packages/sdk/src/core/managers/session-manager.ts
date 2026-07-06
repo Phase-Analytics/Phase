@@ -17,6 +17,7 @@ export class SessionManager {
   private pingInterval: ReturnType<typeof setInterval> | null = null;
   private isOnline = true;
   private pausedAt: number | null = null;
+  private startedAtMs: number | null = null;
   private readonly httpClient: HttpClient;
   private readonly offlineQueue: OfflineQueue;
   private readonly deviceId: string;
@@ -65,6 +66,7 @@ export class SessionManager {
     }
 
     const startedAt = new Date().toISOString();
+    this.startedAtMs = Date.now();
     const payload: CreateSessionRequest = {
       sessionId: this.sessionId,
       deviceId: this.deviceId,
@@ -123,6 +125,7 @@ export class SessionManager {
         });
 
         this.sessionId = null;
+        this.startedAtMs = null;
         this.pausedAt = null;
 
         await this.start(this.isOnline);
@@ -179,6 +182,17 @@ export class SessionManager {
 
   private async sendPing(): Promise<void> {
     if (!this.sessionId) {
+      return;
+    }
+
+    if (
+      this.startedAtMs !== null &&
+      Date.now() - this.startedAtMs >= MAX_SESSION_AGE_MS
+    ) {
+      logger.info('Session reached maximum age, starting new session');
+      this.sessionId = null;
+      this.startedAtMs = null;
+      await this.start(this.isOnline);
       return;
     }
 

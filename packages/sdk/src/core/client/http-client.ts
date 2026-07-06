@@ -66,7 +66,7 @@ export class HttpClient {
           method: 'POST',
           headers: this.buildHeaders(),
           body: jsonString,
-          signal: controller.signal,
+          signal: controller.signal as RequestInit['signal'],
         });
 
         clearTimeout(timeoutId);
@@ -204,7 +204,7 @@ export class HttpClient {
             'Content-Encoding': 'gzip',
           }),
           body: compressed,
-          signal: controller.signal,
+          signal: controller.signal as RequestInit['signal'],
         });
 
         clearTimeout(timeoutId);

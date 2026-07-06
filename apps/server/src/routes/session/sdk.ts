@@ -33,10 +33,20 @@ export const sessionSdkRouter = new Elysia({ prefix: '/sessions' })
         });
 
         if (existingSession) {
-          set.status = HttpStatus.BAD_REQUEST;
+          if (existingSession.deviceId !== body.deviceId) {
+            set.status = HttpStatus.BAD_REQUEST;
+            return {
+              code: ErrorCode.VALIDATION_ERROR,
+              detail: 'Session ID belongs to another device',
+            };
+          }
+
+          set.status = HttpStatus.OK;
           return {
-            code: ErrorCode.VALIDATION_ERROR,
-            detail: 'Session with this ID already exists',
+            sessionId: existingSession.sessionId,
+            deviceId: existingSession.deviceId,
+            startedAt: existingSession.startedAt.toISOString(),
+            lastActivityAt: existingSession.lastActivityAt.toISOString(),
           };
         }
 

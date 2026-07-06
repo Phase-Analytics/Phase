@@ -156,6 +156,35 @@ export const DeviceLiveResponseSchema = z.object({
   activeNow: z.number().min(0),
 });
 
+export const RetentionPeriodSchema = z.enum(['d1', 'd3', 'd7', 'd14', 'd30']);
+
+export const DeviceRetentionRatesSchema = z.object({
+  d1: z.number().min(0).max(100),
+  d3: z.number().min(0).max(100),
+  d7: z.number().min(0).max(100),
+  d14: z.number().min(0).max(100),
+  d30: z.number().min(0).max(100),
+});
+
+export const DeviceRetentionResponseSchema = z.object({
+  summary: DeviceRetentionRatesSchema,
+  data: z.array(
+    z.object({
+      date: z.string(),
+      cohortSize: z.number().min(0),
+      d1: z.number().min(0).max(100).nullable(),
+      d3: z.number().min(0).max(100).nullable(),
+      d7: z.number().min(0).max(100).nullable(),
+      d14: z.number().min(0).max(100).nullable(),
+      d30: z.number().min(0).max(100).nullable(),
+    })
+  ),
+  period: z.object({
+    startDate: z.string().datetime(),
+    endDate: z.string().datetime(),
+  }),
+});
+
 export const DeviceActivityTimeseriesDataPointSchema = z.object({
   date: z.string(),
   sessionCount: z.number().min(0),
@@ -194,6 +223,11 @@ export type DeviceTimeseriesResponse = z.infer<
   typeof DeviceTimeseriesResponseSchema
 >;
 export type DeviceLiveResponse = z.infer<typeof DeviceLiveResponseSchema>;
+export type RetentionPeriod = z.infer<typeof RetentionPeriodSchema>;
+export type DeviceRetentionRates = z.infer<typeof DeviceRetentionRatesSchema>;
+export type DeviceRetentionResponse = z.infer<
+  typeof DeviceRetentionResponseSchema
+>;
 export type DeviceActivityTimeseriesDataPoint = z.infer<
   typeof DeviceActivityTimeseriesDataPointSchema
 >;

@@ -8,6 +8,7 @@ import type {
   DeviceLiveResponse,
   DeviceMetric,
   DeviceOverviewResponse,
+  DeviceRetentionResponse,
   DevicesListResponse,
   DeviceTimeseriesResponse,
   PaginationQueryParams,
@@ -100,6 +101,35 @@ export function useDeviceLiveResponse(appId: string) {
       return fetchApi<DeviceLiveResponse>(`/web/devices/live?appId=${appId}`);
     },
     ...cacheConfig.realtime,
+  });
+}
+
+export function useDeviceRetention(
+  appId: string,
+  range?: TimeRange | DateRangeParams
+) {
+  const dateParams =
+    range && typeof range === 'string'
+      ? getTimeRangeDates(range)
+      : (range as DateRangeParams | undefined);
+
+  return useSuspenseQuery({
+    queryKey: queryKeys.devices.retention(appId, dateParams),
+    queryFn: () => {
+      if (!appId) {
+        const now = new Date().toISOString();
+        return Promise.resolve({
+          summary: { d1: 0, d3: 0, d7: 0, d14: 0, d30: 0 },
+          data: [],
+          period: { startDate: now, endDate: now },
+        });
+      }
+
+      return fetchApi<DeviceRetentionResponse>(
+        `/web/devices/retention${buildQueryString({ appId, ...dateParams })}`
+      );
+    },
+    ...cacheConfig.timeseries,
   });
 }
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.10
+
+- Rotate sessions after one hour even while the app remains continuously active.
+- Prevent stale sessions from producing inflated durations after delayed lifecycle transitions.
+
 ## 0.1.9
 
 - Default HTTP transport on Unity is `System.Net.Http` (`SystemNetHttpTransport`), safe when SDK continuations use `ConfigureAwait(false)`.

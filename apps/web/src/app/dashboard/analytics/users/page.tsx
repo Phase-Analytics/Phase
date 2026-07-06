@@ -15,6 +15,12 @@ import { UsersCountryMapCard } from '@/components/users/users-country-map-card';
 import { UsersDistributionCard } from '@/components/users/users-distribution-card';
 import { UsersOverviewCards } from '@/components/users/users-overview-cards';
 import {
+  UsersRetentionCards,
+  UsersRetentionCardsSkeleton,
+  UsersRetentionChart,
+  UsersRetentionChartSkeleton,
+} from '@/components/users/users-retention';
+import {
   UsersCountryMapSkeleton,
   UsersDistributionCardSkeleton,
   UsersOverviewCardsSkeleton,
@@ -24,6 +30,7 @@ import { UsersTable } from '@/components/users/users-table';
 import { buildQueryString, fetchApi } from '@/lib/api/client';
 import type {
   DeviceOverviewResponse,
+  DeviceRetentionResponse,
   DeviceTimeseriesResponse,
 } from '@/lib/api/types';
 import { cacheConfig, getQueryClient, queryKeys } from '@/lib/queries';
@@ -38,11 +45,13 @@ type UsersExportData = {
     countries: Record<string, number>;
     cities: Record<string, { count: number; country: string }>;
     platforms: Record<string, number>;
+    retention: DeviceRetentionResponse['summary'];
   };
   timeseries: Array<{
     date: string;
     totalUsers: number;
     dailyActiveUsers: number;
+    retention: Omit<DeviceRetentionResponse['data'][number], 'date'> | null;
   }>;
 };
 
@@ -57,53 +66,72 @@ function UsersExportButton() {
 
       const queryClient = getQueryClient();
 
-      const [overview, totalTimeseries, dauTimeseries] = await Promise.all([
-        queryClient.fetchQuery({
-          queryKey: queryKeys.devices.overview(appId),
-          queryFn: () =>
-            fetchApi<DeviceOverviewResponse>(
-              `/web/devices/overview${buildQueryString({ appId })}`
-            ),
-          ...cacheConfig.overview,
-        }),
-        queryClient.fetchQuery({
-          queryKey: queryKeys.devices.timeseries(appId, {
-            startDate,
-            endDate,
-            metric: 'total',
+      const [overview, totalTimeseries, dauTimeseries, retention] =
+        await Promise.all([
+          queryClient.fetchQuery({
+            queryKey: queryKeys.devices.overview(appId),
+            queryFn: () =>
+              fetchApi<DeviceOverviewResponse>(
+                `/web/devices/overview${buildQueryString({ appId })}`
+              ),
+            ...cacheConfig.overview,
           }),
-          queryFn: () =>
-            fetchApi<DeviceTimeseriesResponse>(
-              `/web/devices/timeseries${buildQueryString({
-                appId,
-                startDate,
-                endDate,
-                metric: 'total',
-              })}`
-            ),
-          ...cacheConfig.timeseries,
-        }),
-        queryClient.fetchQuery({
-          queryKey: queryKeys.devices.timeseries(appId, {
-            startDate,
-            endDate,
-            metric: 'dau',
+          queryClient.fetchQuery({
+            queryKey: queryKeys.devices.timeseries(appId, {
+              startDate,
+              endDate,
+              metric: 'total',
+            }),
+            queryFn: () =>
+              fetchApi<DeviceTimeseriesResponse>(
+                `/web/devices/timeseries${buildQueryString({
+                  appId,
+                  startDate,
+                  endDate,
+                  metric: 'total',
+                })}`
+              ),
+            ...cacheConfig.timeseries,
           }),
-          queryFn: () =>
-            fetchApi<DeviceTimeseriesResponse>(
-              `/web/devices/timeseries${buildQueryString({
-                appId,
-                startDate,
-                endDate,
-                metric: 'dau',
-              })}`
-            ),
-          ...cacheConfig.timeseries,
-        }),
-      ]);
+          queryClient.fetchQuery({
+            queryKey: queryKeys.devices.timeseries(appId, {
+              startDate,
+              endDate,
+              metric: 'dau',
+            }),
+            queryFn: () =>
+              fetchApi<DeviceTimeseriesResponse>(
+                `/web/devices/timeseries${buildQueryString({
+                  appId,
+                  startDate,
+                  endDate,
+                  metric: 'dau',
+                })}`
+              ),
+            ...cacheConfig.timeseries,
+          }),
+          queryClient.fetchQuery({
+            queryKey: queryKeys.devices.retention(appId, {
+              startDate,
+              endDate,
+            }),
+            queryFn: () =>
+              fetchApi<DeviceRetentionResponse>(
+                `/web/devices/retention${buildQueryString({
+                  appId,
+                  startDate,
+                  endDate,
+                })}`
+              ),
+            ...cacheConfig.timeseries,
+          }),
+        ]);
 
       const dauByDate = new Map(
         dauTimeseries.data.map((point) => [point.date, point.activeUsers ?? 0])
+      );
+      const retentionByDate = new Map(
+        retention.data.map(({ date, ...values }) => [date, values])
       );
 
       return {
@@ -121,11 +149,13 @@ function UsersExportButton() {
               }
             ).cityStats ?? {},
           platforms: overview.platformStats,
+          retention: retention.summary,
         },
         timeseries: totalTimeseries.data.map((point) => ({
           date: point.date,
           totalUsers: point.totalUsers ?? 0,
           dailyActiveUsers: dauByDate.get(point.date) ?? 0,
+          retention: retentionByDate.get(point.date) ?? null,
         })),
       };
     },
@@ -152,6 +182,18 @@ export default function UsersPage() {
         <ErrorBoundary>
           <Suspense fallback={<UsersOverviewCardsSkeleton />}>
             <UsersOverviewCards />
+          </Suspense>
+        </ErrorBoundary>
+
+        <ErrorBoundary>
+          <Suspense fallback={<UsersRetentionCardsSkeleton />}>
+            <UsersRetentionCards />
+          </Suspense>
+        </ErrorBoundary>
+
+        <ErrorBoundary>
+          <Suspense fallback={<UsersRetentionChartSkeleton />}>
+            <UsersRetentionChart />
           </Suspense>
         </ErrorBoundary>
 

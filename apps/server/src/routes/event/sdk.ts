@@ -14,6 +14,7 @@ import { getSessionActivityBuffer } from '@/lib/session-activity-buffer';
 import { sseManager } from '@/lib/sse-manager';
 import {
   invalidateSessionCache,
+  SESSION_MAX_DURATION_MS,
   validateEventParams,
   validateSession,
   validateTimestamp,
@@ -64,8 +65,10 @@ export const eventSdkRouter = new Elysia({ prefix: '/events' })
           };
         }
 
-        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        if (session.startedAt < oneDayAgo) {
+        const oldestRealtimeSession = new Date(
+          Date.now() - SESSION_MAX_DURATION_MS
+        );
+        if (session.startedAt < oldestRealtimeSession) {
           set.status = HttpStatus.BAD_REQUEST;
           return {
             code: ErrorCode.VALIDATION_ERROR,
@@ -75,26 +78,12 @@ export const eventSdkRouter = new Elysia({ prefix: '/events' })
 
         const timeSinceSessionStart =
           clientTimestamp.getTime() - session.startedAt.getTime();
-        const MAX_SESSION_DURATION = 24 * 60 * 60 * 1000;
-        if (timeSinceSessionStart > MAX_SESSION_DURATION) {
+        if (timeSinceSessionStart > SESSION_MAX_DURATION_MS) {
           set.status = HttpStatus.BAD_REQUEST;
           return {
             code: ErrorCode.VALIDATION_ERROR,
             detail:
-              'Event timestamp too far from session start (max 24h session duration)',
-          };
-        }
-
-        const bufferedActivity = getSessionActivityBuffer().getLastActivityAt(
-          session.sessionId
-        );
-        const lastActivity = bufferedActivity || session.lastActivityAt;
-
-        if (clientTimestamp <= lastActivity) {
-          set.status = HttpStatus.BAD_REQUEST;
-          return {
-            code: ErrorCode.VALIDATION_ERROR,
-            detail: 'Event timestamp must be after last activity',
+              'Event timestamp too far from session start (max 1h session duration)',
           };
         }
 
@@ -113,11 +102,13 @@ export const eventSdkRouter = new Elysia({ prefix: '/events' })
           timestamp: clientTimestamp.toISOString(),
         });
 
-        getSessionActivityBuffer().push(
-          session.sessionId,
-          clientTimestamp,
-          device.appId
-        );
+        const activityBuffer = getSessionActivityBuffer();
+        const latestActivity =
+          activityBuffer.getLastActivityAt(session.sessionId) ??
+          session.lastActivityAt;
+        if (clientTimestamp > latestActivity) {
+          activityBuffer.push(session.sessionId, clientTimestamp, device.appId);
+        }
 
         await invalidateSessionCache(session.sessionId);
 

@@ -4,7 +4,6 @@ import {
   CircleIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { cloneElement, isValidElement, type ReactElement } from 'react';
 import {
   DropdownMenuCheckboxItem as DropdownMenuCheckboxItemPrimitive,
   type DropdownMenuCheckboxItemProps as DropdownMenuCheckboxItemPrimitiveProps,
@@ -53,17 +52,9 @@ function DropdownMenuTrigger({
   children,
   ...props
 }: DropdownMenuTriggerProps) {
-  const resolvedChildren =
-    asChild && isValidElement(children)
-      ? cloneElement(
-          children as ReactElement<{ hoverScale?: number; tapScale?: number }>,
-          { hoverScale: 1, tapScale: 1 }
-        )
-      : children;
-
   return (
     <DropdownMenuTriggerPrimitive asChild={asChild} {...props}>
-      {resolvedChildren}
+      {children}
     </DropdownMenuTriggerPrimitive>
   );
 }

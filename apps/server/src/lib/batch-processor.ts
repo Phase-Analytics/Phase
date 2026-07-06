@@ -19,6 +19,7 @@ import { getSessionActivityBuffer } from './session-activity-buffer';
 import { sseManager } from './sse-manager';
 import {
   SESSION_MAX_AGE,
+  SESSION_MAX_DURATION_MS,
   validateDeviceId,
   validateEventName,
   validateEventParams,
@@ -487,13 +488,12 @@ async function processEvents(
 
       const timeSinceSessionStart =
         clientTimestamp.getTime() - sessionData.session.startedAt.getTime();
-      const MAX_SESSION_DURATION = 24 * 60 * 60 * 1000;
-      if (timeSinceSessionStart > MAX_SESSION_DURATION) {
+      if (timeSinceSessionStart > SESSION_MAX_DURATION_MS) {
         errors.push({
           clientOrder,
           code: ErrorCode.VALIDATION_ERROR,
           detail:
-            'Event timestamp too far from session start (max 24h session duration)',
+            'Event timestamp too far from session start (max 1h session duration)',
         });
         continue;
       }
@@ -713,13 +713,12 @@ async function processPings(
 
       const timeSinceSessionStart =
         clientTimestamp.getTime() - sessionData.session.startedAt.getTime();
-      const MAX_SESSION_DURATION = 24 * 60 * 60 * 1000;
-      if (timeSinceSessionStart > MAX_SESSION_DURATION) {
+      if (timeSinceSessionStart > SESSION_MAX_DURATION_MS) {
         errors.push({
           clientOrder,
           code: ErrorCode.VALIDATION_ERROR,
           detail:
-            'Ping timestamp too far from session start (max 24h session duration)',
+            'Ping timestamp too far from session start (max 1h session duration)',
         });
         continue;
       }
