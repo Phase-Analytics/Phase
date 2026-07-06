@@ -6,7 +6,7 @@ import {
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useId } from 'react';
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
 import { ClientDate } from '@/components/client-date';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,8 +19,6 @@ import {
 import {
   type ChartConfig,
   ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
@@ -77,6 +75,7 @@ export function MultiLineTimescaleChart({
       })
       .map(({ dataKey }) => dataKey)
   );
+  const seriesByKey = new Map(series.map((item) => [item.dataKey, item]));
 
   return (
     <Card className="py-0">
@@ -120,149 +119,151 @@ export function MultiLineTimescaleChart({
           </div>
         )}
         {!isPending && data.length > 0 && (
-          <ChartContainer
-            className="aspect-auto h-[250px] w-full"
-            config={chartConfig}
-          >
-            <AreaChart accessibilityLayer data={data}>
-              <defs>
-                {series.map(({ dataKey }) => (
-                  <linearGradient
-                    id={`fill-${chartId}-${dataKey}`}
-                    key={`fill-${dataKey}`}
-                    x1="0"
-                    x2="0"
-                    y1="0"
-                    y2="1"
-                  >
-                    <stop
-                      offset="5%"
-                      stopColor={`var(--color-${dataKey})`}
-                      stopOpacity={0.16}
-                    />
-                    <stop
-                      offset="95%"
-                      stopColor={`var(--color-${dataKey})`}
-                      stopOpacity={0.02}
-                    />
-                  </linearGradient>
-                ))}
-                {data.length >= 2 &&
-                  series.map(({ dataKey }) => (
+          <div>
+            <ChartContainer
+              className="aspect-auto h-[250px] w-full"
+              config={chartConfig}
+            >
+              <AreaChart accessibilityLayer data={data}>
+                <defs>
+                  {series.map(({ dataKey, color }) => (
                     <linearGradient
-                      id={`stroke-${chartId}-${dataKey}`}
-                      key={`stroke-${dataKey}`}
+                      id={`fill-${chartId}-${dataKey}`}
+                      key={`fill-${dataKey}`}
                       x1="0"
-                      x2="1"
+                      x2="0"
                       y1="0"
-                      y2="0"
+                      y2="1"
                     >
-                      <stop
-                        offset={`${((data.length - 2) / (data.length - 1)) * 100}%`}
-                        stopColor={`var(--color-${dataKey})`}
-                        stopOpacity={1}
-                      />
-                      <stop
-                        offset={`${((data.length - 2) / (data.length - 1)) * 100}%`}
-                        stopColor={`var(--color-${dataKey})`}
-                        stopOpacity={0}
-                      />
+                      <stop offset="5%" stopColor={color} stopOpacity={0.1} />
+                      <stop offset="95%" stopColor={color} stopOpacity={0} />
                     </linearGradient>
                   ))}
-              </defs>
-              <CartesianGrid vertical={false} />
-              <XAxis
-                axisLine={false}
-                dataKey="date"
-                minTickGap={32}
-                tick={{ fontFamily: 'var(--font-geist-mono)' }}
-                tickFormatter={(value) => formatDate(value)}
-                tickLine={false}
-                tickMargin={8}
-              />
-              <YAxis
-                axisLine={false}
-                domain={[0, 50]}
-                tickFormatter={(value) => `${value}%`}
-                tickLine={false}
-                ticks={[0, 10, 20, 30, 50]}
-                width={42}
-              />
-              <ChartTooltip
-                content={
-                  <ChartTooltipContent
-                    formatter={(value, name, item) => (
-                      <div className="flex min-w-32 flex-1 items-center gap-2">
-                        <span
-                          className="size-2.5 rounded-[2px]"
-                          style={{ backgroundColor: item.color }}
+                  {data.length >= 2 &&
+                    series.map(({ dataKey, color }) => (
+                      <linearGradient
+                        id={`stroke-${chartId}-${dataKey}`}
+                        key={`stroke-${dataKey}`}
+                        x1="0"
+                        x2="1"
+                        y1="0"
+                        y2="0"
+                      >
+                        <stop
+                          offset={`${((data.length - 2) / (data.length - 1)) * 100}%`}
+                          stopColor={color}
+                          stopOpacity={1}
                         />
-                        <span className="text-muted-foreground">{name}</span>
-                        <span className="ml-auto font-medium text-foreground tabular-nums">
-                          {Number(value).toFixed(2)}%
-                        </span>
-                      </div>
-                    )}
-                    indicator="dot"
-                    labelFormatter={(value) => (
-                      <span className="flex items-center gap-1.5">
-                        <HugeiconsIcon
-                          className="size-3.5"
-                          icon={Calendar03Icon}
+                        <stop
+                          offset={`${((data.length - 2) / (data.length - 1)) * 100}%`}
+                          stopColor={color}
+                          stopOpacity={0}
                         />
-                        <ClientDate date={value} format="date" />
-                      </span>
-                    )}
-                  />
-                }
-                cursor={{
-                  stroke: 'hsl(var(--border))',
-                  strokeDasharray: '4 2',
-                  strokeWidth: 1,
-                }}
-              />
-              <ChartLegend content={<ChartLegendContent />} />
-              {series.map(
-                ({ dataKey }) =>
-                  data.length >= 2 &&
-                  variableSeries.has(dataKey) && (
-                    <Area
-                      activeDot={false}
-                      dataKey={dataKey}
-                      fill="none"
-                      key={`dashed-${dataKey}`}
-                      legendType="none"
-                      name="__dashed"
-                      stroke={`var(--color-${dataKey})`}
-                      strokeDasharray="5 5"
-                      strokeWidth={2}
-                      tooltipType="none"
-                      type="monotone"
-                    />
-                  )
-              )}
-              {series.map(({ dataKey }) => (
-                <Area
-                  activeDot={{
-                    fill: 'hsl(var(--background))',
-                    r: 5,
-                    stroke: `var(--color-${dataKey})`,
-                    strokeWidth: 2,
-                  }}
-                  dataKey={dataKey}
-                  fill={`url(#fill-${chartId}-${dataKey})`}
-                  key={dataKey}
-                  stroke={
-                    data.length >= 2 && variableSeries.has(dataKey)
-                      ? `url(#stroke-${chartId}-${dataKey})`
-                      : `var(--color-${dataKey})`
-                  }
-                  strokeWidth={2}
-                  type="monotone"
+                      </linearGradient>
+                    ))}
+                </defs>
+                <CartesianGrid vertical={false} />
+                <XAxis
+                  axisLine={false}
+                  dataKey="date"
+                  minTickGap={32}
+                  tick={{ fontFamily: 'var(--font-geist-mono)' }}
+                  tickFormatter={(value) => formatDate(value)}
+                  tickLine={false}
+                  tickMargin={8}
                 />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      formatter={(value, name) => {
+                        const item = seriesByKey.get(String(name));
+                        return (
+                          <div className="flex min-w-32 flex-1 items-center gap-2">
+                            <span
+                              className="size-2.5 rounded-full"
+                              style={{ backgroundColor: item?.color }}
+                            />
+                            <span className="text-muted-foreground">
+                              {item?.label ?? name}
+                            </span>
+                            <span className="ml-auto font-medium text-foreground tabular-nums">
+                              {Number(value).toFixed(2)}%
+                            </span>
+                          </div>
+                        );
+                      }}
+                      indicator="dot"
+                      labelFormatter={(value) => (
+                        <span className="flex items-center gap-1.5">
+                          <HugeiconsIcon
+                            className="size-3.5"
+                            icon={Calendar03Icon}
+                          />
+                          <ClientDate date={value} format="date" />
+                        </span>
+                      )}
+                    />
+                  }
+                  cursor={{
+                    stroke: 'hsl(var(--border))',
+                    strokeDasharray: '4 2',
+                    strokeWidth: 1,
+                  }}
+                />
+                {series.map(
+                  ({ dataKey, color }) =>
+                    data.length >= 2 &&
+                    variableSeries.has(dataKey) && (
+                      <Area
+                        activeDot={false}
+                        dataKey={dataKey}
+                        fill="none"
+                        key={`dashed-${dataKey}`}
+                        legendType="none"
+                        name="__dashed"
+                        stroke={color}
+                        strokeDasharray="5 5"
+                        strokeWidth={2}
+                        tooltipType="none"
+                        type="monotone"
+                      />
+                    )
+                )}
+                {series.map(({ dataKey, color }) => (
+                  <Area
+                    activeDot={{
+                      fill: 'hsl(var(--background))',
+                      r: 5,
+                      stroke: color,
+                      strokeWidth: 2,
+                    }}
+                    dataKey={dataKey}
+                    fill={`url(#fill-${chartId}-${dataKey})`}
+                    key={dataKey}
+                    name={dataKey}
+                    stroke={
+                      data.length >= 2 && variableSeries.has(dataKey)
+                        ? `url(#stroke-${chartId}-${dataKey})`
+                        : color
+                    }
+                    strokeWidth={2}
+                    type="monotone"
+                  />
+                ))}
+              </AreaChart>
+            </ChartContainer>
+            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 pb-3">
+              {series.map(({ dataKey, label, color }) => (
+                <div className="flex items-center gap-1.5" key={dataKey}>
+                  <span
+                    className="size-2.5 rounded-full"
+                    style={{ backgroundColor: color }}
+                  />
+                  <span className="text-muted-foreground text-xs">{label}</span>
+                </div>
               ))}
-            </AreaChart>
-          </ChartContainer>
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>
