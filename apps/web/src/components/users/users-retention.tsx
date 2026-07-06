@@ -2,7 +2,7 @@
 
 import type { RetentionPeriod } from '@phase/shared';
 import { parseAsString, useQueryState } from 'nuqs';
-import { TimescaleChart } from '@/components/timescale-chart';
+import { MultiLineTimescaleChart } from '@/components/multi-line-timescale-chart';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -22,9 +22,11 @@ const RETENTION_PERIODS: Array<{
   { value: 'd30', label: 'D30' },
 ];
 
-const RETENTION_CHART_PERIODS = RETENTION_PERIODS.filter(
-  (period) => period.value !== 'd30'
-);
+const RETENTION_SERIES = RETENTION_PERIODS.map((period, index) => ({
+  dataKey: period.value,
+  label: period.label,
+  color: `var(--color-chart-${index + 1})`,
+}));
 
 export function UsersRetentionCards() {
   const [appId] = useQueryState('app', parseAsString);
@@ -48,9 +50,6 @@ export function UsersRetentionCards() {
               })}
               %
             </p>
-            <p className="mt-1 text-muted-foreground text-xs">
-              Exact-day return rate
-            </p>
           </CardContent>
         </Card>
       ))}
@@ -64,15 +63,6 @@ export function UsersRetentionChart() {
     'retentionRange',
     parseAsString.withDefault('30d')
   );
-  const [metric, setMetric] = useQueryState(
-    'retentionMetric',
-    parseAsString.withDefault('d1')
-  );
-  const retentionMetric = RETENTION_CHART_PERIODS.some(
-    (period) => period.value === metric
-  )
-    ? (metric as RetentionPeriod)
-    : 'd1';
   const { data, isLoading } = useDeviceRetention(appId || '', '360d');
 
   if (!appId) {
@@ -86,27 +76,22 @@ export function UsersRetentionChart() {
   const firstCohortDateString = firstCohortDate.toISOString().slice(0, 10);
   const chartData = data.data
     .filter((cohort) => cohort.date >= firstCohortDateString)
-    .filter((cohort) => cohort[retentionMetric] !== null)
     .map((cohort) => ({
       date: cohort.date,
-      value: cohort[retentionMetric] ?? 0,
+      d1: cohort.d1 ?? 0,
+      d3: cohort.d3 ?? 0,
+      d7: cohort.d7 ?? 0,
+      d14: cohort.d14 ?? 0,
+      d30: cohort.d30 ?? 0,
     }));
 
   return (
-    <TimescaleChart
-      chartColor="var(--color-chart-3)"
+    <MultiLineTimescaleChart
       data={chartData}
-      dataKey="value"
-      dataLabel={`${retentionMetric.toUpperCase()} Retention`}
-      description="Exact-day return rate by signup cohort"
+      description="Retention by signup cohort"
       isPending={isLoading}
-      metric={retentionMetric}
-      metricOptions={RETENTION_CHART_PERIODS.map((period) => ({
-        value: period.value,
-        label: period.label,
-      }))}
-      onMetricChange={setMetric}
       onTimeRangeChange={setTimeRange}
+      series={RETENTION_SERIES}
       timeRange={timeRange}
       timeRangeOptions={[...ANALYTICS_TIME_RANGE_OPTIONS]}
       title="User Retention"
@@ -122,7 +107,6 @@ export function UsersRetentionCardsSkeleton() {
           <CardContent className="space-y-2 p-4">
             <Skeleton className="h-4 w-24" />
             <Skeleton className="h-9 w-20" />
-            <Skeleton className="h-4 w-28" />
           </CardContent>
         </Card>
       ))}
