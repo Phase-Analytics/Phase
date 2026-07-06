@@ -5,7 +5,7 @@ import {
   CheckmarkSquare01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { useId, useMemo } from 'react';
+import { type ReactNode, useId, useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
 import { ClientDate } from '@/components/client-date';
 import { Button } from '@/components/ui/button';
@@ -58,6 +58,8 @@ type TimescaleChartProps = {
   dataLabel: string;
   chartColor: string;
   valueFormatter?: (value: number) => string | number;
+  xTickFormatter?: (value: string) => string;
+  tooltipLabelFormatter?: (value: string) => ReactNode;
   emptyMessage?: string;
 };
 
@@ -77,6 +79,8 @@ export function TimescaleChart({
   dataLabel,
   chartColor,
   valueFormatter,
+  xTickFormatter,
+  tooltipLabelFormatter,
   emptyMessage = 'No data available for this period',
 }: TimescaleChartProps) {
   const chartId = `chart-${useId().replaceAll(':', '')}`;
@@ -223,7 +227,9 @@ export function TimescaleChart({
                 dataKey="date"
                 minTickGap={32}
                 tick={{ fontFamily: 'var(--font-geist-mono)' }}
-                tickFormatter={(value) => formatDate(value)}
+                tickFormatter={(value) =>
+                  xTickFormatter ? xTickFormatter(value) : formatDate(value)
+                }
                 tickLine={false}
                 tickMargin={8}
               />
@@ -253,15 +259,19 @@ export function TimescaleChart({
                       }}
                       hideLabel={false}
                       indicator="dot"
-                      labelFormatter={(value) => (
-                        <span className="flex items-center gap-1.5">
-                          <HugeiconsIcon
-                            className="size-3.5"
-                            icon={Calendar03Icon}
-                          />
-                          <ClientDate date={value} format="date" />
-                        </span>
-                      )}
+                      labelFormatter={(value) =>
+                        tooltipLabelFormatter ? (
+                          tooltipLabelFormatter(value)
+                        ) : (
+                          <span className="flex items-center gap-1.5">
+                            <HugeiconsIcon
+                              className="size-3.5"
+                              icon={Calendar03Icon}
+                            />
+                            <ClientDate date={value} format="date" />
+                          </span>
+                        )
+                      }
                       // biome-ignore lint/suspicious/noExplicitAny: Recharts payload filtering causes type issues
                       payload={filteredPayload as any}
                     />

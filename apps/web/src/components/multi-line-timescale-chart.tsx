@@ -40,7 +40,7 @@ type MultiLineSeries = {
 type MultiLineTimescaleChartProps = {
   title: string;
   description: string;
-  data: Array<{ date: string } & Record<string, number | string>>;
+  data: Array<{ date: string } & Record<string, number | string | null>>;
   series: MultiLineSeries[];
   isPending: boolean;
   timeRange: string;

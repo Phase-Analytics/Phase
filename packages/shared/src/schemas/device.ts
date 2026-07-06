@@ -170,8 +170,16 @@ export const DeviceRetentionResponseSchema = z.object({
   summary: DeviceRetentionRatesSchema,
   data: z.array(
     z.object({
+      day: z.number().int().min(0),
+      retentionRate: z.number().min(0).max(100),
+      eligibleUsers: z.number().int().min(0),
+      retainedUsers: z.number().int().min(0),
+    })
+  ),
+  cohortTrend: z.array(
+    z.object({
       date: z.string(),
-      cohortSize: z.number().min(0),
+      cohortSize: z.number().int().min(0),
       d1: z.number().min(0).max(100).nullable(),
       d3: z.number().min(0).max(100).nullable(),
       d7: z.number().min(0).max(100).nullable(),

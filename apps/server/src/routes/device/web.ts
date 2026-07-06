@@ -32,7 +32,6 @@ import {
   type BetterAuthUser,
 } from '@/lib/middleware';
 import { buildPropertySearchFilters } from '@/lib/property-search';
-import { calculateRetentionSummary } from '@/lib/retention';
 import {
   buildFilters,
   formatPaginationResponse,
@@ -598,6 +597,53 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
         const end = query.endDate ? new Date(query.endDate as string) : now;
 
         const result = await db.execute<{
+          day: number;
+          retentionRate: number;
+          eligibleUsers: number;
+          retainedUsers: number;
+        }>(sql`
+          WITH day_series AS (
+            SELECT generate_series(0, 42)::int AS day
+          ),
+          cohorts AS (
+            SELECT device_id, DATE(first_seen) AS cohort_date
+            FROM devices
+            WHERE app_id = ${appId}
+              AND DATE(first_seen) BETWEEN DATE(${start}::timestamp) AND DATE(${end}::timestamp)
+          )
+          SELECT
+            ds.day,
+            COUNT(DISTINCT c.device_id)::int AS "eligibleUsers",
+            CASE WHEN ds.day = 0
+              THEN COUNT(DISTINCT c.device_id)::int
+              ELSE COUNT(DISTINCT c.device_id) FILTER (WHERE s.session_id IS NOT NULL)::int
+            END AS "retainedUsers",
+            CASE
+              WHEN COUNT(DISTINCT c.device_id) = 0 THEN 0
+              WHEN ds.day = 0 THEN 100
+              ELSE ROUND(
+                COUNT(DISTINCT c.device_id) FILTER (WHERE s.session_id IS NOT NULL)
+                  * 100.0 / COUNT(DISTINCT c.device_id), 2
+              )::float
+            END AS "retentionRate"
+          FROM day_series ds
+          LEFT JOIN cohorts c
+            ON c.cohort_date + ds.day <= LEAST(DATE(${end}::timestamp), CURRENT_DATE)
+          LEFT JOIN sessions_analytics s
+            ON s.device_id = c.device_id
+            AND s.started_at >= c.cohort_date + ds.day * INTERVAL '1 day'
+            AND s.started_at < c.cohort_date + (ds.day + 1) * INTERVAL '1 day'
+          GROUP BY ds.day
+          ORDER BY ds.day
+        `);
+
+        const data = result.rows.map((row) => ({
+          day: Number(row.day),
+          retentionRate: Number(row.retentionRate),
+          eligibleUsers: Number(row.eligibleUsers),
+          retainedUsers: Number(row.retainedUsers),
+        }));
+        const cohortTrendResult = await db.execute<{
           date: string;
           cohortSize: number;
           d1: number | null;
@@ -607,44 +653,46 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
           d30: number | null;
         }>(sql`
           WITH cohorts AS (
-            SELECT device_id, DATE(first_seen) AS cohort_date
+            SELECT
+              device_id,
+              DATE(first_seen) AS acquisition_date,
+              DATE_TRUNC('week', first_seen)::date AS cohort_week
             FROM devices
             WHERE app_id = ${appId}
               AND DATE(first_seen) BETWEEN DATE(${start}::timestamp) AND DATE(${end}::timestamp)
           )
           SELECT
-            c.cohort_date::text AS date,
+            c.cohort_week::text AS date,
             COUNT(DISTINCT c.device_id)::int AS "cohortSize",
-            CASE WHEN c.cohort_date + 1 <= CURRENT_DATE THEN ROUND(
-              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.cohort_date + 1)
+            CASE WHEN MAX(c.acquisition_date) + 1 <= LEAST(DATE(${end}::timestamp), CURRENT_DATE) THEN ROUND(
+              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.acquisition_date + 1)
                 * 100.0 / NULLIF(COUNT(DISTINCT c.device_id), 0), 2
             )::float END AS d1,
-            CASE WHEN c.cohort_date + 3 <= CURRENT_DATE THEN ROUND(
-              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.cohort_date + 3)
+            CASE WHEN MAX(c.acquisition_date) + 3 <= LEAST(DATE(${end}::timestamp), CURRENT_DATE) THEN ROUND(
+              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.acquisition_date + 3)
                 * 100.0 / NULLIF(COUNT(DISTINCT c.device_id), 0), 2
             )::float END AS d3,
-            CASE WHEN c.cohort_date + 7 <= CURRENT_DATE THEN ROUND(
-              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.cohort_date + 7)
+            CASE WHEN MAX(c.acquisition_date) + 7 <= LEAST(DATE(${end}::timestamp), CURRENT_DATE) THEN ROUND(
+              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.acquisition_date + 7)
                 * 100.0 / NULLIF(COUNT(DISTINCT c.device_id), 0), 2
             )::float END AS d7,
-            CASE WHEN c.cohort_date + 14 <= CURRENT_DATE THEN ROUND(
-              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.cohort_date + 14)
+            CASE WHEN MAX(c.acquisition_date) + 14 <= LEAST(DATE(${end}::timestamp), CURRENT_DATE) THEN ROUND(
+              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.acquisition_date + 14)
                 * 100.0 / NULLIF(COUNT(DISTINCT c.device_id), 0), 2
             )::float END AS d14,
-            CASE WHEN c.cohort_date + 30 <= CURRENT_DATE THEN ROUND(
-              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.cohort_date + 30)
+            CASE WHEN MAX(c.acquisition_date) + 30 <= LEAST(DATE(${end}::timestamp), CURRENT_DATE) THEN ROUND(
+              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.acquisition_date + 30)
                 * 100.0 / NULLIF(COUNT(DISTINCT c.device_id), 0), 2
             )::float END AS d30
           FROM cohorts c
           LEFT JOIN sessions_analytics s
             ON s.device_id = c.device_id
-            AND s.started_at >= c.cohort_date + INTERVAL '1 day'
-            AND s.started_at < c.cohort_date + INTERVAL '31 days'
-          GROUP BY c.cohort_date
-          ORDER BY c.cohort_date
+            AND s.started_at >= c.acquisition_date + INTERVAL '1 day'
+            AND s.started_at < c.acquisition_date + INTERVAL '31 days'
+          GROUP BY c.cohort_week
+          ORDER BY c.cohort_week
         `);
-
-        const data = result.rows.map((row) => ({
+        const cohortTrend = cohortTrendResult.rows.map((row) => ({
           date: row.date,
           cohortSize: Number(row.cohortSize),
           d1: row.d1 === null ? null : Number(row.d1),
@@ -653,13 +701,22 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
           d14: row.d14 === null ? null : Number(row.d14),
           d30: row.d30 === null ? null : Number(row.d30),
         }));
-
-        const summary = calculateRetentionSummary(data);
+        const rateByDay = new Map(
+          data.map((point) => [point.day, point.retentionRate])
+        );
+        const summary = {
+          d1: rateByDay.get(1) ?? 0,
+          d3: rateByDay.get(3) ?? 0,
+          d7: rateByDay.get(7) ?? 0,
+          d14: rateByDay.get(14) ?? 0,
+          d30: rateByDay.get(30) ?? 0,
+        };
 
         set.status = HttpStatus.OK;
         return {
           summary,
           data,
+          cohortTrend,
           period: {
             startDate: start.toISOString(),
             endDate: end.toISOString(),
