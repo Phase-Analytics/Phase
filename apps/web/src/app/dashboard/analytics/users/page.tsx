@@ -47,11 +47,12 @@ type UsersExportData = {
     platforms: Record<string, number>;
     retention: DeviceRetentionResponse['summary'];
   };
+  retentionCurve: DeviceRetentionResponse['data'];
+  retentionCohortTrend: DeviceRetentionResponse['cohortTrend'];
   timeseries: Array<{
     date: string;
     totalUsers: number;
     dailyActiveUsers: number;
-    retention: Omit<DeviceRetentionResponse['data'][number], 'date'> | null;
   }>;
 };
 
@@ -130,10 +131,6 @@ function UsersExportButton() {
       const dauByDate = new Map(
         dauTimeseries.data.map((point) => [point.date, point.activeUsers ?? 0])
       );
-      const retentionByDate = new Map(
-        retention.data.map(({ date, ...values }) => [date, values])
-      );
-
       return {
         exportedAt: new Date().toISOString(),
         period: {
@@ -151,11 +148,12 @@ function UsersExportButton() {
           platforms: overview.platformStats,
           retention: retention.summary,
         },
+        retentionCurve: retention.data,
+        retentionCohortTrend: retention.cohortTrend,
         timeseries: totalTimeseries.data.map((point) => ({
           date: point.date,
           totalUsers: point.totalUsers ?? 0,
           dailyActiveUsers: dauByDate.get(point.date) ?? 0,
-          retention: retentionByDate.get(point.date) ?? null,
         })),
       };
     },

@@ -1,15 +1,11 @@
 'use client';
 
-import type { DeviceRetentionResponse, RetentionPeriod } from '@phase/shared';
+import type { RetentionPeriod, TimeRange } from '@phase/shared';
 import { parseAsString, useQueryState } from 'nuqs';
-import { useMemo } from 'react';
 import { MultiLineTimescaleChart } from '@/components/multi-line-timescale-chart';
+import { TimescaleChart } from '@/components/timescale-chart';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  ANALYTICS_TIME_RANGE_OPTIONS,
-  toChartTimeRange,
-} from '@/lib/analytics-time-range';
 import { useDeviceRetention } from '@/lib/queries';
 
 const RETENTION_PERIODS: Array<{
@@ -23,114 +19,37 @@ const RETENTION_PERIODS: Array<{
   { value: 'd30', label: 'D30' },
 ];
 
-const RETENTION_COLORS = [
-  '#3b82f6',
-  '#06b6d4',
-  '#22c55e',
-  '#f59e0b',
-  '#ec4899',
+const RETENTION_RANGE_OPTIONS = [
+  { value: '90d', label: '3 Months' },
+  { value: '180d', label: '6 Months' },
+  { value: '360d', label: '1 Year' },
 ];
 
-const RETENTION_SERIES = RETENTION_PERIODS.map((period, index) => ({
-  dataKey: period.value,
-  label: period.label,
-  color: RETENTION_COLORS[index],
-}));
+const RETENTION_TREND_SERIES = [
+  { dataKey: 'd1', label: 'D1', color: '#3b82f6' },
+  { dataKey: 'd3', label: 'D3', color: '#06b6d4' },
+  { dataKey: 'd7', label: 'D7', color: '#22c55e' },
+  { dataKey: 'd14', label: 'D14', color: '#f59e0b' },
+  { dataKey: 'd30', label: 'D30', color: '#ec4899' },
+];
 
-const RETENTION_PERIOD_DAYS: Record<RetentionPeriod, number> = {
-  d1: 1,
-  d3: 3,
-  d7: 7,
-  d14: 14,
-  d30: 30,
-};
-
-type CumulativeRetentionPoint = { date: string } & Record<
-  RetentionPeriod,
-  number
->;
-
-function addUtcDays(date: string, days: number): string {
-  const result = new Date(`${date}T00:00:00Z`);
-  result.setUTCDate(result.getUTCDate() + days);
-  return result.toISOString().slice(0, 10);
-}
-
-export function buildCumulativeRetentionData(
-  cohorts: DeviceRetentionResponse['data']
-) {
-  const maturities = new Map<
-    string,
-    Array<{ period: RetentionPeriod; rate: number; cohortSize: number }>
-  >();
-
-  for (const cohort of cohorts) {
-    for (const { value: period } of RETENTION_PERIODS) {
-      const rate = cohort[period];
-      if (rate === null) {
-        continue;
-      }
-
-      const maturityDate = addUtcDays(
-        cohort.date,
-        RETENTION_PERIOD_DAYS[period]
-      );
-      const entries = maturities.get(maturityDate) ?? [];
-      entries.push({ period, rate, cohortSize: cohort.cohortSize });
-      maturities.set(maturityDate, entries);
-    }
+function getRetentionRange(value: string | null): TimeRange {
+  if (value === '180d' || value === '360d') {
+    return value;
   }
-
-  const maturityDates = [...maturities.keys()].sort();
-  if (maturityDates.length === 0) {
-    return [];
-  }
-
-  const totals = Object.fromEntries(
-    RETENTION_PERIODS.map(({ value }) => [
-      value,
-      { weightedRates: 0, eligibleUsers: 0 },
-    ])
-  ) as Record<
-    RetentionPeriod,
-    { weightedRates: number; eligibleUsers: number }
-  >;
-  const result: CumulativeRetentionPoint[] = [];
-  const currentDate = new Date(`${maturityDates[0]}T00:00:00Z`);
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-
-  while (currentDate <= today) {
-    const date = currentDate.toISOString().slice(0, 10);
-    for (const maturity of maturities.get(date) ?? []) {
-      const total = totals[maturity.period];
-      total.weightedRates += maturity.rate * maturity.cohortSize;
-      total.eligibleUsers += maturity.cohortSize;
-    }
-
-    result.push({
-      date,
-      ...Object.fromEntries(
-        RETENTION_PERIODS.map(({ value }) => {
-          const total = totals[value];
-          return [
-            value,
-            total.eligibleUsers > 0
-              ? Number((total.weightedRates / total.eligibleUsers).toFixed(2))
-              : 0,
-          ];
-        })
-      ),
-    } as CumulativeRetentionPoint);
-    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
-  }
-
-  return result;
+  return '90d';
 }
 
 export function UsersRetentionCards() {
   const [appId] = useQueryState('app', parseAsString);
-  const { data } = useDeviceRetention(appId || '', '360d');
+  const [timeRange] = useQueryState(
+    'retentionRange',
+    parseAsString.withDefault('90d')
+  );
+  const { data } = useDeviceRetention(
+    appId || '',
+    getRetentionRange(timeRange)
+  );
 
   if (!appId) {
     return null;
@@ -144,7 +63,7 @@ export function UsersRetentionCards() {
             <p className="text-muted-foreground text-xs uppercase">
               {label} Retention
             </p>
-            <p className="font-bold text-3xl tabular-nums tracking-[-0.04em]">
+            <p className="font-bold text-3xl tabular-nums tracking-tight">
               {`${data.summary[value].toLocaleString(undefined, {
                 maximumFractionDigits: 2,
               })}%`}
@@ -160,38 +79,48 @@ export function UsersRetentionChart() {
   const [appId] = useQueryState('app', parseAsString);
   const [timeRange, setTimeRange] = useQueryState(
     'retentionRange',
-    parseAsString.withDefault('30d')
+    parseAsString.withDefault('90d')
   );
-  const { data, isLoading } = useDeviceRetention(appId || '', '360d');
-  const cumulativeData = useMemo(
-    () => buildCumulativeRetentionData(data.data),
-    [data.data]
+  const { data, isLoading } = useDeviceRetention(
+    appId || '',
+    getRetentionRange(timeRange)
   );
 
   if (!appId) {
     return null;
   }
 
-  const selectedRange = toChartTimeRange(timeRange || '30d');
-  const rangeDays = Number.parseInt(selectedRange, 10);
-  const firstCohortDate = new Date();
-  firstCohortDate.setUTCDate(firstCohortDate.getUTCDate() - rangeDays);
-  const firstCohortDateString = firstCohortDate.toISOString().slice(0, 10);
-  const chartData = cumulativeData.filter(
-    (point) => point.date >= firstCohortDateString
-  );
-
   return (
-    <MultiLineTimescaleChart
-      data={chartData}
-      description="Cumulative cohort retention through each day"
-      isPending={isLoading}
-      onTimeRangeChange={setTimeRange}
-      series={RETENTION_SERIES}
-      timeRange={timeRange}
-      timeRangeOptions={[...ANALYTICS_TIME_RANGE_OPTIONS]}
-      title="User Retention"
-    />
+    <div className="space-y-4">
+      <TimescaleChart
+        chartColor="#3b82f6"
+        data={data.data.map((point) => ({
+          date: String(point.day),
+          value: point.retentionRate,
+        }))}
+        dataKey="value"
+        dataLabel="Active users"
+        description="Exact-day retention after acquisition"
+        isPending={isLoading}
+        onTimeRangeChange={setTimeRange}
+        timeRange={timeRange}
+        timeRangeOptions={RETENTION_RANGE_OPTIONS}
+        title="User Retention"
+        tooltipLabelFormatter={(value) => `Day ${value}`}
+        valueFormatter={(value) => `${value.toFixed(2)}%`}
+        xTickFormatter={(value) => `Day ${value}`}
+      />
+      <MultiLineTimescaleChart
+        data={data.cohortTrend.map(({ cohortSize: _, ...point }) => point)}
+        description="Exact-day retention by acquisition week"
+        isPending={isLoading}
+        onTimeRangeChange={setTimeRange}
+        series={RETENTION_TREND_SERIES}
+        timeRange={timeRange}
+        timeRangeOptions={RETENTION_RANGE_OPTIONS}
+        title="Retention Trend"
+      />
+    </div>
   );
 }
 
