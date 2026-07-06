@@ -28,7 +28,7 @@ const RETENTION_CHART_PERIODS = RETENTION_PERIODS.filter(
 
 export function UsersRetentionCards() {
   const [appId] = useQueryState('app', parseAsString);
-  const { data } = useDeviceRetention(appId || '', '90d');
+  const { data } = useDeviceRetention(appId || '', '360d');
 
   if (!appId) {
     return null;
@@ -73,16 +73,19 @@ export function UsersRetentionChart() {
   )
     ? (metric as RetentionPeriod)
     : 'd1';
-  const { data, isLoading } = useDeviceRetention(
-    appId || '',
-    toChartTimeRange(timeRange || '30d')
-  );
+  const { data, isLoading } = useDeviceRetention(appId || '', '360d');
 
   if (!appId) {
     return null;
   }
 
+  const selectedRange = toChartTimeRange(timeRange || '30d');
+  const rangeDays = Number.parseInt(selectedRange, 10);
+  const firstCohortDate = new Date();
+  firstCohortDate.setUTCDate(firstCohortDate.getUTCDate() - rangeDays);
+  const firstCohortDateString = firstCohortDate.toISOString().slice(0, 10);
   const chartData = data.data
+    .filter((cohort) => cohort.date >= firstCohortDateString)
     .filter((cohort) => cohort[retentionMetric] !== null)
     .map((cohort) => ({
       date: cohort.date,

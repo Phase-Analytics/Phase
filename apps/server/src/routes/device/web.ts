@@ -611,50 +611,37 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
             FROM devices
             WHERE app_id = ${appId}
               AND DATE(first_seen) BETWEEN DATE(${start}::timestamp) AND DATE(${end}::timestamp)
-          ), activity AS (
-            SELECT DISTINCT s.device_id, DATE(s.started_at) AS activity_date
-            FROM sessions_analytics s
-            INNER JOIN devices d ON d.device_id = s.device_id
-            WHERE d.app_id = ${appId}
-              AND s.started_at >= DATE(${start}::timestamp) + INTERVAL '1 day'
-              AND s.started_at < DATE(${end}::timestamp) + INTERVAL '31 days'
-          ), cohort_retention AS (
-            SELECT
-              c.cohort_date,
-              COUNT(*)::int AS cohort_size,
-              COUNT(*) FILTER (WHERE EXISTS (
-                SELECT 1 FROM activity a WHERE a.device_id = c.device_id AND a.activity_date = c.cohort_date + 1
-              ))::int AS retained_d1,
-              COUNT(*) FILTER (WHERE EXISTS (
-                SELECT 1 FROM activity a WHERE a.device_id = c.device_id AND a.activity_date = c.cohort_date + 3
-              ))::int AS retained_d3,
-              COUNT(*) FILTER (WHERE EXISTS (
-                SELECT 1 FROM activity a WHERE a.device_id = c.device_id AND a.activity_date = c.cohort_date + 7
-              ))::int AS retained_d7,
-              COUNT(*) FILTER (WHERE EXISTS (
-                SELECT 1 FROM activity a WHERE a.device_id = c.device_id AND a.activity_date = c.cohort_date + 14
-              ))::int AS retained_d14,
-              COUNT(*) FILTER (WHERE EXISTS (
-                SELECT 1 FROM activity a WHERE a.device_id = c.device_id AND a.activity_date = c.cohort_date + 30
-              ))::int AS retained_d30
-            FROM cohorts c
-            GROUP BY c.cohort_date
           )
           SELECT
-            cohort_date::text AS date,
-            cohort_size AS "cohortSize",
-            CASE WHEN cohort_date + 1 <= CURRENT_DATE
-              THEN ROUND(retained_d1 * 100.0 / NULLIF(cohort_size, 0), 2)::float END AS d1,
-            CASE WHEN cohort_date + 3 <= CURRENT_DATE
-              THEN ROUND(retained_d3 * 100.0 / NULLIF(cohort_size, 0), 2)::float END AS d3,
-            CASE WHEN cohort_date + 7 <= CURRENT_DATE
-              THEN ROUND(retained_d7 * 100.0 / NULLIF(cohort_size, 0), 2)::float END AS d7,
-            CASE WHEN cohort_date + 14 <= CURRENT_DATE
-              THEN ROUND(retained_d14 * 100.0 / NULLIF(cohort_size, 0), 2)::float END AS d14,
-            CASE WHEN cohort_date + 30 <= CURRENT_DATE
-              THEN ROUND(retained_d30 * 100.0 / NULLIF(cohort_size, 0), 2)::float END AS d30
-          FROM cohort_retention
-          ORDER BY cohort_date
+            c.cohort_date::text AS date,
+            COUNT(DISTINCT c.device_id)::int AS "cohortSize",
+            CASE WHEN c.cohort_date + 1 <= CURRENT_DATE THEN ROUND(
+              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.cohort_date + 1)
+                * 100.0 / NULLIF(COUNT(DISTINCT c.device_id), 0), 2
+            )::float END AS d1,
+            CASE WHEN c.cohort_date + 3 <= CURRENT_DATE THEN ROUND(
+              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.cohort_date + 3)
+                * 100.0 / NULLIF(COUNT(DISTINCT c.device_id), 0), 2
+            )::float END AS d3,
+            CASE WHEN c.cohort_date + 7 <= CURRENT_DATE THEN ROUND(
+              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.cohort_date + 7)
+                * 100.0 / NULLIF(COUNT(DISTINCT c.device_id), 0), 2
+            )::float END AS d7,
+            CASE WHEN c.cohort_date + 14 <= CURRENT_DATE THEN ROUND(
+              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.cohort_date + 14)
+                * 100.0 / NULLIF(COUNT(DISTINCT c.device_id), 0), 2
+            )::float END AS d14,
+            CASE WHEN c.cohort_date + 30 <= CURRENT_DATE THEN ROUND(
+              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.cohort_date + 30)
+                * 100.0 / NULLIF(COUNT(DISTINCT c.device_id), 0), 2
+            )::float END AS d30
+          FROM cohorts c
+          LEFT JOIN sessions_analytics s
+            ON s.device_id = c.device_id
+            AND s.started_at >= c.cohort_date + INTERVAL '1 day'
+            AND s.started_at < c.cohort_date + INTERVAL '31 days'
+          GROUP BY c.cohort_date
+          ORDER BY c.cohort_date
         `);
 
         const data = result.rows.map((row) => ({
