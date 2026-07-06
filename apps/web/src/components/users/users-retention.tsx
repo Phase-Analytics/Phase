@@ -20,7 +20,8 @@ const RETENTION_PERIODS: Array<{
 ];
 
 const RETENTION_RANGE_OPTIONS = [
-  { value: '90d', label: '3 Months' },
+  { value: '7d', label: '7 Days' },
+  { value: '30d', label: '1 Month' },
   { value: '180d', label: '6 Months' },
   { value: '360d', label: '1 Year' },
 ];
@@ -34,17 +35,22 @@ const RETENTION_TREND_SERIES = [
 ];
 
 function getRetentionRange(value: string | null): TimeRange {
-  if (value === '180d' || value === '360d') {
+  if (
+    value === '7d' ||
+    value === '30d' ||
+    value === '180d' ||
+    value === '360d'
+  ) {
     return value;
   }
-  return '90d';
+  return '30d';
 }
 
 export function UsersRetentionCards() {
   const [appId] = useQueryState('app', parseAsString);
   const [timeRange] = useQueryState(
     'retentionRange',
-    parseAsString.withDefault('90d')
+    parseAsString.withDefault('30d')
   );
   const { data } = useDeviceRetention(
     appId || '',
@@ -79,7 +85,7 @@ export function UsersRetentionChart() {
   const [appId] = useQueryState('app', parseAsString);
   const [timeRange, setTimeRange] = useQueryState(
     'retentionRange',
-    parseAsString.withDefault('90d')
+    parseAsString.withDefault('30d')
   );
   const { data, isLoading } = useDeviceRetention(
     appId || '',
@@ -93,7 +99,7 @@ export function UsersRetentionChart() {
   return (
     <div className="space-y-4">
       <TimescaleChart
-        chartColor="#3b82f6"
+        chartColor="#8b5cf6"
         data={data.data.map((point) => ({
           date: String(point.day),
           value: point.retentionRate,
