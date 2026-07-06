@@ -23,10 +23,18 @@ const RETENTION_PERIODS: Array<{
   { value: 'd30', label: 'D30' },
 ];
 
+const RETENTION_COLORS = [
+  '#3b82f6',
+  '#06b6d4',
+  '#22c55e',
+  '#f59e0b',
+  '#ec4899',
+];
+
 const RETENTION_SERIES = RETENTION_PERIODS.map((period, index) => ({
   dataKey: period.value,
   label: period.label,
-  color: `var(--color-chart-${index + 1})`,
+  color: RETENTION_COLORS[index],
 }));
 
 const RETENTION_PERIOD_DAYS: Record<RetentionPeriod, number> = {
@@ -176,7 +184,7 @@ export function UsersRetentionChart() {
   return (
     <MultiLineTimescaleChart
       data={chartData}
-      description="Cumulative retention through each day"
+      description="Cumulative rolling retention through each day"
       isPending={isLoading}
       onTimeRangeChange={setTimeRange}
       series={RETENTION_SERIES}
