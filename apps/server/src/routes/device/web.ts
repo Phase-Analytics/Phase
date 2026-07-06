@@ -643,64 +643,6 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
           eligibleUsers: Number(row.eligibleUsers),
           retainedUsers: Number(row.retainedUsers),
         }));
-        const cohortTrendResult = await db.execute<{
-          date: string;
-          cohortSize: number;
-          d1: number | null;
-          d3: number | null;
-          d7: number | null;
-          d14: number | null;
-          d30: number | null;
-        }>(sql`
-          WITH cohorts AS (
-            SELECT
-              device_id,
-              DATE(first_seen) AS acquisition_date,
-              DATE_TRUNC('week', first_seen)::date AS cohort_week
-            FROM devices
-            WHERE app_id = ${appId}
-              AND DATE(first_seen) BETWEEN DATE(${start}::timestamp) AND DATE(${end}::timestamp)
-          )
-          SELECT
-            c.cohort_week::text AS date,
-            COUNT(DISTINCT c.device_id)::int AS "cohortSize",
-            CASE WHEN MAX(c.acquisition_date) + 1 <= LEAST(DATE(${end}::timestamp), CURRENT_DATE) THEN ROUND(
-              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.acquisition_date + 1)
-                * 100.0 / NULLIF(COUNT(DISTINCT c.device_id), 0), 2
-            )::float END AS d1,
-            CASE WHEN MAX(c.acquisition_date) + 3 <= LEAST(DATE(${end}::timestamp), CURRENT_DATE) THEN ROUND(
-              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.acquisition_date + 3)
-                * 100.0 / NULLIF(COUNT(DISTINCT c.device_id), 0), 2
-            )::float END AS d3,
-            CASE WHEN MAX(c.acquisition_date) + 7 <= LEAST(DATE(${end}::timestamp), CURRENT_DATE) THEN ROUND(
-              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.acquisition_date + 7)
-                * 100.0 / NULLIF(COUNT(DISTINCT c.device_id), 0), 2
-            )::float END AS d7,
-            CASE WHEN MAX(c.acquisition_date) + 14 <= LEAST(DATE(${end}::timestamp), CURRENT_DATE) THEN ROUND(
-              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.acquisition_date + 14)
-                * 100.0 / NULLIF(COUNT(DISTINCT c.device_id), 0), 2
-            )::float END AS d14,
-            CASE WHEN MAX(c.acquisition_date) + 30 <= LEAST(DATE(${end}::timestamp), CURRENT_DATE) THEN ROUND(
-              COUNT(DISTINCT c.device_id) FILTER (WHERE DATE(s.started_at) = c.acquisition_date + 30)
-                * 100.0 / NULLIF(COUNT(DISTINCT c.device_id), 0), 2
-            )::float END AS d30
-          FROM cohorts c
-          LEFT JOIN sessions_analytics s
-            ON s.device_id = c.device_id
-            AND s.started_at >= c.acquisition_date + INTERVAL '1 day'
-            AND s.started_at < c.acquisition_date + INTERVAL '31 days'
-          GROUP BY c.cohort_week
-          ORDER BY c.cohort_week
-        `);
-        const cohortTrend = cohortTrendResult.rows.map((row) => ({
-          date: row.date,
-          cohortSize: Number(row.cohortSize),
-          d1: row.d1 === null ? null : Number(row.d1),
-          d3: row.d3 === null ? null : Number(row.d3),
-          d7: row.d7 === null ? null : Number(row.d7),
-          d14: row.d14 === null ? null : Number(row.d14),
-          d30: row.d30 === null ? null : Number(row.d30),
-        }));
         const rateByDay = new Map(
           data.map((point) => [point.day, point.retentionRate])
         );
@@ -716,7 +658,6 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
         return {
           summary,
           data,
-          cohortTrend,
           period: {
             startDate: start.toISOString(),
             endDate: end.toISOString(),

@@ -176,17 +176,6 @@ export const DeviceRetentionResponseSchema = z.object({
       retainedUsers: z.number().int().min(0),
     })
   ),
-  cohortTrend: z.array(
-    z.object({
-      date: z.string(),
-      cohortSize: z.number().int().min(0),
-      d1: z.number().min(0).max(100).nullable(),
-      d3: z.number().min(0).max(100).nullable(),
-      d7: z.number().min(0).max(100).nullable(),
-      d14: z.number().min(0).max(100).nullable(),
-      d30: z.number().min(0).max(100).nullable(),
-    })
-  ),
   period: z.object({
     startDate: z.string().datetime(),
     endDate: z.string().datetime(),

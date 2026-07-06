@@ -48,7 +48,6 @@ type UsersExportData = {
     retention: DeviceRetentionResponse['summary'];
   };
   retentionCurve: DeviceRetentionResponse['data'];
-  retentionCohortTrend: DeviceRetentionResponse['cohortTrend'];
   timeseries: Array<{
     date: string;
     totalUsers: number;
@@ -149,7 +148,6 @@ function UsersExportButton() {
           retention: retention.summary,
         },
         retentionCurve: retention.data,
-        retentionCohortTrend: retention.cohortTrend,
         timeseries: totalTimeseries.data.map((point) => ({
           date: point.date,
           totalUsers: point.totalUsers ?? 0,

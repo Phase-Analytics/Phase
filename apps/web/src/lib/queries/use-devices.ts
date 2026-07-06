@@ -116,7 +116,6 @@ export function useDeviceRetention(
         return Promise.resolve({
           summary: { d1: 0, d3: 0, d7: 0, d14: 0, d30: 0 },
           data: [],
-          cohortTrend: [],
           period: { startDate: now, endDate: now },
         });
       }

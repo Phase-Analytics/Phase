@@ -2,7 +2,6 @@
 
 import type { RetentionPeriod, TimeRange } from '@phase/shared';
 import { parseAsString, useQueryState } from 'nuqs';
-import { MultiLineTimescaleChart } from '@/components/multi-line-timescale-chart';
 import { TimescaleChart } from '@/components/timescale-chart';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -26,14 +25,6 @@ const RETENTION_RANGE_OPTIONS = [
   { value: '360d', label: '1 Year' },
 ];
 
-const RETENTION_TREND_SERIES = [
-  { dataKey: 'd1', label: 'D1', color: '#3b82f6' },
-  { dataKey: 'd3', label: 'D3', color: '#06b6d4' },
-  { dataKey: 'd7', label: 'D7', color: '#22c55e' },
-  { dataKey: 'd14', label: 'D14', color: '#f59e0b' },
-  { dataKey: 'd30', label: 'D30', color: '#ec4899' },
-];
-
 function getRetentionRange(value: string | null): TimeRange {
   if (
     value === '7d' ||
@@ -48,14 +39,7 @@ function getRetentionRange(value: string | null): TimeRange {
 
 export function UsersRetentionCards() {
   const [appId] = useQueryState('app', parseAsString);
-  const [timeRange] = useQueryState(
-    'retentionRange',
-    parseAsString.withDefault('30d')
-  );
-  const { data } = useDeviceRetention(
-    appId || '',
-    getRetentionRange(timeRange)
-  );
+  const { data } = useDeviceRetention(appId || '', '360d');
 
   if (!appId) {
     return null;
@@ -85,7 +69,7 @@ export function UsersRetentionChart() {
   const [appId] = useQueryState('app', parseAsString);
   const [timeRange, setTimeRange] = useQueryState(
     'retentionRange',
-    parseAsString.withDefault('30d')
+    parseAsString.withDefault('7d')
   );
   const { data, isLoading } = useDeviceRetention(
     appId || '',
@@ -97,36 +81,24 @@ export function UsersRetentionChart() {
   }
 
   return (
-    <div className="space-y-4">
-      <TimescaleChart
-        chartColor="#8b5cf6"
-        data={data.data.map((point) => ({
-          date: String(point.day),
-          value: point.retentionRate,
-        }))}
-        dataKey="value"
-        dataLabel="Active users"
-        description="Exact-day retention after acquisition"
-        isPending={isLoading}
-        onTimeRangeChange={setTimeRange}
-        timeRange={timeRange}
-        timeRangeOptions={RETENTION_RANGE_OPTIONS}
-        title="User Retention"
-        tooltipLabelFormatter={(value) => `Day ${value}`}
-        valueFormatter={(value) => `${value.toFixed(2)}%`}
-        xTickFormatter={(value) => `Day ${value}`}
-      />
-      <MultiLineTimescaleChart
-        data={data.cohortTrend.map(({ cohortSize: _, ...point }) => point)}
-        description="Exact-day retention by acquisition week"
-        isPending={isLoading}
-        onTimeRangeChange={setTimeRange}
-        series={RETENTION_TREND_SERIES}
-        timeRange={timeRange}
-        timeRangeOptions={RETENTION_RANGE_OPTIONS}
-        title="Retention Trend"
-      />
-    </div>
+    <TimescaleChart
+      chartColor="#8b5cf6"
+      data={data.data.map((point) => ({
+        date: String(point.day),
+        value: point.retentionRate,
+      }))}
+      dataKey="value"
+      dataLabel="Active users"
+      description="Exact-day retention after acquisition"
+      isPending={isLoading}
+      onTimeRangeChange={setTimeRange}
+      timeRange={timeRange}
+      timeRangeOptions={RETENTION_RANGE_OPTIONS}
+      title="User Retention"
+      tooltipLabelFormatter={(value) => `Day ${value}`}
+      valueFormatter={(value) => `${value.toFixed(2)}%`}
+      xTickFormatter={(value) => `Day ${value}`}
+    />
   );
 }
 
