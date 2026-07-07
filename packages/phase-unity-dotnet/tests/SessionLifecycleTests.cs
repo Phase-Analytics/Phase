@@ -34,7 +34,7 @@ public sealed class SessionLifecycleTests
 
         await StorageService.SetItemAsync(
             StorageKeys.SessionStartedAt,
-            DateTime.UtcNow.AddHours(-2).ToString("o")
+            DateTime.UtcNow.AddHours(-3).ToString("o")
         );
 
         await context.SessionManager.ResumeAsync();
