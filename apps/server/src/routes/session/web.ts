@@ -19,6 +19,8 @@ import {
 import {
   buildFilters,
   formatPaginationResponse,
+  SESSION_BOUNCE_DURATION_SECONDS,
+  SESSION_MIN_DURATION_SECONDS,
   validateDateRange,
   validateDevice,
   validatePagination,
@@ -103,6 +105,9 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
         }
 
         const filters: SQL[] = [];
+        filters.push(
+          sql`EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt})) >= ${SESSION_MIN_DURATION_SECONDS}`
+        );
 
         if (deviceId) {
           filters.push(eq(sessions.deviceId, deviceId));
@@ -225,6 +230,7 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
           .select({ deviceId: devices.deviceId })
           .from(devices)
           .where(eq(devices.appId, appId));
+        const measurableSession = sql`EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt})) >= ${SESSION_MIN_DURATION_SECONDS}`;
 
         const [
           [{ count: totalSessions }],
@@ -238,7 +244,10 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
             .select({ count: count() })
             .from(sessions)
             .where(
-              sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`
+              and(
+                sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
+                measurableSession
+              )
             ),
 
           db
@@ -247,6 +256,7 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
             .where(
               and(
                 sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
+                measurableSession,
                 lt(sessions.startedAt, twentyFourHoursAgo)
               )
             ),
@@ -257,6 +267,7 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
             .where(
               and(
                 sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
+                measurableSession,
                 gte(sessions.startedAt, twentyFourHoursAgo),
                 lte(sessions.startedAt, now)
               )
@@ -268,6 +279,7 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
             .where(
               and(
                 sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
+                measurableSession,
                 gte(sessions.startedAt, fortyEightHoursAgo),
                 lt(sessions.startedAt, twentyFourHoursAgo)
               )
@@ -283,6 +295,7 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
             .where(
               and(
                 sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
+                measurableSession,
                 lt(sessions.startedAt, thirtySecondsAgo)
               )
             ),
@@ -293,7 +306,8 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
             .where(
               and(
                 sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-                sql`EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt})) < 10`
+                measurableSession,
+                sql`EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt})) < ${SESSION_BOUNCE_DURATION_SECONDS}`
               )
             ),
         ]);
@@ -420,6 +434,7 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
           FROM sessions_analytics s
           INNER JOIN devices d ON s.device_id = d.device_id
           WHERE d.app_id = ${appId}
+            AND EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at)) >= ${SESSION_MIN_DURATION_SECONDS}
         ) s ON DATE(s.started_at) = ds.date
         WHERE ds.date <= CURRENT_DATE
         GROUP BY ds.date
@@ -456,7 +471,7 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
         SELECT
           ds.date::text,
           COALESCE(
-            (SUM(CASE WHEN EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at)) < 10 THEN 1 ELSE 0 END)::float
+            (SUM(CASE WHEN EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at)) < ${SESSION_BOUNCE_DURATION_SECONDS} THEN 1 ELSE 0 END)::float
             / NULLIF(COUNT(s.session_id), 0)) * 100,
             0
           )::float as "bounceRate"
@@ -466,6 +481,7 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
           FROM sessions_analytics s
           INNER JOIN devices d ON s.device_id = d.device_id
           WHERE d.app_id = ${appId}
+            AND EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at)) >= ${SESSION_MIN_DURATION_SECONDS}
         ) s ON DATE(s.started_at) = ds.date
         WHERE ds.date <= CURRENT_DATE
         GROUP BY ds.date
@@ -510,6 +526,7 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
         FROM sessions_analytics s
         INNER JOIN devices d ON s.device_id = d.device_id
         WHERE d.app_id = ${appId}
+          AND EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at)) >= ${SESSION_MIN_DURATION_SECONDS}
       ) s ON DATE(s.started_at) = ds.date
       WHERE ds.date <= CURRENT_DATE
       GROUP BY ds.date

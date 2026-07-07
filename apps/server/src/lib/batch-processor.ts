@@ -493,7 +493,7 @@ async function processEvents(
           clientOrder,
           code: ErrorCode.VALIDATION_ERROR,
           detail:
-            'Event timestamp too far from session start (max 1h session duration)',
+            'Event timestamp too far from session start (max 2h session duration)',
         });
         continue;
       }
@@ -718,7 +718,7 @@ async function processPings(
           clientOrder,
           code: ErrorCode.VALIDATION_ERROR,
           detail:
-            'Ping timestamp too far from session start (max 1h session duration)',
+            'Ping timestamp too far from session start (max 2h session duration)',
         });
         continue;
       }

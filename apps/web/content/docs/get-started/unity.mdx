@@ -32,7 +32,7 @@ Add to `Packages/manifest.json` (recommended for teams and CI):
 ```json
 {
   "dependencies": {
-    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.10"
+    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.11"
   }
 }
 ```
@@ -50,7 +50,7 @@ Return to Unity and let Package Manager resolve the dependency.
 
 <CodeBlock lang="text" allowCopy={true}>
 ```
-https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.10
+https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.11
 ```
 </CodeBlock>
 
@@ -62,7 +62,7 @@ https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.10
 Pin the release tag:
 
 ```
-#v0.1.10
+#v0.1.11
 ```
 
 </Step>
@@ -95,7 +95,7 @@ After resolution, confirm the package is healthy **before** wiring game code:
 3. **Console** has **no** `CS8773` (file-scoped namespace) errors
 4. Assembly **`Phase.Analytics`** appears under **Project → Assemblies** (or compiles without errors)
 
-If any check fails, upgrade to `#v0.1.10` or newer, remove `Library/PackageCache/com.phase.analytics@*`, and re-import. Do not patch files inside `PackageCache` by hand.
+If any check fails, upgrade to `#v0.1.11` or newer, remove `Library/PackageCache/com.phase.analytics@*`, and re-import. Do not patch files inside `PackageCache` by hand.
 
 </Step>
 
@@ -598,7 +598,7 @@ Confirm `INTERNET` permission (Unity adds it by default for network builds).
 |---------|---------------------|-------|
 | Screen tracking | Automatic (optional, Expo Router) | Manual `Track` events |
 | `platform` field | Sent (`ios` / `android`) | Sent on mobile player builds |
-| Distribution | npm `phase-analytics` | Git UPM `#v0.1.10` |
+| Distribution | npm `phase-analytics` | Git UPM `#v0.1.11` |
 | Init pattern | Provider / hook | `InitializeAsync` + `MonoBehaviour` bootstrap |
 
 For the same event schema and dashboard, keep event names and parameter keys aligned across your mobile clients.

@@ -35,6 +35,7 @@ import { buildPropertySearchFilters } from '@/lib/property-search';
 import {
   buildFilters,
   formatPaginationResponse,
+  SESSION_MIN_DURATION_SECONDS,
   validateDateRange,
   validatePagination,
   validatePropertySearchFilter,
@@ -633,6 +634,7 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
             ON s.device_id = c.device_id
             AND s.started_at >= c.cohort_date + ds.day * INTERVAL '1 day'
             AND s.started_at < c.cohort_date + (ds.day + 1) * INTERVAL '1 day'
+            AND EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at)) >= ${SESSION_MIN_DURATION_SECONDS}
           GROUP BY ds.day
           ORDER BY ds.day
         `);
@@ -814,6 +816,7 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
             FROM date_series ds
             LEFT JOIN sessions_analytics s ON DATE(s.started_at) = ds.date
               AND s.device_id = ${deviceId}
+              AND EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at)) >= ${SESSION_MIN_DURATION_SECONDS}
             WHERE ds.date <= CURRENT_DATE
             GROUP BY ds.date
             ORDER BY ds.date
@@ -827,7 +830,12 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
               lastActivityAt: sql<Date | null>`MAX(${sessions.lastActivityAt})::timestamp`,
             })
             .from(sessions)
-            .where(eq(sessions.deviceId, deviceId)),
+            .where(
+              and(
+                eq(sessions.deviceId, deviceId),
+                sql`EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt})) >= ${SESSION_MIN_DURATION_SECONDS}`
+              )
+            ),
         ]);
 
         const data = result.rows.map((row) => ({

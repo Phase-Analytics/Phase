@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.11
+
+- Allow continuously active sessions to run for up to two hours.
+
 ## 0.1.10
 
 - Rotate sessions after one hour even while the app remains continuously active.

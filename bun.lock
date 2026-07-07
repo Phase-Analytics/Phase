@@ -126,7 +126,7 @@
     },
     "packages/sdk": {
       "name": "phase-analytics",
-      "version": "0.0.37",
+      "version": "0.0.38",
       "dependencies": {
         "pako": "^2.1.0",
         "ulidx": "^2.4.1",

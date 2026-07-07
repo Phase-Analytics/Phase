@@ -22,6 +22,7 @@ import {
   type RateLimitResult,
 } from '@/lib/rate-limit';
 import { initSessionActivityBuffer } from '@/lib/session-activity-buffer';
+import { startSessionCleanup, stopSessionCleanup } from '@/lib/session-cleanup';
 import { sseManager } from '@/lib/sse-manager';
 import { adminWebRouter } from '@/routes/admin';
 import { appWebRouter } from '@/routes/app';
@@ -247,6 +248,7 @@ try {
 
   sessionActivityBuffer = initSessionActivityBuffer();
   sessionActivityBuffer.start();
+  startSessionCleanup();
 
   const geoip = initGeoIP();
   await geoip.initialize();
@@ -262,6 +264,7 @@ const shutdown = async () => {
     console.log('[Server] Shutting down...');
     app.server?.stop();
     sseManager.stop();
+    stopSessionCleanup();
     shutdownGeoIP();
 
     if (sessionActivityBuffer) {

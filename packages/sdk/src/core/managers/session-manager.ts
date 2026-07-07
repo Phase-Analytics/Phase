@@ -9,7 +9,7 @@ import { validateSessionId } from '../utils/validator';
 
 const PING_INTERVAL_MS = 5000;
 const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
-const MAX_SESSION_AGE_MS = 60 * 60 * 1000; // 1 hour
+const MAX_SESSION_AGE_MS = 2 * 60 * 60 * 1000;
 
 export class SessionManager {
   private sessionId: string | null = null;

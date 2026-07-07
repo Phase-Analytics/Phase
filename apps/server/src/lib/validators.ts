@@ -26,7 +26,7 @@ export type TimestampMode = 'realtime' | 'offline';
 
 const TIMESTAMP_CONFIG = {
   realtime: {
-    maxPastMs: 1 * 60 * 60 * 1000,
+    maxPastMs: 2 * 60 * 60 * 1000,
     maxFutureMs: 5 * 60 * 1000,
   },
   offline: {
@@ -36,11 +36,13 @@ const TIMESTAMP_CONFIG = {
 } as const;
 
 export const SESSION_MAX_AGE = {
-  realtime: 1 * 60 * 60 * 1000,
+  realtime: 2 * 60 * 60 * 1000,
   offline: 7 * 24 * 60 * 60 * 1000,
 } as const;
 
-export const SESSION_MAX_DURATION_MS = 60 * 60 * 1000;
+export const SESSION_MAX_DURATION_MS = 2 * 60 * 60 * 1000;
+export const SESSION_MIN_DURATION_SECONDS = 5;
+export const SESSION_BOUNCE_DURATION_SECONDS = 20;
 
 const ID_VALIDATION = {
   deviceId: {

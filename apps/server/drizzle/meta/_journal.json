@@ -162,6 +162,13 @@
       "when": 1783321200000,
       "tag": "0022_cap_session_duration",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1783407600000,
+      "tag": "0023_remove_unmeasurable_sessions",
+      "breakpoints": true
     }
   ]
 }

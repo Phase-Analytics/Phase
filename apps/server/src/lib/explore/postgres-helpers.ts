@@ -2,6 +2,7 @@ import type { ExploreFilter, PropertySearchCondition } from '@phase/shared';
 import { and, count, eq, gte, inArray, lte, type SQL, sql } from 'drizzle-orm';
 import { db, devices, sessions } from '@/db';
 import { buildPropertySearchFilters } from '@/lib/property-search';
+import { SESSION_MIN_DURATION_SECONDS } from '@/lib/validators';
 import { EXPLORE_MAX_BREAKDOWN_ROWS } from './constants';
 import type { ExploreDateRange } from './time-range';
 
@@ -134,6 +135,7 @@ function sessionDeviceWhere(
     ...whereParts,
     gte(sessions.startedAt, new Date(dateRange.startDate)),
     lte(sessions.startedAt, new Date(dateRange.endDate)),
+    sql`EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt})) >= ${SESSION_MIN_DURATION_SECONDS}`,
   ];
 }
 
@@ -210,6 +212,7 @@ export async function avgSessionDurationTimeseriesForExplore(
       INNER JOIN filtered_devices fd ON s.device_id = fd.device_id
       WHERE s.started_at >= ${dateRange.startDate}::timestamptz
         AND s.started_at <= ${dateRange.endDate}::timestamptz
+        AND EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at)) >= ${SESSION_MIN_DURATION_SECONDS}
     ),
     date_series AS (
       SELECT DATE(generate_series(
@@ -262,6 +265,7 @@ export async function sessionsPerUserTimeseriesForExplore(
       INNER JOIN filtered_devices fd ON s.device_id = fd.device_id
       WHERE s.started_at >= ${dateRange.startDate}::timestamptz
         AND s.started_at <= ${dateRange.endDate}::timestamptz
+        AND EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at)) >= ${SESSION_MIN_DURATION_SECONDS}
       GROUP BY DATE(s.started_at), s.device_id
     ),
     date_series AS (
@@ -348,6 +352,7 @@ export async function sessionCountTimeseriesForExplore(
       INNER JOIN filtered_devices fd ON s.device_id = fd.device_id
       WHERE s.started_at >= ${dateRange.startDate}::timestamptz
         AND s.started_at <= ${dateRange.endDate}::timestamptz
+        AND EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at)) >= ${SESSION_MIN_DURATION_SECONDS}
       GROUP BY DATE(s.started_at)
     ),
     date_series AS (

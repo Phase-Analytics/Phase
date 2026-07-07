@@ -60,7 +60,7 @@ export const pingSdkRouter = new Elysia({ prefix: '/ping' })
           return {
             code: ErrorCode.VALIDATION_ERROR,
             detail:
-              'Ping timestamp too far from session start (max 1h session duration)',
+              'Ping timestamp too far from session start (max 2h session duration)',
           };
         }
 

@@ -48,7 +48,7 @@ function getDescription(metric: string) {
   if (metric === 'avg_duration') {
     return 'Average session duration in seconds per day';
   }
-  return 'Percentage of sessions under 10 seconds per day';
+  return 'Percentage of sessions under 20 seconds per day';
 }
 
 function getValueFormatter(metric: string) {

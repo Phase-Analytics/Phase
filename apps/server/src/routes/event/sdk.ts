@@ -83,7 +83,7 @@ export const eventSdkRouter = new Elysia({ prefix: '/events' })
           return {
             code: ErrorCode.VALIDATION_ERROR,
             detail:
-              'Event timestamp too far from session start (max 1h session duration)',
+              'Event timestamp too far from session start (max 2h session duration)',
           };
         }
 

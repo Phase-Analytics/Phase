@@ -31,7 +31,7 @@ public static class ValidationConstants
 
     public const int PingIntervalMs = 5_000;
     public const int InactivityTimeoutMs = 5 * 60 * 1000;
-    public const int MaxSessionAgeMs = 60 * 60 * 1000;
+    public const int MaxSessionAgeMs = 2 * 60 * 60 * 1000;
 
     public const int RateLimitWindowMs = 1_000;
     public const int MaxEventsPerSecond = 15;
