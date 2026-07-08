@@ -109,14 +109,14 @@ console.log(data);
   - Required: no
   - Format: ISO 8601 timestamp
   - Example: `2026-01-15T00:00:00.000Z`
-  - Used by: timeseries endpoints and date-filtered breakdown endpoints
+  - Used by: timeseries endpoints, date-filtered breakdown endpoints, and funnel endpoints
 
 - `endDate`
   - Type: `string`
   - Required: no
   - Format: ISO 8601 timestamp
   - Example: `2026-02-15T23:59:59.999Z`
-  - Used by: timeseries endpoints and date-filtered breakdown endpoints
+  - Used by: timeseries endpoints, date-filtered breakdown endpoints, and funnel endpoints
 
 - `metric`
   - Type: `string`
@@ -302,6 +302,122 @@ const response = await fetch(
     headers: {
       Authorization: 'Bearer phase_public_your_key',
     },
+  }
+);
+
+const data = await response.json();
+```
+    </CodeBlock>
+  </TabsContent>
+</Tabs>
+
+## Funnels
+
+Use funnel reports for activation conversion and saved custom funnels from the dashboard.
+
+### Endpoints
+
+- `GET /apps/:appId/reports/funnels/activation`
+  - Returns the built-in activation funnel.
+  - Steps: First open → Total session ≥10m → Returned day 1 → Returned day 3.
+  - Supports `startDate` and `endDate` for the acquisition cohort.
+
+- `GET /apps/:appId/reports/funnels`
+  - Lists saved custom funnels for the app.
+  - Returns funnel id, name, steps, and window hours.
+
+- `GET /apps/:appId/reports/funnels/:funnelId`
+  - Runs a saved custom funnel and returns step conversion.
+  - Supports `startDate` and `endDate`.
+
+- `POST /apps/:appId/reports/funnels/run`
+  - Runs an ad-hoc funnel without saving it.
+  - Body: `steps`, optional `windowHours` (default `168`), optional `startDate` / `endDate`.
+  - Step kinds: `first_seen`, `session`, `session_30s`, `session_10m`, `engaged_10m`, `return_d1`, `return_d3`, `event`.
+  - Event steps require `name`.
+
+### Example: activation funnel
+
+<Tabs defaultValue="curl" groupId="funnels-activation" persist>
+  <TabsList>
+    <TabsTrigger value="curl">cURL</TabsTrigger>
+    <TabsTrigger value="fetch">fetch</TabsTrigger>
+  </TabsList>
+  <TabsContent value="curl">
+    <CodeBlock lang="bash" allowCopy={true}>
+```bash
+curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/funnels/activation?startDate=2026-01-15T00:00:00.000Z&endDate=2026-02-15T23:59:59.999Z" \
+  -H "Authorization: Bearer phase_public_your_key"
+```
+    </CodeBlock>
+  </TabsContent>
+  <TabsContent value="fetch">
+    <CodeBlock lang="ts" allowCopy={true}>
+```ts
+const params = new URLSearchParams({
+  startDate: '2026-01-15T00:00:00.000Z',
+  endDate: '2026-02-15T23:59:59.999Z',
+});
+
+const response = await fetch(
+  `https://api.phase.sh/public-api/v1/apps/<app_id>/reports/funnels/activation?${params}`,
+  {
+    headers: {
+      Authorization: 'Bearer phase_public_your_key',
+    },
+  }
+);
+
+const data = await response.json();
+console.log(data.overallConversion, data.steps);
+```
+    </CodeBlock>
+  </TabsContent>
+</Tabs>
+
+### Example: run a custom funnel
+
+<Tabs defaultValue="curl" groupId="funnels-run" persist>
+  <TabsList>
+    <TabsTrigger value="curl">cURL</TabsTrigger>
+    <TabsTrigger value="fetch">fetch</TabsTrigger>
+  </TabsList>
+  <TabsContent value="curl">
+    <CodeBlock lang="bash" allowCopy={true}>
+```bash
+curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/funnels/run" \
+  -H "Authorization: Bearer phase_public_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "windowHours": 168,
+    "steps": [
+      { "kind": "first_seen" },
+      { "kind": "session" },
+      { "kind": "event", "name": "purchase_completed" }
+    ]
+  }'
+```
+    </CodeBlock>
+  </TabsContent>
+  <TabsContent value="fetch">
+    <CodeBlock lang="ts" allowCopy={true}>
+```ts
+const response = await fetch(
+  'https://api.phase.sh/public-api/v1/apps/<app_id>/reports/funnels/run',
+  {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer phase_public_your_key',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      windowHours: 168,
+      steps: [
+        { kind: 'first_seen' },
+        { kind: 'session' },
+        { kind: 'event', name: 'purchase_completed' },
+      ],
+    }),
   }
 );
 

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { FunnelCustomStepSchema, FunnelResultSchema } from './funnel';
 
 export const PublicApiTokenStatusSchema = z.enum([
   'active',
@@ -216,9 +217,46 @@ export const PublicApiQueryResponseSchema = z.object({
   }),
 });
 
+export const PublicApiFunnelResultSchema = FunnelResultSchema.extend({
+  meta: PublicApiMetaSchema,
+});
+
+export const PublicApiFunnelDefinitionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  steps: z.array(FunnelCustomStepSchema),
+  windowHours: z.number().int().min(1),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+export const PublicApiFunnelListResponseSchema = z.object({
+  funnels: z.array(PublicApiFunnelDefinitionSchema),
+  meta: PublicApiMetaSchema,
+});
+
+export const PublicApiFunnelRunRequestSchema = z.object({
+  steps: z.array(FunnelCustomStepSchema).min(2).max(6),
+  windowHours: z
+    .number()
+    .int()
+    .min(1)
+    .max(24 * 30)
+    .default(168),
+  startDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().optional(),
+});
+
 export type PublicApiQueryRequest = z.infer<typeof PublicApiQueryRequestSchema>;
 export type PublicApiQueryResponse = z.infer<
   typeof PublicApiQueryResponseSchema
+>;
+export type PublicApiFunnelResult = z.infer<typeof PublicApiFunnelResultSchema>;
+export type PublicApiFunnelListResponse = z.infer<
+  typeof PublicApiFunnelListResponseSchema
+>;
+export type PublicApiFunnelRunRequest = z.infer<
+  typeof PublicApiFunnelRunRequestSchema
 >;
 
 export type PublicApiToken = z.infer<typeof PublicApiTokenSchema>;
