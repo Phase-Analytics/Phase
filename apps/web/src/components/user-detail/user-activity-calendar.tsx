@@ -172,32 +172,41 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <HeatmapInteractionProvider>
-            <HeatmapInteractionBoundary className="min-w-[680px]">
-              <HeatmapChart
-                data={heatmapData}
-                gap={3}
-                layout="fluid"
+        <HeatmapInteractionProvider>
+          <HeatmapInteractionBoundary className="w-full min-w-0">
+            <HeatmapChart
+              animationDuration={420}
+              data={heatmapData}
+              enterStaggerScale={0.3}
+              enterTransition={{
+                type: 'tween',
+                duration: 0.42,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              gap={2}
+              layout="fluid"
+              levelStyles={LEVEL_STYLES}
+              margin={{ top: 18, right: 0, bottom: 0, left: 22 }}
+              status="ready"
+            >
+              <HeatmapCells cornerRadius={1.5} />
+              <HeatmapXAxis />
+              <HeatmapYAxis labelFormat="initial" tickFilter="odd" />
+              <HeatmapTooltip
+                formatLabel={(count) =>
+                  count === 1 ? '1 Session' : `${count} Sessions`
+                }
+              />
+            </HeatmapChart>
+            <div className="mt-3">
+              <HeatmapLegend
+                align="start"
+                cellSize={10}
                 levelStyles={LEVEL_STYLES}
-                margin={{ top: 20, right: 8, bottom: 0, left: 28 }}
-                status="ready"
-              >
-                <HeatmapCells cornerRadius={2} />
-                <HeatmapXAxis />
-                <HeatmapYAxis labelFormat="initial" tickFilter="odd" />
-                <HeatmapTooltip
-                  formatLabel={(count) =>
-                    count === 1 ? '1 Session' : `${count} Sessions`
-                  }
-                />
-              </HeatmapChart>
-              <div className="mt-3">
-                <HeatmapLegend levelStyles={LEVEL_STYLES} />
-              </div>
-            </HeatmapInteractionBoundary>
-          </HeatmapInteractionProvider>
-        </div>
+              />
+            </div>
+          </HeatmapInteractionBoundary>
+        </HeatmapInteractionProvider>
       </CardContent>
     </Card>
   );

@@ -259,7 +259,19 @@ const TimeSeriesChartCore = memo(function TimeSeriesChartCore({
   const xAccessor = useCallback(
     (d: Record<string, unknown>): Date => {
       const value = d[xDataKey];
-      return value instanceof Date ? value : new Date(value as string | number);
+      if (value instanceof Date) {
+        return value;
+      }
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return new Date(value);
+      }
+      if (typeof value === 'string' && value.length > 0) {
+        const parsed = new Date(value.includes('T') ? value : `${value}T00:00:00`);
+        if (!Number.isNaN(parsed.getTime())) {
+          return parsed;
+        }
+      }
+      return new Date(Number.NaN);
     },
     [xDataKey]
   );
@@ -399,7 +411,17 @@ const TimeSeriesChartCore = memo(function TimeSeriesChartCore({
   );
 
   const dateLabels = useMemo(
-    () => visiblePlotData.map((d) => shortDateFmt.format(xAccessor(d))),
+    () =>
+      visiblePlotData.map((d) => {
+        if (typeof d.xLabel === 'string' && d.xLabel.length > 0) {
+          return d.xLabel;
+        }
+        const date = xAccessor(d);
+        if (Number.isNaN(date.getTime())) {
+          return '';
+        }
+        return shortDateFmt.format(date);
+      }),
     [visiblePlotData, xAccessor]
   );
 

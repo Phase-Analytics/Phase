@@ -61,17 +61,17 @@ function intensityForCount(count: number, maxCount: number): number {
   if (count <= 0 || maxCount <= 0) {
     return 0;
   }
-  if (count === 1) {
-    return 1;
+  if (maxCount === 1 || count === 1) {
+    return count > 0 ? 1 : 0;
   }
   const ratio = count / maxCount;
-  if (ratio < 0.25) {
+  if (ratio <= 0.2) {
     return 1;
   }
-  if (ratio < 0.5) {
+  if (ratio <= 0.4) {
     return 2;
   }
-  if (ratio < 0.75) {
+  if (ratio <= 0.7) {
     return 3;
   }
   return 4;
@@ -182,21 +182,20 @@ export function UsersCountryMap({
   return (
     <div className={cn('relative h-full w-full overflow-hidden', className)}>
       <ChoroplethChart
-        aspectRatio="16 / 9"
-        center={[10, 15]}
+        animationDuration={600}
+        aspectRatio="2.2 / 1"
+        center={[8, 12]}
         className="h-full w-full"
         data={geoData}
-        margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
-        scale={isMobile ? 120 : 145}
-        zoomEnabled
-        zoomMax={6}
-        zoomMin={1}
+        margin={{ top: 4, right: 4, bottom: 4, left: 4 }}
+        scale={isMobile ? 105 : 128}
+        zoomEnabled={false}
       >
         <ChoroplethFeatureComponent
-          fadedOpacity={0.35}
+          fadedOpacity={0.4}
           getFeatureColor={getFeatureColor}
           stroke="var(--chart-map-stroke)"
-          strokeWidth={0.4}
+          strokeWidth={0.35}
         />
         <ChoroplethTooltip
           content={({ feature: featureItem }) => {

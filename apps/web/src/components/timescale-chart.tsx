@@ -41,7 +41,7 @@ type MetricOption = {
 type TimescaleChartProps = {
   title: string;
   description: string;
-  data: Array<{ date: string; value: number }>;
+  data: Array<{ date: string; value: number; label?: string }>;
   isPending: boolean;
   showTimeRange?: boolean;
   timeRange?: string;
@@ -59,10 +59,25 @@ type TimescaleChartProps = {
   emptyMessage?: string;
 };
 
-function parseChartDate(value: string): Date {
-  const date = new Date(value);
+const DAY_INDEX_PATTERN = /^\d+$/;
+
+function parseChartDate(value: string): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  if (DAY_INDEX_PATTERN.test(value)) {
+    const day = Number(value);
+    if (!Number.isFinite(day) || day < 0 || day > 10_000) {
+      return null;
+    }
+    return new Date(Date.UTC(2020, 0, 1 + day));
+  }
+
+  const withTime = value.includes('T') ? value : `${value}T00:00:00`;
+  const date = new Date(withTime);
   if (Number.isNaN(date.getTime())) {
-    return new Date(value.includes('T') ? value : `${value}T00:00:00`);
+    return null;
   }
   return date;
 }
@@ -82,21 +97,41 @@ export function TimescaleChart({
   dataLabel,
   chartColor,
   valueFormatter,
+  xTickFormatter,
   tooltipLabelFormatter,
   emptyMessage = 'No data available for this period',
 }: TimescaleChartProps) {
   const currentOption = timeRangeOptions.find((opt) => opt.value === timeRange);
   const currentLabel = currentOption?.label || timeRangeOptions[0]?.label;
 
-  const chartData = useMemo(
-    () =>
-      data.map((point) => ({
-        date: parseChartDate(point.date),
+  const chartData = useMemo(() => {
+    const points: Array<{
+      date: Date;
+      value: number;
+      rawDate: string;
+      xLabel?: string;
+    }> = [];
+
+    for (const point of data) {
+      const date = parseChartDate(point.date);
+      if (!date) {
+        continue;
+      }
+
+      const xLabel =
+        point.label ??
+        (xTickFormatter ? xTickFormatter(point.date) : undefined);
+
+      points.push({
+        date,
         value: point.value,
         rawDate: point.date,
-      })),
-    [data]
-  );
+        ...(xLabel ? { xLabel } : {}),
+      });
+    }
+
+    return points;
+  }, [data, xTickFormatter]);
 
   const dashFromIndex = useMemo(() => {
     if (chartData.length < 2) {
@@ -181,21 +216,24 @@ export function TimescaleChart({
           </div>
         ) : (
           <AreaChart
+            animationDuration={900}
             className="h-[250px] w-full"
             data={chartData}
             loadingLabel={`Loading ${dataLabel.toLowerCase()}…`}
-            margin={{ top: 16, right: 12, bottom: 28, left: 12 }}
+            margin={{ top: 12, right: 8, bottom: 24, left: 8 }}
             status={status}
             style={{ height: 250, aspectRatio: 'unset' }}
             yDomainTween
           >
             <Grid
               horizontal
-              loadingStroke="color-mix(in oklch, var(--chart-grid) 50%, transparent)"
+              loadingStroke="color-mix(in oklch, var(--chart-grid) 45%, transparent)"
+              numTicksRows={4}
               shimmer
               shimmerSync
               stroke="var(--chart-grid)"
-              strokeDasharray="4,4"
+              strokeDasharray="3,4"
+              strokeOpacity={0.85}
             />
             <Area
               dashArray="5,5"
@@ -203,16 +241,16 @@ export function TimescaleChart({
               dataKey="value"
               fadeEdges="left"
               fill={chartColor}
-              fillOpacity={0.35}
-              gradientToOpacity={0.05}
+              fillOpacity={0.28}
+              gradientToOpacity={0}
               loadingStroke={chartColor}
-              loadingStrokeOpacity={0.45}
+              loadingStrokeOpacity={0.4}
               loadingStyle="pulse"
               showHighlight
               stroke={chartColor}
               strokeWidth={2}
             />
-            <XAxis />
+            <XAxis numTicks={5} />
             <ChartTooltip
               content={({ point }) => {
                 let rawDate = String(point.date);

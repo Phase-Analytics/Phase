@@ -16,10 +16,11 @@ export function UsersRetentionChart() {
 
   return (
     <TimescaleChart
-      chartColor="#8b5cf6"
-      data={data.data.map((point) => ({
+      chartColor="var(--chart-4)"
+      data={(data?.data ?? []).map((point) => ({
         date: String(point.day),
         value: point.retentionRate,
+        label: `Day ${point.day}`,
       }))}
       dataKey="value"
       dataLabel="Active users"
@@ -29,7 +30,6 @@ export function UsersRetentionChart() {
       title="User Retention"
       tooltipLabelFormatter={(value) => `Day ${value}`}
       valueFormatter={(value) => `${value.toFixed(2)}%`}
-      xTickFormatter={(value) => `Day ${value}`}
     />
   );
 }
