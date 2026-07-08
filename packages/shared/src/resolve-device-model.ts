@@ -54,9 +54,7 @@ export function resolveDeviceModel(
   return trimmed;
 }
 
-export function buildResolveDeviceModelSql(
-  columnExpression = 'model'
-): string {
+export function buildResolveDeviceModelSql(columnExpression = 'model'): string {
   const whenClauses = Object.entries(APPLE_DEVICE_IDENTIFIERS)
     .map(
       ([id, name]) =>

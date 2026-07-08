@@ -1,8 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import {
-  isAppleMachineId,
-  resolveDeviceModel,
-} from './resolve-device-model';
+import { isAppleMachineId, resolveDeviceModel } from './resolve-device-model';
 
 describe('resolveDeviceModel', () => {
   test('maps known Apple machine ids', () => {

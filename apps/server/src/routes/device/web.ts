@@ -9,8 +9,8 @@ import {
   ErrorCode,
   ErrorResponseSchema,
   HttpStatus,
-  resolveDeviceModel,
   type Platform,
+  resolveDeviceModel,
 } from '@phase/shared';
 import {
   and,

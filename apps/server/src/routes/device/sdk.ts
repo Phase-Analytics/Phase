@@ -4,8 +4,8 @@ import {
   ErrorCode,
   ErrorResponseSchema,
   HttpStatus,
-  resolveDeviceModel,
   type Platform,
+  resolveDeviceModel,
 } from '@phase/shared';
 import { eq } from 'drizzle-orm';
 import { Elysia } from 'elysia';
