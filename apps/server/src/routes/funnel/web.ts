@@ -4,6 +4,7 @@ import {
   CustomFunnelRunRequestSchema,
   ErrorCode,
   ErrorResponseSchema,
+  type FunnelCustomStep,
   FunnelCustomStepSchema,
   FunnelDefinitionSchema,
   FunnelDefinitionsListResponseSchema,
@@ -47,12 +48,38 @@ async function assertAppAccess(appId: string, userId: string) {
   return app;
 }
 
+function normalizeFunnelSteps(steps: unknown): FunnelCustomStep[] {
+  if (!Array.isArray(steps)) {
+    return [];
+  }
+
+  return steps.map((raw) => {
+    if (!raw || typeof raw !== 'object') {
+      return FunnelCustomStepSchema.parse({ kind: 'event', name: 'unknown' });
+    }
+
+    const step = raw as {
+      kind?: string;
+      name?: string;
+    };
+
+    if (step.kind === 'first_seen' || step.kind === 'session') {
+      return FunnelCustomStepSchema.parse({ kind: step.kind });
+    }
+
+    return FunnelCustomStepSchema.parse({
+      kind: 'event',
+      name: step.name ?? 'unknown',
+    });
+  });
+}
+
 function mapFunnelRow(row: typeof funnelPresets.$inferSelect) {
   return {
     id: row.id,
     appId: row.appId,
     name: row.name,
-    steps: row.steps,
+    steps: normalizeFunnelSteps(row.steps),
     windowHours: row.windowHours,
     createdByUserId: row.createdByUserId,
     createdAt: row.createdAt.toISOString(),

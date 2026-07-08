@@ -2,20 +2,37 @@ import { z } from 'zod';
 import { EVENT_NAME } from '../constants/validation';
 import { PaginationMetaSchema } from './common';
 
-export const FUNNEL_MEANINGFUL_SESSION_SECONDS = 30;
+export const FUNNEL_ACTIVATION_WINDOW_HOURS = 72;
+export const FUNNEL_ENGAGED_TOTAL_SESSION_SECONDS = 10 * 60;
 export const FUNNEL_MAX_STEPS = 6;
 export const FUNNEL_MIN_STEPS = 2;
 
-export const FunnelStepKindSchema = z.enum(['event', 'screen']);
+export const FUNNEL_BUILTIN_STEPS = [
+  { kind: 'first_seen', label: 'First Seen' },
+  { kind: 'session', label: 'Create Session' },
+] as const;
 
-export const FunnelCustomStepSchema = z.object({
-  name: z
-    .string()
-    .min(EVENT_NAME.MIN_LENGTH)
-    .max(EVENT_NAME.MAX_LENGTH)
-    .regex(EVENT_NAME.PATTERN),
-  kind: FunnelStepKindSchema.default('event'),
-});
+export const FunnelStepKindSchema = z.enum(['first_seen', 'session', 'event']);
+
+export const FunnelCustomStepSchema = z
+  .object({
+    kind: FunnelStepKindSchema,
+    name: z
+      .string()
+      .min(EVENT_NAME.MIN_LENGTH)
+      .max(EVENT_NAME.MAX_LENGTH)
+      .regex(EVENT_NAME.PATTERN)
+      .optional(),
+  })
+  .superRefine((step, ctx) => {
+    if (step.kind === 'event' && !step.name?.trim()) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Event name is required',
+        path: ['name'],
+      });
+    }
+  });
 
 export const FunnelStepResultSchema = z.object({
   key: z.string(),
@@ -110,6 +127,7 @@ export const FunnelDefinitionsListResponseSchema = z.object({
   pagination: PaginationMetaSchema.optional(),
 });
 
+export type FunnelStepKind = z.infer<typeof FunnelStepKindSchema>;
 export type FunnelCustomStep = z.infer<typeof FunnelCustomStepSchema>;
 export type FunnelStepResult = z.infer<typeof FunnelStepResultSchema>;
 export type FunnelResult = z.infer<typeof FunnelResultSchema>;
@@ -126,3 +144,13 @@ export type UpdateFunnelDefinitionRequest = z.infer<
 export type CustomFunnelRunRequest = z.infer<
   typeof CustomFunnelRunRequestSchema
 >;
+
+export function funnelStepLabel(step: FunnelCustomStep): string {
+  if (step.kind === 'first_seen') {
+    return 'First Seen';
+  }
+  if (step.kind === 'session') {
+    return 'Create Session';
+  }
+  return step.name?.trim() || 'Event';
+}
