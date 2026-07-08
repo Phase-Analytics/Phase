@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { normalizeLinkBrowserFamily } from '@phase/shared';
 import { UAParser } from 'ua-parser-js';
 import { getLocationFromIP } from '@/lib/geolocation';
@@ -19,7 +19,7 @@ import {
   resolveVerifiedDomain,
 } from './resolve';
 import { mergeUtmIntoUrl } from './utm';
-import { buildVisitorKey } from './visitor';
+import { resolveVisitorIdentity } from './visitor';
 
 function extractClientIp(request: Request): string | null {
   const cfConnectingIp = request.headers.get('cf-connecting-ip');
@@ -118,9 +118,9 @@ export async function handleLinkRedirect(
 
   const clientIp = extractClientIp(request);
   const geo = clientIp ? getLocationFromIP(clientIp) : null;
-  const ipHash = clientIp
-    ? createHash('sha256').update(clientIp).digest('hex').slice(0, 16)
-    : null;
+  const { visitorKey, setCookie } = resolveVisitorIdentity({
+    cookieHeader: request.headers.get('cookie'),
+  });
 
   const buffer = getLinkClickBuffer();
   if (buffer && shouldRecordLinkClick(request)) {
@@ -131,14 +131,7 @@ export async function handleLinkRedirect(
     await buffer.push({
       appId: link.appId,
       linkId: link.id,
-      visitorKey: buildVisitorKey({
-        linkId: link.id,
-        platform,
-        osFamily,
-        browserFamily,
-        acceptLanguage: request.headers.get('accept-language'),
-        ipHash,
-      }),
+      visitorKey,
       countryCode,
       os: osFamily,
       browser: browserFamily,
@@ -147,6 +140,7 @@ export async function handleLinkRedirect(
         refererHeader: request.headers.get('referer'),
         requestUrl: request.url,
         secFetchSite: request.headers.get('sec-fetch-site'),
+        userAgent,
       }),
       domainHost,
       timestamp,
@@ -165,5 +159,13 @@ export async function handleLinkRedirect(
     });
   }
 
-  return Response.redirect(finalUrl, 302);
+  const headers = new Headers({ Location: finalUrl });
+  if (setCookie) {
+    headers.append('Set-Cookie', setCookie);
+  }
+
+  return new Response(null, {
+    status: 302,
+    headers,
+  });
 }

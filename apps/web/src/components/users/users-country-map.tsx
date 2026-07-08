@@ -60,17 +60,19 @@ function intensityForCount(count: number, maxCount: number): number {
   if (count <= 0 || maxCount <= 0) {
     return 0;
   }
-  if (maxCount === 1 || count === 1) {
-    return count > 0 ? 1 : 0;
+  if (maxCount === 1) {
+    return 4;
   }
-  const ratio = count / maxCount;
-  if (ratio <= 0.2) {
+
+  // Log scale keeps small countries visible instead of washing out vs the top.
+  const ratio = Math.log1p(count) / Math.log1p(maxCount);
+  if (ratio <= 0.25) {
     return 1;
   }
-  if (ratio <= 0.4) {
+  if (ratio <= 0.5) {
     return 2;
   }
-  if (ratio <= 0.7) {
+  if (ratio <= 0.75) {
     return 3;
   }
   return 4;

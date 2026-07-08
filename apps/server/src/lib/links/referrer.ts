@@ -9,6 +9,8 @@ const KNOWN_REFERRER_HOSTS: Array<{ match: RegExp; label: string }> = [
   { match: /(^|\.)x\.com$/i, label: 'X' },
   { match: /(^|\.)facebook\.com$/i, label: 'Facebook' },
   { match: /(^|\.)fb\.com$/i, label: 'Facebook' },
+  { match: /(^|\.)fb\.me$/i, label: 'Facebook' },
+  { match: /(^|\.)m\.me$/i, label: 'Messenger' },
   { match: /(^|\.)instagram\.com$/i, label: 'Instagram' },
   { match: /(^|\.)linkedin\.com$/i, label: 'LinkedIn' },
   { match: /(^|\.)reddit\.com$/i, label: 'Reddit' },
@@ -21,6 +23,22 @@ const KNOWN_REFERRER_HOSTS: Array<{ match: RegExp; label: string }> = [
   { match: /(^|\.)google\./i, label: 'Google' },
   { match: /(^|\.)bing\.com$/i, label: 'Bing' },
   { match: /(^|\.)duckduckgo\.com$/i, label: 'DuckDuckGo' },
+];
+
+const UA_SOURCE_HINTS: Array<{ match: RegExp; label: string }> = [
+  { match: /WhatsApp/i, label: 'WhatsApp' },
+  { match: /Telegram/i, label: 'Telegram' },
+  { match: /Instagram/i, label: 'Instagram' },
+  { match: /FBAN|FBAV|FB_IAB|Messenger/i, label: 'Facebook' },
+  { match: /LinkedInApp|LinkedInBot/i, label: 'LinkedIn' },
+  { match: /TikTok|musical_ly|BytedanceWebview/i, label: 'TikTok' },
+  { match: /Discord/i, label: 'Discord' },
+  { match: /Slack/i, label: 'Slack' },
+  { match: /Twitter|Tweetbot/i, label: 'X' },
+  { match: /Line\//i, label: 'LINE' },
+  { match: /Viber/i, label: 'Viber' },
+  { match: /Kakao/i, label: 'KakaoTalk' },
+  { match: /Snapchat/i, label: 'Snapchat' },
 ];
 
 function hostFromUrl(value: string): string | null {
@@ -41,15 +59,29 @@ function labelForHost(host: string): string {
   return host.replace(WWW_PREFIX, '');
 }
 
+function labelFromUserAgent(
+  userAgent: string | null | undefined
+): string | null {
+  if (!userAgent) {
+    return null;
+  }
+  for (const entry of UA_SOURCE_HINTS) {
+    if (entry.match.test(userAgent)) {
+      return entry.label;
+    }
+  }
+  return null;
+}
+
 /**
- * Resolve click attribution from Referer + common in-app / UTM signals.
- * Many messengers (WhatsApp, iMessage, etc.) strip Referer; UTM and
- * client hints are the practical fallback.
+ * Resolve click attribution from Referer + UTM/ref + in-app UA hints.
+ * Messengers often strip Referer; UA still sometimes identifies the app webview.
  */
 export function resolveLinkReferrer(options: {
   refererHeader: string | null | undefined;
   requestUrl?: string | null;
   secFetchSite?: string | null;
+  userAgent?: string | null;
 }): string {
   const referer = options.refererHeader?.trim();
   if (referer) {
@@ -77,6 +109,11 @@ export function resolveLinkReferrer(options: {
     } catch {
       // ignore invalid request URL
     }
+  }
+
+  const fromUa = labelFromUserAgent(options.userAgent);
+  if (fromUa) {
+    return fromUa;
   }
 
   const site = options.secFetchSite?.trim().toLowerCase();

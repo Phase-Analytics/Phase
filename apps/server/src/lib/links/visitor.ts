@@ -1,31 +1,56 @@
-import { createHash } from 'node:crypto';
-import type { LinkDevicePlatform } from './device';
+import { randomUUID } from 'node:crypto';
 
-function normalizeAcceptLanguage(value: string | null): string {
-  if (!value) {
-    return 'unknown';
+const VISITOR_COOKIE = 'phase_vid';
+const VISITOR_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 400;
+const VISITOR_ID_PATTERN = /^[a-f0-9-]{16,64}$/i;
+
+function parseCookieValue(
+  cookieHeader: string | null,
+  name: string
+): string | null {
+  if (!cookieHeader) {
+    return null;
   }
 
-  const first = value.split(',')[0]?.trim().toLowerCase();
-  return first || 'unknown';
+  for (const part of cookieHeader.split(';')) {
+    const [rawKey, ...rest] = part.trim().split('=');
+    if (rawKey === name) {
+      const value = rest.join('=').trim();
+      return value || null;
+    }
+  }
+
+  return null;
 }
 
-export function buildVisitorKey(options: {
-  linkId: string;
-  platform: LinkDevicePlatform;
-  osFamily: string;
-  browserFamily: string;
-  acceptLanguage: string | null;
-  ipHash?: string | null;
-}): string {
-  const payload = [
-    options.linkId,
-    options.platform,
-    options.osFamily,
-    options.browserFamily,
-    normalizeAcceptLanguage(options.acceptLanguage),
-    options.ipHash?.trim() || 'unknown-ip',
-  ].join('|');
+function isValidVisitorId(value: string | null): value is string {
+  if (!value) {
+    return false;
+  }
+  return VISITOR_ID_PATTERN.test(value);
+}
 
-  return createHash('sha256').update(payload).digest('hex');
+/**
+ * Prefer a first-party cookie so CGNAT / shared Wi-Fi / same UA do not collapse
+ * many people into one unique. Each browser gets its own id on first click.
+ */
+export function resolveVisitorIdentity(options: {
+  cookieHeader: string | null;
+}): { visitorKey: string; setCookie: string | null } {
+  const existing = parseCookieValue(options.cookieHeader, VISITOR_COOKIE);
+  if (isValidVisitorId(existing)) {
+    return { visitorKey: existing, setCookie: null };
+  }
+
+  const visitorId = randomUUID();
+  const setCookie = [
+    `${VISITOR_COOKIE}=${visitorId}`,
+    'Path=/',
+    `Max-Age=${VISITOR_COOKIE_MAX_AGE_SECONDS}`,
+    'SameSite=Lax',
+    'Secure',
+    'HttpOnly',
+  ].join('; ');
+
+  return { visitorKey: visitorId, setCookie };
 }
