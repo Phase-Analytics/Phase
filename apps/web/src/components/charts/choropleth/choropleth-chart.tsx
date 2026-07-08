@@ -79,9 +79,18 @@ function resolveFittedProjection(
     collection
   );
 
+  // Slight overscale so the map fills the card without looking tiny.
+  const scaleBoost = 1.14;
+  const [tx, ty] = projection.translate();
+  const centerX = margin.left + innerWidth / 2;
+  const centerY = margin.top + innerHeight / 2;
+
   return {
-    scale: projection.scale(),
-    translate: projection.translate() as [number, number],
+    scale: projection.scale() * scaleBoost,
+    translate: [
+      centerX + (tx - centerX) * scaleBoost,
+      centerY + (ty - centerY) * scaleBoost,
+    ] as [number, number],
   };
 }
 

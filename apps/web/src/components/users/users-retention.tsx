@@ -16,14 +16,14 @@ export function UsersRetentionChart() {
 
   return (
     <TimescaleChart
-      chartColor="var(--chart-4)"
+      chartColor="var(--color-chart-2)"
       data={(data?.data ?? []).map((point) => ({
         date: String(point.day),
         value: point.retentionRate,
         label: `Day ${point.day}`,
       }))}
       dataKey="value"
-      dataLabel="Active users"
+      dataLabel="Retention"
       description="Exact-day retention after acquisition"
       isPending={isLoading}
       showTimeRange={false}

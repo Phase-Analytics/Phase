@@ -59,27 +59,13 @@ export function LinksTable({ appId, links, isLoading }: LinksTableProps) {
         const displayName = getLinkDisplayName(link.name, shortDisplay);
 
         return (
-          <div className="flex items-center gap-2">
-            <Link
-              className="max-w-xs truncate font-medium hover:underline lg:max-w-sm"
-              href={`/dashboard/links/${link.id}?app=${appId}`}
-              title={displayName}
-            >
-              {displayName}
-            </Link>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div>
-                  <CopyButton
-                    content={link.shortUrl}
-                    size="sm"
-                    variant="outline"
-                  />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>Copy link</TooltipContent>
-            </Tooltip>
-          </div>
+          <Link
+            className="block max-w-xs truncate font-medium hover:underline lg:max-w-sm"
+            href={`/dashboard/links/${link.id}?app=${appId}`}
+            title={displayName}
+          >
+            {displayName}
+          </Link>
         );
       },
     },
