@@ -15,7 +15,12 @@ type LinkDomainsListResponse = z.infer<typeof LinkDomainsListResponseSchema>;
 type SlugAvailableResponse = z.infer<typeof SlugAvailableResponseSchema>;
 
 import type { LinkDomain } from '@phase/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { buildQueryString, fetchApi, fetchApiFormData } from '@/lib/api/client';
 import type { PaginationQueryParams } from '@/lib/api/types';
 import { cacheConfig } from './query-client';
@@ -71,6 +76,7 @@ export function useLinkClicks(
       ),
     ...cacheConfig.list,
     enabled: Boolean(appId) && Boolean(linkId),
+    placeholderData: keepPreviousData,
     refetchInterval: 5000,
   });
 }

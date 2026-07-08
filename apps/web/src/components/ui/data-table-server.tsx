@@ -433,7 +433,7 @@ export function DataTableServer<TData, TValue>({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center">
-                {[10, 25].map((size) => (
+                {[10, 25, 50].map((size) => (
                   <DropdownMenuItem
                     key={size}
                     onClick={() => handlePageSizeChange(size)}

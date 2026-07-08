@@ -1,4 +1,9 @@
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useSuspenseQuery,
+} from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { buildQueryString, fetchApi } from '@/lib/api/client';
 import type {
@@ -36,7 +41,7 @@ type DeviceFilters = PaginationQueryParams & {
 };
 
 export function useDevices(appId: string, filters?: DeviceFilters) {
-  return useSuspenseQuery({
+  return useQuery({
     queryKey: queryKeys.devices.list(appId, filters),
     queryFn: () => {
       if (!appId) {
@@ -50,6 +55,8 @@ export function useDevices(appId: string, filters?: DeviceFilters) {
       );
     },
     ...cacheConfig.list,
+    enabled: Boolean(appId),
+    placeholderData: keepPreviousData,
   });
 }
 

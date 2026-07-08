@@ -17,6 +17,10 @@ import {
 } from '@/components/sessions/sessions-skeletons';
 import { SessionsTable } from '@/components/sessions/sessions-table';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  UsersRetentionChart,
+  UsersRetentionChartSkeleton,
+} from '@/components/users/users-retention';
 import { buildQueryString, fetchApi } from '@/lib/api/client';
 import type {
   SessionOverviewResponse,
@@ -161,6 +165,12 @@ export default function SessionsPage() {
         <ErrorBoundary>
           <Suspense fallback={<SessionsOverviewCardsSkeleton />}>
             <SessionsOverviewCards />
+          </Suspense>
+        </ErrorBoundary>
+
+        <ErrorBoundary>
+          <Suspense fallback={<UsersRetentionChartSkeleton />}>
+            <UsersRetentionChart />
           </Suspense>
         </ErrorBoundary>
 

@@ -1,4 +1,8 @@
-import { useSuspenseQuery } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useQuery,
+  useSuspenseQuery,
+} from '@tanstack/react-query';
 import { buildQueryString, fetchApi } from '@/lib/api/client';
 import type {
   DateRangeParams,
@@ -32,7 +36,7 @@ export function useSessions(
   appId: string,
   filters?: SessionFilters & { deviceId?: string }
 ) {
-  return useSuspenseQuery({
+  return useQuery({
     queryKey: queryKeys.sessions.list(appId, filters?.deviceId || '', filters),
     queryFn: () => {
       if (!appId) {
@@ -46,6 +50,8 @@ export function useSessions(
       );
     },
     ...cacheConfig.list,
+    enabled: Boolean(appId),
+    placeholderData: keepPreviousData,
   });
 }
 

@@ -18,18 +18,18 @@ const COUNTRY_CODE_REGEX = /^[A-Za-z]{2}$/;
 const TOP_COUNTRIES = 6;
 
 const PIE_COLORS = [
-  'var(--chart-scale-05)',
-  'var(--chart-scale-04)',
   'var(--chart-1)',
-  'var(--chart-scale-03)',
-  'var(--chart-map-03)',
-  'var(--chart-scale-02)',
-  'var(--chart-map-02)',
+  'oklch(0.62 0.14 165)',
+  'oklch(0.72 0.14 55)',
+  'oklch(0.58 0.16 310)',
+  'oklch(0.65 0.14 25)',
+  'oklch(0.55 0.08 230)',
+  'var(--muted-foreground)',
 ] as const;
 
 const PLATFORM_COLORS: Record<string, string> = {
   ios: 'var(--chart-1)',
-  android: 'var(--chart-scale-04)',
+  android: 'oklch(0.62 0.14 165)',
 };
 
 function getPlatformIcon(platform: string) {
@@ -132,25 +132,29 @@ export function UsersDistributionCard() {
     [platformRows]
   );
 
-  const countryRows = useMemo(() => {
-    const sorted = Object.entries(countryStats)
-      .filter(([, count]) => count > 0)
-      .sort(([, a], [, b]) => b - a);
+  const countryListRows = useMemo(
+    () =>
+      Object.entries(countryStats)
+        .filter(([, count]) => count > 0)
+        .sort(([, a], [, b]) => b - a)
+        .map(([key, count]) => ({ key, count })),
+    [countryStats]
+  );
 
-    const top = sorted.slice(0, TOP_COUNTRIES);
-    const rest = sorted.slice(TOP_COUNTRIES);
-    const othersCount = rest.reduce((sum, [, count]) => sum + count, 0);
-
-    const rows = top.map(([key, count]) => ({ key, count }));
+  const countryPieRows = useMemo(() => {
+    const top = countryListRows.slice(0, TOP_COUNTRIES);
+    const rest = countryListRows.slice(TOP_COUNTRIES);
+    const othersCount = rest.reduce((sum, row) => sum + row.count, 0);
+    const rows = [...top];
     if (othersCount > 0) {
       rows.push({ key: 'others', count: othersCount });
     }
     return rows;
-  }, [countryStats]);
+  }, [countryListRows]);
 
   const countryTotal = useMemo(
-    () => countryRows.reduce((sum, row) => sum + row.count, 0),
-    [countryRows]
+    () => countryListRows.reduce((sum, row) => sum + row.count, 0),
+    [countryListRows]
   );
 
   const pieData = useMemo((): PieData[] => {
@@ -162,18 +166,18 @@ export function UsersDistributionCard() {
       }));
     }
 
-    return countryRows.map((row, index) => ({
+    return countryPieRows.map((row, index) => ({
       label: getCountryLabel(row.key),
       value: row.count,
       color: PIE_COLORS[index % PIE_COLORS.length],
     }));
-  }, [activeTab, countryRows, platformRows]);
+  }, [activeTab, countryPieRows, platformRows]);
 
   if (!appId) {
     return null;
   }
 
-  const listRows = activeTab === 'country' ? countryRows : platformRows;
+  const listRows = activeTab === 'country' ? countryListRows : platformRows;
   const listTotal = activeTab === 'country' ? countryTotal : platformTotal;
 
   return (

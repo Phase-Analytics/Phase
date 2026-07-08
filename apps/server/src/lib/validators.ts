@@ -20,7 +20,7 @@ import {
 import { db, devices, sessions } from '@/db';
 
 const MIN_PAGE_SIZE = 5;
-const MAX_PAGE_SIZE = 25;
+const MAX_PAGE_SIZE = 50;
 
 export type TimestampMode = 'realtime' | 'offline';
 

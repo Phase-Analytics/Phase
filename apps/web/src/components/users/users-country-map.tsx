@@ -187,10 +187,9 @@ export function UsersCountryMap({
       <ChoroplethChart
         animationDuration={500}
         aspectRatio="auto"
-        center={[0, 10]}
         className="size-full"
         data={geoData}
-        margin={{ top: 8, right: 8, bottom: 8, left: 8 }}
+        margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
         zoomEnabled={false}
       >
         <ChoroplethFeatureComponent

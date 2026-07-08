@@ -1,4 +1,8 @@
-import { useSuspenseQuery } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useQuery,
+  useSuspenseQuery,
+} from '@tanstack/react-query';
 import { buildQueryString, fetchApi } from '@/lib/api/client';
 import type {
   DateRangeParams,
@@ -33,7 +37,7 @@ type EventFilters = PaginationQueryParams & {
 };
 
 export function useEvents(appId: string, filters?: EventFilters) {
-  return useSuspenseQuery({
+  return useQuery({
     queryKey: queryKeys.events.list(appId, filters),
     queryFn: () => {
       if (!appId) {
@@ -47,6 +51,8 @@ export function useEvents(appId: string, filters?: EventFilters) {
       );
     },
     ...cacheConfig.list,
+    enabled: Boolean(appId),
+    placeholderData: keepPreviousData,
   });
 }
 

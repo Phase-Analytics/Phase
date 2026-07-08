@@ -220,7 +220,7 @@ export function TimescaleChart({
             className="h-[250px] w-full"
             data={chartData}
             loadingLabel={`Loading ${dataLabel.toLowerCase()}…`}
-            margin={{ top: 28, right: 8, bottom: 24, left: 8 }}
+            margin={{ top: 40, right: 8, bottom: 28, left: 8 }}
             status={status}
             style={{ height: 250, aspectRatio: 'unset' }}
             yDomainTween

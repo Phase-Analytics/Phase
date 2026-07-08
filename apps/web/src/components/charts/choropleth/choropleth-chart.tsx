@@ -4,6 +4,7 @@ import { Mercator } from '@visx/geo';
 import { ParentSize } from '@visx/responsive';
 import type { TransformMatrix } from '@visx/zoom';
 import { Zoom } from '@visx/zoom';
+import { geoMercator } from 'd3-geo';
 import type { FeatureCollection, Geometry } from 'geojson';
 import type { Transition } from 'motion/react';
 import React, {
@@ -29,6 +30,60 @@ import {
 import { ChoroplethFeature as ChoroplethFeatureLayer } from './choropleth-feature';
 import { ChoroplethGraticule as ChoroplethGraticuleLayer } from './choropleth-graticule';
 import { ChoroplethTooltip as ChoroplethTooltipLayer } from './choropleth-tooltip';
+
+/** Antarctica skews world fitExtent; exclude from auto-fit. */
+const ANTARCTICA_IDS = new Set(['010', '10', 'ATA']);
+
+function featureNumericId(
+  featureItem: FeatureCollection<Geometry, ChoroplethFeatureProperties>['features'][number]
+): string | null {
+  const raw =
+    featureItem.id ??
+    featureItem.properties?.id ??
+    featureItem.properties?.ISO_N3 ??
+    featureItem.properties?.iso_n3;
+  if (raw === undefined || raw === null) {
+    return null;
+  }
+  return String(raw).padStart(3, '0');
+}
+
+function resolveFittedProjection(
+  data: FeatureCollection<Geometry, ChoroplethFeatureProperties>,
+  innerWidth: number,
+  innerHeight: number,
+  margin: Margin,
+  padding = 8
+) {
+  const fitFeatures = data.features.filter((featureItem) => {
+    const id = featureNumericId(featureItem);
+    return !(id && ANTARCTICA_IDS.has(id));
+  });
+
+  const collection: FeatureCollection<Geometry, ChoroplethFeatureProperties> = {
+    type: 'FeatureCollection',
+    features: fitFeatures.length > 0 ? fitFeatures : data.features,
+  };
+
+  const projection = geoMercator().fitExtent(
+    [
+      [padding + margin.left, padding + margin.top],
+      [
+        Math.max(padding + margin.left + 1, innerWidth + margin.left - padding),
+        Math.max(
+          padding + margin.top + 1,
+          innerHeight + margin.top - padding
+        ),
+      ],
+    ],
+    collection
+  );
+
+  return {
+    scale: projection.scale(),
+    translate: projection.translate() as [number, number],
+  };
+}
 
 export type ChoroplethChartProps = {
   /** GeoJSON FeatureCollection data */
@@ -374,13 +429,15 @@ function ChoroplethChartInner({
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
 
-  const scale =
-    scaleProp ?? Math.min(innerWidth / 5.9, Math.max(innerHeight, 1) / 2.85);
+  const fitted = useMemo(
+    () => resolveFittedProjection(data, innerWidth, innerHeight, margin),
+    [data, innerHeight, innerWidth, margin]
+  );
 
-  const translate = translateProp ?? [
-    innerWidth / 2 + margin.left,
-    innerHeight / 2 + margin.top,
-  ];
+  const scale = scaleProp ?? fitted.scale;
+  const translate = translateProp ?? fitted.translate;
+  const projectionCenter: [number, number] =
+    scaleProp != null || translateProp != null ? center : [0, 0];
 
   const { svgChildren, overlayChildren } = useMemo(
     () => separateChildren(children),
@@ -419,7 +476,7 @@ function ChoroplethChartInner({
 
   return (
     <Mercator
-      center={center}
+      center={projectionCenter}
       data={data.features}
       scale={scale}
       translate={translate as [number, number]}
