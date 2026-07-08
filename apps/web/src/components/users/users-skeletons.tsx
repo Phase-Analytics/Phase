@@ -79,12 +79,15 @@ export function UsersDistributionCardSkeleton() {
           </TabsList>
         </Tabs>
         <Skeleton className="h-5 w-48" />
-        <div className="h-[220px] space-y-3">
-          {Array.from({ length: 4 }, (_, i) => `skeleton-dist-${i}`).map(
-            (key) => (
-              <Skeleton className="h-10 w-full" key={key} />
-            )
-          )}
+        <div className="grid gap-4 md:grid-cols-2 md:items-center">
+          <div className="h-[220px] space-y-3">
+            {Array.from({ length: 4 }, (_, i) => `skeleton-dist-${i}`).map(
+              (key) => (
+                <Skeleton className="h-10 w-full" key={key} />
+              )
+            )}
+          </div>
+          <Skeleton className="mx-auto size-[200px] rounded-full" />
         </div>
       </CardContent>
     </Card>

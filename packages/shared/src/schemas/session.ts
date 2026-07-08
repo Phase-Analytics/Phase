@@ -1,12 +1,15 @@
 import { z } from 'zod';
 import { DEVICE_ID, SESSION_ID } from '../constants/validation';
 import { PaginationMetaSchema } from './common';
+import { PlatformSchema } from './device';
 
 export const SessionSchema = z.object({
   sessionId: z.string(),
   deviceId: z.string(),
   startedAt: z.string().datetime(),
   lastActivityAt: z.string().datetime(),
+  country: z.string().nullable().optional(),
+  platform: PlatformSchema.nullable().optional(),
 });
 
 export const CreateSessionRequestSchema = z.object({

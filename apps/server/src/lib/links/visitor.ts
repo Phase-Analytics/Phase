@@ -16,6 +16,7 @@ export function buildVisitorKey(options: {
   osFamily: string;
   browserFamily: string;
   acceptLanguage: string | null;
+  ipHash?: string | null;
 }): string {
   const payload = [
     options.linkId,
@@ -23,6 +24,7 @@ export function buildVisitorKey(options: {
     options.osFamily,
     options.browserFamily,
     normalizeAcceptLanguage(options.acceptLanguage),
+    options.ipHash?.trim() || 'unknown-ip',
   ].join('|');
 
   return createHash('sha256').update(payload).digest('hex');

@@ -358,6 +358,11 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
               platform: devices.platform,
               country: devices.country,
               firstSeen: devices.firstSeen,
+              lastSeen: sql<Date | null>`(
+                SELECT MAX(${sessions.lastActivityAt})
+                FROM ${sessions}
+                WHERE ${sessions.deviceId} = ${devices.deviceId}
+              )`,
             })
             .from(devices)
             .where(whereClause)
@@ -373,6 +378,12 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
             ...device,
             platform: normalizePlatform(device.platform),
             firstSeen: device.firstSeen.toISOString(),
+            lastSeen: device.lastSeen
+              ? (device.lastSeen instanceof Date
+                  ? device.lastSeen
+                  : new Date(device.lastSeen)
+                ).toISOString()
+              : null,
           })),
           pagination: formatPaginationResponse(
             Number(totalCount),

@@ -7,7 +7,7 @@ import {
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
 import { LINK_OG_IMAGE } from '@phase/shared';
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
@@ -116,9 +116,21 @@ export function LinkOgFields({
   const uploadImage = useUploadLinkOgImage(appId, linkId ?? '');
   const deleteImage = useDeleteLinkOgImage(appId, linkId ?? '');
 
-  const previewUrl = pendingFile
-    ? URL.createObjectURL(pendingFile)
-    : getLinkOgImageSrc(ogImageUrl, ogImageCacheKey);
+  const previewUrl = useMemo(() => {
+    if (pendingFile) {
+      return URL.createObjectURL(pendingFile);
+    }
+    return getLinkOgImageSrc(ogImageUrl, ogImageCacheKey);
+  }, [pendingFile, ogImageUrl, ogImageCacheKey]);
+
+  useEffect(
+    () => () => {
+      if (pendingFile && previewUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    },
+    [pendingFile, previewUrl]
+  );
 
   const handleFile = async (file: File | null) => {
     setUploadError(null);

@@ -25,6 +25,7 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { AppSwitcher } from '@/components/app-switcher';
 import type { CommandItem } from '@/components/command-menu';
 import { CommandMenu, CommandMenuTrigger } from '@/components/command-menu';
+import { DateDisplayToggle } from '@/components/date-display-toggle';
 import { KeybindsDialog } from '@/components/keybinds-dialog';
 import { ThemeTogglerButton } from '@/components/theme-toggler';
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
@@ -306,12 +307,14 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
             <div className="flex items-center gap-2">
               {!isMobile && (
                 <>
+                  <DateDisplayToggle />
                   <KeybindsDialog />
                   <CommandMenuTrigger
                     onClick={() => setCommandMenuOpen(true)}
                   />
                 </>
               )}
+              {isMobile ? <DateDisplayToggle /> : null}
               <ThemeTogglerButton />
             </div>
           </div>

@@ -130,7 +130,7 @@ const columns: ColumnDef<DeviceListItem>[] = [
   {
     accessorKey: 'firstSeen',
     header: 'First Seen',
-    size: 200,
+    size: 180,
     cell: ({ row }) => {
       const timestamp = row.getValue('firstSeen') as string;
       return (
@@ -140,6 +140,27 @@ const columns: ColumnDef<DeviceListItem>[] = [
             icon={Calendar03Icon}
           />
           <ClientDate className="text-sm" date={timestamp} />
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: 'lastSeen',
+    header: 'Last Seen',
+    size: 180,
+    cell: ({ row }) => {
+      const timestamp = row.getValue('lastSeen') as string | null;
+      return (
+        <div className="flex items-center gap-1.5">
+          <HugeiconsIcon
+            className="size-3.5 text-muted-foreground"
+            icon={Calendar03Icon}
+          />
+          {timestamp ? (
+            <ClientDate className="text-sm" date={timestamp} />
+          ) : (
+            <span className="text-muted-foreground text-sm">Never</span>
+          )}
         </div>
       );
     },

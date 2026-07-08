@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 import Redis from 'ioredis';
 import { QUESTDB_LINK_CLICKS_TABLE } from './constants';
 import type { LinkDevicePlatform } from './device';
-import { normalizeReferrer } from './referrer';
 
 const QUESTDB_HTTP = 'http://questdb:9000';
 const BUFFER_KEY = 'link_clicks:buffer';
@@ -46,7 +45,7 @@ function buildILPLine(click: BufferedLinkClick): string {
     `os=${escapeILPTag(click.os)}`,
     `browser=${escapeILPTag(click.browser)}`,
     `platform=${escapeILPTag(click.platform)}`,
-    `referrer=${escapeILPTag(normalizeReferrer(click.referrer))}`,
+    `referrer=${escapeILPTag(click.referrer?.trim() || 'direct')}`,
     `domain_host=${escapeILPTag(click.domainHost)}`,
   ].join(',');
 

@@ -34,72 +34,6 @@ function escapeSqlString(value: string): string {
   return escapeQuestDbString(value);
 }
 
-function computePercentChange(current: number, previous: number): number {
-  const baseline = Math.max(previous, 1);
-  return Number((((current - previous) / baseline) * 100).toFixed(2));
-}
-
-async function getLink24hChangeMetrics(
-  appId: string,
-  linkId: string
-): Promise<{
-  totalClicksChange24h: number;
-  uniqueVisitsChange24h: number;
-}> {
-  const now = new Date();
-  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-  const start24 = escapeSqlString(twentyFourHoursAgo.toISOString());
-  const start48 = escapeSqlString(fortyEightHoursAgo.toISOString());
-  const end = escapeSqlString(now.toISOString());
-
-  const base = `
-    app_id = '${appId}'
-    AND link_id = '${linkId}'
-  `;
-
-  const [last24Rows, prev24Rows] = await Promise.all([
-    executeQuestDBReadQuery<{
-      clicks: number;
-      unique_visits: number;
-    }>(`
-        SELECT
-          count() AS clicks,
-          count_distinct(visitor_key) AS unique_visits
-        FROM ${QUESTDB_LINK_CLICKS_TABLE}
-        WHERE ${base}
-          AND timestamp >= '${start24}'
-          AND timestamp < '${end}'
-      `),
-    executeQuestDBReadQuery<{
-      clicks: number;
-      unique_visits: number;
-    }>(`
-        SELECT
-          count() AS clicks,
-          count_distinct(visitor_key) AS unique_visits
-        FROM ${QUESTDB_LINK_CLICKS_TABLE}
-        WHERE ${base}
-          AND timestamp >= '${start48}'
-          AND timestamp < '${start24}'
-      `),
-  ]);
-
-  const last24 = last24Rows[0];
-  const prev24 = prev24Rows[0];
-
-  return {
-    totalClicksChange24h: computePercentChange(
-      Number(last24?.clicks ?? 0),
-      Number(prev24?.clicks ?? 0)
-    ),
-    uniqueVisitsChange24h: computePercentChange(
-      Number(last24?.unique_visits ?? 0),
-      Number(prev24?.unique_visits ?? 0)
-    ),
-  };
-}
-
 export async function getLinkClickTotalsByApp(
   appId: string
 ): Promise<Map<string, number>> {
@@ -147,7 +81,6 @@ export async function getLinkAnalytics(options: {
     osRows,
     browserRows,
     referrerRows,
-    changeMetrics,
   ] = await Promise.all([
     executeQuestDBReadQuery<{
       total_clicks: number;
@@ -210,16 +143,13 @@ export async function getLinkAnalytics(options: {
         GROUP BY key
         ORDER BY count DESC
       `),
-    getLink24hChangeMetrics(appId, linkId),
   ]);
 
   const summary = summaryRows[0];
 
   return {
     totalClicks: Number(summary?.total_clicks ?? 0),
-    totalClicksChange24h: changeMetrics.totalClicksChange24h,
     uniqueVisits: Number(summary?.unique_visits ?? 0),
-    uniqueVisitsChange24h: changeMetrics.uniqueVisitsChange24h,
     timeseries: timeseriesRows.map((row) => ({
       date: row.date,
       clicks: Number(row.clicks),

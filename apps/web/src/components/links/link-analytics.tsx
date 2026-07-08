@@ -1,7 +1,5 @@
 'use client';
 
-import { ChartDownIcon, ChartUpIcon } from '@hugeicons/core-free-icons';
-import { HugeiconsIcon } from '@hugeicons/react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useMemo, useState } from 'react';
 import { LinkAnalyticsBreakdownCard } from '@/components/links/link-analytics-breakdown';
@@ -15,7 +13,6 @@ import {
   isAnalyticsTimeRange,
 } from '@/lib/analytics-time-range';
 import { useLinkAnalytics } from '@/lib/queries';
-import { cn } from '@/lib/utils';
 
 type LinkAnalyticsProps = {
   appId: string;
@@ -28,30 +25,6 @@ const RANGE_MS: Record<string, number> = {
   '180d': 180 * 24 * 60 * 60 * 1000,
   '360d': 360 * 24 * 60 * 60 * 1000,
 };
-
-function getChangeColor(change: number) {
-  if (change === 0) {
-    return 'text-muted-foreground';
-  }
-  return change > 0 ? 'text-success' : 'text-destructive';
-}
-
-function OverviewChange({ change }: { change: number }) {
-  return (
-    <div className="mt-1 flex items-center gap-1 text-xs">
-      {change !== 0 && (
-        <HugeiconsIcon
-          className={cn('size-3', getChangeColor(change))}
-          icon={change > 0 ? ChartUpIcon : ChartDownIcon}
-        />
-      )}
-      <span className={cn('font-medium', getChangeColor(change))}>
-        {Math.abs(change)}%
-      </span>
-      <span className="text-muted-foreground">from yesterday</span>
-    </div>
-  );
-}
 
 export function LinkAnalytics({ appId, linkId }: LinkAnalyticsProps) {
   const [range, setRange] = useQueryState(
@@ -118,7 +91,6 @@ export function LinkAnalytics({ appId, linkId }: LinkAnalyticsProps) {
             <p className="font-bold text-3xl tabular-nums">
               <CountingNumber initiallyStable number={data.totalClicks} />
             </p>
-            <OverviewChange change={data.totalClicksChange24h} />
           </CardContent>
         </Card>
         <Card className="py-0">
@@ -129,7 +101,6 @@ export function LinkAnalytics({ appId, linkId }: LinkAnalyticsProps) {
             <p className="font-bold text-3xl tabular-nums">
               <CountingNumber initiallyStable number={data.uniqueVisits} />
             </p>
-            <OverviewChange change={data.uniqueVisitsChange24h} />
           </CardContent>
         </Card>
       </div>

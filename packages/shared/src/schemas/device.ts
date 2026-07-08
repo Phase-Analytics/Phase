@@ -80,6 +80,7 @@ export const DeviceListItemSchema = z.object({
   platform: PlatformSchema.nullable(),
   country: z.string().nullable(),
   firstSeen: z.string().datetime(),
+  lastSeen: z.string().datetime().nullable(),
 });
 
 export const DeviceDetailSchema = z.object({

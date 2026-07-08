@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { normalizeLinkBrowserFamily } from '@phase/shared';
 import { UAParser } from 'ua-parser-js';
 import { getLocationFromIP } from '@/lib/geolocation';
@@ -11,7 +11,7 @@ import {
   resolveLinkDevicePlatform,
 } from './device';
 import { buildLinkOgPreviewHtml, buildLinkPreviewPageUrl } from './og-preview';
-import { normalizeReferrer } from './referrer';
+import { resolveLinkReferrer } from './referrer';
 import {
   isLinkAllowedOnDomain,
   isLinkUnavailable,
@@ -118,6 +118,9 @@ export async function handleLinkRedirect(
 
   const clientIp = extractClientIp(request);
   const geo = clientIp ? getLocationFromIP(clientIp) : null;
+  const ipHash = clientIp
+    ? createHash('sha256').update(clientIp).digest('hex').slice(0, 16)
+    : null;
 
   const buffer = getLinkClickBuffer();
   if (buffer && shouldRecordLinkClick(request)) {
@@ -134,12 +137,17 @@ export async function handleLinkRedirect(
         osFamily,
         browserFamily,
         acceptLanguage: request.headers.get('accept-language'),
+        ipHash,
       }),
       countryCode,
       os: osFamily,
       browser: browserFamily,
       platform,
-      referrer: normalizeReferrer(request.headers.get('referer')),
+      referrer: resolveLinkReferrer({
+        refererHeader: request.headers.get('referer'),
+        requestUrl: request.url,
+        secFetchSite: request.headers.get('sec-fetch-site'),
+      }),
       domainHost,
       timestamp,
     });

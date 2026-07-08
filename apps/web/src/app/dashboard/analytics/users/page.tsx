@@ -184,19 +184,17 @@ export default function UsersPage() {
           </Suspense>
         </ErrorBoundary>
 
-        <div className="grid min-w-0 gap-4 md:grid-cols-2">
-          <ErrorBoundary>
-            <Suspense fallback={<UsersDistributionCardSkeleton />}>
-              <UsersDistributionCard />
-            </Suspense>
-          </ErrorBoundary>
+        <ErrorBoundary>
+          <Suspense fallback={<UsersDistributionCardSkeleton />}>
+            <UsersDistributionCard />
+          </Suspense>
+        </ErrorBoundary>
 
-          <ErrorBoundary>
-            <Suspense fallback={<UsersCountryMapSkeleton />}>
-              <UsersCountryMapCard />
-            </Suspense>
-          </ErrorBoundary>
-        </div>
+        <ErrorBoundary>
+          <Suspense fallback={<UsersCountryMapSkeleton />}>
+            <UsersCountryMapCard />
+          </Suspense>
+        </ErrorBoundary>
 
         <Card className="py-0">
           <CardContent className="space-y-4 p-4">

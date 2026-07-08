@@ -111,6 +111,7 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
 
         if (deviceId) {
           filters.push(eq(sessions.deviceId, deviceId));
+          filters.push(eq(devices.appId, appId));
         } else {
           filters.push(eq(devices.appId, appId));
         }
@@ -129,18 +130,16 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
             deviceId: sessions.deviceId,
             startedAt: sessions.startedAt,
             lastActivityAt: sessions.lastActivityAt,
+            country: devices.country,
+            platform: devices.platform,
           })
-          .from(sessions);
+          .from(sessions)
+          .innerJoin(devices, eq(sessions.deviceId, devices.deviceId));
 
-        const countQuery = db.select({ count: count() }).from(sessions);
-
-        if (!deviceId) {
-          baseQuery.innerJoin(devices, eq(sessions.deviceId, devices.deviceId));
-          countQuery.innerJoin(
-            devices,
-            eq(sessions.deviceId, devices.deviceId)
-          );
-        }
+        const countQuery = db
+          .select({ count: count() })
+          .from(sessions)
+          .innerJoin(devices, eq(sessions.deviceId, devices.deviceId));
 
         const [sessionsList, [{ count: totalCount }]] = await Promise.all([
           baseQuery
@@ -151,12 +150,23 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
           countQuery.where(whereClause),
         ]);
 
-        const formattedSessions = sessionsList.map((session) => ({
-          sessionId: session.sessionId,
-          deviceId: session.deviceId,
-          startedAt: session.startedAt.toISOString(),
-          lastActivityAt: session.lastActivityAt.toISOString(),
-        }));
+        const formattedSessions = sessionsList.map((session) => {
+          let platform: 'ios' | 'android' | 'unknown' | null = null;
+          if (session.platform === 'ios' || session.platform === 'android') {
+            platform = session.platform;
+          } else if (session.platform) {
+            platform = 'unknown';
+          }
+
+          return {
+            sessionId: session.sessionId,
+            deviceId: session.deviceId,
+            startedAt: session.startedAt.toISOString(),
+            lastActivityAt: session.lastActivityAt.toISOString(),
+            country: session.country,
+            platform,
+          };
+        });
 
         set.status = HttpStatus.OK;
         return {

@@ -1,9 +1,17 @@
 'use client';
 
-import { Calendar03Icon, Time03Icon } from '@hugeicons/core-free-icons';
+import {
+  AndroidIcon,
+  AnonymousIcon,
+  AppleIcon,
+  Calendar03Icon,
+  Flag02Icon,
+  Time03Icon,
+} from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { parseAsInteger, parseAsString, useQueryState } from 'nuqs';
+import 'flag-icons/css/flag-icons.min.css';
 import { ClientDate, ClientDuration } from '@/components/client-date';
 import { DataTableServer } from '@/components/ui/data-table-server';
 import { getGeneratedName, UserAvatar } from '@/components/user-profile';
@@ -12,11 +20,43 @@ import { useSessions } from '@/lib/queries';
 import { usePaginationStore } from '@/stores/pagination-store';
 import { SessionDetailsDialog } from './session-details-dialog';
 
+const COUNTRY_CODE_REGEX = /^[A-Za-z]{2}$/;
+
+function getPlatformIcon(platform: string | null | undefined) {
+  switch (platform) {
+    case 'android':
+      return AndroidIcon;
+    case 'ios':
+      return AppleIcon;
+    default:
+      return AnonymousIcon;
+  }
+}
+
+function getPlatformLabel(platform: string | null | undefined) {
+  switch (platform) {
+    case 'android':
+      return 'Android';
+    case 'ios':
+      return 'iOS';
+    default:
+      return 'Unknown';
+  }
+}
+
+function getCountryLabel(countryCode: string) {
+  return (
+    new Intl.DisplayNames(['en'], {
+      type: 'region',
+    }).of(countryCode) || countryCode
+  );
+}
+
 const columns: ColumnDef<Session>[] = [
   {
     accessorKey: 'deviceId',
     header: 'User',
-    size: 350,
+    size: 280,
     cell: ({ row }) => {
       const deviceId = row.getValue('deviceId') as string;
       const generatedName = getGeneratedName(deviceId);
@@ -34,7 +74,7 @@ const columns: ColumnDef<Session>[] = [
   {
     accessorKey: 'startedAt',
     header: 'Date',
-    size: 200,
+    size: 180,
     cell: ({ row }) => {
       const timestamp = row.getValue('startedAt') as string;
       return (
@@ -50,9 +90,54 @@ const columns: ColumnDef<Session>[] = [
     },
   },
   {
+    accessorKey: 'country',
+    header: 'Country',
+    size: 140,
+    cell: ({ row }) => {
+      const country = row.original.country ?? null;
+      return (
+        <div className="flex items-center gap-1.5">
+          {!country ||
+          country.length !== 2 ||
+          !COUNTRY_CODE_REGEX.test(country) ? (
+            <HugeiconsIcon
+              className="size-3.5 text-muted-foreground"
+              icon={Flag02Icon}
+            />
+          ) : (
+            <span
+              className={`fi fi-${country.toLowerCase()} rounded-xs text-[14px]`}
+              title={getCountryLabel(country)}
+            />
+          )}
+          <span className="text-sm">
+            {country ? getCountryLabel(country) : 'Unknown'}
+          </span>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: 'platform',
+    header: 'Platform',
+    size: 120,
+    cell: ({ row }) => {
+      const platform = row.original.platform ?? null;
+      return (
+        <div className="flex items-center gap-1.5">
+          <HugeiconsIcon
+            className="size-3.5 text-muted-foreground"
+            icon={getPlatformIcon(platform)}
+          />
+          <span className="text-sm">{getPlatformLabel(platform)}</span>
+        </div>
+      );
+    },
+  },
+  {
     accessorKey: 'lastActivityAt',
     header: 'Duration',
-    size: 200,
+    size: 160,
     cell: ({ row }) => {
       const durationInSeconds = Math.floor(
         (new Date(row.original.lastActivityAt).getTime() -

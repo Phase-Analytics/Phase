@@ -1,6 +1,8 @@
 'use client';
 
 import {
+  AndroidIcon,
+  AppleIcon,
   Clock04Icon,
   Link01Icon,
   Link05Icon,
@@ -8,7 +10,7 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useEffect, useMemo } from 'react';
 import { DatePicker } from '@/components/date-picker';
-import { LinkDeviceRoutingFields } from '@/components/links/link-device-routing-fields';
+import type { LinkDeviceRoutingValues } from '@/components/links/link-device-routing-fields';
 import type { LinkFormState } from '@/components/links/link-form-utils';
 import { PHASE_HOST_VALUE } from '@/components/links/link-form-utils';
 import { LinkOgFields } from '@/components/links/link-og-fields';
@@ -29,6 +31,23 @@ type LinkFormFieldsProps = {
   originalSlug?: string;
   idPrefix?: string;
 };
+
+const OVERVIEW_DEVICE_FIELDS = [
+  {
+    key: 'deviceAndroidUrl' as const,
+    label: 'Android URL',
+    icon: AndroidIcon,
+    id: 'device_android',
+    placeholder: 'example.com/android',
+  },
+  {
+    key: 'deviceIosUrl' as const,
+    label: 'iOS URL',
+    icon: AppleIcon,
+    id: 'device_ios',
+    placeholder: 'example.com/ios',
+  },
+] as const;
 
 export function LinkFormFields({
   appId,
@@ -55,6 +74,10 @@ export function LinkFormFields({
 
   const patch = (partial: Partial<LinkFormState>) => {
     onChange({ ...form, ...partial });
+  };
+
+  const patchDevice = (partial: Partial<LinkDeviceRoutingValues>) => {
+    patch({ device: { ...form.device, ...partial } });
   };
 
   const previewLink = useMemo(
@@ -94,10 +117,9 @@ export function LinkFormFields({
 
   return (
     <Tabs defaultValue="overview">
-      <TabsList className="grid w-full grid-cols-4">
+      <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="overview">Overview</TabsTrigger>
         <TabsTrigger value="preview">Preview</TabsTrigger>
-        <TabsTrigger value="routing">Routing</TabsTrigger>
         <TabsTrigger value="utm">UTM</TabsTrigger>
       </TabsList>
 
@@ -134,6 +156,28 @@ export function LinkFormFields({
             value={form.destinationUrl}
           />
         </div>
+
+        {OVERVIEW_DEVICE_FIELDS.map(({ key, label, icon, id, placeholder }) => (
+          <div className="space-y-2" key={key}>
+            <label
+              className="flex items-center gap-1.5 font-medium text-sm"
+              htmlFor={`${idPrefix}-${id}`}
+            >
+              <HugeiconsIcon
+                className="size-4 shrink-0 text-muted-foreground"
+                icon={icon}
+              />
+              {label}
+            </label>
+            <Input
+              id={`${idPrefix}-${id}`}
+              onChange={(e) => patchDevice({ [key]: e.target.value })}
+              placeholder={placeholder}
+              type="text"
+              value={form.device[key]}
+            />
+          </div>
+        ))}
 
         <div className="space-y-2">
           <label
@@ -211,6 +255,10 @@ export function LinkFormFields({
       <TabsContent className="space-y-4" value="preview">
         <LinkOgPreviewCard
           imageOverride={pendingPreviewUrl}
+          key={
+            pendingPreviewUrl ??
+            `${form.ogImageUrl ?? 'none'}:${form.ogImageCacheKey ?? '0'}`
+          }
           link={previewLink}
           variant="inline"
         />
@@ -228,13 +276,6 @@ export function LinkFormFields({
           pendingFile={form.ogPendingFile}
           showSocialPreview={false}
           values={form.og}
-        />
-      </TabsContent>
-
-      <TabsContent className="space-y-4" value="routing">
-        <LinkDeviceRoutingFields
-          onChange={(device) => patch({ device })}
-          values={form.device}
         />
       </TabsContent>
 

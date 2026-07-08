@@ -36,7 +36,7 @@ export function UsersCountryMapCard() {
           User distribution by location
         </p>
 
-        <div className="relative h-[200px] w-full min-w-0 overflow-hidden rounded-md sm:h-[220px]">
+        <div className="relative h-[240px] w-full min-w-0 overflow-hidden rounded-md sm:h-[320px]">
           <UsersCountryMap
             countryStats={countryStats}
             totalDevices={totalDevices}

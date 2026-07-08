@@ -86,14 +86,32 @@ export function LinksTable({ appId, links, isLoading }: LinksTableProps) {
     {
       accessorKey: 'destinationUrl',
       header: 'Destination',
-      cell: ({ row }) => (
-        <span
-          className="block max-w-xs truncate text-muted-foreground text-sm"
-          title={formatUrlWithoutProtocol(row.original.destinationUrl)}
-        >
-          {formatUrlWithoutProtocol(row.original.destinationUrl)}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const destination = row.original.destinationUrl;
+        const display = formatUrlWithoutProtocol(destination);
+        return (
+          <div className="flex max-w-xs items-center gap-2 lg:max-w-sm">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <CopyButton
+                    content={destination}
+                    size="sm"
+                    variant="outline"
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>Copy destination</TooltipContent>
+            </Tooltip>
+            <span
+              className="truncate text-muted-foreground text-sm"
+              title={display}
+            >
+              {display}
+            </span>
+          </div>
+        );
+      },
     },
     {
       accessorKey: 'totalClicks',
