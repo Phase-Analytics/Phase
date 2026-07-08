@@ -105,17 +105,17 @@ function resolveTimeSeriesYDomain(
   yScaleDomainMax: number | undefined
 ): [number, number] {
   if (yScaleDomainMax != null && yScaleDomainMax > 0) {
-    return [0, yScaleDomainMax * 1.1];
+    return [0, yScaleDomainMax * 1.22];
   }
 
   const { minValue, maxValue } = collectNumericExtents(data, dataKeys);
 
   if (minValue >= 0) {
-    const top = maxValue <= 0 ? 100 : maxValue * 1.1;
+    const top = maxValue <= 0 ? 100 : maxValue * 1.22;
     return [0, top];
   }
 
-  const padding = (maxValue - minValue) * 0.05 || 1;
+  const padding = (maxValue - minValue) * 0.12 || 1;
   return [minValue - padding, maxValue + padding];
 }
 

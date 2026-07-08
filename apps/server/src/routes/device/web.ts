@@ -21,6 +21,7 @@ import {
   gte,
   lt,
   lte,
+  max,
   type SQL,
   sql,
 } from 'drizzle-orm';
@@ -351,6 +352,15 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
           endDateValue: query.endDate as string | undefined,
         });
 
+        const deviceLastSeen = db
+          .select({
+            deviceId: sessions.deviceId,
+            lastSeen: max(sessions.lastActivityAt).as('last_seen'),
+          })
+          .from(sessions)
+          .groupBy(sessions.deviceId)
+          .as('device_last_seen');
+
         const [devicesList, [{ count: totalCount }]] = await Promise.all([
           db
             .select({
@@ -358,13 +368,13 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
               platform: devices.platform,
               country: devices.country,
               firstSeen: devices.firstSeen,
-              lastSeen: sql<Date | null>`(
-                SELECT MAX(${sessions.lastActivityAt})
-                FROM ${sessions}
-                WHERE ${sessions.deviceId} = ${devices.deviceId}
-              )`,
+              lastSeen: deviceLastSeen.lastSeen,
             })
             .from(devices)
+            .leftJoin(
+              deviceLastSeen,
+              eq(devices.deviceId, deviceLastSeen.deviceId)
+            )
             .where(whereClause)
             .orderBy(desc(devices.firstSeen))
             .limit(pageSize)
@@ -375,15 +385,11 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
         set.status = HttpStatus.OK;
         return {
           devices: devicesList.map((device) => ({
-            ...device,
+            deviceId: device.deviceId,
             platform: normalizePlatform(device.platform),
+            country: device.country,
             firstSeen: device.firstSeen.toISOString(),
-            lastSeen: device.lastSeen
-              ? (device.lastSeen instanceof Date
-                  ? device.lastSeen
-                  : new Date(device.lastSeen)
-                ).toISOString()
-              : null,
+            lastSeen: device.lastSeen ? device.lastSeen.toISOString() : null,
           })),
           pagination: formatPaginationResponse(
             Number(totalCount),

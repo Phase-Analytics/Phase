@@ -374,11 +374,12 @@ function ChoroplethChartInner({
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
 
-  const scale = scaleProp ?? (innerWidth / 630) * 100;
+  const scale =
+    scaleProp ?? Math.min(innerWidth / 5.9, Math.max(innerHeight, 1) / 2.85);
 
   const translate = translateProp ?? [
     innerWidth / 2 + margin.left,
-    innerHeight / 2 + margin.top + 50,
+    innerHeight / 2 + margin.top,
   ];
 
   const { svgChildren, overlayChildren } = useMemo(

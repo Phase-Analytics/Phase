@@ -52,7 +52,7 @@ export function UsersCountryMapSkeleton() {
       <CardContent className="space-y-4 p-4">
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-5 w-48" />
-        <Skeleton className="h-[220px] w-full rounded-lg" />
+        <Skeleton className="aspect-[2.2/1] min-h-[280px] w-full rounded-lg sm:min-h-[380px]" />
       </CardContent>
     </Card>
   );

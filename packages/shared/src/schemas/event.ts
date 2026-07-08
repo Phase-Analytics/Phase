@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { EVENT_NAME, SESSION_ID } from '../constants/validation';
 import { PaginationMetaSchema } from './common';
+import { PlatformSchema } from './device';
 
 export const EventParamsSchema = z.record(
   z.string(),
@@ -11,6 +12,7 @@ export const EventListItemSchema = z.object({
   eventId: z.string(),
   name: z.string(),
   deviceId: z.string(),
+  platform: PlatformSchema.nullable().optional(),
   isScreen: z.boolean(),
   isDebug: z.boolean(),
   timestamp: z.string().datetime(),

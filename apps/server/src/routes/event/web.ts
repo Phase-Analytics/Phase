@@ -6,10 +6,13 @@ import {
   EventsListResponseSchema,
   EventTimeseriesResponseSchema,
   HttpStatus,
+  type Platform,
   TopEventsResponseSchema,
   TopScreensResponseSchema,
 } from '@phase/shared';
+import { inArray } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
+import { db, devices } from '@/db';
 import { auth } from '@/lib/auth';
 import {
   type App,
@@ -32,6 +35,19 @@ import {
   validatePagination,
   validateSession,
 } from '@/lib/validators';
+
+function normalizePlatform(
+  platform: string | null | undefined
+): Platform | null {
+  if (!platform) {
+    return null;
+  }
+  const lower = platform.toLowerCase();
+  if (lower === 'ios' || lower === 'android') {
+    return lower as Platform;
+  }
+  return 'unknown';
+}
 
 type AuthContext = {
   user: BetterAuthUser;
@@ -134,6 +150,29 @@ export const eventWebRouter = new Elysia({ prefix: '/events' })
           offset,
         });
 
+        const deviceIds = [
+          ...new Set(
+            eventsList.map((event) => event.device_id).filter(Boolean)
+          ),
+        ];
+        const platformByDeviceId = new Map<string, Platform | null>();
+        if (deviceIds.length > 0) {
+          const deviceRows = await db
+            .select({
+              deviceId: devices.deviceId,
+              platform: devices.platform,
+            })
+            .from(devices)
+            .where(inArray(devices.deviceId, deviceIds));
+
+          for (const row of deviceRows) {
+            platformByDeviceId.set(
+              row.deviceId,
+              normalizePlatform(row.platform)
+            );
+          }
+        }
+
         const formattedEvents = eventsList.map((event) => {
           let timestamp: string;
           try {
@@ -149,6 +188,7 @@ export const eventWebRouter = new Elysia({ prefix: '/events' })
             eventId: event.event_id,
             name: event.name,
             deviceId: event.device_id,
+            platform: platformByDeviceId.get(event.device_id) ?? null,
             isScreen: Boolean(event.is_screen),
             isDebug: Boolean(event.is_debug),
             timestamp,

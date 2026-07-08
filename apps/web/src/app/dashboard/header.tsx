@@ -307,8 +307,8 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
             <div className="flex items-center gap-2">
               {!isMobile && (
                 <>
-                  <DateDisplayToggle />
                   <KeybindsDialog />
+                  <DateDisplayToggle />
                   <CommandMenuTrigger
                     onClick={() => setCommandMenuOpen(true)}
                   />

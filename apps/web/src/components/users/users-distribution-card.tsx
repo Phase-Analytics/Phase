@@ -18,14 +18,19 @@ const COUNTRY_CODE_REGEX = /^[A-Za-z]{2}$/;
 const TOP_COUNTRIES = 6;
 
 const PIE_COLORS = [
+  'var(--chart-scale-05)',
+  'var(--chart-scale-04)',
   'var(--chart-1)',
-  'var(--chart-3)',
-  'var(--chart-4)',
-  'var(--chart-5)',
-  'oklch(0.62 0.14 200)',
-  'oklch(0.58 0.12 145)',
-  'var(--muted-foreground)',
+  'var(--chart-scale-03)',
+  'var(--chart-map-03)',
+  'var(--chart-scale-02)',
+  'var(--chart-map-02)',
 ] as const;
+
+const PLATFORM_COLORS: Record<string, string> = {
+  ios: 'var(--chart-1)',
+  android: 'var(--chart-scale-04)',
+};
 
 function getPlatformIcon(platform: string) {
   switch (platform) {
@@ -150,10 +155,10 @@ export function UsersDistributionCard() {
 
   const pieData = useMemo((): PieData[] => {
     if (activeTab === 'platform') {
-      return platformRows.map((row, index) => ({
+      return platformRows.map((row) => ({
         label: getPlatformLabel(row.key),
         value: row.count,
-        color: PIE_COLORS[index % PIE_COLORS.length],
+        color: PLATFORM_COLORS[row.key] ?? 'var(--chart-1)',
       }));
     }
 
@@ -221,7 +226,10 @@ export function UsersDistributionCard() {
                 const percentage = listTotal
                   ? (row.count / listTotal) * 100
                   : 0;
-                const color = PIE_COLORS[index % PIE_COLORS.length];
+                const color =
+                  activeTab === 'platform'
+                    ? (PLATFORM_COLORS[row.key] ?? 'var(--chart-1)')
+                    : PIE_COLORS[index % PIE_COLORS.length];
 
                 return (
                   <div className="min-w-0 space-y-1.5" key={row.key}>

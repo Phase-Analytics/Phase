@@ -1,6 +1,9 @@
 'use client';
 
 import {
+  AndroidIcon,
+  AnonymousIcon,
+  AppleIcon,
   Calendar03Icon,
   CursorPointer02Icon,
   ViewIcon,
@@ -13,23 +16,37 @@ import { DebugDataBadge } from '@/components/debug-data-badge';
 import { EventsSheet } from '@/components/events/event-details-sheet';
 import { DataTableServer } from '@/components/ui/data-table-server';
 import { getGeneratedName, UserAvatar } from '@/components/user-profile';
+import type { EventListItem } from '@/lib/api/types';
 import { useEvents } from '@/lib/queries';
 import { usePaginationStore } from '@/stores/pagination-store';
 
-type Event = {
-  eventId: string;
-  name: string;
-  deviceId: string;
-  isScreen: boolean;
-  isDebug: boolean;
-  timestamp: string;
-};
+function getPlatformIcon(platform: string | null | undefined) {
+  switch (platform) {
+    case 'android':
+      return AndroidIcon;
+    case 'ios':
+      return AppleIcon;
+    default:
+      return AnonymousIcon;
+  }
+}
 
-const columns: ColumnDef<Event>[] = [
+function getPlatformLabel(platform: string | null | undefined) {
+  switch (platform) {
+    case 'android':
+      return 'Android';
+    case 'ios':
+      return 'iOS';
+    default:
+      return 'Unknown';
+  }
+}
+
+const columns: ColumnDef<EventListItem>[] = [
   {
     accessorKey: 'deviceId',
     header: 'User',
-    size: 350,
+    size: 280,
     cell: ({ row }) => {
       const deviceId = row.getValue('deviceId') as string;
       const generatedName = getGeneratedName(deviceId);
@@ -47,7 +64,7 @@ const columns: ColumnDef<Event>[] = [
   {
     accessorKey: 'name',
     header: 'Event',
-    size: 350,
+    size: 300,
     cell: ({ row }) => {
       const isScreen = row.original.isScreen;
       const name = row.getValue('name') as string;
@@ -71,9 +88,26 @@ const columns: ColumnDef<Event>[] = [
     },
   },
   {
+    accessorKey: 'platform',
+    header: 'Platform',
+    size: 120,
+    cell: ({ row }) => {
+      const platform = row.original.platform ?? null;
+      return (
+        <div className="flex items-center gap-1.5">
+          <HugeiconsIcon
+            className="size-3.5 text-muted-foreground"
+            icon={getPlatformIcon(platform)}
+          />
+          <span className="text-sm">{getPlatformLabel(platform)}</span>
+        </div>
+      );
+    },
+  },
+  {
     accessorKey: 'timestamp',
     header: 'Date',
-    size: 200,
+    size: 180,
     cell: ({ row }) => {
       const timestamp = row.getValue('timestamp') as string;
       return (
@@ -131,7 +165,7 @@ export function EventsTable() {
         searchKey="name"
         searchPlaceholder="Search events"
       />
-      <EventsSheet appId={appId || ''} />
+      <EventsSheet appId={appId} />
     </>
   );
 }
