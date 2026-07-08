@@ -5,8 +5,12 @@ import {
   CheckmarkSquare01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { type ReactNode, useId, useMemo } from 'react';
-import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
+import { type ReactNode, useMemo } from 'react';
+import { Area } from '@/components/charts/area';
+import { AreaChart } from '@/components/charts/area-chart';
+import { Grid } from '@/components/charts/grid';
+import { ChartTooltip } from '@/components/charts/tooltip';
+import { XAxis } from '@/components/charts/x-axis';
 import { ClientDate } from '@/components/client-date';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,20 +21,12 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {
-  type ChartConfig,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from '@/components/ui/chart';
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { formatDate } from '@/lib/date-utils';
 
 type TimeRangeOption = {
   value: string;
@@ -63,6 +59,14 @@ type TimescaleChartProps = {
   emptyMessage?: string;
 };
 
+function parseChartDate(value: string): Date {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return new Date(value.includes('T') ? value : `${value}T00:00:00`);
+  }
+  return date;
+}
+
 export function TimescaleChart({
   title,
   description,
@@ -75,25 +79,35 @@ export function TimescaleChart({
   metric,
   metricOptions,
   onMetricChange,
-  dataKey,
   dataLabel,
   chartColor,
   valueFormatter,
-  xTickFormatter,
   tooltipLabelFormatter,
   emptyMessage = 'No data available for this period',
 }: TimescaleChartProps) {
-  const chartId = `chart-${useId().replaceAll(':', '')}`;
-
-  const chartConfig = {
-    [dataKey]: {
-      label: dataLabel,
-      color: chartColor,
-    },
-  } satisfies ChartConfig;
-
   const currentOption = timeRangeOptions.find((opt) => opt.value === timeRange);
   const currentLabel = currentOption?.label || timeRangeOptions[0]?.label;
+
+  const chartData = useMemo(
+    () =>
+      data.map((point) => ({
+        date: parseChartDate(point.date),
+        value: point.value,
+        rawDate: point.date,
+      })),
+    [data]
+  );
+
+  const dashFromIndex = useMemo(() => {
+    if (chartData.length < 2) {
+      return;
+    }
+    const firstValue = chartData[0].value;
+    if (chartData.every((point) => point.value === firstValue)) {
+      return;
+    }
+    return chartData.length - 1;
+  }, [chartData]);
 
   const timeRangeControl =
     showTimeRange && onTimeRangeChange ? (
@@ -123,15 +137,9 @@ export function TimescaleChart({
       </DropdownMenu>
     ) : null;
 
-  const defaultFormatter = (value: number) => value;
-
-  const allValuesSame = useMemo(() => {
-    if (data.length === 0) {
-      return true;
-    }
-    const firstValue = data[0].value;
-    return data.every((d) => d.value === firstValue);
-  }, [data]);
+  const status = isPending ? 'loading' : 'ready';
+  const hasData = chartData.length > 0;
+  const showEmpty = !(isPending || hasData);
 
   return (
     <Card className="py-0">
@@ -167,153 +175,89 @@ export function TimescaleChart({
         )}
       </CardHeader>
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
-        {isPending && <Skeleton className="h-[250px] w-full" />}
-
-        {!isPending && data.length === 0 && (
+        {showEmpty ? (
           <div className="flex h-[250px] items-center justify-center rounded-lg border border-dashed">
             <p className="text-muted-foreground text-sm">{emptyMessage}</p>
           </div>
-        )}
-
-        {!isPending && data.length > 0 && (
-          <ChartContainer
-            className="aspect-auto h-[250px] w-full"
-            config={chartConfig}
+        ) : (
+          <AreaChart
+            className="h-[250px] w-full"
+            data={chartData}
+            loadingLabel={`Loading ${dataLabel.toLowerCase()}…`}
+            margin={{ top: 16, right: 12, bottom: 28, left: 12 }}
+            status={status}
+            style={{ height: 250, aspectRatio: 'unset' }}
+            yDomainTween
           >
-            <AreaChart data={data}>
-              <defs>
-                <linearGradient
-                  id={`fill-${chartId}`}
-                  x1="0"
-                  x2="0"
-                  y1="0"
-                  y2="1"
-                >
-                  <stop
-                    offset="5%"
-                    stopColor={`var(--color-${dataKey})`}
-                    stopOpacity={0.8}
-                  />
-                  <stop
-                    offset="95%"
-                    stopColor={`var(--color-${dataKey})`}
-                    stopOpacity={0.1}
-                  />
-                </linearGradient>
-                {data.length >= 2 && (
-                  <linearGradient
-                    id={`stroke-${chartId}`}
-                    x1="0"
-                    x2="1"
-                    y1="0"
-                    y2="0"
-                  >
-                    <stop
-                      offset={`${((data.length - 2) / (data.length - 1)) * 100}%`}
-                      stopColor={`var(--color-${dataKey})`}
-                      stopOpacity={1}
-                    />
-                    <stop
-                      offset={`${((data.length - 2) / (data.length - 1)) * 100}%`}
-                      stopColor={`var(--color-${dataKey})`}
-                      stopOpacity={0}
-                    />
-                  </linearGradient>
-                )}
-              </defs>
-              <CartesianGrid vertical={false} />
-              <XAxis
-                axisLine={false}
-                dataKey="date"
-                minTickGap={32}
-                tick={{ fontFamily: 'var(--font-geist-mono)' }}
-                tickFormatter={(value) =>
-                  xTickFormatter ? xTickFormatter(value) : formatDate(value)
+            <Grid
+              horizontal
+              loadingStroke="color-mix(in oklch, var(--chart-grid) 50%, transparent)"
+              shimmer
+              shimmerSync
+              stroke="var(--chart-grid)"
+              strokeDasharray="4,4"
+            />
+            <Area
+              dashArray="5,5"
+              dashFromIndex={dashFromIndex}
+              dataKey="value"
+              fadeEdges="left"
+              fill={chartColor}
+              fillOpacity={0.35}
+              gradientToOpacity={0.05}
+              loadingStroke={chartColor}
+              loadingStrokeOpacity={0.45}
+              loadingStyle="pulse"
+              showHighlight
+              stroke={chartColor}
+              strokeWidth={2}
+            />
+            <XAxis />
+            <ChartTooltip
+              content={({ point }) => {
+                let rawDate = String(point.date);
+                if (typeof point.rawDate === 'string') {
+                  rawDate = point.rawDate;
+                } else if (point.date instanceof Date) {
+                  rawDate = point.date.toISOString();
                 }
-                tickLine={false}
-                tickMargin={8}
-              />
-              <ChartTooltip
-                content={(props) => {
-                  const filteredPayload = props.payload?.filter(
-                    (item) => item.name !== '__dashed'
-                  );
-                  return (
-                    <ChartTooltipContent
-                      // biome-ignore lint/suspicious/noExplicitAny: Recharts payload filtering causes type issues
-                      {...(props as any)}
-                      formatter={(value) => {
-                        const formattedValue = valueFormatter
-                          ? valueFormatter(value as number)
-                          : defaultFormatter(value as number);
-                        return (
-                          <div className="flex flex-col gap-0.5">
-                            <div className="font-semibold text-base tabular-nums">
-                              {formattedValue}
-                            </div>
-                            <div className="text-muted-foreground text-xs">
-                              {dataLabel}
-                            </div>
-                          </div>
-                        );
-                      }}
-                      hideLabel={false}
-                      indicator="dot"
-                      labelFormatter={(value) =>
-                        tooltipLabelFormatter ? (
-                          tooltipLabelFormatter(value)
-                        ) : (
-                          <span className="flex items-center gap-1.5">
-                            <HugeiconsIcon
-                              className="size-3.5"
-                              icon={Calendar03Icon}
-                            />
-                            <ClientDate date={value} format="date" />
-                          </span>
-                        )
-                      }
-                      // biome-ignore lint/suspicious/noExplicitAny: Recharts payload filtering causes type issues
-                      payload={filteredPayload as any}
-                    />
-                  );
-                }}
-                cursor={{
-                  stroke: 'hsl(var(--border))',
-                  strokeWidth: 1,
-                  strokeDasharray: '4 2',
-                }}
-              />
-              {data.length >= 2 && !allValuesSame && (
-                <Area
-                  activeDot={false}
-                  dataKey="value"
-                  fill="none"
-                  name="__dashed"
-                  stroke={`var(--color-${dataKey})`}
-                  strokeDasharray="5 5"
-                  strokeWidth={2}
-                  type="monotone"
-                />
-              )}
-              <Area
-                activeDot={{
-                  r: 5,
-                  stroke: `var(--color-${dataKey})`,
-                  strokeWidth: 2,
-                  fill: 'hsl(var(--background))',
-                }}
-                dataKey="value"
-                fill={`url(#fill-${chartId})`}
-                stroke={
-                  data.length >= 2 && !allValuesSame
-                    ? `url(#stroke-${chartId})`
-                    : `var(--color-${dataKey})`
-                }
-                strokeWidth={2}
-                type="monotone"
-              />
-            </AreaChart>
-          </ChartContainer>
+
+                const value =
+                  typeof point.value === 'number'
+                    ? point.value
+                    : Number(point.value);
+                const formattedValue = valueFormatter
+                  ? valueFormatter(value)
+                  : value;
+
+                return (
+                  <div className="flex min-w-[120px] flex-col gap-1.5 rounded-lg border border-border/60 bg-background/95 px-2.5 py-2 shadow-lg backdrop-blur-md">
+                    <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                      {tooltipLabelFormatter ? (
+                        tooltipLabelFormatter(rawDate)
+                      ) : (
+                        <>
+                          <HugeiconsIcon
+                            className="size-3.5"
+                            icon={Calendar03Icon}
+                          />
+                          <ClientDate date={rawDate} format="date" />
+                        </>
+                      )}
+                    </div>
+                    <div className="font-semibold text-base tabular-nums">
+                      {formattedValue}
+                    </div>
+                    <div className="text-muted-foreground text-xs">
+                      {dataLabel}
+                    </div>
+                  </div>
+                );
+              }}
+              dotVariant="ring"
+              indicatorDasharray="4 2"
+            />
+          </AreaChart>
         )}
       </CardContent>
     </Card>

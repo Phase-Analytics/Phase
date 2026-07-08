@@ -87,6 +87,60 @@
   --sidebar-ring: oklch(0.708 0 0);
 
   --color-fd-primary: oklch(0 0 0);
+
+  --chart-background: var(--card);
+
+  --chart-foreground: var(--foreground);
+
+  --chart-foreground-muted: var(--muted-foreground);
+
+  --chart-line-primary: var(--chart-1);
+
+  --chart-line-secondary: var(--chart-2);
+
+  --chart-crosshair: var(--border);
+
+  --chart-grid: oklch(0.9 0 0);
+
+  --chart-brush-border: var(--chart-grid);
+
+  --chart-tooltip-background: oklch(0.21 0.006 285 / 0.88);
+
+  --chart-tooltip-foreground: oklch(0.985 0 0);
+
+  --chart-tooltip-muted: oklch(0.65 0.01 260);
+
+  --chart-marker-background: var(--background);
+
+  --chart-marker-border: var(--border);
+
+  --chart-marker-foreground: var(--foreground);
+
+  --chart-label: var(--muted-foreground);
+
+  --chart-scale-01: var(--muted);
+
+  --chart-scale-02: color-mix(in oklch, var(--chart-2) 20%, transparent);
+
+  --chart-scale-03: color-mix(in oklch, var(--chart-2) 40%, transparent);
+
+  --chart-scale-04: color-mix(in oklch, var(--chart-2) 60%, transparent);
+
+  --chart-scale-05: var(--chart-2);
+
+  --chart-scale-pattern-color: var(--background);
+
+  --chart-map-empty: oklch(0.92 0 0);
+
+  --chart-map-01: color-mix(in oklch, var(--chart-1) 25%, var(--muted));
+
+  --chart-map-02: color-mix(in oklch, var(--chart-1) 45%, var(--muted));
+
+  --chart-map-03: color-mix(in oklch, var(--chart-1) 65%, transparent);
+
+  --chart-map-04: var(--chart-1);
+
+  --chart-map-stroke: oklch(0.85 0 0);
 }
 
 .dark {
@@ -169,6 +223,50 @@
   --sidebar-ring: oklch(0.556 0 0);
 
   --color-fd-primary: oklch(1 0 0);
+
+  --chart-background: var(--card);
+
+  --chart-foreground: var(--muted-foreground);
+
+  --chart-foreground-muted: var(--muted-foreground);
+
+  --chart-crosshair: oklch(1 0 0 / 25%);
+
+  --chart-grid: oklch(0.28 0 0);
+
+  --chart-brush-border: var(--chart-grid);
+
+  --chart-marker-background: var(--background);
+
+  --chart-marker-border: var(--border);
+
+  --chart-marker-foreground: var(--foreground);
+
+  --chart-label: var(--muted-foreground);
+
+  --chart-scale-01: var(--muted);
+
+  --chart-scale-02: color-mix(in oklch, var(--chart-2) 20%, transparent);
+
+  --chart-scale-03: color-mix(in oklch, var(--chart-2) 40%, transparent);
+
+  --chart-scale-04: color-mix(in oklch, var(--chart-2) 60%, transparent);
+
+  --chart-scale-05: var(--chart-2);
+
+  --chart-scale-pattern-color: var(--background);
+
+  --chart-map-empty: oklch(0.27 0 0);
+
+  --chart-map-01: color-mix(in oklch, var(--chart-1) 35%, var(--muted));
+
+  --chart-map-02: color-mix(in oklch, var(--chart-1) 55%, var(--muted));
+
+  --chart-map-03: color-mix(in oklch, var(--chart-1) 75%, transparent);
+
+  --chart-map-04: oklch(0.65 0.17 250);
+
+  --chart-map-stroke: oklch(0.35 0 0);
 }
 
 @theme inline {
@@ -254,6 +352,60 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   --breakpoint-3xl: 1670px;
+
+  --color-chart-scale-pattern-color: var(--chart-scale-pattern-color);
+
+  --color-chart-scale-05: var(--chart-scale-05);
+
+  --color-chart-scale-04: var(--chart-scale-04);
+
+  --color-chart-scale-03: var(--chart-scale-03);
+
+  --color-chart-scale-02: var(--chart-scale-02);
+
+  --color-chart-scale-01: var(--chart-scale-01);
+
+  --color-chart-label: var(--chart-label);
+
+  --color-chart-marker-foreground: var(--chart-marker-foreground);
+
+  --color-chart-marker-border: var(--chart-marker-border);
+
+  --color-chart-marker-background: var(--chart-marker-background);
+
+  --color-chart-tooltip-muted: var(--chart-tooltip-muted);
+
+  --color-chart-tooltip-foreground: var(--chart-tooltip-foreground);
+
+  --color-chart-tooltip-background: var(--chart-tooltip-background);
+
+  --color-chart-brush-border: var(--chart-brush-border);
+
+  --color-chart-grid: var(--chart-grid);
+
+  --color-chart-crosshair: var(--chart-crosshair);
+
+  --color-chart-line-secondary: var(--chart-line-secondary);
+
+  --color-chart-line-primary: var(--chart-line-primary);
+
+  --color-chart-foreground-muted: var(--chart-foreground-muted);
+
+  --color-chart-foreground: var(--chart-foreground);
+
+  --color-chart-background: var(--chart-background);
+
+  --color-chart-map-empty: var(--chart-map-empty);
+
+  --color-chart-map-01: var(--chart-map-01);
+
+  --color-chart-map-02: var(--chart-map-02);
+
+  --color-chart-map-03: var(--chart-map-03);
+
+  --color-chart-map-04: var(--chart-map-04);
+
+  --color-chart-map-stroke: var(--chart-map-stroke);
 }
 
 @layer base {
