@@ -62,6 +62,23 @@ const columns: ColumnDef<EventListItem>[] = [
     },
   },
   {
+    accessorKey: 'platform',
+    header: 'Platform',
+    size: 120,
+    cell: ({ row }) => {
+      const platform = row.original.platform ?? null;
+      return (
+        <div className="flex items-center gap-1.5">
+          <HugeiconsIcon
+            className="size-3.5 text-muted-foreground"
+            icon={getPlatformIcon(platform)}
+          />
+          <span className="text-sm">{getPlatformLabel(platform)}</span>
+        </div>
+      );
+    },
+  },
+  {
     accessorKey: 'name',
     header: 'Event',
     size: 300,
@@ -83,23 +100,6 @@ const columns: ColumnDef<EventListItem>[] = [
             {displayName}
           </span>
           {row.original.isDebug && <DebugDataBadge className="shrink-0" />}
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: 'platform',
-    header: 'Platform',
-    size: 120,
-    cell: ({ row }) => {
-      const platform = row.original.platform ?? null;
-      return (
-        <div className="flex items-center gap-1.5">
-          <HugeiconsIcon
-            className="size-3.5 text-muted-foreground"
-            icon={getPlatformIcon(platform)}
-          />
-          <span className="text-sm">{getPlatformLabel(platform)}</span>
         </div>
       );
     },

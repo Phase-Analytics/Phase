@@ -73,32 +73,6 @@ const columns: ColumnDef<DeviceListItem>[] = [
     },
   },
   {
-    accessorKey: 'platform',
-    header: 'Platform',
-    size: 120,
-    cell: ({ row }) => {
-      const platform = row.getValue('platform') as string | null;
-
-      return platform ? (
-        <div className="flex items-center gap-1.5">
-          <HugeiconsIcon
-            className="size-3.5 text-muted-foreground"
-            icon={getPlatformIcon(platform)}
-          />
-          <span className="text-sm">{getPlatformLabel(platform)}</span>
-        </div>
-      ) : (
-        <div className="flex items-center gap-1.5">
-          <HugeiconsIcon
-            className="size-3.5 text-muted-foreground"
-            icon={AnonymousIcon}
-          />
-          <span className="text-sm">Unknown</span>
-        </div>
-      );
-    },
-  },
-  {
     accessorKey: 'country',
     header: 'Country',
     size: 150,
@@ -123,6 +97,32 @@ const columns: ColumnDef<DeviceListItem>[] = [
           <span className="text-sm">
             {country ? getCountryLabel(country) : 'Unknown'}
           </span>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: 'platform',
+    header: 'Platform',
+    size: 120,
+    cell: ({ row }) => {
+      const platform = row.getValue('platform') as string | null;
+
+      return platform ? (
+        <div className="flex items-center gap-1.5">
+          <HugeiconsIcon
+            className="size-3.5 text-muted-foreground"
+            icon={getPlatformIcon(platform)}
+          />
+          <span className="text-sm">{getPlatformLabel(platform)}</span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5">
+          <HugeiconsIcon
+            className="size-3.5 text-muted-foreground"
+            icon={AnonymousIcon}
+          />
+          <span className="text-sm">Unknown</span>
         </div>
       );
     },

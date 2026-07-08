@@ -72,24 +72,6 @@ const columns: ColumnDef<Session>[] = [
     },
   },
   {
-    accessorKey: 'startedAt',
-    header: 'Date',
-    size: 180,
-    cell: ({ row }) => {
-      const timestamp = row.getValue('startedAt') as string;
-      return (
-        <div className="flex items-center gap-2">
-          <HugeiconsIcon
-            className="text-muted-foreground"
-            icon={Calendar03Icon}
-            size={16}
-          />
-          <ClientDate className="text-primary text-sm" date={timestamp} />
-        </div>
-      );
-    },
-  },
-  {
     accessorKey: 'country',
     header: 'Country',
     size: 140,
@@ -130,6 +112,24 @@ const columns: ColumnDef<Session>[] = [
             icon={getPlatformIcon(platform)}
           />
           <span className="text-sm">{getPlatformLabel(platform)}</span>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: 'startedAt',
+    header: 'Date',
+    size: 180,
+    cell: ({ row }) => {
+      const timestamp = row.getValue('startedAt') as string;
+      return (
+        <div className="flex items-center gap-2">
+          <HugeiconsIcon
+            className="text-muted-foreground"
+            icon={Calendar03Icon}
+            size={16}
+          />
+          <ClientDate className="text-primary text-sm" date={timestamp} />
         </div>
       );
     },
