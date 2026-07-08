@@ -14,7 +14,7 @@ import {
   funnelStepLabel,
 } from '@phase/shared';
 import { parseAsString, useQueryState } from 'nuqs';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { FunnelEditorDialog } from '@/components/funnels/funnel-editor-dialog';
@@ -70,10 +70,6 @@ function FunnelsPageContent({ appId }: { appId: string }) {
   const [loadingPresetId, setLoadingPresetId] = useState<string | null>(null);
 
   const presets = presetsData?.funnels ?? [];
-  const _selectedPreset = useMemo(
-    () => presets.find((preset) => preset.id === selectedId) ?? null,
-    [presets, selectedId]
-  );
 
   const selectActivation = () => {
     setSelectedId(ACTIVATION_ID);
