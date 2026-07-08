@@ -1,11 +1,26 @@
 import { describe, expect, test } from 'bun:test';
 import { EXPLORE_DEFAULT_PAGE_SIZE, EXPLORE_MAX_PAGE_SIZE } from './constants';
 import { ExploreEngineError } from './errors';
+import { rewriteExploreSql } from './sql-rewrite';
 import {
   applyExplorePagination,
   parseExploreSql,
   validateExplorePage,
 } from './sql-validate';
+
+describe('rewriteExploreSql', () => {
+  test('rewrites quoted virtual table names produced by sqlify', () => {
+    const { sql, target } = rewriteExploreSql(
+      'SELECT timestamp, user_id, name AS "event_name" FROM "events" ORDER BY timestamp DESC',
+      new Set(['events']),
+      { appId: 'app_test', dateRange: null }
+    );
+
+    expect(target).toBe('questdb');
+    expect(sql).toContain('AS user_id');
+    expect(sql).not.toContain('FROM "events"');
+  });
+});
 
 describe('parseExploreSql', () => {
   test('uses default page size when LIMIT is omitted', () => {
