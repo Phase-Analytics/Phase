@@ -52,7 +52,8 @@ export async function runExploreQuery(
   const { sql: paginatedSql, offset } = applyExplorePagination(
     rewritten,
     pageSize,
-    page
+    page,
+    target
   );
 
   const result =

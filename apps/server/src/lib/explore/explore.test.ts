@@ -62,15 +62,36 @@ describe('parseExploreSql', () => {
 });
 
 describe('applyExplorePagination', () => {
-  test('appends limit and offset to the query', () => {
+  test('appends postgres limit and offset to the query', () => {
     const { sql, offset, fetchSize } = applyExplorePagination(
       'SELECT user_id FROM users',
       100,
-      3
+      3,
+      'postgres'
     );
     expect(sql).toBe('SELECT user_id FROM users LIMIT 101 OFFSET 200');
     expect(offset).toBe(200);
     expect(fetchSize).toBe(101);
+  });
+
+  test('uses questdb limit syntax on the first page', () => {
+    const { sql } = applyExplorePagination(
+      'SELECT user_id FROM events',
+      100,
+      1,
+      'questdb'
+    );
+    expect(sql).toBe('SELECT user_id FROM events LIMIT 101');
+  });
+
+  test('uses questdb range limit syntax on later pages', () => {
+    const { sql } = applyExplorePagination(
+      'SELECT user_id FROM events',
+      100,
+      3,
+      'questdb'
+    );
+    expect(sql).toBe('SELECT user_id FROM events LIMIT 200, 301');
   });
 });
 

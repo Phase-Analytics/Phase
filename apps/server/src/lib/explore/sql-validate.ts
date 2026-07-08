@@ -220,13 +220,29 @@ export function parseExploreSql(sql: string): ParsedExploreSql {
   return { baseSql, tables, pageSize };
 }
 
+export type ExploreSqlDialect = 'postgres' | 'questdb';
+
 export function applyExplorePagination(
   sql: string,
   pageSize: number,
-  page: number
+  page: number,
+  dialect: ExploreSqlDialect = 'postgres'
 ): { sql: string; offset: number; fetchSize: number } {
   const offset = (page - 1) * pageSize;
   const fetchSize = pageSize + 1;
+
+  if (dialect === 'questdb') {
+    const limitClause =
+      offset === 0
+        ? `LIMIT ${fetchSize}`
+        : `LIMIT ${offset}, ${offset + fetchSize}`;
+    return {
+      sql: `${sql} ${limitClause}`,
+      offset,
+      fetchSize,
+    };
+  }
+
   return {
     sql: `${sql} LIMIT ${fetchSize} OFFSET ${offset}`,
     offset,

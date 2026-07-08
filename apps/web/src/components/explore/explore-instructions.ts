@@ -7,7 +7,7 @@ Write read-only SELECT queries against three virtual tables. App scoping is appl
 ### events
 - timestamp (timestamptz)
 - user_id (text)
-- name (text) — event name
+- name (text) — the event name (e.g. purchase, level_complete)
 - params (text) — JSON string
 
 QuestDB syntax for params:
@@ -47,11 +47,17 @@ QuestDB syntax for params:
 
 ## Examples
 
+Recent events:
+SELECT timestamp, user_id, name AS event_name
+FROM events
+ORDER BY timestamp DESC
+LIMIT 100
+
 Top events:
-SELECT name, count(*) AS count
+SELECT name AS event_name, count(*) AS events
 FROM events
 GROUP BY name
-ORDER BY count DESC
+ORDER BY events DESC
 LIMIT 100
 
 Purchases by platform:

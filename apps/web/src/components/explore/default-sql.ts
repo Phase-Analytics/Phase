@@ -1,7 +1,6 @@
-export const EXPLORE_DEFAULT_SQL = `SELECT name, count(*) AS count
+export const EXPLORE_DEFAULT_SQL = `SELECT timestamp, user_id, name AS event_name
 FROM events
-GROUP BY name
-ORDER BY count DESC
+ORDER BY timestamp DESC
 LIMIT 100`;
 
 export function defaultExploreSqlQuery() {
