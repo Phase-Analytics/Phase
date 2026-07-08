@@ -67,6 +67,16 @@ function normalizeFunnelSteps(steps: unknown): FunnelCustomStep[] {
       return FunnelCustomStepSchema.parse({ kind: step.kind });
     }
 
+    if (
+      step.kind === 'session_30s' ||
+      step.kind === 'session_10m' ||
+      step.kind === 'engaged_10m' ||
+      step.kind === 'return_d1' ||
+      step.kind === 'return_d3'
+    ) {
+      return FunnelCustomStepSchema.parse({ kind: step.kind });
+    }
+
     return FunnelCustomStepSchema.parse({
       kind: 'event',
       name: step.name ?? 'unknown',

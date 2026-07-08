@@ -3,6 +3,7 @@ import {
   FUNNEL_ENGAGED_TOTAL_SESSION_SECONDS,
   type FunnelCustomStep,
   type FunnelResult,
+  type FunnelStepKind,
   type FunnelStepResult,
   funnelStepLabel,
 } from '@phase/shared';
@@ -16,6 +17,9 @@ import { assertExploreEventName, escapeQuestDbString } from '@/lib/questdb-sql';
 import { SESSION_MIN_DURATION_SECONDS } from '@/lib/validators';
 
 const DEFAULT_LOOKBACK_DAYS = 30;
+const SESSION_30S = 30;
+const SESSION_10M = 10 * 60;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type FunnelPeriod = {
   start: Date;
@@ -183,6 +187,7 @@ type DeviceFirstSeenRow = {
 type DeviceSessionRow = {
   device_id: string;
   started_at: Date | string;
+  duration_seconds: number;
 };
 
 type EventStepRow = {
@@ -190,8 +195,18 @@ type EventStepRow = {
   step_ts: string;
 };
 
+type SessionRecord = {
+  startedAt: number;
+  durationSeconds: number;
+};
+
 function toMs(value: Date | string): number {
   return value instanceof Date ? value.getTime() : new Date(value).getTime();
+}
+
+function startOfUtcDay(ms: number): number {
+  const date = new Date(ms);
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
 }
 
 function eventCondition(name: string): string {
@@ -217,13 +232,16 @@ async function loadFirstSeenMap(
   return map;
 }
 
-async function loadSessionTimes(
+async function loadSessions(
   appId: string,
   rangeStart: Date,
   rangeEnd: Date
-): Promise<Map<string, number[]>> {
+): Promise<Map<string, SessionRecord[]>> {
   const result = await db.execute<DeviceSessionRow>(sql`
-    SELECT s.device_id, s.started_at
+    SELECT
+      s.device_id,
+      s.started_at,
+      EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at))::float AS duration_seconds
     FROM sessions_analytics s
     INNER JOIN devices d ON d.device_id = s.device_id
     WHERE d.app_id = ${appId}
@@ -233,10 +251,13 @@ async function loadSessionTimes(
         >= ${SESSION_MIN_DURATION_SECONDS}
     ORDER BY s.started_at ASC
   `);
-  const map = new Map<string, number[]>();
+  const map = new Map<string, SessionRecord[]>();
   for (const row of result.rows) {
     const list = map.get(row.device_id) ?? [];
-    list.push(toMs(row.started_at));
+    list.push({
+      startedAt: toMs(row.started_at),
+      durationSeconds: Number(row.duration_seconds),
+    });
     map.set(row.device_id, list);
   }
   return map;
@@ -274,6 +295,27 @@ async function loadEventTimes(
   return map;
 }
 
+function firstSessionAfter(
+  sessions: SessionRecord[] | undefined,
+  afterMs: number,
+  windowEndMs: number,
+  minDuration: number
+): number | null {
+  if (!sessions) {
+    return null;
+  }
+  for (const session of sessions) {
+    if (
+      session.startedAt > afterMs &&
+      session.startedAt <= windowEndMs &&
+      session.durationSeconds >= minDuration
+    ) {
+      return session.startedAt;
+    }
+  }
+  return null;
+}
+
 function firstTimestampAfter(
   times: number[] | undefined,
   afterMs: number,
@@ -290,6 +332,177 @@ function firstTimestampAfter(
   return null;
 }
 
+function engagedThresholdAt(
+  sessions: SessionRecord[] | undefined,
+  afterMs: number,
+  windowEndMs: number,
+  thresholdSeconds: number
+): number | null {
+  if (!sessions) {
+    return null;
+  }
+  let total = 0;
+  for (const session of sessions) {
+    if (session.startedAt <= afterMs || session.startedAt > windowEndMs) {
+      continue;
+    }
+    total += session.durationSeconds;
+    if (total >= thresholdSeconds) {
+      return session.startedAt + session.durationSeconds * 1000;
+    }
+  }
+  return null;
+}
+
+function returnOnDay(
+  sessions: SessionRecord[] | undefined,
+  previousTs: number,
+  dayOffset: number,
+  windowEndMs: number
+): number | null {
+  if (!sessions) {
+    return null;
+  }
+  const dayStart = startOfUtcDay(previousTs) + dayOffset * DAY_MS;
+  const dayEnd = dayStart + DAY_MS;
+  for (const session of sessions) {
+    if (
+      session.startedAt >= dayStart &&
+      session.startedAt < dayEnd &&
+      session.startedAt > previousTs &&
+      session.startedAt <= windowEndMs
+    ) {
+      return session.startedAt;
+    }
+  }
+  return null;
+}
+
+function resolveStepTimestamp(options: {
+  kind: FunnelStepKind;
+  eventName?: string;
+  deviceId: string;
+  previousTs: number | null;
+  windowEndMs: number;
+  firstSeenMap: Map<string, number>;
+  sessionMap: Map<string, SessionRecord[]>;
+  eventTimeMaps: Map<string, Map<string, number[]>>;
+}): number | null {
+  const {
+    kind,
+    eventName,
+    deviceId,
+    previousTs,
+    windowEndMs,
+    firstSeenMap,
+    sessionMap,
+    eventTimeMaps,
+  } = options;
+
+  if (previousTs === null) {
+    if (kind === 'first_seen') {
+      return firstSeenMap.get(deviceId) ?? null;
+    }
+    if (kind === 'session') {
+      return firstSessionAfter(
+        sessionMap.get(deviceId),
+        Number.NEGATIVE_INFINITY,
+        windowEndMs,
+        SESSION_MIN_DURATION_SECONDS
+      );
+    }
+    if (kind === 'session_30s') {
+      return firstSessionAfter(
+        sessionMap.get(deviceId),
+        Number.NEGATIVE_INFINITY,
+        windowEndMs,
+        SESSION_30S
+      );
+    }
+    if (kind === 'session_10m') {
+      return firstSessionAfter(
+        sessionMap.get(deviceId),
+        Number.NEGATIVE_INFINITY,
+        windowEndMs,
+        SESSION_10M
+      );
+    }
+    if (kind === 'engaged_10m') {
+      return engagedThresholdAt(
+        sessionMap.get(deviceId),
+        Number.NEGATIVE_INFINITY,
+        windowEndMs,
+        FUNNEL_ENGAGED_TOTAL_SESSION_SECONDS
+      );
+    }
+    if (kind === 'return_d1' || kind === 'return_d3') {
+      return null;
+    }
+    return eventTimeMaps.get(eventName ?? '')?.get(deviceId)?.[0] ?? null;
+  }
+
+  if (kind === 'first_seen') {
+    const ts = firstSeenMap.get(deviceId);
+    return ts !== undefined && ts > previousTs && ts <= windowEndMs ? ts : null;
+  }
+  if (kind === 'session') {
+    return firstSessionAfter(
+      sessionMap.get(deviceId),
+      previousTs,
+      windowEndMs,
+      SESSION_MIN_DURATION_SECONDS
+    );
+  }
+  if (kind === 'session_30s') {
+    return firstSessionAfter(
+      sessionMap.get(deviceId),
+      previousTs,
+      windowEndMs,
+      SESSION_30S
+    );
+  }
+  if (kind === 'session_10m') {
+    return firstSessionAfter(
+      sessionMap.get(deviceId),
+      previousTs,
+      windowEndMs,
+      SESSION_10M
+    );
+  }
+  if (kind === 'engaged_10m') {
+    return engagedThresholdAt(
+      sessionMap.get(deviceId),
+      previousTs,
+      windowEndMs,
+      FUNNEL_ENGAGED_TOTAL_SESSION_SECONDS
+    );
+  }
+  if (kind === 'return_d1') {
+    return returnOnDay(sessionMap.get(deviceId), previousTs, 1, windowEndMs);
+  }
+  if (kind === 'return_d3') {
+    return returnOnDay(sessionMap.get(deviceId), previousTs, 3, windowEndMs);
+  }
+  return firstTimestampAfter(
+    eventTimeMaps.get(eventName ?? '')?.get(deviceId),
+    previousTs,
+    windowEndMs
+  );
+}
+
+function needsSessions(steps: FunnelCustomStep[]): boolean {
+  return steps.some((step) =>
+    [
+      'session',
+      'session_30s',
+      'session_10m',
+      'engaged_10m',
+      'return_d1',
+      'return_d3',
+    ].includes(step.kind)
+  );
+}
+
 export async function runCustomFunnel(
   appId: string,
   steps: FunnelCustomStep[],
@@ -304,7 +517,6 @@ export async function runCustomFunnel(
   const rangeEnd = new Date(period.end.getTime() + windowMs);
 
   const needsFirstSeen = steps.some((step) => step.kind === 'first_seen');
-  const needsSession = steps.some((step) => step.kind === 'session');
   const eventNames = [
     ...new Set(
       steps
@@ -318,9 +530,9 @@ export async function runCustomFunnel(
     needsFirstSeen
       ? loadFirstSeenMap(appId, period)
       : Promise.resolve(new Map<string, number>()),
-    needsSession
-      ? loadSessionTimes(appId, period.start, rangeEnd)
-      : Promise.resolve(new Map<string, number[]>()),
+    needsSessions(steps)
+      ? loadSessions(appId, period.start, rangeEnd)
+      : Promise.resolve(new Map<string, SessionRecord[]>()),
     ...eventNames.map((name) =>
       loadEventTimes(appId, name, period.start, rangeEnd)
     ),
@@ -331,20 +543,15 @@ export async function runCustomFunnel(
   );
 
   let cohortDevices: string[];
-  if (steps[0]?.kind === 'first_seen') {
+  const first = steps[0];
+  if (!first) {
+    throw new Error('Custom funnel requires at least 2 steps');
+  }
+
+  if (first.kind === 'first_seen') {
     cohortDevices = [...firstSeenMap.keys()];
-  } else if (steps[0]?.kind === 'session') {
-    const inPeriod = await loadSessionTimes(appId, period.start, period.end);
-    for (const [deviceId, times] of inPeriod) {
-      const existing = sessionMap.get(deviceId) ?? [];
-      sessionMap.set(
-        deviceId,
-        [...new Set([...existing, ...times])].toSorted((a, b) => a - b)
-      );
-    }
-    cohortDevices = [...inPeriod.keys()];
-  } else {
-    const firstEvent = steps[0]?.name?.trim();
+  } else if (first.kind === 'event') {
+    const firstEvent = first.name?.trim();
     if (!firstEvent) {
       throw new Error('First step event name is required');
     }
@@ -364,6 +571,38 @@ export async function runCustomFunnel(
     }
     eventTimeMaps.set(firstEvent, existing);
     cohortDevices = [...inPeriod.keys()];
+  } else {
+    const inPeriod = await loadSessions(appId, period.start, period.end);
+    for (const [deviceId, sessions] of inPeriod) {
+      const existing = sessionMap.get(deviceId) ?? [];
+      const merged = [...existing];
+      for (const session of sessions) {
+        if (!merged.some((item) => item.startedAt === session.startedAt)) {
+          merged.push(session);
+        }
+      }
+      sessionMap.set(
+        deviceId,
+        merged.toSorted((a, b) => a.startedAt - b.startedAt)
+      );
+    }
+    cohortDevices = [...inPeriod.keys()].filter((deviceId) => {
+      const ts = resolveStepTimestamp({
+        kind: first.kind,
+        eventName: first.name,
+        deviceId,
+        previousTs: null,
+        windowEndMs: period.end.getTime(),
+        firstSeenMap,
+        sessionMap,
+        eventTimeMaps,
+      });
+      return (
+        ts !== null &&
+        ts >= period.start.getTime() &&
+        ts <= period.end.getTime()
+      );
+    });
   }
 
   const reached = steps.map(() => 0);
@@ -373,41 +612,30 @@ export async function runCustomFunnel(
 
     for (let index = 0; index < steps.length; index++) {
       const step = steps[index];
-      let nextTs: number | null = null;
+      const windowEndMs =
+        index === 0 || previousTs === null
+          ? period.end.getTime()
+          : previousTs + windowMs;
 
-      if (index === 0) {
-        if (step.kind === 'first_seen') {
-          nextTs = firstSeenMap.get(deviceId) ?? null;
-        } else if (step.kind === 'session') {
-          nextTs = sessionMap.get(deviceId)?.[0] ?? null;
-        } else {
-          const name = step.name?.trim() ?? '';
-          nextTs = eventTimeMaps.get(name)?.get(deviceId)?.[0] ?? null;
-        }
-      } else if (previousTs !== null) {
-        const afterMs: number = previousTs;
-        const windowEndMs: number = afterMs + windowMs;
-        if (step.kind === 'first_seen') {
-          const ts = firstSeenMap.get(deviceId);
-          nextTs =
-            ts !== undefined && ts > afterMs && ts <= windowEndMs ? ts : null;
-        } else if (step.kind === 'session') {
-          nextTs = firstTimestampAfter(
-            sessionMap.get(deviceId),
-            afterMs,
-            windowEndMs
-          );
-        } else {
-          const name = step.name?.trim() ?? '';
-          nextTs = firstTimestampAfter(
-            eventTimeMaps.get(name)?.get(deviceId),
-            afterMs,
-            windowEndMs
-          );
-        }
-      }
+      const nextTs = resolveStepTimestamp({
+        kind: step.kind,
+        eventName: step.name?.trim(),
+        deviceId,
+        previousTs,
+        windowEndMs,
+        firstSeenMap,
+        sessionMap,
+        eventTimeMaps,
+      });
 
       if (nextTs === null) {
+        break;
+      }
+
+      if (
+        index === 0 &&
+        (nextTs < period.start.getTime() || nextTs > period.end.getTime())
+      ) {
         break;
       }
 

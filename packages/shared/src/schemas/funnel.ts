@@ -7,12 +7,66 @@ export const FUNNEL_ENGAGED_TOTAL_SESSION_SECONDS = 10 * 60;
 export const FUNNEL_MAX_STEPS = 6;
 export const FUNNEL_MIN_STEPS = 2;
 
-export const FUNNEL_BUILTIN_STEPS = [
-  { kind: 'first_seen', label: 'First Seen' },
-  { kind: 'session', label: 'Create Session' },
+export const FUNNEL_WINDOW_PRESETS = [
+  { hours: 24, label: '24h' },
+  { hours: 72, label: '3d' },
+  { hours: 168, label: '7d' },
+  { hours: 336, label: '14d' },
+  { hours: 720, label: '30d' },
 ] as const;
 
-export const FunnelStepKindSchema = z.enum(['first_seen', 'session', 'event']);
+export const FunnelStepKindSchema = z.enum([
+  'first_seen',
+  'session',
+  'session_30s',
+  'session_10m',
+  'engaged_10m',
+  'return_d1',
+  'return_d3',
+  'event',
+]);
+
+export const FUNNEL_BUILTIN_STEPS = [
+  {
+    kind: 'first_seen',
+    label: 'First Seen',
+    description: 'Device first appears in the app',
+  },
+  {
+    kind: 'session',
+    label: 'Create Session',
+    description: 'Starts any valid session',
+  },
+  {
+    kind: 'session_30s',
+    label: 'Session ≥30s',
+    description: 'A single session lasting 30 seconds or more',
+  },
+  {
+    kind: 'session_10m',
+    label: 'Session ≥10m',
+    description: 'A single session lasting 10 minutes or more',
+  },
+  {
+    kind: 'engaged_10m',
+    label: 'Total session ≥10m',
+    description: 'Cumulative session time reaches 10 minutes',
+  },
+  {
+    kind: 'return_d1',
+    label: 'Returned day 1',
+    description: 'Comes back the next calendar day',
+  },
+  {
+    kind: 'return_d3',
+    label: 'Returned day 3',
+    description: 'Comes back on day 3 after the previous step',
+  },
+] as const satisfies ReadonlyArray<{
+  kind: Exclude<z.infer<typeof FunnelStepKindSchema>, 'event'>;
+  label: string;
+  description: string;
+}>;
 
 export const FunnelCustomStepSchema = z
   .object({
@@ -145,12 +199,25 @@ export type CustomFunnelRunRequest = z.infer<
   typeof CustomFunnelRunRequestSchema
 >;
 
+const BUILTIN_LABELS: Record<Exclude<FunnelStepKind, 'event'>, string> = {
+  first_seen: 'First Seen',
+  session: 'Create Session',
+  session_30s: 'Session ≥30s',
+  session_10m: 'Session ≥10m',
+  engaged_10m: 'Total session ≥10m',
+  return_d1: 'Returned day 1',
+  return_d3: 'Returned day 3',
+};
+
 export function funnelStepLabel(step: FunnelCustomStep): string {
-  if (step.kind === 'first_seen') {
-    return 'First Seen';
+  if (step.kind === 'event') {
+    return step.name?.trim() || 'Event';
   }
-  if (step.kind === 'session') {
-    return 'Create Session';
-  }
-  return step.name?.trim() || 'Event';
+  return BUILTIN_LABELS[step.kind];
+}
+
+export function isFunnelBuiltinKind(
+  kind: FunnelStepKind
+): kind is Exclude<FunnelStepKind, 'event'> {
+  return kind !== 'event';
 }
