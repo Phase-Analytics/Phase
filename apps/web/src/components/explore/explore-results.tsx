@@ -1,42 +1,155 @@
 'use client';
 
-import type { ExploreCoverage, ExploreResult } from '@phase/shared';
+import {
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+  Download01Icon,
+} from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
+import type { ExploreResult, ExploreRunMeta } from '@phase/shared';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useMemo } from 'react';
+import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatDuration } from '@/lib/date-utils';
-import {
-  fillDailyTimeseriesGaps,
-  getChartPeriodDates,
-} from '@/lib/fill-daily-timeseries';
-import { ExploreBreakdownChart } from './explore-breakdown-chart';
-import { ExploreCoverageStats } from './explore-coverage-stats';
-import { ExploreTimeseriesChart } from './explore-timeseries-chart';
+import { downloadCsv } from '@/lib/utils/export-utils';
 
 type ExploreResultsProps = {
   result: ExploreResult | null;
-  coverage?: ExploreCoverage | null;
+  meta: ExploreRunMeta | null;
   isPending: boolean;
   error: string | null;
-  formatTimeseriesAsDuration?: boolean;
-  timeRange?: string;
+  onPageChange: (page: number) => void;
 };
+
+function formatCellValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
+function ExploreTableResults({
+  result,
+  meta,
+  onPageChange,
+}: {
+  result: ExploreResult & { kind: 'table' };
+  meta: ExploreRunMeta | null;
+  onPageChange: (page: number) => void;
+}) {
+  const tableData = useMemo(
+    () =>
+      result.rows.map((row) => {
+        const record: Record<string, unknown> = {};
+        for (let i = 0; i < result.columns.length; i++) {
+          record[result.columns[i] ?? `col_${i}`] = row[i];
+        }
+        return record;
+      }),
+    [result.columns, result.rows]
+  );
+
+  const columns = useMemo<ColumnDef<Record<string, unknown>>[]>(
+    () =>
+      result.columns.map((column) => ({
+        accessorKey: column,
+        header: column,
+        cell: ({ getValue }) => (
+          <span className="font-mono text-xs">{formatCellValue(getValue())}</span>
+        ),
+      })),
+    [result.columns]
+  );
+
+  const handleExport = () => {
+    downloadCsv(
+      result.columns,
+      result.rows,
+      `explore-page-${meta?.page ?? 1}.csv`
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-muted-foreground text-sm">
+          {meta ? (
+            <>
+              Page {meta.page}
+              {meta.rowCount > 0
+                ? ` · ${meta.rowCount} row${meta.rowCount === 1 ? '' : 's'}`
+                : ' · No rows'}
+              {meta.offset > 0 ? ` · offset ${meta.offset.toLocaleString()}` : null}
+              {meta.executionMs !== undefined
+                ? ` · ${meta.executionMs}ms`
+                : null}
+            </>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            disabled={!meta?.hasPreviousPage}
+            onClick={() => meta && onPageChange(meta.page - 1)}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <HugeiconsIcon className="size-4" icon={ArrowLeft01Icon} />
+            Previous
+          </Button>
+          <Button
+            disabled={!meta?.hasNextPage}
+            onClick={() => meta && onPageChange(meta.page + 1)}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            Next
+            <HugeiconsIcon className="size-4" icon={ArrowRight01Icon} />
+          </Button>
+          <Button
+            disabled={result.rows.length === 0}
+            onClick={handleExport}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <HugeiconsIcon className="size-4" icon={Download01Icon} />
+            Export page
+          </Button>
+        </div>
+      </div>
+
+      {result.rows.length === 0 ? (
+        <p className="text-muted-foreground text-sm">No rows on this page.</p>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={tableData}
+          hideSearchClearButton
+          pageSize={result.rows.length}
+        />
+      )}
+    </div>
+  );
+}
 
 export function ExploreResults({
   result,
-  coverage,
+  meta,
   isPending,
   error,
-  formatTimeseriesAsDuration = false,
-  timeRange,
+  onPageChange,
 }: ExploreResultsProps) {
   if (isPending) {
     return (
       <div className="space-y-3">
-        <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-10 w-48" />
-        <Skeleton className="h-[250px] w-full" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-[280px] w-full" />
       </div>
     );
   }
@@ -45,166 +158,15 @@ export function ExploreResults({
     return <div className="text-destructive text-sm">{error}</div>;
   }
 
-  if (!result) {
+  if (!result || result.kind !== 'table') {
     return null;
   }
 
   return (
-    <div className="space-y-5">
-      {coverage ? <ExploreCoverageStats coverage={coverage} /> : null}
-      <ResultBody
-        formatTimeseriesAsDuration={formatTimeseriesAsDuration}
-        result={result}
-        timeRange={timeRange}
-      />
-    </div>
+    <ExploreTableResults
+      meta={meta}
+      onPageChange={onPageChange}
+      result={result}
+    />
   );
-}
-
-function ResultBody({
-  result,
-  formatTimeseriesAsDuration,
-  timeRange,
-}: {
-  result: ExploreResult;
-  formatTimeseriesAsDuration: boolean;
-  timeRange?: string;
-}) {
-  if (result.kind === 'scalar') {
-    const display =
-      result.label.toLowerCase().includes('duration') ||
-      result.label.toLowerCase().includes('session')
-        ? formatDuration(result.value)
-        : result.value.toLocaleString();
-
-    return (
-      <div className="space-y-2">
-        <p className="text-muted-foreground text-sm">{result.label}</p>
-        <p className="font-semibold text-4xl tabular-nums tracking-tight">
-          {display}
-        </p>
-      </div>
-    );
-  }
-
-  if (result.kind === 'percentiles') {
-    return (
-      <div className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {result.rows.map((row) => (
-            <div className="rounded-lg border bg-muted/15 p-3" key={row.label}>
-              <p className="text-muted-foreground text-xs">{row.label}</p>
-              <p className="font-medium text-xl tabular-nums">
-                {row.label === 'Count'
-                  ? row.value.toLocaleString()
-                  : formatDuration(row.value)}
-              </p>
-            </div>
-          ))}
-        </div>
-        <ExploreValueTable
-          columnHeaders={['Metric', 'Value']}
-          rows={result.rows.map((row) => ({
-            id: row.label,
-            primary: row.label,
-            value:
-              row.label === 'Count'
-                ? row.value.toLocaleString()
-                : formatDuration(row.value),
-          }))}
-        />
-      </div>
-    );
-  }
-
-  if (result.kind === 'breakdown') {
-    return (
-      <div className="space-y-4">
-        <ExploreBreakdownChart rows={result.rows} />
-        <ExploreValueTable
-          columnHeaders={['Dimension', 'Value']}
-          rows={result.rows.map((row) => ({
-            id: row.dimension,
-            primary: row.dimension,
-            value: row.value.toLocaleString(),
-          }))}
-        />
-      </div>
-    );
-  }
-
-  if (result.kind === 'timeseries') {
-    const filledPoints = timeRange
-      ? fillDailyTimeseriesGaps(result.points, getChartPeriodDates(timeRange))
-      : result.points;
-
-    return (
-      <div className="space-y-4">
-        <ExploreTimeseriesChart
-          formatAsDuration={formatTimeseriesAsDuration}
-          points={filledPoints}
-        />
-        <ExploreValueTable
-          columnHeaders={['Date', 'Value']}
-          rows={filledPoints.map((point) => ({
-            id: point.date,
-            primary: point.date,
-            value: formatTimeseriesAsDuration
-              ? formatDuration(point.value)
-              : point.value.toFixed(2),
-          }))}
-        />
-      </div>
-    );
-  }
-
-  if (result.kind === 'distribution') {
-    return (
-      <div className="space-y-4">
-        <ExploreBreakdownChart
-          rows={result.buckets.map((b) => ({
-            dimension: b.bucket,
-            value: b.count,
-          }))}
-        />
-      </div>
-    );
-  }
-
-  return null;
-}
-
-type ExploreValueTableRow = {
-  id: string;
-  primary: string;
-  value: string;
-};
-
-function ExploreValueTable({
-  columnHeaders,
-  rows,
-}: {
-  columnHeaders: [string, string];
-  rows: ExploreValueTableRow[];
-}) {
-  const columns = useMemo<ColumnDef<ExploreValueTableRow>[]>(
-    () => [
-      {
-        accessorKey: 'primary',
-        enableSorting: false,
-        header: columnHeaders[0],
-      },
-      {
-        accessorKey: 'value',
-        enableSorting: false,
-        header: columnHeaders[1],
-        cell: ({ row }) => (
-          <span className="tabular-nums">{row.getValue('value')}</span>
-        ),
-      },
-    ],
-    [columnHeaders]
-  );
-
-  return <DataTable columns={columns} data={rows} pageSize={10} />;
 }

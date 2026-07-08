@@ -29,6 +29,7 @@
     "isbot": "^5.1.40",
     "maxmind": "^5.0.1",
     "nanoid": "^5.1.6",
+    "node-sql-parser": "^5.4.0",
     "pg": "^8.16.3",
     "sharp": "^0.34.5",
     "ua-parser-js": "^2.0.10",

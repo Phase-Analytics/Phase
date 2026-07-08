@@ -71,10 +71,10 @@ export const RATE_LIMIT_STRATEGIES = {
     ttl: 60,
     keyPrefix: 'rate:public-api',
   } satisfies RateLimitConfig,
-  EXPLORE_AI_GENERATE: {
-    maxAttempts: 25,
-    ttl: 300,
-    keyPrefix: 'rate:explore-ai',
+  EXPLORE_RUN: {
+    maxAttempts: 60,
+    ttl: 60,
+    keyPrefix: 'rate:explore-run',
   } satisfies RateLimitConfig,
   LINK_REDIRECT: {
     maxAttempts: 120,
@@ -214,10 +214,10 @@ export async function checkPublicApiRateLimit(
   });
 }
 
-export async function checkExploreAiGenerateRateLimit(
+export async function checkExploreRunRateLimit(
   userId: string
 ): Promise<RateLimitResult> {
-  return await checkRateLimit(RATE_LIMIT_STRATEGIES.EXPLORE_AI_GENERATE, {
+  return await checkRateLimit(RATE_LIMIT_STRATEGIES.EXPLORE_RUN, {
     deviceId: userId,
   });
 }

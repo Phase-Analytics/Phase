@@ -1,12 +1,11 @@
 import type {
   CreateExplorePresetRequest,
   ExploreCatalogResponse,
-  ExploreGenerateQueryRequest,
-  ExploreGenerateQueryResponse,
   ExplorePreset,
   ExplorePresetsListResponse,
-  ExploreQueryV1,
   ExploreRunResponse,
+  ExploreSqlQuery,
+  ExploreTimeRange,
   UpdateExplorePresetRequest,
 } from '@phase/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -38,22 +37,20 @@ export function useExploreCatalog(appId: string, eventName?: string) {
   });
 }
 
-export function useExploreGenerateQuery() {
-  return useMutation({
-    mutationFn: (payload: ExploreGenerateQueryRequest) =>
-      fetchApi<ExploreGenerateQueryResponse>('/web/explore/generate-query', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      }),
-  });
-}
-
 export function useExploreRun() {
   return useMutation({
-    mutationFn: (payload: { appId: string; query: ExploreQueryV1 }) =>
+    mutationFn: (payload: {
+      appId: string;
+      query: ExploreSqlQuery;
+      timeRange: ExploreTimeRange;
+      page?: number;
+    }) =>
       fetchApi<ExploreRunResponse>('/web/explore/run', {
         method: 'POST',
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ...payload,
+          page: payload.page ?? 1,
+        }),
       }),
   });
 }

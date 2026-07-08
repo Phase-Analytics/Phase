@@ -4,13 +4,11 @@ import {
   ErrorCode,
   ErrorResponseSchema,
   ExploreCatalogResponseSchema,
-  ExploreGenerateQueryRequestSchema,
-  ExploreGenerateQueryResponseSchema,
   ExplorePresetSchema,
   ExplorePresetsListResponseSchema,
-  ExploreQueryV1Schema,
   ExploreRunRequestSchema,
   ExploreRunResponseSchema,
+  ExploreSqlQuerySchema,
   HttpStatus,
   UpdateExplorePresetRequestSchema,
 } from '@phase/shared';
@@ -19,9 +17,7 @@ import { Elysia, t } from 'elysia';
 import { apps, db, explorePresets } from '@/db';
 import { auth } from '@/lib/auth';
 import {
-  ExploreAiError,
   ExploreEngineError,
-  generateExploreQueryFromPrompt,
   getExploreCatalog,
   runExploreQuery,
 } from '@/lib/explore';
@@ -30,7 +26,7 @@ import {
   type BetterAuthSession,
   type BetterAuthUser,
 } from '@/lib/middleware';
-import { checkExploreAiGenerateRateLimit } from '@/lib/rate-limit';
+import { checkExploreRunRateLimit } from '@/lib/rate-limit';
 
 type AuthContext = {
   user: BetterAuthUser;
@@ -85,7 +81,16 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
         };
       }
 
-      const parsed = ExploreQueryV1Schema.safeParse(body.query);
+      const rateLimit = await checkExploreRunRateLimit(user.id);
+      if (!rateLimit.allowed) {
+        set.status = HttpStatus.TOO_MANY_REQUESTS;
+        return {
+          code: ErrorCode.TOO_MANY_REQUESTS,
+          detail: rateLimit.reason ?? 'Too many explore queries',
+        };
+      }
+
+      const parsed = ExploreRunRequestSchema.safeParse(body);
       if (!parsed.success) {
         set.status = HttpStatus.BAD_REQUEST;
         return {
@@ -94,8 +99,22 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
         };
       }
 
+      const queryParsed = ExploreSqlQuerySchema.safeParse(parsed.data.query);
+      if (!queryParsed.success) {
+        set.status = HttpStatus.BAD_REQUEST;
+        return {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: queryParsed.error.message,
+        };
+      }
+
       try {
-        return await runExploreQuery(body.appId, parsed.data);
+        return await runExploreQuery(
+          parsed.data.appId,
+          queryParsed.data,
+          parsed.data.timeRange,
+          parsed.data.page
+        );
       } catch (error) {
         if (error instanceof ExploreEngineError) {
           set.status = error.statusCode;
@@ -116,69 +135,6 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
       body: ExploreRunRequestSchema,
       response: {
         200: ExploreRunResponseSchema,
-        400: ErrorResponseSchema,
-        401: ErrorResponseSchema,
-        403: ErrorResponseSchema,
-        500: ErrorResponseSchema,
-      },
-    }
-  )
-  .post(
-    '/generate-query',
-    async (ctx) => {
-      const { body, user, set } = ctx as typeof ctx & AuthContext;
-
-      if (!user?.id) {
-        set.status = HttpStatus.UNAUTHORIZED;
-        return {
-          code: ErrorCode.UNAUTHORIZED,
-          detail: 'Authentication required',
-        };
-      }
-
-      const app = await assertAppAccess(body.appId, user.id);
-      if (!app) {
-        set.status = HttpStatus.FORBIDDEN;
-        return {
-          code: ErrorCode.FORBIDDEN,
-          detail: 'App not found or access denied',
-        };
-      }
-
-      const rateLimit = await checkExploreAiGenerateRateLimit(user.id);
-      if (!rateLimit.allowed) {
-        set.status = HttpStatus.TOO_MANY_REQUESTS;
-        return {
-          code: ErrorCode.TOO_MANY_REQUESTS,
-          detail: rateLimit.reason ?? 'Too many AI query requests',
-        };
-      }
-
-      try {
-        return await generateExploreQueryFromPrompt(body.appId, body.prompt);
-      } catch (error) {
-        if (error instanceof ExploreAiError) {
-          set.status = error.statusCode;
-          return {
-            code:
-              error.statusCode === HttpStatus.TOO_MANY_REQUESTS
-                ? ErrorCode.TOO_MANY_REQUESTS
-                : ErrorCode.VALIDATION_ERROR,
-            detail: error.message,
-          };
-        }
-        console.error('[Explore.GenerateQuery] Error:', error);
-        set.status = HttpStatus.INTERNAL_SERVER_ERROR;
-        return {
-          code: ErrorCode.INTERNAL_SERVER_ERROR,
-          detail: 'Failed to generate explore query',
-        };
-      }
-    },
-    {
-      body: ExploreGenerateQueryRequestSchema,
-      response: {
-        200: ExploreGenerateQueryResponseSchema,
         400: ErrorResponseSchema,
         401: ErrorResponseSchema,
         403: ErrorResponseSchema,
@@ -259,8 +215,7 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
           id: row.id,
           appId: row.appId,
           name: row.name,
-          query: ExploreQueryV1Schema.parse(row.query),
-          summary: row.summary,
+          query: ExploreSqlQuerySchema.parse(row.query),
           createdByUserId: row.createdByUserId,
           createdAt: row.createdAt.toISOString(),
           updatedAt: row.updatedAt.toISOString(),
@@ -298,7 +253,7 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
         };
       }
 
-      const parsed = ExploreQueryV1Schema.safeParse(body.query);
+      const parsed = ExploreSqlQuerySchema.safeParse(body.query);
       if (!parsed.success) {
         set.status = HttpStatus.BAD_REQUEST;
         return {
@@ -315,7 +270,6 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
         appId: body.appId,
         name: body.name,
         query: parsed.data,
-        summary: body.summary ?? null,
         createdByUserId: user.id,
         createdAt: now,
         updatedAt: now,
@@ -326,7 +280,6 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
         appId: body.appId,
         name: body.name,
         query: parsed.data,
-        summary: body.summary ?? null,
         createdByUserId: user.id,
         createdAt: now.toISOString(),
         updatedAt: now.toISOString(),
@@ -385,7 +338,7 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
       }
 
       if (body.query) {
-        const parsed = ExploreQueryV1Schema.safeParse(body.query);
+        const parsed = ExploreSqlQuerySchema.safeParse(body.query);
         if (!parsed.success) {
           set.status = HttpStatus.BAD_REQUEST;
           return {
@@ -394,10 +347,6 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
           };
         }
         updates.query = parsed.data;
-      }
-
-      if (body.summary !== undefined) {
-        updates.summary = body.summary;
       }
 
       const [row] = await db
@@ -410,8 +359,7 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
         id: row.id,
         appId: row.appId,
         name: row.name,
-        query: ExploreQueryV1Schema.parse(row.query),
-        summary: row.summary,
+        query: ExploreSqlQuerySchema.parse(row.query),
         createdByUserId: row.createdByUserId,
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),

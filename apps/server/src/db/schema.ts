@@ -1,4 +1,4 @@
-import type { ExploreQueryV1 } from '@phase/shared';
+import type { ExploreSqlQuery } from '@phase/shared';
 import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
@@ -267,8 +267,7 @@ export const explorePresets = pgTable(
       .notNull()
       .references(() => apps.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
-    query: jsonb('query').$type<ExploreQueryV1>().notNull(),
-    summary: text('summary'),
+    query: jsonb('query').$type<ExploreSqlQuery>().notNull(),
     createdByUserId: text('created_by_user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),

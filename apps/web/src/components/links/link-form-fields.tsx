@@ -8,7 +8,7 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useEffect, useMemo } from 'react';
 import { DatePicker } from '@/components/date-picker';
-import { BuilderDropdown } from '@/components/explore/explore-filter-clause';
+import { BuilderDropdown } from '@/components/ui/builder-dropdown';
 import { LinkDeviceRoutingFields } from '@/components/links/link-device-routing-fields';
 import type { LinkFormState } from '@/components/links/link-form-utils';
 import { PHASE_HOST_VALUE } from '@/components/links/link-form-utils';

@@ -1,440 +1,78 @@
 import type {
-  ExploreQueryV1,
-  ExploreResult,
   ExploreRunResponse,
+  ExploreSqlQuery,
+  ExploreTimeRange,
 } from '@phase/shared';
 import {
-  buildExploreEventsSubquery,
-  executeQuestDBReadQuery,
-} from '@/lib/questdb';
-import { resolveEventCohortDeviceIds } from './cohort';
-import { EXPLORE_MAX_BREAKDOWN_ROWS } from './constants';
-import { buildExploreCoverage } from './coverage';
-import { deviceIdSqlCondition, resolveQuestDbDeviceIds } from './device-scope';
-import { ExploreEngineError } from './errors';
-import { normalizeExploreFilters } from './normalize-filters';
-import {
-  avgSessionDurationForExplore,
-  avgSessionDurationTimeseriesForExplore,
-  breakdownDevicesForExplore,
-  breakdownDevicesPairForExplore,
-  countDevicesForExplore,
-  countSessionsForExplore,
-  isEmptyCohort,
-  resolveBreakdownField,
-  resolveBreakdownPair,
-  sessionCountTimeseriesForExplore,
-  sessionsPerUserTimeseriesForExplore,
-} from './postgres-helpers';
-import {
-  buildBaseEventConditions,
-  buildEventPropertyCondition,
-  escapeExploreEventName,
-  eventCountTimeseriesForExplore,
-  eventParamExtractSql,
-  getDistinctDeviceIdsFromEvents,
-  runEventsAggregateQuery,
-} from './questdb-helpers';
+  executePostgresExploreQuery,
+  executeQuestDbExploreQuery,
+  rewriteExploreSql,
+} from './sql-execute';
+import { applyExplorePagination, parseExploreSql, validateExplorePage } from './sql-validate';
 import { resolveExploreDateRange } from './time-range';
-import { validateExploreQuery } from './validate';
-
-function buildEventFilterConditions(
-  _appId: string,
-  _dateRange: ReturnType<typeof resolveExploreDateRange>,
-  filters: ExploreQueryV1['filters'],
-  eventName?: string
-): string[] {
-  const conditions: string[] = [];
-
-  if (eventName) {
-    conditions.push(`name = '${escapeExploreEventName(eventName)}'`);
-  }
-
-  for (const filter of filters) {
-    if (filter.type === 'event_property') {
-      if (eventName && filter.eventName !== eventName) {
-        continue;
-      }
-      conditions.push(`name = '${escapeExploreEventName(filter.eventName)}'`);
-      conditions.push(
-        buildEventPropertyCondition(filter.key, filter.operator, filter.value)
-      );
-    }
-  }
-
-  return conditions;
-}
-
-async function runEventsGrainQuery(
-  appId: string,
-  query: ExploreQueryV1,
-  dateRange: ReturnType<typeof resolveExploreDateRange>
-): Promise<ExploreResult> {
-  const eventName =
-    query.metric.field?.kind === 'event_param'
-      ? query.metric.field.eventName
-      : query.filters.find((f) => f.type === 'event_performed')?.eventName;
-
-  const deviceIds = await resolveQuestDbDeviceIds(
-    appId,
-    dateRange,
-    query.filters
-  );
-  if (deviceIds !== null && deviceIds.length === 0) {
-    return emptyResultForQuery(query);
-  }
-
-  const baseConditions = buildBaseEventConditions(appId, dateRange);
-  const filterConditions = buildEventFilterConditions(
-    appId,
-    dateRange,
-    query.filters,
-    eventName
-  );
-  const allConditions = [
-    ...baseConditions,
-    ...filterConditions,
-    ...deviceIdSqlCondition(deviceIds),
-  ];
-
-  const { aggregation } = query.metric;
-
-  if (query.groupBy === 'day' && aggregation === 'count') {
-    const points = await eventCountTimeseriesForExplore(
-      appId,
-      dateRange,
-      filterConditions,
-      deviceIds
-    );
-    return { kind: 'timeseries', points };
-  }
-
-  if (query.breakdown?.type === 'event_name') {
-    const subquery = buildExploreEventsSubquery({
-      selectClause: 'CAST(name AS VARCHAR) AS name',
-      conditions: allConditions,
-      startDate: dateRange.startDate,
-      endDate: dateRange.endDate,
-    });
-
-    const sql = `
-      SELECT name AS dimension, COUNT(*) AS value
-      FROM (${subquery}) event_rows
-      GROUP BY name
-      ORDER BY value DESC
-      LIMIT ${EXPLORE_MAX_BREAKDOWN_ROWS}
-    `;
-
-    const rows = await executeQuestDBReadQuery<{
-      dimension: string;
-      value: number;
-    }>(sql);
-
-    return {
-      kind: 'breakdown',
-      rows: rows.map((r) => ({
-        dimension: r.dimension,
-        value: Number(r.value),
-      })),
-    };
-  }
-
-  if (
-    aggregation === 'field_summary' &&
-    query.metric.field?.kind === 'event_param'
-  ) {
-    const extract = eventParamExtractSql(query.metric.field.paramKey);
-    const metrics = await runEventsAggregateQuery({
-      appId,
-      dateRange,
-      conditions: allConditions,
-      selectMetrics: `
-        count(*) AS cnt,
-        avg(${extract}) AS avg_val,
-        min(${extract}) AS min_val,
-        max(${extract}) AS max_val
-      `,
-      havingClause: `${extract} IS NOT NULL`,
-    });
-
-    return {
-      kind: 'percentiles',
-      rows: [
-        { label: 'Count', value: Number(metrics.cnt ?? 0) },
-        { label: 'Average', value: Number(metrics.avg_val ?? 0) },
-        { label: 'Min', value: Number(metrics.min_val ?? 0) },
-        { label: 'Max', value: Number(metrics.max_val ?? 0) },
-      ],
-    };
-  }
-
-  if (
-    aggregation === 'avg' ||
-    aggregation === 'min' ||
-    aggregation === 'max' ||
-    aggregation === 'sum'
-  ) {
-    if (query.metric.field?.kind !== 'event_param') {
-      throw new ExploreEngineError('Aggregation requires an event param field');
-    }
-
-    const extract = eventParamExtractSql(query.metric.field.paramKey);
-    const aggFn = aggregation.toUpperCase();
-    const metrics = await runEventsAggregateQuery({
-      appId,
-      dateRange,
-      conditions: allConditions,
-      selectMetrics: `${aggFn}(${extract}) AS value`,
-      havingClause: `${extract} IS NOT NULL`,
-    });
-
-    return {
-      kind: 'scalar',
-      value: Number(metrics.value ?? 0),
-      label: aggregation,
-    };
-  }
-
-  if (aggregation === 'count_distinct_users') {
-    const ids = await getDistinctDeviceIdsFromEvents({
-      appId,
-      dateRange,
-      conditions: [...filterConditions, ...deviceIdSqlCondition(deviceIds)],
-    });
-    return {
-      kind: 'scalar',
-      value: ids.length,
-      label: 'Distinct users',
-    };
-  }
-
-  const metrics = await runEventsAggregateQuery({
-    appId,
-    dateRange,
-    conditions: allConditions,
-    selectMetrics: 'count(*) AS value',
-  });
-
-  return {
-    kind: 'scalar',
-    value: Number(metrics.value ?? 0),
-    label: 'Event count',
-  };
-}
-
-async function runUsersGrainQuery(
-  appId: string,
-  query: ExploreQueryV1,
-  dateRange: ReturnType<typeof resolveExploreDateRange>
-): Promise<ExploreResult> {
-  const eventCohort = await resolveEventCohortDeviceIds(
-    appId,
-    dateRange,
-    query.filters
-  );
-
-  if (isEmptyCohort(eventCohort)) {
-    return emptyResultForQuery(query);
-  }
-
-  if (
-    query.metric.aggregation === 'sessions_per_user' &&
-    query.groupBy === 'day'
-  ) {
-    const points = await sessionsPerUserTimeseriesForExplore(
-      appId,
-      query.filters,
-      eventCohort,
-      dateRange
-    );
-    return { kind: 'timeseries', points };
-  }
-
-  if (query.breakdown) {
-    const pair = resolveBreakdownPair(query.breakdown);
-    if (pair) {
-      const rows = await breakdownDevicesPairForExplore(
-        appId,
-        query.filters,
-        eventCohort,
-        pair
-      );
-      return { kind: 'breakdown', rows };
-    }
-
-    const field = resolveBreakdownField(query.breakdown);
-    if (!field) {
-      throw new ExploreEngineError('Unsupported breakdown for users grain');
-    }
-    const rows = await breakdownDevicesForExplore(
-      appId,
-      query.filters,
-      eventCohort,
-      field
-    );
-    return { kind: 'breakdown', rows };
-  }
-
-  const total = await countDevicesForExplore(appId, query.filters, eventCohort);
-  return {
-    kind: 'scalar',
-    value: total,
-    label: 'Users',
-  };
-}
-
-async function runSessionsGrainQuery(
-  appId: string,
-  query: ExploreQueryV1,
-  dateRange: ReturnType<typeof resolveExploreDateRange>
-): Promise<ExploreResult> {
-  const eventCohort = await resolveEventCohortDeviceIds(
-    appId,
-    dateRange,
-    query.filters
-  );
-
-  if (isEmptyCohort(eventCohort)) {
-    return emptyResultForQuery(query);
-  }
-
-  if (query.groupBy === 'day' && query.metric.aggregation === 'count') {
-    const points = await sessionCountTimeseriesForExplore(
-      appId,
-      query.filters,
-      eventCohort,
-      dateRange
-    );
-    return { kind: 'timeseries', points };
-  }
-
-  if (
-    query.groupBy === 'day' &&
-    query.metric.aggregation === 'avg' &&
-    query.metric.field?.kind === 'session_duration'
-  ) {
-    const points = await avgSessionDurationTimeseriesForExplore(
-      appId,
-      query.filters,
-      eventCohort,
-      dateRange
-    );
-    return { kind: 'timeseries', points };
-  }
-
-  if (
-    query.metric.aggregation === 'avg' &&
-    query.metric.field?.kind === 'session_duration'
-  ) {
-    const avg = await avgSessionDurationForExplore(
-      appId,
-      query.filters,
-      eventCohort,
-      dateRange
-    );
-    return {
-      kind: 'scalar',
-      value: avg,
-      label: 'Avg session duration (s)',
-    };
-  }
-
-  if (query.breakdown) {
-    const pair = resolveBreakdownPair(query.breakdown);
-    if (pair) {
-      const rows = await breakdownDevicesPairForExplore(
-        appId,
-        query.filters,
-        eventCohort,
-        pair
-      );
-      return { kind: 'breakdown', rows };
-    }
-
-    const field = resolveBreakdownField(query.breakdown);
-    if (!field) {
-      throw new ExploreEngineError('Unsupported breakdown for sessions grain');
-    }
-    const rows = await breakdownDevicesForExplore(
-      appId,
-      query.filters,
-      eventCohort,
-      field
-    );
-    return { kind: 'breakdown', rows };
-  }
-
-  const total = await countSessionsForExplore(
-    appId,
-    query.filters,
-    eventCohort,
-    dateRange
-  );
-  return {
-    kind: 'scalar',
-    value: total,
-    label: 'Sessions',
-  };
-}
-
-function emptyResultForQuery(query: ExploreQueryV1): ExploreResult {
-  if (query.groupBy === 'day') {
-    return { kind: 'timeseries', points: [] };
-  }
-  if (query.breakdown) {
-    return { kind: 'breakdown', rows: [] };
-  }
-  return { kind: 'scalar', value: 0, label: 'No data' };
-}
 
 export async function runExploreQuery(
   appId: string,
-  query: ExploreQueryV1
+  query: ExploreSqlQuery,
+  timeRange: ExploreTimeRange,
+  page = 1
 ): Promise<ExploreRunResponse> {
-  const normalizedQuery: ExploreQueryV1 = {
-    ...query,
-    filters: normalizeExploreFilters(query.filters),
-  };
+  const startedAt = Date.now();
+  const dateRange = resolveExploreDateRange(timeRange);
+  const parsed = parseExploreSql(query.sql);
+  validateExplorePage(page, parsed.pageSize);
 
-  validateExploreQuery(normalizedQuery);
-  const dateRange = resolveExploreDateRange(normalizedQuery.timeRange);
+  const usesEvents = parsed.tables.has('events');
+  const usesPostgresTables =
+    parsed.tables.has('devices') || parsed.tables.has('sessions');
+  const needsStaging = usesEvents && usesPostgresTables;
 
-  let result: ExploreResult;
-
-  switch (normalizedQuery.grain) {
-    case 'events':
-      result = await runEventsGrainQuery(appId, normalizedQuery, dateRange);
-      break;
-    case 'users':
-      result = await runUsersGrainQuery(appId, normalizedQuery, dateRange);
-      break;
-    case 'sessions':
-      result = await runSessionsGrainQuery(appId, normalizedQuery, dateRange);
-      break;
-    default:
-      throw new ExploreEngineError('Unsupported grain');
-  }
-
-  let rowCount = 1;
-  if (result.kind === 'breakdown' || result.kind === 'percentiles') {
-    rowCount = result.rows.length;
-  } else if (result.kind === 'timeseries') {
-    rowCount = result.points.length;
-  }
-
-  const coverage = await buildExploreCoverage(
-    appId,
-    normalizedQuery,
-    dateRange,
-    result
+  const { sql: rewritten, target } = rewriteExploreSql(
+    parsed.baseSql,
+    parsed.tables,
+    {
+      appId,
+      dateRange,
+    },
+    needsStaging
   );
 
+  const { sql: paginatedSql, offset } = applyExplorePagination(
+    rewritten,
+    parsed.pageSize,
+    page
+  );
+
+  const result =
+    target === 'questdb'
+      ? await executeQuestDbExploreQuery(paginatedSql)
+      : await executePostgresExploreQuery(
+          paginatedSql,
+          needsStaging,
+          appId,
+          dateRange
+        );
+
+  const hasNextPage = result.rows.length > parsed.pageSize;
+  const pageRows = hasNextPage
+    ? result.rows.slice(0, parsed.pageSize)
+    : result.rows;
+
   return {
-    result,
+    result: {
+      kind: 'table',
+      columns: result.columns,
+      rows: pageRows,
+    },
     meta: {
       generatedAt: new Date().toISOString(),
-      rowCount,
-      coverage,
+      page,
+      pageSize: parsed.pageSize,
+      offset,
+      rowCount: pageRows.length,
+      hasNextPage,
+      hasPreviousPage: page > 1,
+      executionMs: Date.now() - startedAt,
     },
   };
 }

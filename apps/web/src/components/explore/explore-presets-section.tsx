@@ -8,18 +8,9 @@ import {
   PencilEdit02Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import type {
-  ExplorePreset,
-  ExploreQueryV1,
-  ExploreTimeRange,
-} from '@phase/shared';
+import type { ExplorePreset, ExploreSqlQuery } from '@phase/shared';
 import { useState } from 'react';
 import { PresetNameDialog } from '@/components/explore/explore-preset-dialogs';
-import {
-  buildExploreRunQuery,
-  type ExploreQueryDefinition,
-  isExplorePresetSavable,
-} from '@/components/explore/explore-query-utils';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -39,10 +30,8 @@ import { cn } from '@/lib/utils';
 
 type ExplorePresetsSectionProps = {
   appId: string;
-  currentQuery: ExploreQueryDefinition;
-  currentSummary: string | null;
-  timeRange: ExploreTimeRange;
-  onLoadQuery: (query: ExploreQueryV1, summary: string | null) => void;
+  currentQuery: ExploreSqlQuery;
+  onLoadQuery: (query: ExploreSqlQuery) => void;
 };
 
 type DialogMode = 'save' | 'rename' | 'duplicate';
@@ -71,8 +60,6 @@ function uniqueDuplicateName(base: string, existing: string[]): string {
 export function ExplorePresetsSection({
   appId,
   currentQuery,
-  currentSummary,
-  timeRange,
   onLoadQuery,
 }: ExplorePresetsSectionProps) {
   const { data, isPending } = useExplorePresets(appId);
@@ -106,17 +93,14 @@ export function ExplorePresetsSection({
 
     try {
       if (dialogMode === 'save') {
-        if (!isExplorePresetSavable(name, currentQuery)) {
-          setSaveError(
-            'Add at least one filter, breakdown, group by, or non-default metric before saving.'
-          );
+        if (!currentQuery.sql.trim()) {
+          setSaveError('Write a query before saving a preset.');
           return;
         }
         await createPreset.mutateAsync({
           appId,
           name,
-          query: buildExploreRunQuery(currentQuery, timeRange),
-          summary: currentSummary,
+          query: currentQuery,
         });
       } else if (dialogMode === 'rename' && targetPreset) {
         await updatePreset.mutateAsync({ id: targetPreset.id, name });
@@ -125,7 +109,6 @@ export function ExplorePresetsSection({
           appId,
           name,
           query: targetPreset.query,
-          summary: targetPreset.summary,
         });
       }
 
@@ -156,7 +139,7 @@ export function ExplorePresetsSection({
     }
     return {
       title: 'Save preset',
-      description: 'Save the current query configuration for your team.',
+      description: 'Save the current SQL query for your team.',
       submitLabel: 'Save',
     };
   })();
@@ -191,7 +174,7 @@ export function ExplorePresetsSection({
         ) : null}
         {!isPending && presets.length === 0 ? (
           <p className="text-muted-foreground text-sm">
-            No presets yet. Generate a query and save it.
+            No presets yet. Write a query and save it.
           </p>
         ) : null}
         {!isPending && presets.length > 0 ? (
@@ -205,7 +188,7 @@ export function ExplorePresetsSection({
                   )}
                   onClick={() => {
                     setActiveId(preset.id);
-                    onLoadQuery(preset.query, preset.summary);
+                    onLoadQuery(preset.query);
                   }}
                   type="button"
                 >

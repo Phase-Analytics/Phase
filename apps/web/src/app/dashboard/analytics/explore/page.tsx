@@ -1,24 +1,18 @@
 'use client';
 
 import type {
-  ExploreQueryV1,
   ExploreResult,
   ExploreRunMeta,
+  ExploreSqlQuery,
 } from '@phase/shared';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnalyticsTimeRangePicker } from '@/components/analytics/analytics-time-range-picker';
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
-import { defaultExploreQuery } from '@/components/explore/default-query';
-import { ExploreAiPrompt } from '@/components/explore/explore-ai-prompt';
+import { defaultExploreSqlQuery } from '@/components/explore/default-sql';
 import { ExplorePresetsSection } from '@/components/explore/explore-presets-section';
-import { ExploreQueryBuilder } from '@/components/explore/explore-query-builder';
-import {
-  buildExploreRunQuery,
-  type ExploreQueryDefinition,
-} from '@/components/explore/explore-query-utils';
 import { ExploreResults } from '@/components/explore/explore-results';
-import { normalizeExploreFiltersClient } from '@/components/explore/normalize-explore-filters';
+import { ExploreSqlEditor } from '@/components/explore/explore-sql-editor';
 import { RequireApp } from '@/components/require-app';
 import { Card, CardContent } from '@/components/ui/card';
 import { toExploreTimeRange } from '@/lib/analytics-time-range';
@@ -28,11 +22,10 @@ import { useExploreRun } from '@/lib/queries/use-explore';
 export default function ExplorePage() {
   const [appId] = useQueryState('app', parseAsString);
   const [timeRange] = useQueryState('range', parseAsString.withDefault('7d'));
-  const [query, setQuery] = useState<ExploreQueryDefinition>(() =>
-    defaultExploreQuery()
+  const [query, setQuery] = useState<ExploreSqlQuery>(() =>
+    defaultExploreSqlQuery()
   );
-  const [querySummary, setQuerySummary] = useState<string | null>(null);
-  const [hasGeneratedQuery, setHasGeneratedQuery] = useState(false);
+  const [page, setPage] = useState(1);
   const [result, setResult] = useState<ExploreResult | null>(null);
   const [runMeta, setRunMeta] = useState<ExploreRunMeta | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,31 +33,28 @@ export default function ExplorePage() {
     useExploreRun();
   const hasRunRef = useRef(false);
   const queryRef = useRef(query);
-  const isNlDraftingRef = useRef(false);
+  const pageRef = useRef(page);
   queryRef.current = query;
+  pageRef.current = page;
 
   const executeRun = useCallback(
-    async (definition: ExploreQueryDefinition) => {
+    async (nextQuery: ExploreSqlQuery, nextPage: number) => {
       if (!appId) {
         return;
       }
 
       setError(null);
-      const runQuery = buildExploreRunQuery(
-        {
-          ...definition,
-          filters: normalizeExploreFiltersClient(definition.filters),
-        },
-        toExploreTimeRange(timeRange)
-      );
 
       try {
         const response = await runExploreQuery({
           appId,
-          query: runQuery,
+          query: nextQuery,
+          timeRange: toExploreTimeRange(timeRange),
+          page: nextPage,
         });
         setResult(response.result);
         setRunMeta(response.meta);
+        setPage(response.meta.page);
         hasRunRef.current = true;
       } catch (err) {
         setResult(null);
@@ -76,58 +66,48 @@ export default function ExplorePage() {
   );
 
   const handleRun = useCallback(() => {
-    executeRun(query).catch(ignorePromiseRejection);
+    setPage(1);
+    executeRun(query, 1).catch(ignorePromiseRejection);
   }, [executeRun, query]);
+
+  const handlePageChange = useCallback(
+    (nextPage: number) => {
+      setPage(nextPage);
+      executeRun(queryRef.current, nextPage).catch(ignorePromiseRejection);
+    },
+    [executeRun]
+  );
 
   useEffect(() => {
     if (!(hasRunRef.current && appId)) {
       return;
     }
-    executeRun(queryRef.current).catch(ignorePromiseRejection);
-  }, [appId, executeRun]);
+    setPage(1);
+    executeRun(queryRef.current, 1).catch(ignorePromiseRejection);
+  }, [appId, executeRun, timeRange]);
 
-  const handleLoadPreset = useCallback(
-    (presetQuery: ExploreQueryV1, presetSummary: string | null) => {
-      setQuery({
-        ...presetQuery,
-        filters: normalizeExploreFiltersClient(presetQuery.filters),
-        timeRange: toExploreTimeRange(timeRange),
-      });
-      setHasGeneratedQuery(true);
-      if (!isNlDraftingRef.current) {
-        setQuerySummary(presetSummary);
-      }
-    },
-    [timeRange]
-  );
+  const handleLoadPreset = useCallback((presetQuery: ExploreSqlQuery) => {
+    setQuery(presetQuery);
+    setResult(null);
+    setRunMeta(null);
+    setError(null);
+    setPage(1);
+    hasRunRef.current = false;
+  }, []);
 
-  const handleAiGenerated = useCallback(
-    (payload: { query: ExploreQueryDefinition; summary: string }) => {
-      setQuery({
-        ...payload.query,
-        filters: normalizeExploreFiltersClient(payload.query.filters),
-        timeRange: toExploreTimeRange(timeRange),
-      });
-      setQuerySummary(payload.summary);
-      setHasGeneratedQuery(true);
-      setResult(null);
-      setRunMeta(null);
-      setError(null);
-      hasRunRef.current = false;
-      isNlDraftingRef.current = false;
-    },
-    [timeRange]
-  );
+  const handleQueryChange = useCallback((nextQuery: ExploreSqlQuery) => {
+    setQuery(nextQuery);
+    hasRunRef.current = false;
+  }, []);
 
   const showResults = Boolean(result) || isExploreRunning || Boolean(error);
-  const showBuilder = hasGeneratedQuery;
 
   return (
     <RequireApp>
       <div className="flex flex-1 flex-col gap-6">
         <DashboardPageHeader
           actions={<AnalyticsTimeRangePicker />}
-          description="Build rules like a firewall query: measure, filter, split, run"
+          description="Write read-only SQL against events, devices, and sessions"
           title="Explore"
         />
 
@@ -136,32 +116,16 @@ export default function ExplorePage() {
             <ExplorePresetsSection
               appId={appId}
               currentQuery={query}
-              currentSummary={querySummary}
               onLoadQuery={handleLoadPreset}
-              timeRange={toExploreTimeRange(timeRange)}
             />
           ) : null}
 
-          {appId ? (
-            <ExploreAiPrompt
-              appId={appId}
-              onDraftingChange={(drafting) => {
-                isNlDraftingRef.current = drafting;
-              }}
-              onGenerated={handleAiGenerated}
-              summary={querySummary}
-            />
-          ) : null}
-
-          {showBuilder ? (
-            <ExploreQueryBuilder
-              appId={appId ?? ''}
-              isRunning={isExploreRunning}
-              onChange={setQuery}
-              onRun={handleRun}
-              query={query}
-            />
-          ) : null}
+          <ExploreSqlEditor
+            isRunning={isExploreRunning}
+            onChange={handleQueryChange}
+            onRun={handleRun}
+            query={query}
+          />
 
           {showResults ? (
             <Card className="py-0">
@@ -170,17 +134,11 @@ export default function ExplorePage() {
                   Results
                 </h2>
                 <ExploreResults
-                  coverage={runMeta?.coverage}
                   error={error}
-                  formatTimeseriesAsDuration={
-                    query.grain === 'sessions' &&
-                    query.metric.aggregation === 'avg' &&
-                    query.metric.field?.kind === 'session_duration' &&
-                    query.groupBy === 'day'
-                  }
                   isPending={isExploreRunning}
+                  meta={runMeta}
+                  onPageChange={handlePageChange}
                   result={result}
-                  timeRange={timeRange}
                 />
               </CardContent>
             </Card>
