@@ -74,6 +74,21 @@ describe('parseExploreSql', () => {
       parseExploreSql('SELECT device_id FROM users LIMIT 10')
     ).toThrow(ExploreEngineError);
   });
+
+  test('parses questdb long cast and keeps original sql for execution', () => {
+    const sql = `SELECT avg(cast(json_extract(params, '$.duration_seconds') AS double)) AS avg_duration_seconds
+FROM events
+WHERE name = 'level_win'
+  AND cast(json_extract(params, '$.level_number') AS long) % 5 = 0
+LIMIT 100`;
+
+    const parsed = parseExploreSql(sql);
+
+    expect(parsed.pageSize).toBe(100);
+    expect(parsed.baseSql).toContain('AS long');
+    expect(parsed.baseSql).toContain('% 5 = 0');
+    expect(parsed.baseSql.toUpperCase()).not.toContain('LIMIT');
+  });
 });
 
 describe('applyExplorePagination', () => {

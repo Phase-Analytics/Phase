@@ -3,12 +3,24 @@
 import { InformationCircleIcon, PlayIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import type { ExploreSqlQuery } from '@phase/shared';
+import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { ExploreInstructionsDialog } from '@/components/explore/explore-instructions-dialog';
-import { SqlHighlightTextarea } from '@/components/explore/sql-highlight-textarea';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
+
+const SqlCodeEditor = dynamic(
+  () =>
+    import('@/components/explore/sql-code-editor').then(
+      (module) => module.SqlCodeEditor
+    ),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="min-h-[220px] rounded-none" />,
+  }
+);
 
 type ExploreSqlEditorProps = {
   query: ExploreSqlQuery;
@@ -59,7 +71,7 @@ export function ExploreSqlEditor({
           </div>
         </div>
 
-        <SqlHighlightTextarea
+        <SqlCodeEditor
           onChange={(sql) => onChange({ version: 1, sql })}
           onRun={onRun}
           value={query.sql}

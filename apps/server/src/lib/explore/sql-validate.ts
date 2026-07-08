@@ -101,66 +101,44 @@ function assertNoForbiddenKeywords(sql: string): void {
   }
 }
 
-function extractLimitValue(limit: Select['limit']): number | null {
-  if (!limit?.value) {
-    return null;
-  }
-
-  const values = Array.isArray(limit.value) ? limit.value : [limit.value];
-  const first = values[0];
-  if (!first || first.type !== 'number') {
-    return null;
-  }
-
-  const raw = first.value;
-  if (typeof raw === 'number') {
-    return raw;
-  }
-  if (typeof raw === 'string') {
-    const parsed = Number.parseInt(raw, 10);
-    return Number.isNaN(parsed) ? null : parsed;
-  }
-  return null;
+function normalizeSqlForParser(sql: string): string {
+  return sql
+    .replace(/\bAS\s+long\b/gi, 'AS bigint')
+    .replace(/\bAS\s+short\b/gi, 'AS smallint')
+    .replace(/\bAS\s+byte\b/gi, 'AS smallint')
+    .replace(/\bAS\s+symbol\b/gi, 'AS varchar')
+    .replace(/\bAS\s+string\b/gi, 'AS varchar');
 }
 
-function assertNoUserOffset(select: Select): void {
-  const limit = select.limit;
-  if (!limit) {
-    return;
+const TRAILING_LIMIT_OFFSET_PATTERN = /\blimit\s+(\d+)\s+offset\s+(\d+)\s*$/i;
+const TRAILING_LIMIT_PATTERN = /\blimit\s+(\d+)\s*$/i;
+
+export function stripTrailingLimit(sql: string): {
+  sql: string;
+  pageSize: number | null;
+  hadOffset: boolean;
+} {
+  const offsetMatch = sql.match(TRAILING_LIMIT_OFFSET_PATTERN);
+  if (offsetMatch) {
+    const pageSize = Number.parseInt(offsetMatch[1] ?? '', 10);
+    return {
+      sql: sql.slice(0, offsetMatch.index).trimEnd(),
+      pageSize: Number.isNaN(pageSize) ? null : pageSize,
+      hadOffset: true,
+    };
   }
 
-  const hasOffset =
-    (limit as { offset?: unknown }).offset !== undefined ||
-    limit.seperator === 'offset';
-
-  if (hasOffset) {
-    throw new ExploreEngineError(
-      'OFFSET is not allowed in queries. Use the page controls to navigate results.'
-    );
-  }
-}
-
-function stripOuterLimit(select: Select): number | null {
-  if (!select.limit) {
-    return null;
+  const limitMatch = sql.match(TRAILING_LIMIT_PATTERN);
+  if (limitMatch) {
+    const pageSize = Number.parseInt(limitMatch[1] ?? '', 10);
+    return {
+      sql: sql.slice(0, limitMatch.index).trimEnd(),
+      pageSize: Number.isNaN(pageSize) ? null : pageSize,
+      hadOffset: false,
+    };
   }
 
-  const limitValue = extractLimitValue(select.limit);
-  if (limitValue === null) {
-    select.limit = null;
-    return null;
-  }
-
-  assertNoUserOffset(select);
-
-  if (limitValue > EXPLORE_MAX_PAGE_SIZE) {
-    throw new ExploreEngineError(
-      `LIMIT cannot exceed ${EXPLORE_MAX_PAGE_SIZE} rows per page.`
-    );
-  }
-
-  select.limit = null;
-  return limitValue;
+  return { sql, pageSize: null, hadOffset: false };
 }
 
 export type ParsedExploreSql = {
@@ -191,9 +169,29 @@ export function parseExploreSql(sql: string): ParsedExploreSql {
   assertNoForbiddenKeywords(trimmed);
   assertUserFacingIdentifiers(trimmed);
 
+  const {
+    sql: baseSql,
+    pageSize: strippedLimit,
+    hadOffset,
+  } = stripTrailingLimit(trimmed);
+
+  if (hadOffset) {
+    throw new ExploreEngineError(
+      'OFFSET is not allowed in queries. Use the page controls to navigate results.'
+    );
+  }
+
+  if (strippedLimit !== null && strippedLimit > EXPLORE_MAX_PAGE_SIZE) {
+    throw new ExploreEngineError(
+      `LIMIT cannot exceed ${EXPLORE_MAX_PAGE_SIZE} rows per page.`
+    );
+  }
+
+  const normalized = normalizeSqlForParser(trimmed);
+
   let ast: AST | AST[];
   try {
-    ast = parser.astify(trimmed, PARSER_OPTIONS);
+    ast = parser.astify(normalized, PARSER_OPTIONS);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Invalid SQL syntax.';
@@ -203,10 +201,7 @@ export function parseExploreSql(sql: string): ParsedExploreSql {
   assertSelectStatement(ast);
 
   const select = (Array.isArray(ast) ? ast[0] : ast) as Select;
-  const pageSizeFromQuery = stripOuterLimit(select);
-  const pageSize = pageSizeFromQuery ?? EXPLORE_DEFAULT_PAGE_SIZE;
-
-  const baseSql = parser.sqlify(select, PARSER_OPTIONS);
+  const pageSize = strippedLimit ?? EXPLORE_DEFAULT_PAGE_SIZE;
 
   const tables = new Set<ExploreVirtualTable>();
   collectTablesFromNode(select, tables);

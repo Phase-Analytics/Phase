@@ -13,6 +13,8 @@ Write read-only SELECT queries against three virtual tables. App scoping is appl
 QuestDB syntax for params:
 - json_extract(params, '$.key')
 - cast(json_extract(params, '$.price') as double)
+- cast(json_extract(params, '$.level_number') as long)
+- modulo: expr % 5 = 0
 
 ### users
 - user_id, platform, country, locale, model, os_version
