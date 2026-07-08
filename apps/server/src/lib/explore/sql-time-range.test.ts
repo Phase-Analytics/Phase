@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { EXPLORE_DEFAULT_RANGE_DAYS } from './time-range';
 import {
+  EXPLORE_DEFAULT_RANGE_DAYS,
   resolveDefaultExploreDateRange,
   resolveExploreDateRangeForSql,
   sqlHasExplicitTimeFilter,
@@ -17,7 +17,9 @@ describe('sqlHasExplicitTimeFilter', () => {
 
   test('returns false without time predicates', () => {
     expect(
-      sqlHasExplicitTimeFilter('SELECT name, count(*) FROM events GROUP BY name')
+      sqlHasExplicitTimeFilter(
+        'SELECT name, count(*) FROM events GROUP BY name'
+      )
     ).toBe(false);
   });
 });
@@ -25,12 +27,12 @@ describe('sqlHasExplicitTimeFilter', () => {
 describe('resolveExploreDateRangeForSql', () => {
   test('returns default range when SQL has no time filter', () => {
     const range = resolveExploreDateRangeForSql(
-      'SELECT device_id FROM devices LIMIT 10'
+      'SELECT user_id FROM users LIMIT 10'
     );
     expect(range).not.toBeNull();
 
-    const start = new Date(range!.startDate).getTime();
-    const end = new Date(range!.endDate).getTime();
+    const start = new Date(range?.startDate).getTime();
+    const end = new Date(range?.endDate).getTime();
     const diffDays = (end - start) / (24 * 60 * 60 * 1000);
     expect(diffDays).toBeGreaterThan(EXPLORE_DEFAULT_RANGE_DAYS - 0.1);
     expect(diffDays).toBeLessThan(EXPLORE_DEFAULT_RANGE_DAYS + 0.1);

@@ -11,14 +11,17 @@ export function downloadJson(data: unknown, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
+const CSV_SPECIAL_CHAR_PATTERN = /[",\n\r]/;
+const CSV_QUOTE_PATTERN = /"/g;
+
 function escapeCsvCell(value: unknown): string {
   if (value === null || value === undefined) {
     return '';
   }
   const text =
     typeof value === 'object' ? JSON.stringify(value) : String(value);
-  if (/[",\n\r]/.test(text)) {
-    return `"${text.replace(/"/g, '""')}"`;
+  if (CSV_SPECIAL_CHAR_PATTERN.test(text)) {
+    return `"${text.replace(CSV_QUOTE_PATTERN, '""')}"`;
   }
   return text;
 }
@@ -29,9 +32,7 @@ export function downloadCsv(
   filename: string
 ): void {
   const header = columns.map(escapeCsvCell).join(',');
-  const body = rows
-    .map((row) => row.map(escapeCsvCell).join(','))
-    .join('\n');
+  const body = rows.map((row) => row.map(escapeCsvCell).join(',')).join('\n');
   const csv = `${header}\n${body}`;
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);

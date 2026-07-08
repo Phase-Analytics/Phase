@@ -6,7 +6,7 @@ Write read-only SELECT queries against three virtual tables. App scoping is appl
 
 ### events
 - timestamp (timestamptz)
-- device_id (text)
+- user_id (text)
 - name (text) — event name
 - params (text) — JSON string
 
@@ -14,13 +14,13 @@ QuestDB syntax for params:
 - json_extract(params, '$.key')
 - cast(json_extract(params, '$.price') as double)
 
-### devices
-- device_id, platform, country, city, locale, model, os_version
+### users
+- user_id, platform, country, city, locale, model, os_version
 - first_seen (timestamptz)
 - properties (jsonb) — use properties->>'key'
 
 ### sessions
-- session_id, device_id
+- session_id, user_id
 - started_at, last_activity_at (timestamptz)
 - duration_seconds (number)
 
@@ -42,7 +42,7 @@ QuestDB syntax for params:
 - SELECT only. No mutations.
 - Do not filter by app_id — it is injected automatically.
 - Debug events are excluded automatically.
-- JOINs work across tables on device_id.
+- JOINs work across tables on user_id.
 - Single statement only. No semicolons.
 
 ## Examples
@@ -55,11 +55,11 @@ ORDER BY count DESC
 LIMIT 100
 
 Purchases by platform:
-SELECT d.platform, count(*) AS purchases
+SELECT u.platform, count(*) AS purchases
 FROM events e
-JOIN devices d ON e.device_id = d.device_id
+JOIN users u ON e.user_id = u.user_id
 WHERE e.name = 'purchase'
-GROUP BY d.platform
+GROUP BY u.platform
 ORDER BY purchases DESC
 LIMIT 50
 

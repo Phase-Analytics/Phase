@@ -6,11 +6,7 @@ export const EXPLORE_CATALOG_EVENT_LIMIT = 50;
 export const EXPLORE_CATALOG_PARAM_SAMPLE_LIMIT = 100;
 export const EXPLORE_MAX_SQL_LENGTH = 10_000;
 
-export const EXPLORE_VIRTUAL_TABLES = [
-  'events',
-  'devices',
-  'sessions',
-] as const;
+export const EXPLORE_VIRTUAL_TABLES = ['events', 'users', 'sessions'] as const;
 
 export type ExploreVirtualTable = (typeof EXPLORE_VIRTUAL_TABLES)[number];
 

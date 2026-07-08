@@ -11,6 +11,10 @@ import {
 } from './sql-validate';
 import { resolveExploreDateRangeForSql } from './time-range';
 
+function normalizeResultColumns(columns: string[]): string[] {
+  return columns.map((column) => (column === 'device_id' ? 'user_id' : column));
+}
+
 export type ExploreRunOptions = {
   maxPageSize?: number;
 };
@@ -32,7 +36,7 @@ export async function runExploreQuery(
 
   const usesEvents = parsed.tables.has('events');
   const usesPostgresTables =
-    parsed.tables.has('devices') || parsed.tables.has('sessions');
+    parsed.tables.has('users') || parsed.tables.has('sessions');
   const needsStaging = usesEvents && usesPostgresTables;
 
   const { sql: rewritten, target } = rewriteExploreSql(
@@ -63,11 +67,12 @@ export async function runExploreQuery(
 
   const hasNextPage = result.rows.length > pageSize;
   const pageRows = hasNextPage ? result.rows.slice(0, pageSize) : result.rows;
+  const columns = normalizeResultColumns(result.columns);
 
   return {
     result: {
       kind: 'table',
-      columns: result.columns,
+      columns,
       rows: pageRows,
     },
     meta: {

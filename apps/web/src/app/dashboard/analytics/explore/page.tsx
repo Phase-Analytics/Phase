@@ -22,7 +22,7 @@ export default function QueryPage() {
   const [query, setQuery] = useState<ExploreSqlQuery>(() =>
     defaultExploreSqlQuery()
   );
-  const [page, setPage] = useState(1);
+  const [_page, setPage] = useState(1);
   const [result, setResult] = useState<ExploreResult | null>(null);
   const [runMeta, setRunMeta] = useState<ExploreRunMeta | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +88,7 @@ export default function QueryPage() {
     <RequireApp>
       <div className="flex flex-1 flex-col gap-6">
         <DashboardPageHeader
-          description="Write read-only SQL against events, devices, and sessions"
+          description="Write read-only SQL against events, users, and sessions"
           title="Query"
         />
 

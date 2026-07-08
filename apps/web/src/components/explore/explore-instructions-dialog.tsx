@@ -43,7 +43,7 @@ export function ExploreInstructionsDialog({
         <DialogHeader>
           <DialogTitle>Query instructions</DialogTitle>
           <DialogDescription>
-            Read-only SQL against events, devices, and sessions.
+            Read-only SQL against events, users, and sessions.
           </DialogDescription>
         </DialogHeader>
         <div className="max-h-[55vh] overflow-auto rounded-lg border bg-muted/20 p-4">
@@ -52,7 +52,11 @@ export function ExploreInstructionsDialog({
           </pre>
         </div>
         <DialogFooter>
-          <Button onClick={() => onOpenChange(false)} type="button" variant="outline">
+          <Button
+            onClick={() => onOpenChange(false)}
+            type="button"
+            variant="outline"
+          >
             Close
           </Button>
           <Button onClick={handleCopy} type="button">

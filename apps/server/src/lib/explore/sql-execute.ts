@@ -1,15 +1,15 @@
+import { pool } from '@/db';
 import {
   buildExploreEventsSubquery,
   executeQuestDBReadQuery,
 } from '@/lib/questdb';
 import { escapeQuestDbString } from '@/lib/questdb-sql';
-import { pool } from '@/db';
-import type { ExploreDateRange } from './time-range';
 import type { ExploreVirtualTable } from './constants';
-import {
-  EXPLORE_MAX_STAGED_EVENTS,
-} from './constants';
+import { EXPLORE_MAX_STAGED_EVENTS } from './constants';
 import { ExploreEngineError } from './errors';
+import type { ExploreDateRange } from './time-range';
+
+const WHITESPACE_SPLIT_PATTERN = /\s+/;
 
 type RewriteContext = {
   appId: string;
@@ -45,10 +45,10 @@ function buildScopedEventsSubquery(
   });
 }
 
-function buildDevicesSubquery(appId: string): string {
+function buildUsersSubquery(appId: string): string {
   return `(
     SELECT
-      device_id,
+      device_id AS user_id,
       platform,
       country,
       city,
@@ -74,7 +74,7 @@ function buildSessionsSubquery(
   return `(
     SELECT
       s.session_id,
-      s.device_id,
+      s.device_id AS user_id,
       s.started_at,
       s.last_activity_at,
       EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at))::double precision AS duration_seconds
@@ -98,7 +98,7 @@ function replaceTableReference(
   let result = sql;
   for (const pattern of patterns) {
     result = result.replace(pattern, (match) => {
-      const keyword = match.split(/\s+/)[0] ?? 'FROM';
+      const keyword = match.split(WHITESPACE_SPLIT_PATTERN)[0] ?? 'FROM';
       return `${keyword} ${replacement}`;
     });
   }
@@ -113,7 +113,7 @@ export function rewriteExploreSql(
 ): { sql: string; target: 'questdb' | 'postgres' } {
   let rewritten = sql;
   const usesEvents = tables.has('events');
-  const usesPostgresTables = tables.has('devices') || tables.has('sessions');
+  const usesPostgresTables = tables.has('users') || tables.has('sessions');
 
   if (usesEvents && !stagedEventsTable) {
     if (usesPostgresTables) {
@@ -128,7 +128,7 @@ export function rewriteExploreSql(
         context.dateRange,
         `
           timestamp,
-          CAST(device_id AS VARCHAR) AS device_id,
+          CAST(device_id AS VARCHAR) AS user_id,
           CAST(name AS VARCHAR) AS name,
           CAST(params AS VARCHAR) AS params
         `
@@ -137,11 +137,11 @@ export function rewriteExploreSql(
     }
   }
 
-  if (tables.has('devices')) {
+  if (tables.has('users')) {
     rewritten = replaceTableReference(
       rewritten,
-      'devices',
-      buildDevicesSubquery(context.appId)
+      'users',
+      buildUsersSubquery(context.appId)
     );
   }
 
@@ -153,15 +153,14 @@ export function rewriteExploreSql(
     );
   }
 
-  const target =
-    usesEvents && !usesPostgresTables ? 'questdb' : 'postgres';
+  const target = usesEvents && !usesPostgresTables ? 'questdb' : 'postgres';
 
   return { sql: rewritten, target };
 }
 
 type StagedEventRow = {
   timestamp: string;
-  device_id: string;
+  user_id: string;
   name: string;
   params: string | null;
 };
@@ -174,7 +173,7 @@ export async function stageEventsForPostgres(
   const fetchSql = `
     SELECT
       timestamp,
-      device_id,
+      user_id,
       name,
       params
     FROM (${buildScopedEventsSubquery(
@@ -182,7 +181,7 @@ export async function stageEventsForPostgres(
       dateRange,
       `
         to_str(timestamp, 'yyyy-MM-ddTHH:mm:ss.SSSUUUZ') AS timestamp,
-        CAST(device_id AS VARCHAR) AS device_id,
+        CAST(device_id AS VARCHAR) AS user_id,
         CAST(name AS VARCHAR) AS name,
         CAST(params AS VARCHAR) AS params
       `
@@ -201,7 +200,7 @@ export async function stageEventsForPostgres(
   await client.query(`
     CREATE TEMP TABLE explore_staged_events (
       timestamp timestamptz,
-      device_id text,
+      user_id text,
       name text,
       params text
     ) ON COMMIT DROP
@@ -222,12 +221,12 @@ export async function stageEventsForPostgres(
       values.push(
         `($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3})`
       );
-      params.push(row.timestamp, row.device_id, row.name, row.params);
+      params.push(row.timestamp, row.user_id, row.name, row.params);
       paramIndex += 4;
     }
 
     await client.query(
-      `INSERT INTO explore_staged_events (timestamp, device_id, name, params) VALUES ${values.join(', ')}`,
+      `INSERT INTO explore_staged_events (timestamp, user_id, name, params) VALUES ${values.join(', ')}`,
       params
     );
   }

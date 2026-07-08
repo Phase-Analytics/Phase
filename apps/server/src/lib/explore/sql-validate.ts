@@ -1,18 +1,21 @@
-import { Parser, type AST, type Select } from 'node-sql-parser';
+import { type AST, Parser, type Select } from 'node-sql-parser';
 import {
   EXPLORE_DEFAULT_PAGE_SIZE,
   EXPLORE_MAX_OFFSET,
   EXPLORE_MAX_PAGE_SIZE,
   EXPLORE_MAX_SQL_LENGTH,
   EXPLORE_VIRTUAL_TABLES,
-  FORBIDDEN_SQL_KEYWORDS,
   type ExploreVirtualTable,
+  FORBIDDEN_SQL_KEYWORDS,
 } from './constants';
 import { ExploreEngineError } from './errors';
 
 const parser = new Parser();
 
 const PARSER_OPTIONS = { database: 'Postgresql' as const };
+
+const LEGACY_DEVICES_TABLE_PATTERN = /\bdevices\b/i;
+const LEGACY_DEVICE_ID_COLUMN_PATTERN = /\bdevice_id\b/i;
 
 const ALLOWED_STATEMENT_TYPES = new Set(['select']);
 
@@ -27,7 +30,7 @@ function registerVirtualTable(
   }
   if (!name.startsWith('explore_staged_')) {
     throw new ExploreEngineError(
-      `Unknown table "${tableName}". Use events, devices, or sessions.`
+      `Unknown table "${tableName}". Use events, users, or sessions.`
     );
   }
 }
@@ -73,6 +76,16 @@ function assertSelectStatement(ast: AST | AST[]): void {
   const statement = statements[0];
   if (!ALLOWED_STATEMENT_TYPES.has(statement.type)) {
     throw new ExploreEngineError('Only SELECT queries are allowed.');
+  }
+}
+
+function assertUserFacingIdentifiers(sql: string): void {
+  if (LEGACY_DEVICES_TABLE_PATTERN.test(sql)) {
+    throw new ExploreEngineError('Use the users table instead of devices.');
+  }
+
+  if (LEGACY_DEVICE_ID_COLUMN_PATTERN.test(sql)) {
+    throw new ExploreEngineError('Use user_id instead of device_id.');
   }
 }
 
@@ -176,6 +189,7 @@ export function parseExploreSql(sql: string): ParsedExploreSql {
   }
 
   assertNoForbiddenKeywords(trimmed);
+  assertUserFacingIdentifiers(trimmed);
 
   let ast: AST | AST[];
   try {
@@ -199,7 +213,7 @@ export function parseExploreSql(sql: string): ParsedExploreSql {
 
   if (tables.size === 0) {
     throw new ExploreEngineError(
-      'Query must reference at least one table: events, devices, or sessions.'
+      'Query must reference at least one table: events, users, or sessions.'
     );
   }
 
