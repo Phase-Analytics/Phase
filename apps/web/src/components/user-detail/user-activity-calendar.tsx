@@ -8,78 +8,53 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useMemo } from 'react';
-import {
-  type HeatmapBin,
-  HeatmapCells,
-  HeatmapChart,
-  type HeatmapColumn,
-  HeatmapInteractionBoundary,
-  HeatmapInteractionProvider,
-  HeatmapLegend,
-  HeatmapTooltip,
-  HeatmapXAxis,
-  HeatmapYAxis,
-} from '@/components/charts/heatmap';
 import { ClientDate, ClientDuration } from '@/components/client-date';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { formatDate } from '@/lib/date-utils';
 import { useDeviceActivityTimeseries } from '@/lib/queries';
+import { cn } from '@/lib/utils';
 import { UserActivityCalendarSkeleton } from './user-detail-skeletons';
 
 type UserActivityCalendarProps = {
   deviceId: string;
 };
 
-const LEVEL_STYLES = [
-  { color: 'var(--chart-scale-01)', fillMode: 'solid' },
-  { color: 'var(--chart-scale-02)', fillMode: 'solid' },
-  { color: 'var(--chart-scale-03)', fillMode: 'solid' },
-  { color: 'var(--chart-scale-04)', fillMode: 'solid' },
-  { color: 'var(--chart-scale-05)', fillMode: 'solid' },
-] as const;
+type DayData = {
+  date: string;
+  sessionCount: number;
+  formattedDate: string;
+};
 
-function buildHeatmapColumns(
-  sessionByDate: Map<string, number>,
-  endDate: Date
-): HeatmapColumn[] {
-  const end = new Date(endDate);
-  end.setHours(0, 0, 0, 0);
-
-  const start = new Date(end);
-  start.setDate(start.getDate() - 364);
-  start.setDate(start.getDate() - start.getDay());
-  start.setHours(0, 0, 0, 0);
-
-  const columns: HeatmapColumn[] = [];
-  const cursor = new Date(start);
-  let columnIndex = 0;
-
-  while (cursor <= end) {
-    const bins: HeatmapBin[] = [];
-    for (let day = 0; day < 7; day++) {
-      const cellDate = new Date(cursor);
-      cellDate.setDate(cursor.getDate() + day);
-      cellDate.setHours(0, 0, 0, 0);
-
-      const dateStr = cellDate.toISOString().slice(0, 10);
-      const inRange = cellDate >= start && cellDate <= end;
-
-      bins.push({
-        bin: day,
-        count: inRange ? (sessionByDate.get(dateStr) ?? 0) : 0,
-        date: cellDate,
-      });
-    }
-
-    columns.push({
-      bin: columnIndex,
-      bins,
-    });
-
-    cursor.setDate(cursor.getDate() + 7);
-    columnIndex += 1;
+function getIntensityClass(sessionCount: number): string {
+  if (sessionCount === 0) {
+    return 'bg-muted hover:bg-muted/80';
   }
+  if (sessionCount === 1) {
+    return 'bg-chart-2/20 hover:bg-chart-2/30';
+  }
+  if (sessionCount === 2) {
+    return 'bg-chart-2/40 hover:bg-chart-2/50';
+  }
+  if (sessionCount === 3) {
+    return 'bg-chart-2/60 hover:bg-chart-2/70';
+  }
+  return 'bg-chart-2 hover:bg-chart-2/90';
+}
 
-  return columns;
+function getSessionLabel(sessionCount: number): string {
+  if (sessionCount === 0) {
+    return 'No Sessions';
+  }
+  if (sessionCount === 1) {
+    return 'Session';
+  }
+  return 'Sessions';
 }
 
 export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
@@ -90,11 +65,31 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
     appId || ''
   );
 
-  const heatmapData = useMemo(() => {
-    const sessionByDate = new Map(
-      (data?.data ?? []).map((item) => [item.date, item.sessionCount])
+  const calendarData = useMemo<DayData[]>(() => {
+    if (!data?.data) {
+      return [];
+    }
+
+    const dataMap = new Map(
+      data.data.map((item) => [item.date, item.sessionCount])
     );
-    return buildHeatmapColumns(sessionByDate, new Date());
+
+    const days: DayData[] = [];
+    const now = new Date();
+
+    for (let i = 364; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+
+      days.push({
+        date: dateStr,
+        sessionCount: dataMap.get(dateStr) || 0,
+        formattedDate: formatDate(dateStr),
+      });
+    }
+
+    return days;
   }, [data]);
 
   if (isPending) {
@@ -120,7 +115,7 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
                 className="size-4 text-muted-foreground"
                 icon={PlaySquareIcon}
               />
-              <span className="tabular-nums">{data?.totalSessions ?? 0}</span>
+              <span>{data?.totalSessions ?? 0}</span>
             </p>
           </div>
           <div>
@@ -172,41 +167,58 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
           </div>
         </div>
 
-        <HeatmapInteractionProvider>
-          <HeatmapInteractionBoundary className="w-full min-w-0">
-            <HeatmapChart
-              animationDuration={420}
-              data={heatmapData}
-              enterStaggerScale={0.3}
-              enterTransition={{
-                type: 'tween',
-                duration: 0.42,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-              gap={2}
-              layout="fluid"
-              levelStyles={LEVEL_STYLES}
-              margin={{ top: 18, right: 0, bottom: 0, left: 22 }}
-              status="ready"
-            >
-              <HeatmapCells cornerRadius={1.5} />
-              <HeatmapXAxis />
-              <HeatmapYAxis labelFormat="initial" tickFilter="odd" />
-              <HeatmapTooltip
-                formatLabel={(count) =>
-                  count === 1 ? '1 Session' : `${count} Sessions`
-                }
-              />
-            </HeatmapChart>
-            <div className="mt-3">
-              <HeatmapLegend
-                align="start"
-                cellSize={10}
-                levelStyles={LEVEL_STYLES}
-              />
+        <TooltipProvider>
+          <div className="overflow-x-auto">
+            <div className="flex flex-wrap gap-1">
+              {calendarData.map((day) => (
+                <Tooltip key={day.date}>
+                  <TooltipTrigger asChild>
+                    <div
+                      className={cn(
+                        'size-3 cursor-pointer rounded-[2px] transition-colors',
+                        getIntensityClass(day.sessionCount)
+                      )}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent
+                    className="border-border bg-background px-2.5 py-1.5 text-foreground"
+                    side="top"
+                  >
+                    <div className="flex flex-col gap-1.5">
+                      <span className="flex items-center gap-1.5">
+                        <HugeiconsIcon
+                          className="size-3.5"
+                          icon={Calendar03Icon}
+                        />
+                        <span>{day.formattedDate}</span>
+                      </span>
+                      <div className="flex flex-col gap-0.5">
+                        <div className="font-semibold text-base tabular-nums">
+                          {day.sessionCount === 0 ? '0' : day.sessionCount}
+                        </div>
+                        <div className="text-muted-foreground text-xs">
+                          {getSessionLabel(day.sessionCount)}
+                        </div>
+                      </div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
             </div>
-          </HeatmapInteractionBoundary>
-        </HeatmapInteractionProvider>
+          </div>
+        </TooltipProvider>
+
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-muted-foreground">Less</span>
+          <div className="flex gap-1">
+            <div className="size-3 rounded-[2px] bg-muted" />
+            <div className="size-3 rounded-[2px] bg-chart-2/20" />
+            <div className="size-3 rounded-[2px] bg-chart-2/40" />
+            <div className="size-3 rounded-[2px] bg-chart-2/60" />
+            <div className="size-3 rounded-[2px] bg-chart-2" />
+          </div>
+          <span className="text-muted-foreground">More</span>
+        </div>
       </CardContent>
     </Card>
   );

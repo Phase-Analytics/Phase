@@ -18,8 +18,8 @@ export function UsersCountryMapCard() {
   const totalDevices = overview?.totalDevices || 0;
 
   return (
-    <Card className="py-0">
-      <CardContent className="space-y-4 p-4">
+    <Card className="min-w-0 overflow-hidden py-0">
+      <CardContent className="min-w-0 space-y-4 p-4">
         <Tabs value="map">
           <TabsList className="h-8">
             <TabsTrigger
@@ -36,7 +36,7 @@ export function UsersCountryMapCard() {
           User distribution by location
         </p>
 
-        <div className="h-[220px] overflow-hidden rounded-md">
+        <div className="relative h-[200px] w-full min-w-0 overflow-hidden rounded-md sm:h-[220px]">
           <UsersCountryMap
             countryStats={countryStats}
             totalDevices={totalDevices}

@@ -478,8 +478,15 @@ export function ChoroplethChart({
   const margin = { ...DEFAULT_MARGIN, ...marginProp };
 
   return (
-    <div className={cn('relative w-full', className)} style={{ aspectRatio }}>
-      <ParentSize debounceTime={10}>
+    <div
+      className={cn('relative h-full w-full', className)}
+      style={
+        aspectRatio === 'auto'
+          ? { height: '100%' }
+          : { aspectRatio }
+      }
+    >
+      <ParentSize className="absolute inset-0 size-full" debounceTime={10}>
         {({ width, height }) =>
           width > 0 && height > 0 ? (
             <ChoroplethChartInner

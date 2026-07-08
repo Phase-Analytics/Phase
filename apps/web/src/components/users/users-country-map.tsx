@@ -10,7 +10,6 @@ import {
   ChoroplethFeatureComponent,
   ChoroplethTooltip,
 } from '@/components/charts/choropleth';
-import { useIsMobile } from '@/hooks/use-mobile';
 import {
   ALPHA2_TO_NUMERIC,
   getCountryName,
@@ -82,7 +81,6 @@ export function UsersCountryMap({
   totalDevices,
   className,
 }: UsersCountryMapProps) {
-  const isMobile = useIsMobile();
   const [geoData, setGeoData] = useState<FeatureCollection<
     Geometry,
     Record<string, unknown>
@@ -180,15 +178,19 @@ export function UsersCountryMap({
   }
 
   return (
-    <div className={cn('relative h-full w-full overflow-hidden', className)}>
+    <div
+      className={cn(
+        'relative h-full min-h-0 w-full min-w-0 overflow-hidden',
+        className
+      )}
+    >
       <ChoroplethChart
-        animationDuration={600}
-        aspectRatio="2.2 / 1"
-        center={[8, 12]}
-        className="h-full w-full"
+        animationDuration={500}
+        aspectRatio="auto"
+        center={[0, 8]}
+        className="size-full"
         data={geoData}
-        margin={{ top: 4, right: 4, bottom: 4, left: 4 }}
-        scale={isMobile ? 105 : 128}
+        margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
         zoomEnabled={false}
       >
         <ChoroplethFeatureComponent
@@ -207,14 +209,14 @@ export function UsersCountryMap({
             const name = getFeatureName(featureItem);
 
             return (
-              <div className="flex min-w-[140px] items-center gap-2 rounded-lg border border-border/60 bg-background/95 px-2.5 py-1.5 shadow-lg backdrop-blur-md">
+              <div className="flex max-w-[min(100%,220px)] items-center gap-2 rounded-lg border border-border/60 bg-background/95 px-2.5 py-1.5 shadow-lg backdrop-blur-md">
                 {alpha2 ? (
                   <span
-                    className={`fi fi-${alpha2.toLowerCase()} rounded-sm text-base`}
+                    className={`fi fi-${alpha2.toLowerCase()} shrink-0 rounded-sm text-base`}
                   />
                 ) : null}
-                <div className="flex flex-col">
-                  <span className="font-medium text-xs leading-tight">
+                <div className="flex min-w-0 flex-col">
+                  <span className="truncate font-medium text-xs leading-tight">
                     {name}
                   </span>
                   <span className="text-[10px] text-muted-foreground tabular-nums leading-tight">

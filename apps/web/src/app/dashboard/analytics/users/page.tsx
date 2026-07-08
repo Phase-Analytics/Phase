@@ -184,7 +184,7 @@ export default function UsersPage() {
           </Suspense>
         </ErrorBoundary>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid min-w-0 gap-4 md:grid-cols-2">
           <ErrorBoundary>
             <Suspense fallback={<UsersDistributionCardSkeleton />}>
               <UsersDistributionCard />

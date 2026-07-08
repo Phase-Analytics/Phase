@@ -86,13 +86,13 @@ export function UsersDistributionCard() {
   }
 
   return (
-    <Card className="py-0">
-      <CardContent className="space-y-4 p-4">
+    <Card className="min-w-0 overflow-hidden py-0">
+      <CardContent className="min-w-0 space-y-4 p-4">
         <Tabs
           onValueChange={(v) => setActiveTab(v as 'platform' | 'country')}
           value={activeTab}
         >
-          <TabsList className="h-8">
+          <TabsList className="h-8 max-w-full">
             <TabsTrigger
               className="text-muted-foreground text-xs uppercase"
               value="country"
@@ -110,8 +110,8 @@ export function UsersDistributionCard() {
 
         <p className="text-muted-foreground text-sm">{getDescription()}</p>
 
-        <ScrollArea className="h-[220px]">
-          <div className="space-y-3 pr-4">
+        <ScrollArea className="h-[200px] w-full min-w-0 sm:h-[220px]">
+          <div className="min-w-0 space-y-3 pr-4">
             {activeTab === 'country' &&
               sortedCountries.length > 0 &&
               sortedCountries.map(([country, count]) => {
@@ -120,31 +120,31 @@ export function UsersDistributionCard() {
                   : 0;
 
                 return (
-                  <div className="space-y-1.5" key={country}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
+                  <div className="min-w-0 space-y-1.5" key={country}>
+                    <div className="flex min-w-0 items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-1.5">
                         {!country ||
                         country.length !== 2 ||
                         !COUNTRY_CODE_REGEX.test(country) ? (
                           <HugeiconsIcon
-                            className="size-3.5 text-muted-foreground"
+                            className="size-3.5 shrink-0 text-muted-foreground"
                             icon={Flag02Icon}
                           />
                         ) : (
                           <span
-                            className={`fi fi-${country.toLowerCase()} rounded-xs text-[14px]`}
+                            className={`fi fi-${country.toLowerCase()} shrink-0 rounded-xs text-[14px]`}
                             title={getCountryLabel(country)}
                           />
                         )}
-                        <span className="font-medium text-sm">
+                        <span className="truncate font-medium text-sm">
                           {getCountryLabel(country)}
                         </span>
                       </div>
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-semibold text-sm">
+                      <div className="flex shrink-0 items-baseline gap-2">
+                        <span className="font-semibold text-sm tabular-nums">
                           {count.toLocaleString()}
                         </span>
-                        <span className="text-muted-foreground text-xs">
+                        <span className="text-muted-foreground text-xs tabular-nums">
                           ({percentage.toFixed(1)}%)
                         </span>
                       </div>
@@ -186,22 +186,22 @@ export function UsersDistributionCard() {
                   : 0;
 
                 return (
-                  <div className="space-y-1.5" key={platform}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                  <div className="min-w-0 space-y-1.5" key={platform}>
+                    <div className="flex min-w-0 items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
                         <HugeiconsIcon
-                          className="size-4 text-muted-foreground"
+                          className="size-4 shrink-0 text-muted-foreground"
                           icon={getPlatformIcon(platform)}
                         />
-                        <span className="font-medium text-sm">
+                        <span className="truncate font-medium text-sm">
                           {getPlatformLabel(platform)}
                         </span>
                       </div>
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-semibold text-sm">
+                      <div className="flex shrink-0 items-baseline gap-2">
+                        <span className="font-semibold text-sm tabular-nums">
                           {countNum.toLocaleString()}
                         </span>
-                        <span className="text-muted-foreground text-xs">
+                        <span className="text-muted-foreground text-xs tabular-nums">
                           ({percentage.toFixed(1)}%)
                         </span>
                       </div>
