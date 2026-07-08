@@ -311,6 +311,99 @@ const data = await response.json();
   </TabsContent>
 </Tabs>
 
+## Query
+
+Run the same read-only SQL engine as **Dashboard → Analytics → Query** from your backend.
+
+- `POST /apps/:appId/query`
+- Body: JSON with `sql` and optional `page` (default `1`)
+- Auth: `Authorization: Bearer phase_public_your_key`
+
+`LIMIT` in SQL sets page size (default **100** if omitted, max **50** on the API). Do not use `OFFSET` in SQL. Pass `page` to fetch the next slice. The response `meta` object includes `hasNextPage`, `hasPreviousPage`, `offset`, and `pageSize`.
+
+<Callout type="info">
+Full table reference, join behavior, QuestDB vs Postgres JSON syntax, time-range defaults, and examples are documented in [Query](/docs/concepts/query).
+</Callout>
+
+### Example: run a query
+
+<Tabs defaultValue="curl" groupId="query-run" persist>
+  <TabsList>
+    <TabsTrigger value="curl">cURL</TabsTrigger>
+    <TabsTrigger value="fetch">fetch</TabsTrigger>
+  </TabsList>
+  <TabsContent value="curl">
+    <CodeBlock lang="bash" allowCopy={true}>
+```bash
+curl "https://api.phase.sh/public-api/v1/apps/<app_id>/query" \
+  -H "Authorization: Bearer phase_public_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sql": "SELECT name, count(*) AS events FROM events GROUP BY name ORDER BY events DESC LIMIT 20",
+    "page": 1
+  }'
+```
+    </CodeBlock>
+  </TabsContent>
+  <TabsContent value="fetch">
+    <CodeBlock lang="ts" allowCopy={true}>
+```ts
+const response = await fetch(
+  'https://api.phase.sh/public-api/v1/apps/<app_id>/query',
+  {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer phase_public_your_key',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      sql: `SELECT name, count(*) AS events
+FROM events
+GROUP BY name
+ORDER BY events DESC
+LIMIT 20`,
+      page: 1,
+    }),
+  }
+);
+
+const data = await response.json();
+console.log(data.result.columns, data.result.rows);
+console.log(data.meta.hasNextPage);
+```
+    </CodeBlock>
+  </TabsContent>
+</Tabs>
+
+### Example: paginate
+
+<CodeBlock lang="ts" allowCopy={true}>
+```ts
+let page = 1;
+let hasNextPage = true;
+
+while (hasNextPage) {
+  const response = await fetch(
+    'https://api.phase.sh/public-api/v1/apps/<app_id>/query',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer phase_public_your_key',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ sql, page }),
+    }
+  );
+
+  const data = await response.json();
+  // process data.result.rows
+
+  hasNextPage = data.meta.hasNextPage;
+  page += 1;
+}
+```
+</CodeBlock>
+
 ## Response metadata
 
 Every report response includes a `meta` object.

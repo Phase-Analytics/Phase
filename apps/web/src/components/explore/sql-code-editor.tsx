@@ -6,7 +6,7 @@ import {
   defaultHighlightStyle,
   syntaxHighlighting,
 } from '@codemirror/language';
-import { EditorState, type Extension } from '@codemirror/state';
+import { Compartment, EditorState, type Extension } from '@codemirror/state';
 import { oneDark } from '@codemirror/theme-one-dark';
 import {
   EditorView,
@@ -83,6 +83,13 @@ const baseEditorTheme = EditorView.theme({
   },
 });
 
+const themeCompartment = new Compartment();
+const placeholderCompartment = new Compartment();
+
+function buildThemeExtensions(isDark: boolean): Extension[] {
+  return isDark ? [oneDark, darkEditorTheme] : [lightEditorTheme];
+}
+
 export function SqlCodeEditor({
   value,
   onChange,
@@ -95,6 +102,8 @@ export function SqlCodeEditor({
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   const onRunRef = useRef(onRun);
+  const isInternalChangeRef = useRef(false);
+  const initialValueRef = useRef(value);
 
   onChangeRef.current = onChange;
   onRunRef.current = onRun;
@@ -119,27 +128,27 @@ export function SqlCodeEditor({
 
     const extensions: Extension[] = [
       baseEditorTheme,
-      isDark ? oneDark : lightEditorTheme,
-      isDark ? darkEditorTheme : lightEditorTheme,
+      themeCompartment.of(buildThemeExtensions(isDark)),
+      placeholderCompartment.of(placeholderExt(placeholder)),
       sql(),
       syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
       runKeymap,
       EditorView.lineWrapping,
       EditorView.updateListener.of((update) => {
-        if (update.docChanged) {
-          onChangeRef.current(update.state.doc.toString());
+        if (!update.docChanged) {
+          return;
         }
+
+        isInternalChangeRef.current = true;
+        onChangeRef.current(update.state.doc.toString());
       }),
-      placeholderExt(placeholder),
     ];
 
-    const state = EditorState.create({
-      doc: value,
-      extensions,
-    });
-
     const view = new EditorView({
-      state,
+      state: EditorState.create({
+        doc: initialValueRef.current,
+        extensions,
+      }),
       parent: containerRef.current,
     });
 
@@ -149,7 +158,7 @@ export function SqlCodeEditor({
       view.destroy();
       viewRef.current = null;
     };
-  }, [placeholder, resolvedTheme, value]);
+  }, [placeholder, resolvedTheme]);
 
   useEffect(() => {
     const view = viewRef.current;
@@ -157,16 +166,46 @@ export function SqlCodeEditor({
       return;
     }
 
-    const current = view.state.doc.toString();
-    if (current !== value) {
-      view.dispatch({
-        changes: {
-          from: 0,
-          to: current.length,
-          insert: value,
-        },
-      });
+    const isDark = resolvedTheme === 'dark';
+    view.dispatch({
+      effects: themeCompartment.reconfigure(buildThemeExtensions(isDark)),
+    });
+  }, [resolvedTheme]);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) {
+      return;
     }
+
+    view.dispatch({
+      effects: placeholderCompartment.reconfigure(placeholderExt(placeholder)),
+    });
+  }, [placeholder]);
+
+  useEffect(() => {
+    if (isInternalChangeRef.current) {
+      isInternalChangeRef.current = false;
+      return;
+    }
+
+    const view = viewRef.current;
+    if (!view) {
+      return;
+    }
+
+    const current = view.state.doc.toString();
+    if (current === value) {
+      return;
+    }
+
+    view.dispatch({
+      changes: {
+        from: 0,
+        to: current.length,
+        insert: value,
+      },
+    });
   }, [value]);
 
   return (

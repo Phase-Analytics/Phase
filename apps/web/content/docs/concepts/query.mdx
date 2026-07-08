@@ -1,0 +1,189 @@
+---
+title: Query
+description: Run read-only SQL against your app's events, users, and sessions.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { CodeBlock } from 'fumadocs-ui/components/codeblock';
+import { Tab, Tabs, TabsContent, TabsList, TabsTrigger } from 'fumadocs-ui/components/tabs';
+
+Query lets you answer product questions with read-only SQL. The dashboard editor and the [Public API](/docs/public-api/usage#query) run the same engine against your app data.
+
+## Where to find it
+
+Open **[Dashboard](https://phase.sh/dashboard) → Analytics → Query**.
+
+Use **Instructions** in the editor for a copyable SQL reference. Save queries as **presets** for your team.
+
+## Virtual tables
+
+Query exposes three virtual tables. App scoping is injected automatically. You never filter by `app_id` yourself.
+
+### `events`
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `timestamp` | timestamptz | Event time |
+| `user_id` | text | Anonymous user identifier |
+| `name` | text | Event name (e.g. `purchase`, `level_win`) |
+| `params` | text | JSON string of event properties |
+
+`events` queries run on QuestDB when used alone. Use QuestDB JSON syntax:
+
+<CodeBlock lang="sql" allowCopy={true}>
+```sql
+json_extract(params, '$.duration_seconds')
+cast(json_extract(params, '$.level_number') as long)
+```
+</CodeBlock>
+
+Modulo is supported: `expr % 5 = 0`
+
+### `users`
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `user_id` | text | |
+| `platform` | text | `ios`, `android`, or `unknown` |
+| `country` | text | ISO country code |
+| `locale` | text | |
+| `model` | text | Device model |
+| `os_version` | text | |
+| `first_seen` | timestamptz | First seen time |
+| `properties` | jsonb | Custom user properties — use `properties->>'key'` |
+
+<Callout type="info">
+The virtual table is named `users`. Do not use `devices` or `device_id` in SQL. Those names are rejected.
+</Callout>
+
+### `sessions`
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `session_id` | text | |
+| `user_id` | text | |
+| `started_at` | timestamptz | |
+| `last_activity_at` | timestamptz | |
+| `duration_seconds` | number | Computed session length |
+
+## Joins
+
+Join on `user_id`:
+
+<CodeBlock lang="sql" allowCopy={true}>
+```sql
+SELECT u.platform, count(*) AS purchases
+FROM events e
+JOIN users u ON e.user_id = u.user_id
+WHERE e.name = 'purchase'
+GROUP BY u.platform
+ORDER BY purchases DESC
+LIMIT 50
+```
+</CodeBlock>
+
+When a query joins `events` with `users` or `sessions`, events are staged into Postgres for the join. Up to **250,000** events can be staged per query. Narrow your time range or add `WHERE` filters if you hit that limit.
+
+For joins, read JSON from `params` with Postgres syntax:
+
+<CodeBlock lang="sql" allowCopy={true}>
+```sql
+avg((e.params::jsonb->>'duration_seconds')::double precision)
+```
+</CodeBlock>
+
+## Time range
+
+If your SQL does not filter on `timestamp`, `started_at`, `last_activity_at`, or `first_seen`, **events** and **sessions** default to the **last 30 days**.
+
+Add your own predicates to control the window:
+
+<CodeBlock lang="sql" allowCopy={true}>
+```sql
+WHERE timestamp >= '2026-01-01'
+```
+</CodeBlock>
+
+## Pagination
+
+Pagination is **page-based**, not `OFFSET` in SQL.
+
+| Surface | Page size | Max page size | Pagination |
+| --- | --- | --- | --- |
+| Dashboard | `LIMIT` in SQL (default 100) | 1000 | UI page controls |
+| Public API | `LIMIT` in SQL (default 100) | 50 | `page` in request body |
+
+Rules:
+
+- `LIMIT` sets how many rows each page returns.
+- Do **not** write `OFFSET` in SQL. It is rejected.
+- Use page controls in the dashboard, or send `page` in the API request.
+- Deep pagination is capped at **100,000** skipped rows.
+- Export downloads the current page only.
+
+API example with pagination:
+
+<CodeBlock lang="json" allowCopy={true}>
+```json
+{
+  "sql": "SELECT name, count(*) AS events FROM events GROUP BY name ORDER BY events DESC LIMIT 50",
+  "page": 2
+}
+```
+</CodeBlock>
+
+The response includes `meta.page`, `meta.pageSize`, `meta.offset`, `meta.hasNextPage`, and `meta.hasPreviousPage` so you can loop programmatically.
+
+## Rules
+
+- **SELECT only.** No `INSERT`, `UPDATE`, `DELETE`, or DDL.
+- **Single statement.** No semicolons.
+- **Read-only sandbox.** Queries cannot mutate data.
+- **Debug events excluded** automatically.
+- **Legacy names rejected:** `devices`, `device_id`.
+
+## Examples
+
+Recent events:
+
+<CodeBlock lang="sql" allowCopy={true}>
+```sql
+SELECT timestamp, user_id, name AS event_name
+FROM events
+ORDER BY timestamp DESC
+LIMIT 100
+```
+</CodeBlock>
+
+Top events:
+
+<CodeBlock lang="sql" allowCopy={true}>
+```sql
+SELECT name AS event_name, count(*) AS events
+FROM events
+GROUP BY name
+ORDER BY events DESC
+LIMIT 100
+```
+</CodeBlock>
+
+Average level duration (every 5th level):
+
+<CodeBlock lang="sql" allowCopy={true}>
+```sql
+SELECT
+  count(*) AS level_wins,
+  avg(cast(json_extract(params, '$.duration_seconds') AS double)) AS avg_duration_seconds
+FROM events
+WHERE name = 'level_win'
+  AND cast(json_extract(params, '$.level_number') AS long) % 5 = 0
+```
+</CodeBlock>
+
+## Presets
+
+Save the current SQL as a preset from the Query page. Presets are per app and shared with your team. Loading a preset replaces the editor contents.
+
+## Automation
+
+Use the same queries from your backend with a [public API key](/docs/public-api/usage). See [Query via API](/docs/public-api/usage#query) for the endpoint and request shape. Full SQL, pagination, and limit details live on this page.

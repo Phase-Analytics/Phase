@@ -1,5 +1,5 @@
 {
   "title": "Concepts",
   "icon": "BookOpen01Icon",
-  "pages": ["team-billing", "publishing"]
+  "pages": ["query", "team-billing", "publishing"]
 }

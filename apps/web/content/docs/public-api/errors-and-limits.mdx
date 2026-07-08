@@ -59,7 +59,9 @@ Current limits:
 - Maximum report range: **365 days**
 - Maximum breakdown size: **50 rows**
 - Default breakdown size: **10 rows**
-- Maximum raw page size: **50**
+- Maximum query page size: **50 rows** (`LIMIT` in SQL, API only)
+- Maximum dashboard query page size: **1000 rows**
+- Maximum skipped rows per query: **100,000** (pagination cap)
 
 <Callout type="info">
 Build your integration to handle validation and rate-limit responses. If a request exceeds a guardrail, retry with a smaller date range or a smaller breakdown limit.
