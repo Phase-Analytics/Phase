@@ -5,6 +5,7 @@ export * from './common';
 export * from './device';
 export * from './event';
 export * from './explore';
+export * from './funnel';
 export * from './health';
 export * from './links';
 export * from './ping';

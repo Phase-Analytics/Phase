@@ -97,6 +97,16 @@ export const queryKeys = {
       [...queryKeys.explore.all, 'run', appId, query] as const,
   },
 
+  funnels: {
+    all: ['funnels'] as const,
+    activation: (
+      appId: string,
+      range?: { startDate?: string; endDate?: string }
+    ) => [...queryKeys.funnels.all, 'activation', appId, range] as const,
+    presets: (appId: string) =>
+      [...queryKeys.funnels.all, 'presets', appId] as const,
+  },
+
   links: {
     all: ['links'] as const,
     list: (appId: string) => [...queryKeys.links.all, 'list', appId] as const,

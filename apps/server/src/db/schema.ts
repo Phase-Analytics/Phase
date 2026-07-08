@@ -1,8 +1,9 @@
-import type { ExploreSqlQuery } from '@phase/shared';
+import type { ExploreSqlQuery, FunnelCustomStep } from '@phase/shared';
 import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
   index,
+  integer,
   jsonb,
   pgTable,
   text,
@@ -284,6 +285,33 @@ export const explorePresets = pgTable(
   })
 );
 
+export const funnelPresets = pgTable(
+  'funnel_presets',
+  {
+    id: text('id').primaryKey(),
+    appId: text('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    steps: jsonb('steps').$type<FunnelCustomStep[]>().notNull(),
+    windowHours: integer('window_hours').notNull().default(168),
+    createdByUserId: text('created_by_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    appIdUpdatedAtIdx: index('funnel_presets_app_id_updated_at_idx').on(
+      table.appId,
+      table.updatedAt.desc()
+    ),
+  })
+);
+
 export const sessions = pgTable(
   'sessions_analytics',
   {
@@ -318,6 +346,7 @@ export const appRelations = relations(apps, ({ one, many }) => ({
   devices: many(devices),
   publicApiTokens: many(publicApiTokens),
   explorePresets: many(explorePresets),
+  funnelPresets: many(funnelPresets),
   links: many(links),
   linkDomains: many(linkDomains),
 }));
@@ -359,6 +388,17 @@ export const explorePresetsRelations = relations(explorePresets, ({ one }) => ({
   }),
   createdByUser: one(user, {
     fields: [explorePresets.createdByUserId],
+    references: [user.id],
+  }),
+}));
+
+export const funnelPresetsRelations = relations(funnelPresets, ({ one }) => ({
+  app: one(apps, {
+    fields: [funnelPresets.appId],
+    references: [apps.id],
+  }),
+  createdByUser: one(user, {
+    fields: [funnelPresets.createdByUserId],
     references: [user.id],
   }),
 }));
@@ -421,6 +461,9 @@ export type NewWaitlist = typeof waitlist.$inferInsert;
 
 export type ExplorePresetRow = typeof explorePresets.$inferSelect;
 export type NewExplorePresetRow = typeof explorePresets.$inferInsert;
+
+export type FunnelPresetRow = typeof funnelPresets.$inferSelect;
+export type NewFunnelPresetRow = typeof funnelPresets.$inferInsert;
 
 export type Link = typeof links.$inferSelect;
 export type NewLink = typeof links.$inferInsert;

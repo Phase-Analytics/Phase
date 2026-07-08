@@ -12,6 +12,7 @@ import {
   Key01Icon,
   Link01Icon,
   PlaySquareIcon,
+  PyramidStructure02Icon,
   QuestionIcon,
   Saturn01Icon,
   Setting07Icon,
@@ -122,6 +123,15 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
         icon: Blockchain05Icon,
         keywords: ['activity', 'events', 'tracking', 'analytics'],
         path: `/dashboard/analytics/activity?app=${appId}`,
+      },
+      {
+        id: 'funnels',
+        name: 'Funnels',
+        description: 'Activation and custom conversion funnels',
+        category: 'Analytics',
+        icon: PyramidStructure02Icon,
+        keywords: ['funnels', 'conversion', 'activation', 'analytics'],
+        path: `/dashboard/analytics/funnels?app=${appId}`,
       },
       {
         id: 'realtime',

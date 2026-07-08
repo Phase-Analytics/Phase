@@ -169,6 +169,13 @@
       "when": 1783494000000,
       "tag": "0024_drop_devices_city",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1783600000000,
+      "tag": "0025_funnel_presets",
+      "breakpoints": true
     }
   ]
 }

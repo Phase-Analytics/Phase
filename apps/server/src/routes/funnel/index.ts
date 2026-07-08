@@ -1,0 +1,1 @@
+export { funnelWebRouter } from './web';

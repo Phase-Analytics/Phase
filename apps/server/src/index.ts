@@ -31,6 +31,7 @@ import { batchSdkRouter } from '@/routes/batch';
 import { deviceSdkRouter, deviceWebRouter } from '@/routes/device';
 import { eventSdkRouter, eventWebRouter } from '@/routes/event';
 import { exploreWebRouter } from '@/routes/explore';
+import { funnelWebRouter } from '@/routes/funnel';
 import health from '@/routes/health';
 import { linkRedirectRouter } from '@/routes/links/redirect';
 import { linksWebRouter } from '@/routes/links/web';
@@ -169,6 +170,7 @@ const webRoutes = new Elysia({ prefix: '/web' })
   .use(deviceWebRouter)
   .use(eventWebRouter)
   .use(exploreWebRouter)
+  .use(funnelWebRouter)
   .use(linksWebRouter)
   .use(realtimeWebRouter)
   .use(sessionWebRouter);

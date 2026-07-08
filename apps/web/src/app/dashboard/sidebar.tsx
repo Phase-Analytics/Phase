@@ -90,6 +90,12 @@ const analyticsNavItems: NavItem[] = [
     tooltip: 'Activity',
   },
   {
+    label: 'Funnels',
+    icon: PyramidStructure02Icon,
+    path: '/dashboard/analytics/funnels',
+    tooltip: 'Funnels',
+  },
+  {
     label: 'Realtime',
     icon: Saturn01Icon,
     path: '/dashboard/analytics/realtime',
@@ -123,11 +129,6 @@ const _comingSoonNavItems = [
     label: 'Segments',
     icon: Layers01Icon,
     tooltip: 'Segments - Coming Soon',
-  },
-  {
-    label: 'Funnels',
-    icon: PyramidStructure02Icon,
-    tooltip: 'Funnels - Coming Soon',
   },
 ];
 
