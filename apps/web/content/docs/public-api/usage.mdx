@@ -322,7 +322,7 @@ Run the same read-only SQL engine as **Dashboard → Analytics → Query** from 
 `LIMIT` in SQL sets page size (default **100** if omitted, max **50** on the API). Do not use `OFFSET` in SQL. Pass `page` to fetch the next slice. The response `meta` object includes `hasNextPage`, `hasPreviousPage`, `offset`, and `pageSize`.
 
 <Callout type="info">
-Full table reference, join behavior, QuestDB vs Postgres JSON syntax, time-range defaults, and examples are documented in [Query](/docs/concepts/query).
+Full table reference, time-range defaults, pagination, and examples are documented in [Query](/docs/concepts/query).
 </Callout>
 
 ### Example: run a query

@@ -44,7 +44,7 @@ QuestDB syntax for params:
 - SELECT only. No mutations.
 - Do not filter by app_id — it is injected automatically.
 - Debug events are excluded automatically.
-- JOINs work across tables on user_id.
+- Query one table per request. JOINs and multi-table queries are not supported.
 - Single statement only. No semicolons.
 
 ## Examples
@@ -62,13 +62,11 @@ GROUP BY name
 ORDER BY events DESC
 LIMIT 100
 
-Purchases by platform:
-SELECT u.platform, count(*) AS purchases
-FROM events e
-JOIN users u ON e.user_id = u.user_id
-WHERE e.name = 'purchase'
-GROUP BY u.platform
-ORDER BY purchases DESC
+Users by platform:
+SELECT platform, count(*) AS users
+FROM users
+GROUP BY platform
+ORDER BY users DESC
 LIMIT 50
 
 Custom time range:

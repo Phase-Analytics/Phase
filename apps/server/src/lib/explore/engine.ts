@@ -34,19 +34,13 @@ export async function runExploreQuery(
 
   validateExplorePage(page, pageSize);
 
-  const usesEvents = parsed.tables.has('events');
-  const usesPostgresTables =
-    parsed.tables.has('users') || parsed.tables.has('sessions');
-  const needsStaging = usesEvents && usesPostgresTables;
-
   const { sql: rewritten, target } = rewriteExploreSql(
     parsed.baseSql,
     parsed.tables,
     {
       appId,
       dateRange,
-    },
-    needsStaging
+    }
   );
 
   const { sql: paginatedSql, offset } = applyExplorePagination(
@@ -59,12 +53,7 @@ export async function runExploreQuery(
   const result =
     target === 'questdb'
       ? await executeQuestDbExploreQuery(paginatedSql)
-      : await executePostgresExploreQuery(
-          paginatedSql,
-          needsStaging,
-          appId,
-          dateRange
-        );
+      : await executePostgresExploreQuery(paginatedSql);
 
   const hasNextPage = result.rows.length > pageSize;
   const pageRows = hasNextPage ? result.rows.slice(0, pageSize) : result.rows;

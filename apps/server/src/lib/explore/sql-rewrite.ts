@@ -90,55 +90,37 @@ function virtualTablePattern(tableName: string): string {
 
 function replaceTableReference(
   sql: string,
-  tableName: ExploreVirtualTable | 'explore_staged_events',
+  tableName: ExploreVirtualTable,
   replacement: string
 ): string {
   const table = virtualTablePattern(tableName);
-  const patterns = [
-    new RegExp(`\\bFROM\\s+${table}(?=\\s|,|$)`, 'gi'),
-    new RegExp(`\\bJOIN\\s+${table}(?=\\s|,|$)`, 'gi'),
-  ];
+  const pattern = new RegExp(`\\bFROM\\s+${table}(?=\\s|,|$)`, 'gi');
 
-  let result = sql;
-  for (const pattern of patterns) {
-    result = result.replace(pattern, (match) => {
-      const keyword = match.split(WHITESPACE_SPLIT_PATTERN)[0] ?? 'FROM';
-      return `${keyword} ${replacement}`;
-    });
-  }
-  return result;
+  return sql.replace(pattern, (match) => {
+    const keyword = match.split(WHITESPACE_SPLIT_PATTERN)[0] ?? 'FROM';
+    return `${keyword} ${replacement}`;
+  });
 }
 
 export function rewriteExploreSql(
   sql: string,
   tables: Set<ExploreVirtualTable>,
-  context: RewriteContext,
-  stagedEventsTable = false
+  context: RewriteContext
 ): { sql: string; target: 'questdb' | 'postgres' } {
   let rewritten = sql;
-  const usesEvents = tables.has('events');
-  const usesPostgresTables = tables.has('users') || tables.has('sessions');
 
-  if (usesEvents && !stagedEventsTable) {
-    if (usesPostgresTables) {
-      rewritten = replaceTableReference(
-        rewritten,
-        'events',
-        'explore_staged_events'
-      );
-    } else {
-      const eventsSubquery = `(${buildScopedEventsSubquery(
-        context.appId,
-        context.dateRange,
-        `
+  if (tables.has('events')) {
+    const eventsSubquery = `(${buildScopedEventsSubquery(
+      context.appId,
+      context.dateRange,
+      `
           timestamp,
           CAST(device_id AS VARCHAR) AS user_id,
           CAST(name AS VARCHAR) AS name,
           CAST(params AS VARCHAR) AS params
         `
-      )})`;
-      rewritten = replaceTableReference(rewritten, 'events', eventsSubquery);
-    }
+    )})`;
+    rewritten = replaceTableReference(rewritten, 'events', eventsSubquery);
   }
 
   if (tables.has('users')) {
@@ -157,7 +139,7 @@ export function rewriteExploreSql(
     );
   }
 
-  const target = usesEvents && !usesPostgresTables ? 'questdb' : 'postgres';
+  const target = tables.has('events') ? 'questdb' : 'postgres';
 
   return { sql: rewritten, target };
 }

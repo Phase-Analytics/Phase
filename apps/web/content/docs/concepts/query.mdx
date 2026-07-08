@@ -66,31 +66,7 @@ The virtual table is named `users`. Do not use `devices` or `device_id` in SQL. 
 | `last_activity_at` | timestamptz | |
 | `duration_seconds` | number | Computed session length |
 
-## Joins
-
-Join on `user_id`:
-
-<CodeBlock lang="sql" allowCopy={true}>
-```sql
-SELECT u.platform, count(*) AS purchases
-FROM events e
-JOIN users u ON e.user_id = u.user_id
-WHERE e.name = 'purchase'
-GROUP BY u.platform
-ORDER BY purchases DESC
-LIMIT 50
-```
-</CodeBlock>
-
-When a query joins `events` with `users` or `sessions`, events are staged into Postgres for the join. Up to **250,000** events can be staged per query. Narrow your time range or add `WHERE` filters if you hit that limit.
-
-For joins, read JSON from `params` with Postgres syntax:
-
-<CodeBlock lang="sql" allowCopy={true}>
-```sql
-avg((e.params::jsonb->>'duration_seconds')::double precision)
-```
-</CodeBlock>
+Each query uses **one** virtual table. `events` runs on QuestDB. `users` and `sessions` run on Postgres.
 
 ## Time range
 
@@ -140,6 +116,7 @@ The response includes `meta.page`, `meta.pageSize`, `meta.offset`, `meta.hasNext
 - **Single statement.** No semicolons.
 - **Read-only sandbox.** Queries cannot mutate data.
 - **Debug events excluded** automatically.
+- **One table per query.** No `JOIN` and no multi-table `FROM`.
 - **Legacy names rejected:** `devices`, `device_id`.
 
 ## Examples
@@ -164,6 +141,18 @@ FROM events
 GROUP BY name
 ORDER BY events DESC
 LIMIT 100
+```
+</CodeBlock>
+
+Users by platform:
+
+<CodeBlock lang="sql" allowCopy={true}>
+```sql
+SELECT platform, count(*) AS users
+FROM users
+GROUP BY platform
+ORDER BY users DESC
+LIMIT 50
 ```
 </CodeBlock>
 

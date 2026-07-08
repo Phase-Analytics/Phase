@@ -16,6 +16,7 @@ const PARSER_OPTIONS = { database: 'Postgresql' as const };
 
 const LEGACY_DEVICES_TABLE_PATTERN = /\bdevices\b/i;
 const LEGACY_DEVICE_ID_COLUMN_PATTERN = /\bdevice_id\b/i;
+const JOIN_PATTERN = /\b(?:inner\s+|left\s+|right\s+|full\s+|cross\s+)?join\b/i;
 
 const ALLOWED_STATEMENT_TYPES = new Set(['select']);
 
@@ -86,6 +87,23 @@ function assertUserFacingIdentifiers(sql: string): void {
 
   if (LEGACY_DEVICE_ID_COLUMN_PATTERN.test(sql)) {
     throw new ExploreEngineError('Use user_id instead of device_id.');
+  }
+}
+
+function assertNoJoins(sql: string): void {
+  if (JOIN_PATTERN.test(sql)) {
+    throw new ExploreEngineError(
+      'JOINs are not supported. Query one table at a time: events, users, or sessions.'
+    );
+  }
+}
+
+function assertSingleTable(tables: Set<ExploreVirtualTable>): void {
+  if (tables.size > 1) {
+    const names = [...tables].sort().join(', ');
+    throw new ExploreEngineError(
+      `Multi-table queries are not supported (${names}). Query one table at a time: events, users, or sessions.`
+    );
   }
 }
 
@@ -168,6 +186,7 @@ export function parseExploreSql(sql: string): ParsedExploreSql {
 
   assertNoForbiddenKeywords(trimmed);
   assertUserFacingIdentifiers(trimmed);
+  assertNoJoins(trimmed);
 
   const {
     sql: baseSql,
@@ -211,6 +230,8 @@ export function parseExploreSql(sql: string): ParsedExploreSql {
       'Query must reference at least one table: events, users, or sessions.'
     );
   }
+
+  assertSingleTable(tables);
 
   return { baseSql, tables, pageSize };
 }

@@ -87,6 +87,20 @@ describe('parseExploreSql', () => {
     ).toThrow(ExploreEngineError);
   });
 
+  test('rejects JOIN syntax', () => {
+    expect(() =>
+      parseExploreSql(
+        'SELECT e.name FROM events e JOIN users u ON e.user_id = u.user_id LIMIT 10'
+      )
+    ).toThrow(ExploreEngineError);
+  });
+
+  test('rejects multi-table queries', () => {
+    expect(() =>
+      parseExploreSql('SELECT * FROM events, users LIMIT 10')
+    ).toThrow(ExploreEngineError);
+  });
+
   test('parses questdb long cast and keeps original sql for execution', () => {
     const sql = `SELECT avg(cast(json_extract(params, '$.duration_seconds') AS double)) AS avg_duration_seconds
 FROM events
