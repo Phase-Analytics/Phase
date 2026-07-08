@@ -31,7 +31,6 @@ export const RealtimeLinkClickSchema = z.object({
   linkName: z.string(),
   timestamp: z.string().datetime(),
   countryCode: z.string().nullable(),
-  region: z.string().nullable(),
   os: z.string(),
   browser: z.string(),
 });

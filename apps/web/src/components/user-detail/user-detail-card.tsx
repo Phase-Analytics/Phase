@@ -132,15 +132,12 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
             <div className="mt-1 space-y-2">
               {(() => {
                 const countryLabel = getCountryLabel(device.country);
-                const city = device.city;
                 const hasValidCountry =
                   device.country &&
                   device.country.length === 2 &&
                   COUNTRY_CODE_REGEX.test(device.country);
 
-                const hasLocation = hasValidCountry || countryLabel || city;
-
-                if (!hasLocation) {
+                if (!(hasValidCountry || countryLabel)) {
                   return (
                     <p className="flex items-center gap-1.5 font-medium text-sm">
                       <HugeiconsIcon
@@ -167,15 +164,7 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
                         title={countryLabel || device.country}
                       />
                     )}
-                    {countryLabel && (
-                      <span>
-                        {countryLabel}
-                        {city && (
-                          <span className="text-muted-foreground">, </span>
-                        )}
-                      </span>
-                    )}
-                    {city && <span>{city}</span>}
+                    {countryLabel && <span>{countryLabel}</span>}
                   </p>
                 );
               })()}

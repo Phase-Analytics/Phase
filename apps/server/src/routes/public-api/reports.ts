@@ -301,11 +301,7 @@ export const publicApiReportsRouter = new Elysia({
     {
       params: t.Object({ appId: t.String() }),
       query: t.Object({
-        dimension: t.Union([
-          t.Literal('platform'),
-          t.Literal('country'),
-          t.Literal('city'),
-        ]),
+        dimension: t.Union([t.Literal('platform'), t.Literal('country')]),
         startDate: t.Optional(t.String()),
         endDate: t.Optional(t.String()),
         limit: t.Optional(t.String()),
@@ -437,11 +433,7 @@ export const publicApiReportsRouter = new Elysia({
     {
       params: t.Object({ appId: t.String() }),
       query: t.Object({
-        dimension: t.Union([
-          t.Literal('platform'),
-          t.Literal('country'),
-          t.Literal('city'),
-        ]),
+        dimension: t.Union([t.Literal('platform'), t.Literal('country')]),
         limit: t.Optional(t.String()),
       }),
       response: {

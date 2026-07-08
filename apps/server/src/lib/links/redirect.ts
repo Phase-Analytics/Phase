@@ -124,7 +124,6 @@ export async function handleLinkRedirect(
     const clickId = randomUUID();
     const timestamp = new Date().toISOString();
     const countryCode = geo?.countryCode ?? null;
-    const region = geo?.city ?? null;
 
     await buffer.push({
       appId: link.appId,
@@ -137,7 +136,6 @@ export async function handleLinkRedirect(
         acceptLanguage: request.headers.get('accept-language'),
       }),
       countryCode,
-      region,
       os: osFamily,
       browser: browserFamily,
       platform,
@@ -154,7 +152,6 @@ export async function handleLinkRedirect(
       linkName,
       timestamp,
       countryCode,
-      region,
       os: osFamily,
       browser: browserFamily,
     });

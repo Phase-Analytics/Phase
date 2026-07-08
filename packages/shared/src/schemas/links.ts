@@ -156,12 +156,6 @@ export const LinkAnalyticsBreakdownItemSchema = z.object({
   count: z.number().int().nonnegative(),
 });
 
-export const LinkAnalyticsRegionItemSchema = z.object({
-  region: z.string(),
-  countryCode: z.string(),
-  count: z.number().int().nonnegative(),
-});
-
 export const LinkAnalyticsTimeseriesPointSchema = z.object({
   date: z.string(),
   clicks: z.number().int().nonnegative(),
@@ -189,7 +183,6 @@ export const LinkAnalyticsResponseSchema = z.object({
   uniqueVisitsChange24h: z.number(),
   timeseries: z.array(LinkAnalyticsTimeseriesPointSchema),
   countries: z.array(LinkAnalyticsBreakdownItemSchema),
-  regions: z.array(LinkAnalyticsRegionItemSchema),
   operatingSystems: z.array(LinkAnalyticsBreakdownItemSchema),
   browsers: z.array(LinkAnalyticsBreakdownItemSchema),
   referrers: z.array(LinkAnalyticsBreakdownItemSchema),
@@ -205,9 +198,6 @@ export type CreateLinkDomainRequest = z.infer<
 >;
 export type LinkDomain = z.infer<typeof LinkDomainSchema>;
 export type LinkAnalyticsResponse = z.infer<typeof LinkAnalyticsResponseSchema>;
-export type LinkAnalyticsRegionItem = z.infer<
-  typeof LinkAnalyticsRegionItemSchema
->;
 export type LinkClickItem = z.infer<typeof LinkClickItemSchema>;
 export type LinkClicksListResponse = z.infer<
   typeof LinkClicksListResponseSchema

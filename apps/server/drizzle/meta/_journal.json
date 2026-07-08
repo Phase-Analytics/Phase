@@ -164,10 +164,10 @@
       "breakpoints": true
     },
     {
-      "idx": 23,
+      "idx": 24,
       "version": "7",
-      "when": 1783407600000,
-      "tag": "0023_remove_unmeasurable_sessions",
+      "when": 1783494000000,
+      "tag": "0024_drop_devices_city",
       "breakpoints": true
     }
   ]

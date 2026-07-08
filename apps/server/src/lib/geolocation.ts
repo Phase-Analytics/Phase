@@ -1,15 +1,14 @@
-import { type CityResponse, open, type Reader } from 'maxmind';
+import { type CountryResponse, open, type Reader } from 'maxmind';
 
 const GEOIP_DB_PATH =
-  process.env.GEOIP_DB_PATH || '/app/geoip/GeoLite2-City.mmdb';
+  process.env.GEOIP_DB_PATH || '/app/geoip/GeoLite2-Country.mmdb';
 
 type GeoLocationData = {
   countryCode: string | null;
-  city: string | null;
 };
 
 class GeoIPManager {
-  private reader: Reader<CityResponse> | null = null;
+  private reader: Reader<CountryResponse> | null = null;
 
   async initialize() {
     await this.loadDatabase();
@@ -18,7 +17,7 @@ class GeoIPManager {
 
   private async loadDatabase() {
     try {
-      this.reader = await open<CityResponse>(GEOIP_DB_PATH);
+      this.reader = await open<CountryResponse>(GEOIP_DB_PATH);
       console.log('✅ [GeoIP] Database loaded');
     } catch (error) {
       console.error('❌ [GeoIP] Failed to load database:', error);
@@ -28,7 +27,7 @@ class GeoIPManager {
 
   lookup(ip: string): GeoLocationData {
     if (!this.reader) {
-      return { countryCode: null, city: null };
+      return { countryCode: null };
     }
 
     if (
@@ -37,22 +36,21 @@ class GeoIPManager {
       ip.startsWith('192.168.') ||
       ip.startsWith('172.')
     ) {
-      return { countryCode: null, city: null };
+      return { countryCode: null };
     }
 
     try {
       const result = this.reader.get(ip);
 
       if (!result) {
-        return { countryCode: null, city: null };
+        return { countryCode: null };
       }
 
       return {
         countryCode: result.country?.iso_code || null,
-        city: result.city?.names?.en || null,
       };
     } catch {
-      return { countryCode: null, city: null };
+      return { countryCode: null };
     }
   }
 
@@ -72,7 +70,7 @@ export function initGeoIP() {
 export function getLocationFromIP(ip: string): GeoLocationData {
   if (!geoipManager) {
     console.warn('⚠️  [GeoIP] Manager not initialized, returning null location');
-    return { countryCode: null, city: null };
+    return { countryCode: null };
   }
 
   return geoipManager.lookup(ip);

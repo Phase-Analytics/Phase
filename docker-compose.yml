@@ -163,7 +163,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - QUESTDB_HOST=questdb
       - QUESTDB_ILP_PORT=9009
-      - GEOIP_DB_PATH=/app/geoip/GeoLite2-City.mmdb
+      - GEOIP_DB_PATH=/app/geoip/GeoLite2-Country.mmdb
       - POLAR_ACCESS_TOKEN=${POLAR_ACCESS_TOKEN}
       - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}

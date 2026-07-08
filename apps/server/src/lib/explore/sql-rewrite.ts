@@ -45,7 +45,6 @@ function buildUsersSubquery(appId: string): string {
       device_id AS user_id,
       platform,
       country,
-      city,
       locale,
       model,
       os_version,

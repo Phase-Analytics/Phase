@@ -117,7 +117,6 @@ export const PublicApiSessionTimeseriesResponseSchema = z.object({
 export const PublicApiSessionBreakdownDimensionSchema = z.enum([
   'platform',
   'country',
-  'city',
 ]);
 
 export const PublicApiSessionBreakdownResponseSchema = z.object({
@@ -139,13 +138,6 @@ export const PublicApiUserOverviewResponseSchema = z.object({
   newUsers24h: z.number().min(0),
   platformStats: z.record(z.string(), z.number().min(0)),
   countryStats: z.record(z.string(), z.number().min(0)),
-  cityStats: z.record(
-    z.string(),
-    z.object({
-      count: z.number().min(0),
-      country: z.string(),
-    })
-  ),
   totalUsersChange24h: z.number(),
   activeUsers24hChange: z.number(),
   newUsers24hChange: z.number(),
@@ -177,7 +169,6 @@ export const PublicApiUserTimeseriesResponseSchema = z.object({
 export const PublicApiUserBreakdownDimensionSchema = z.enum([
   'platform',
   'country',
-  'city',
 ]);
 
 export const PublicApiUserBreakdownResponseSchema = z.object({

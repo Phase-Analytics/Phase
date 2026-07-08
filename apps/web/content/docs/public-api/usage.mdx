@@ -132,8 +132,8 @@ console.log(data);
   - Used by: breakdown endpoints
   - Allowed values depend on the endpoint:
     - Events: `eventName`, `screenName`
-    - Sessions: `platform`, `country`, `city`
-    - Users: `platform`, `country`, `city`
+    - Sessions: `platform`, `country`
+    - Users: `platform`, `country`
 
 - `limit`
   - Type: `number`
@@ -218,7 +218,7 @@ Use session reports for totals, duration, bounce rate, and session distribution 
   - Supports `startDate`, `endDate`, and `metric`.
 
 - `GET /apps/:appId/reports/sessions/breakdown`
-  - Returns session counts grouped by `platform`, `country`, or `city`.
+  - Returns session counts grouped by `platform` or `country`.
   - Supports `dimension`, `startDate`, `endDate`, and `limit`.
 
 ### Example: session timeseries
@@ -275,7 +275,7 @@ Use user reports for totals, active users, new users, and user distribution by p
   - Supports `startDate`, `endDate`, and `metric`.
 
 - `GET /apps/:appId/reports/users/breakdown`
-  - Returns user counts grouped by `platform`, `country`, or `city`.
+  - Returns user counts grouped by `platform` or `country`.
   - Supports `dimension` and `limit`.
 
 ### Example: user overview

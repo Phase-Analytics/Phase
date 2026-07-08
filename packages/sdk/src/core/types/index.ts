@@ -147,7 +147,6 @@ export type DeviceResponse = {
   platform: Platform | null;
   locale: string | null;
   country: string | null;
-  city: string | null;
   firstSeen: string;
 };
 

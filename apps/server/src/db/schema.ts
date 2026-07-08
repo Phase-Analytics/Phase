@@ -167,7 +167,6 @@ export const devices = pgTable(
     locale: text('locale'),
     model: text('model'),
     country: text('country'),
-    city: text('city'),
     properties: jsonb('properties').$type<Record<
       string,
       string | number | boolean | null

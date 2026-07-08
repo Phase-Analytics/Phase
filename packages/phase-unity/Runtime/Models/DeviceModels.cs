@@ -43,9 +43,6 @@ public sealed class DeviceResponse
     [JsonProperty("country")]
     public string? Country { get; set; }
 
-    [JsonProperty("city")]
-    public string? City { get; set; }
-
     [JsonProperty("firstSeen")]
     public string FirstSeen { get; set; } = string.Empty;
 }

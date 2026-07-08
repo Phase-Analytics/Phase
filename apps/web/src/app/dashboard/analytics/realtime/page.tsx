@@ -20,7 +20,6 @@ export type ActivityItem = {
   timestamp: string;
   isScreen?: boolean;
   isDebug?: boolean;
-  region?: string | null;
   os?: string | null;
   browser?: string | null;
 };
@@ -234,7 +233,6 @@ export default function RealtimePage() {
         deviceId: click.linkId,
         country: click.countryCode,
         platform: null,
-        region: click.region,
         os: click.os,
         browser: click.browser,
         timestamp: click.timestamp,

@@ -136,12 +136,6 @@ function UsersExportButton() {
         },
         summary: {
           countries: overview.countryStats,
-          cities:
-            (
-              overview as {
-                cityStats?: Record<string, { count: number; country: string }>;
-              }
-            ).cityStats ?? {},
           platforms: overview.platformStats,
           retention: retention.summary,
         },

@@ -32,7 +32,6 @@ export type Device = {
   appVersion: string | null;
   locale: string | null;
   country: string | null;
-  city: string | null;
   properties: DeviceProperties | null;
   firstSeen: string;
 };
@@ -51,7 +50,6 @@ export type DeviceListItem = {
   deviceId: string;
   platform: Platform | null;
   country: string | null;
-  city: string | null;
   firstSeen: string;
 };
 
@@ -63,7 +61,6 @@ export type DeviceDetail = {
   appVersion: string | null;
   locale: string | null;
   country: string | null;
-  city: string | null;
   properties: DeviceProperties | null;
   firstSeen: string;
   lastActivityAt: string | null;
@@ -94,13 +91,6 @@ export type DevicePlatformOverviewResponse = {
 export type DeviceLocationOverviewResponse = {
   totalDevices: number;
   countryStats: Record<string, number>;
-  cityStats: Record<
-    string,
-    {
-      count: number;
-      country: string;
-    }
-  >;
 };
 
 export type DeviceTimeseriesDataPoint = {

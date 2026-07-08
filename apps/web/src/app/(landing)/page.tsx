@@ -264,7 +264,7 @@ export default function HomePage() {
             <div className="flex flex-wrap items-center justify-center gap-6">
               <LocationMap
                 coordinates="San Francisco, USA"
-                expandedTitle="See user's country and city informations."
+                expandedTitle="See user's country information."
                 isExpanded={expandedCardId === 'geolocation'}
                 location="Geolocation"
                 onToggle={() => handleCardToggle('geolocation')}

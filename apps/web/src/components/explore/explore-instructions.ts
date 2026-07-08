@@ -15,7 +15,7 @@ QuestDB syntax for params:
 - cast(json_extract(params, '$.price') as double)
 
 ### users
-- user_id, platform, country, city, locale, model, os_version
+- user_id, platform, country, locale, model, os_version
 - first_seen (timestamptz)
 - properties (jsonb) — use properties->>'key'
 

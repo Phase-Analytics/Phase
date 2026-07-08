@@ -155,10 +155,7 @@ export function LinkAnalytics({ appId, linkId }: LinkAnalyticsProps) {
       />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <LinkAnalyticsGeoCard
-          countries={data.countries}
-          regions={data.regions}
-        />
+        <LinkAnalyticsGeoCard countries={data.countries} />
         <LinkAnalyticsBreakdownCard
           items={data.operatingSystems}
           title="Operating systems"

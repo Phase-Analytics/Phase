@@ -4,8 +4,8 @@ set -e
 echo "[$(date)] Starting GeoIP update check..."
 
 TIMESTAMP_FILE=/app/geoip/.last-update
-DB_FILE=/app/geoip/GeoLite2-City.mmdb
-DB_URL=https://github.com/P3TERX/GeoLite.mmdb/raw/download/GeoLite2-City.mmdb
+DB_FILE=/app/geoip/GeoLite2-Country.mmdb
+DB_URL=https://github.com/P3TERX/GeoLite.mmdb/raw/download/GeoLite2-Country.mmdb
 CURRENT_TIME=$(date +%s)
 UPDATE_NEEDED=0
 UPDATE_SECONDS=345600

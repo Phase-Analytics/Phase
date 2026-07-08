@@ -39,7 +39,6 @@ export const deviceSdkRouter = new Elysia({ prefix: '/devices' })
           '';
 
         let country: string | null = null;
-        let city: string | null = null;
         const existingDevice = await db.query.devices.findFirst({
           where: (table, { eq: eqFn }) => eqFn(table.deviceId, body.deviceId),
         });
@@ -77,7 +76,6 @@ export const deviceSdkRouter = new Elysia({ prefix: '/devices' })
           if (ip && !body.disableGeolocation) {
             const location = await getLocationFromIP(ip);
             country = location.countryCode;
-            city = location.city;
           }
 
           [device] = await db
@@ -90,7 +88,6 @@ export const deviceSdkRouter = new Elysia({ prefix: '/devices' })
               locale: body.locale ?? null,
               model: body.model ?? null,
               country: country ?? null,
-              city: city ?? null,
               properties: body.properties ?? null,
             })
             .returning();
@@ -110,7 +107,6 @@ export const deviceSdkRouter = new Elysia({ prefix: '/devices' })
           locale: device.locale,
           model: device.model,
           country: device.country,
-          city: device.city,
           properties: device.properties,
           firstSeen: device.firstSeen.toISOString(),
         };

@@ -53,7 +53,6 @@ export const DeviceSchema = z.object({
   locale: z.string().nullable(),
   model: z.string().nullable(),
   country: z.string().nullable(),
-  city: z.string().nullable(),
   properties: DevicePropertiesSchema.nullable(),
   firstSeen: z.string().datetime(),
 });
@@ -80,7 +79,6 @@ export const DeviceListItemSchema = z.object({
   deviceId: z.string(),
   platform: PlatformSchema.nullable(),
   country: z.string().nullable(),
-  city: z.string().nullable(),
   firstSeen: z.string().datetime(),
 });
 
@@ -91,7 +89,6 @@ export const DeviceDetailSchema = z.object({
   locale: z.string().nullable(),
   model: z.string().nullable(),
   country: z.string().nullable(),
-  city: z.string().nullable(),
   properties: DevicePropertiesSchema.nullable(),
   firstSeen: z.string().datetime(),
   lastActivityAt: z.string().datetime().nullable(),
@@ -107,13 +104,6 @@ export const DeviceOverviewResponseSchema = z.object({
   activeDevices24h: z.number().min(0),
   platformStats: z.record(z.string(), z.number()),
   countryStats: z.record(z.string(), z.number()),
-  cityStats: z.record(
-    z.string(),
-    z.object({
-      count: z.number(),
-      country: z.string(),
-    })
-  ),
   totalDevicesChange24h: z.number(),
   activeDevicesChange24h: z.number(),
 });
@@ -129,13 +119,6 @@ export const DevicePlatformOverviewResponseSchema = z.object({
 export const DeviceLocationOverviewResponseSchema = z.object({
   totalDevices: z.number().min(0),
   countryStats: z.record(z.string(), z.number()),
-  cityStats: z.record(
-    z.string(),
-    z.object({
-      count: z.number(),
-      country: z.string(),
-    })
-  ),
 });
 
 export const DeviceTimeseriesDataPointSchema = z.object({

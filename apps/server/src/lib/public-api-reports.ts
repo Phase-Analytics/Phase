@@ -464,24 +464,9 @@ export async function getPublicSessionBreakdown(options: {
     }));
   }
 
-  const rows = await db
-    .select({
-      value: sql<string>`COALESCE(${devices.city}, 'unknown')`,
-      country: sql<string>`COALESCE(${devices.country}, '')`,
-      count: count(),
-    })
-    .from(sessions)
-    .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
-    .where(and(...filters))
-    .groupBy(devices.city, devices.country)
-    .orderBy(sql`count DESC`)
-    .limit(limit);
-
-  return rows.map((row) => ({
-    value: row.value,
-    count: Number(row.count),
-    country: row.country,
-  }));
+  throw new Error(
+    `Unsupported session breakdown dimension: ${options.dimension}`
+  );
 }
 
 export async function getPublicUserOverview(appId: string) {
@@ -503,7 +488,6 @@ export async function getPublicUserOverview(appId: string) {
     [{ count: activeUsersYesterday }],
     platformStatsResult,
     countryStatsResult,
-    cityStatsResult,
   ] = await Promise.all([
     db.select({ count: count() }).from(devices).where(eq(devices.appId, appId)),
 
@@ -575,16 +559,6 @@ export async function getPublicUserOverview(appId: string) {
       .from(devices)
       .where(eq(devices.appId, appId))
       .groupBy(devices.country),
-
-    db
-      .select({
-        city: devices.city,
-        country: devices.country,
-        count: count(),
-      })
-      .from(devices)
-      .where(eq(devices.appId, appId))
-      .groupBy(devices.city, devices.country),
   ]);
 
   const totalUsersNum = Number(totalUsers);
@@ -628,23 +602,12 @@ export async function getPublicUserOverview(appId: string) {
     }
   }
 
-  const cityStats: Record<string, { count: number; country: string }> = {};
-  for (const row of cityStatsResult) {
-    if (row.city !== null) {
-      cityStats[row.city] = {
-        count: Number(row.count),
-        country: row.country || '',
-      };
-    }
-  }
-
   return {
     totalUsers: totalUsersNum,
     activeUsers24h: activeUsers24hNum,
     newUsers24h: newUsers24hNum,
     platformStats,
     countryStats,
-    cityStats,
     totalUsersChange24h: Number(totalUsersChange24h.toFixed(2)),
     activeUsers24hChange: Number(activeUsers24hChange.toFixed(2)),
     newUsers24hChange: Number(newUsers24hChange.toFixed(2)),
@@ -817,21 +780,5 @@ export async function getPublicUserBreakdown(options: {
     }));
   }
 
-  const rows = await db
-    .select({
-      value: sql<string>`COALESCE(${devices.city}, 'unknown')`,
-      country: sql<string>`COALESCE(${devices.country}, '')`,
-      count: count(),
-    })
-    .from(devices)
-    .where(eq(devices.appId, options.appId))
-    .groupBy(devices.city, devices.country)
-    .orderBy(sql`count DESC`)
-    .limit(limit);
-
-  return rows.map((row) => ({
-    value: row.value,
-    count: Number(row.count),
-    country: row.country,
-  }));
+  throw new Error(`Unsupported user breakdown dimension: ${options.dimension}`);
 }

@@ -102,7 +102,6 @@ async function processDevices(
   const errors: BatchError[] = [];
 
   let country: string | null = null;
-  let city: string | null = null;
   let locationFetched = false;
 
   for (const item of items) {
@@ -155,7 +154,6 @@ async function processDevices(
         if (!locationFetched && ip && !payload.disableGeolocation) {
           const location = await getLocationFromIP(ip);
           country = location.countryCode;
-          city = location.city;
           locationFetched = true;
         }
 
@@ -169,7 +167,6 @@ async function processDevices(
             locale: payload.locale ?? null,
             model: payload.model ?? null,
             country: country ?? null,
-            city: city ?? null,
             properties: payload.properties ?? null,
           })
           .returning();

@@ -94,7 +94,6 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
           [{ count: activeDevicesYesterday }],
           platformStatsResult,
           countryStatsResult,
-          cityStatsResult,
         ] = await Promise.all([
           db
             .select({ count: count() })
@@ -150,16 +149,6 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
             .from(devices)
             .where(eq(devices.appId, appId))
             .groupBy(devices.country),
-
-          db
-            .select({
-              city: devices.city,
-              country: devices.country,
-              count: count(),
-            })
-            .from(devices)
-            .where(eq(devices.appId, appId))
-            .groupBy(devices.city, devices.country),
         ]);
 
         const totalDevicesNum = Number(totalDevices);
@@ -204,24 +193,12 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
           }
         }
 
-        const cityStats: Record<string, { count: number; country: string }> =
-          {};
-        for (const row of cityStatsResult) {
-          if (row.city !== null) {
-            cityStats[row.city] = {
-              count: Number(row.count),
-              country: row.country || '',
-            };
-          }
-        }
-
         set.status = HttpStatus.OK;
         return {
           totalDevices: totalDevicesNum,
           activeDevices24h: activeDevices24hNum,
           platformStats,
           countryStats,
-          cityStats,
           totalDevicesChange24h: Number(totalDevicesChange24h.toFixed(2)),
           activeDevicesChange24h: Number(activeDevicesChange24h.toFixed(2)),
         };
@@ -379,7 +356,6 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
               deviceId: devices.deviceId,
               platform: devices.platform,
               country: devices.country,
-              city: devices.city,
               firstSeen: devices.firstSeen,
             })
             .from(devices)
@@ -730,7 +706,6 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
           locale: device.locale,
           model: device.model,
           country: device.country,
-          city: device.city,
           properties: device.properties,
           firstSeen: device.firstSeen.toISOString(),
           lastActivityAt: lastActivityAt
