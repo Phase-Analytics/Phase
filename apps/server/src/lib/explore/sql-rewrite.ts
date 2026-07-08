@@ -1,3 +1,4 @@
+import { buildResolveDeviceModelSql } from '@phase/shared';
 import { buildExploreEventsSubquery } from '@/lib/questdb';
 import { escapeQuestDbString } from '@/lib/questdb-sql';
 import type { ExploreVirtualTable } from './constants';
@@ -46,7 +47,7 @@ function buildUsersSubquery(appId: string): string {
       platform,
       country,
       locale,
-      model,
+      ${buildResolveDeviceModelSql('model')} AS model,
       os_version,
       first_seen,
       properties

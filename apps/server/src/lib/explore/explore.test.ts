@@ -20,6 +20,18 @@ describe('rewriteExploreSql', () => {
     expect(sql).toContain('AS user_id');
     expect(sql).not.toContain('FROM "events"');
   });
+
+  test('resolves Apple machine ids in the users virtual table model column', () => {
+    const { sql, target } = rewriteExploreSql(
+      'SELECT model, count(*) AS count FROM users GROUP BY model',
+      new Set(['users']),
+      { appId: 'app_test', dateRange: null }
+    );
+
+    expect(target).toBe('postgres');
+    expect(sql).toContain("WHEN model = 'iPhone17,1' THEN 'iPhone 16 Pro'");
+    expect(sql).toContain('AS model');
+  });
 });
 
 describe('parseExploreSql', () => {

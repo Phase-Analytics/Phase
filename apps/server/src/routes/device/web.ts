@@ -9,6 +9,7 @@ import {
   ErrorCode,
   ErrorResponseSchema,
   HttpStatus,
+  resolveDeviceModel,
   type Platform,
 } from '@phase/shared';
 import {
@@ -704,7 +705,7 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
           osVersion: device.osVersion,
           platform: normalizePlatform(device.platform),
           locale: device.locale,
-          model: device.model,
+          model: resolveDeviceModel(device.model),
           country: device.country,
           properties: device.properties,
           firstSeen: device.firstSeen.toISOString(),

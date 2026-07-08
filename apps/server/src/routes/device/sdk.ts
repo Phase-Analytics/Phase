@@ -4,6 +4,7 @@ import {
   ErrorCode,
   ErrorResponseSchema,
   HttpStatus,
+  resolveDeviceModel,
   type Platform,
 } from '@phase/shared';
 import { eq } from 'drizzle-orm';
@@ -105,7 +106,7 @@ export const deviceSdkRouter = new Elysia({ prefix: '/devices' })
           osVersion: device.osVersion,
           platform: normalizePlatform(device.platform),
           locale: device.locale,
-          model: device.model,
+          model: resolveDeviceModel(device.model),
           country: device.country,
           properties: device.properties,
           firstSeen: device.firstSeen.toISOString(),

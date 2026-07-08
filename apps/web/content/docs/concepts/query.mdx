@@ -47,7 +47,7 @@ Modulo is supported: `expr % 5 = 0`
 | `platform` | text | `ios`, `android`, or `unknown` |
 | `country` | text | ISO country code |
 | `locale` | text | |
-| `model` | text | Device model |
+| `model` | text | Device model. Apple hardware IDs (e.g. `iPhone17,1`) are resolved to marketing names (e.g. `iPhone 16 Pro`). Android and already-friendly names pass through. |
 | `os_version` | text | |
 | `first_seen` | timestamptz | First seen time |
 | `properties` | jsonb | Custom user properties — use `properties->>'key'` |
