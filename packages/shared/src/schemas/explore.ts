@@ -24,6 +24,13 @@ export const ExploreRunMetaSchema = z.object({
   hasNextPage: z.boolean(),
   hasPreviousPage: z.boolean(),
   executionMs: z.number().min(0).optional(),
+  appliedDateRange: z
+    .object({
+      startDate: z.string().datetime(),
+      endDate: z.string().datetime(),
+    })
+    .nullable()
+    .optional(),
 });
 
 export const ExploreRunResponseSchema = z.object({
@@ -59,7 +66,6 @@ export const UpdateExplorePresetRequestSchema = z.object({
 export const ExploreRunRequestSchema = z.object({
   appId: z.string().min(1),
   query: ExploreSqlQuerySchema,
-  timeRange: ExploreTimeRangeSchema,
   page: z.number().int().min(1).default(1),
 });
 

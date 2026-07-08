@@ -1,6 +1,6 @@
-export const EXPLORE_INSTRUCTIONS = `# Phase Explore SQL
+export const EXPLORE_INSTRUCTIONS = `# Phase Query SQL
 
-Write read-only SELECT queries against three virtual tables. The dashboard time range and app scoping are applied automatically.
+Write read-only SELECT queries against three virtual tables. App scoping is applied automatically.
 
 ## Tables
 
@@ -24,9 +24,15 @@ QuestDB syntax for params:
 - started_at, last_activity_at (timestamptz)
 - duration_seconds (number)
 
+## Time range
+
+- If your SQL does not filter on timestamp, started_at, last_activity_at, or first_seen, events and sessions are scoped to the last 30 days.
+- Add your own time predicates in WHERE to control the range, for example:
+  WHERE timestamp >= '2025-01-01'
+
 ## Pagination
 
-- LIMIT sets page size (default 100 if omitted, max 1000).
+- LIMIT sets page size (default 100 if omitted, max 1000 in the dashboard).
 - Do not use OFFSET. Use the page controls in the UI.
 - Deep pagination is capped at 100,000 skipped rows.
 - Export downloads the current page only.
@@ -57,11 +63,11 @@ GROUP BY d.platform
 ORDER BY purchases DESC
 LIMIT 50
 
-Session duration percentiles by country:
-SELECT d.country, avg(s.duration_seconds) AS avg_duration
-FROM sessions s
-JOIN devices d ON s.device_id = d.device_id
-GROUP BY d.country
-ORDER BY avg_duration DESC
-LIMIT 25
+Custom time range:
+SELECT name, count(*) AS count
+FROM events
+WHERE timestamp >= '2025-06-01'
+GROUP BY name
+ORDER BY count DESC
+LIMIT 100
 `;

@@ -193,6 +193,43 @@ export const PublicApiUserBreakdownResponseSchema = z.object({
   meta: PublicApiMetaSchema,
 });
 
+export const PublicApiQueryRequestSchema = z.object({
+  sql: z.string().trim().min(1).max(10_000),
+  page: z.number().int().min(1).default(1),
+});
+
+export const PublicApiQueryResponseSchema = z.object({
+  result: z.object({
+    kind: z.literal('table'),
+    columns: z.array(z.string()),
+    rows: z.array(z.array(z.unknown())),
+  }),
+  meta: z.object({
+    generatedAt: z.string().datetime(),
+    consistency: z.literal('eventual'),
+    identityModel: z.literal('user'),
+    page: z.number().int().min(1),
+    pageSize: z.number().int().min(1),
+    offset: z.number().int().min(0),
+    rowCount: z.number().min(0),
+    hasNextPage: z.boolean(),
+    hasPreviousPage: z.boolean(),
+    executionMs: z.number().min(0).optional(),
+    appliedDateRange: z
+      .object({
+        startDate: z.string().datetime(),
+        endDate: z.string().datetime(),
+      })
+      .nullable()
+      .optional(),
+  }),
+});
+
+export type PublicApiQueryRequest = z.infer<typeof PublicApiQueryRequestSchema>;
+export type PublicApiQueryResponse = z.infer<
+  typeof PublicApiQueryResponseSchema
+>;
+
 export type PublicApiToken = z.infer<typeof PublicApiTokenSchema>;
 export type CreatePublicApiTokenRequest = z.infer<
   typeof CreatePublicApiTokenRequestSchema

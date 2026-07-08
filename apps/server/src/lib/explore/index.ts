@@ -1,4 +1,7 @@
 export { getExploreCatalog } from './catalog';
-export { runExploreQuery } from './engine';
+export { runExploreQuery, type ExploreRunOptions } from './engine';
 export { ExploreEngineError } from './errors';
-export { resolveExploreDateRange } from './time-range';
+export {
+  resolveDefaultExploreDateRange,
+  resolveExploreDateRangeForSql,
+} from './time-range';

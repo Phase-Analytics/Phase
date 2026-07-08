@@ -5,7 +5,6 @@ import type {
   ExplorePresetsListResponse,
   ExploreRunResponse,
   ExploreSqlQuery,
-  ExploreTimeRange,
   UpdateExplorePresetRequest,
 } from '@phase/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -42,7 +41,6 @@ export function useExploreRun() {
     mutationFn: (payload: {
       appId: string;
       query: ExploreSqlQuery;
-      timeRange: ExploreTimeRange;
       page?: number;
     }) =>
       fetchApi<ExploreRunResponse>('/web/explore/run', {

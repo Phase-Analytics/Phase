@@ -112,7 +112,6 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
         return await runExploreQuery(
           parsed.data.appId,
           queryParsed.data,
-          parsed.data.timeRange,
           parsed.data.page
         );
       } catch (error) {

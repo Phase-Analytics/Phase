@@ -6,8 +6,7 @@ import type {
   ExploreSqlQuery,
 } from '@phase/shared';
 import { parseAsString, useQueryState } from 'nuqs';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { AnalyticsTimeRangePicker } from '@/components/analytics/analytics-time-range-picker';
+import { useCallback, useRef, useState } from 'react';
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
 import { defaultExploreSqlQuery } from '@/components/explore/default-sql';
 import { ExplorePresetsSection } from '@/components/explore/explore-presets-section';
@@ -15,13 +14,11 @@ import { ExploreResults } from '@/components/explore/explore-results';
 import { ExploreSqlEditor } from '@/components/explore/explore-sql-editor';
 import { RequireApp } from '@/components/require-app';
 import { Card, CardContent } from '@/components/ui/card';
-import { toExploreTimeRange } from '@/lib/analytics-time-range';
 import { ignorePromiseRejection } from '@/lib/ignore-promise-rejection';
 import { useExploreRun } from '@/lib/queries/use-explore';
 
-export default function ExplorePage() {
+export default function QueryPage() {
   const [appId] = useQueryState('app', parseAsString);
-  const [timeRange] = useQueryState('range', parseAsString.withDefault('7d'));
   const [query, setQuery] = useState<ExploreSqlQuery>(() =>
     defaultExploreSqlQuery()
   );
@@ -31,11 +28,8 @@ export default function ExplorePage() {
   const [error, setError] = useState<string | null>(null);
   const { mutateAsync: runExploreQuery, isPending: isExploreRunning } =
     useExploreRun();
-  const hasRunRef = useRef(false);
   const queryRef = useRef(query);
-  const pageRef = useRef(page);
   queryRef.current = query;
-  pageRef.current = page;
 
   const executeRun = useCallback(
     async (nextQuery: ExploreSqlQuery, nextPage: number) => {
@@ -49,20 +43,18 @@ export default function ExplorePage() {
         const response = await runExploreQuery({
           appId,
           query: nextQuery,
-          timeRange: toExploreTimeRange(timeRange),
           page: nextPage,
         });
         setResult(response.result);
         setRunMeta(response.meta);
         setPage(response.meta.page);
-        hasRunRef.current = true;
       } catch (err) {
         setResult(null);
         setRunMeta(null);
         setError(err instanceof Error ? err.message : 'Query failed');
       }
     },
-    [appId, runExploreQuery, timeRange]
+    [appId, runExploreQuery]
   );
 
   const handleRun = useCallback(() => {
@@ -78,26 +70,16 @@ export default function ExplorePage() {
     [executeRun]
   );
 
-  useEffect(() => {
-    if (!(hasRunRef.current && appId)) {
-      return;
-    }
-    setPage(1);
-    executeRun(queryRef.current, 1).catch(ignorePromiseRejection);
-  }, [appId, executeRun, timeRange]);
-
   const handleLoadPreset = useCallback((presetQuery: ExploreSqlQuery) => {
     setQuery(presetQuery);
     setResult(null);
     setRunMeta(null);
     setError(null);
     setPage(1);
-    hasRunRef.current = false;
   }, []);
 
   const handleQueryChange = useCallback((nextQuery: ExploreSqlQuery) => {
     setQuery(nextQuery);
-    hasRunRef.current = false;
   }, []);
 
   const showResults = Boolean(result) || isExploreRunning || Boolean(error);
@@ -106,9 +88,8 @@ export default function ExplorePage() {
     <RequireApp>
       <div className="flex flex-1 flex-col gap-6">
         <DashboardPageHeader
-          actions={<AnalyticsTimeRangePicker />}
           description="Write read-only SQL against events, devices, and sessions"
-          title="Explore"
+          title="Query"
         />
 
         <div className="flex min-w-0 flex-col gap-4">

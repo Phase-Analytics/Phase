@@ -13,7 +13,7 @@ import { ExploreEngineError } from './errors';
 
 type RewriteContext = {
   appId: string;
-  dateRange: ExploreDateRange;
+  dateRange: ExploreDateRange | null;
 };
 
 function escapePgString(value: string): string {
@@ -22,21 +22,26 @@ function escapePgString(value: string): string {
 
 function buildScopedEventsSubquery(
   appId: string,
-  dateRange: ExploreDateRange,
+  dateRange: ExploreDateRange | null,
   selectClause: string
 ): string {
   const conditions = [
     `app_id = '${escapeQuestDbString(appId)}'`,
-    `timestamp >= '${escapeQuestDbString(dateRange.startDate)}'`,
-    `timestamp <= '${escapeQuestDbString(dateRange.endDate)}'`,
     'COALESCE(is_debug, false) = false',
   ];
+
+  if (dateRange) {
+    conditions.push(
+      `timestamp >= '${escapeQuestDbString(dateRange.startDate)}'`,
+      `timestamp <= '${escapeQuestDbString(dateRange.endDate)}'`
+    );
+  }
 
   return buildExploreEventsSubquery({
     selectClause,
     conditions,
-    startDate: dateRange.startDate,
-    endDate: dateRange.endDate,
+    startDate: dateRange?.startDate,
+    endDate: dateRange?.endDate,
   });
 }
 
@@ -57,7 +62,15 @@ function buildDevicesSubquery(appId: string): string {
   )`;
 }
 
-function buildSessionsSubquery(appId: string, dateRange: ExploreDateRange): string {
+function buildSessionsSubquery(
+  appId: string,
+  dateRange: ExploreDateRange | null
+): string {
+  const timeFilters = dateRange
+    ? `AND s.started_at >= '${escapePgString(dateRange.startDate)}'::timestamptz
+      AND s.started_at <= '${escapePgString(dateRange.endDate)}'::timestamptz`
+    : '';
+
   return `(
     SELECT
       s.session_id,
@@ -68,8 +81,7 @@ function buildSessionsSubquery(appId: string, dateRange: ExploreDateRange): stri
     FROM sessions_analytics s
     INNER JOIN devices d ON d.device_id = s.device_id
     WHERE d.app_id = '${escapePgString(appId)}'
-      AND s.started_at >= '${escapePgString(dateRange.startDate)}'::timestamptz
-      AND s.started_at <= '${escapePgString(dateRange.endDate)}'::timestamptz
+      ${timeFilters}
   )`;
 }
 
@@ -157,7 +169,7 @@ type StagedEventRow = {
 export async function stageEventsForPostgres(
   client: import('pg').PoolClient,
   appId: string,
-  dateRange: ExploreDateRange
+  dateRange: ExploreDateRange | null
 ): Promise<void> {
   const fetchSql = `
     SELECT
@@ -225,7 +237,7 @@ export async function executePostgresExploreQuery(
   sql: string,
   needsStaging: boolean,
   appId: string,
-  dateRange: ExploreDateRange
+  dateRange: ExploreDateRange | null
 ): Promise<{ columns: string[]; rows: unknown[][] }> {
   const client = await pool.connect();
 

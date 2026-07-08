@@ -1,26 +1,34 @@
-import type {
-  ExploreRunResponse,
-  ExploreSqlQuery,
-  ExploreTimeRange,
-} from '@phase/shared';
+import type { ExploreRunResponse, ExploreSqlQuery } from '@phase/shared';
 import {
   executePostgresExploreQuery,
   executeQuestDbExploreQuery,
   rewriteExploreSql,
 } from './sql-execute';
-import { applyExplorePagination, parseExploreSql, validateExplorePage } from './sql-validate';
-import { resolveExploreDateRange } from './time-range';
+import {
+  applyExplorePagination,
+  parseExploreSql,
+  validateExplorePage,
+} from './sql-validate';
+import { resolveExploreDateRangeForSql } from './time-range';
+
+export type ExploreRunOptions = {
+  maxPageSize?: number;
+};
 
 export async function runExploreQuery(
   appId: string,
   query: ExploreSqlQuery,
-  timeRange: ExploreTimeRange,
-  page = 1
+  page = 1,
+  options?: ExploreRunOptions
 ): Promise<ExploreRunResponse> {
   const startedAt = Date.now();
-  const dateRange = resolveExploreDateRange(timeRange);
+  const dateRange = resolveExploreDateRangeForSql(query.sql);
   const parsed = parseExploreSql(query.sql);
-  validateExplorePage(page, parsed.pageSize);
+  const pageSize = options?.maxPageSize
+    ? Math.min(parsed.pageSize, options.maxPageSize)
+    : parsed.pageSize;
+
+  validateExplorePage(page, pageSize);
 
   const usesEvents = parsed.tables.has('events');
   const usesPostgresTables =
@@ -39,7 +47,7 @@ export async function runExploreQuery(
 
   const { sql: paginatedSql, offset } = applyExplorePagination(
     rewritten,
-    parsed.pageSize,
+    pageSize,
     page
   );
 
@@ -53,10 +61,8 @@ export async function runExploreQuery(
           dateRange
         );
 
-  const hasNextPage = result.rows.length > parsed.pageSize;
-  const pageRows = hasNextPage
-    ? result.rows.slice(0, parsed.pageSize)
-    : result.rows;
+  const hasNextPage = result.rows.length > pageSize;
+  const pageRows = hasNextPage ? result.rows.slice(0, pageSize) : result.rows;
 
   return {
     result: {
@@ -67,12 +73,13 @@ export async function runExploreQuery(
     meta: {
       generatedAt: new Date().toISOString(),
       page,
-      pageSize: parsed.pageSize,
+      pageSize,
       offset,
       rowCount: pageRows.length,
       hasNextPage,
       hasPreviousPage: page > 1,
       executionMs: Date.now() - startedAt,
+      appliedDateRange: dateRange,
     },
   };
 }

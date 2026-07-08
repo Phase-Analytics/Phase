@@ -5,7 +5,7 @@ import {
   ComputerPhoneSyncIcon,
   CreditCardIcon,
   CursorPointer02Icon,
-  DiscoverSquareIcon,
+  DatabaseIcon,
   File02Icon,
   GithubIcon,
   GlobalIcon,
@@ -96,10 +96,10 @@ const analyticsNavItems: NavItem[] = [
     tooltip: 'Realtime',
   },
   {
-    label: 'Explore',
-    icon: DiscoverSquareIcon,
+    label: 'Query',
+    icon: DatabaseIcon,
     path: '/dashboard/analytics/explore',
-    tooltip: 'Explore',
+    tooltip: 'Query',
   },
 ];
 
