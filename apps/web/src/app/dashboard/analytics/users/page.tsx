@@ -41,7 +41,6 @@ type UsersExportData = {
   };
   summary: {
     countries: Record<string, number>;
-    cities: Record<string, { count: number; country: string }>;
     platforms: Record<string, number>;
     retention: DeviceRetentionResponse['summary'];
   };
