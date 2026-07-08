@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.12
+
+- Remove `city` from `DeviceResponse` (geolocation is country-only).
+
 ## 0.1.11
 
 - Allow continuously active sessions to run for up to two hours.
