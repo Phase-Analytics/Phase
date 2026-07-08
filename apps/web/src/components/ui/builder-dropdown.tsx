@@ -43,7 +43,10 @@ export function BuilderDropdown({
           <HugeiconsIcon className="size-4 opacity-60" icon={ArrowDown01Icon} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-[var(--radix-dropdown-menu-trigger-width)]">
+      <DropdownMenuContent
+        align="start"
+        className="min-w-[var(--radix-dropdown-menu-trigger-width)]"
+      >
         {options.map((option) => (
           <DropdownMenuItem
             key={option.value}

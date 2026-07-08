@@ -59,7 +59,9 @@ function ExploreTableResults({
         accessorKey: column,
         header: column,
         cell: ({ getValue }) => (
-          <span className="font-mono text-xs">{formatCellValue(getValue())}</span>
+          <span className="font-mono text-xs">
+            {formatCellValue(getValue())}
+          </span>
         ),
       })),
     [result.columns]
@@ -83,7 +85,9 @@ function ExploreTableResults({
               {meta.rowCount > 0
                 ? ` · ${meta.rowCount} row${meta.rowCount === 1 ? '' : 's'}`
                 : ' · No rows'}
-              {meta.offset > 0 ? ` · offset ${meta.offset.toLocaleString()}` : null}
+              {meta.offset > 0
+                ? ` · offset ${meta.offset.toLocaleString()}`
+                : null}
               {meta.executionMs !== undefined
                 ? ` · ${meta.executionMs}ms`
                 : null}

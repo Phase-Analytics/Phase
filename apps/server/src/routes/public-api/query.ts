@@ -7,9 +7,11 @@ import {
 } from '@phase/shared';
 import { Elysia } from 'elysia';
 import { ExploreEngineError, runExploreQuery } from '@/lib/explore';
-import { getPublicApiMeta } from '@/lib/public-api-capabilities';
-import { PUBLIC_API_MAX_RAW_PAGE_SIZE } from '@/lib/public-api-capabilities';
 import { publicApiAuthPlugin } from '@/lib/public-api-auth';
+import {
+  getPublicApiMeta,
+  PUBLIC_API_MAX_RAW_PAGE_SIZE,
+} from '@/lib/public-api-capabilities';
 import { checkPublicApiRateLimit } from '@/lib/rate-limit';
 
 export const publicApiQueryRouter = new Elysia({

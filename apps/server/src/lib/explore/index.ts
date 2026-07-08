@@ -1,5 +1,5 @@
 export { getExploreCatalog } from './catalog';
-export { runExploreQuery, type ExploreRunOptions } from './engine';
+export { type ExploreRunOptions, runExploreQuery } from './engine';
 export { ExploreEngineError } from './errors';
 export {
   resolveDefaultExploreDateRange,

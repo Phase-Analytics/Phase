@@ -6,5 +6,5 @@ export const publicApiRouter = new Elysia()
   .use(publicApiReportsRouter)
   .use(publicApiQueryRouter);
 
-export { publicApiReportsRouter } from './reports';
 export { publicApiQueryRouter } from './query';
+export { publicApiReportsRouter } from './reports';
