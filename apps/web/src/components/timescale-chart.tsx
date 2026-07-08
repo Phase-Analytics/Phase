@@ -279,7 +279,11 @@ export function TimescaleChart({
                             className="size-3.5"
                             icon={Calendar03Icon}
                           />
-                          <ClientDate date={rawDate} format="date" />
+                          <ClientDate
+                            date={rawDate}
+                            display="absolute"
+                            format="date"
+                          />
                         </>
                       )}
                     </div>

@@ -70,7 +70,7 @@ function FunnelsPageContent({ appId }: { appId: string }) {
   const [loadingPresetId, setLoadingPresetId] = useState<string | null>(null);
 
   const presets = presetsData?.funnels ?? [];
-  const selectedPreset = useMemo(
+  const _selectedPreset = useMemo(
     () => presets.find((preset) => preset.id === selectedId) ?? null,
     [presets, selectedId]
   );
@@ -239,20 +239,16 @@ function FunnelsPageContent({ appId }: { appId: string }) {
       </div>
 
       {selectedId === ACTIVATION_ID && activationLoading ? (
-        <FunnelVisualizationSkeleton compact />
+        <FunnelVisualizationSkeleton />
       ) : null}
       {selectedId === ACTIVATION_ID && !activationLoading ? (
-        <FunnelVisualization compact result={activation} title="Activation" />
+        <FunnelVisualization result={activation} />
       ) : null}
       {selectedId !== ACTIVATION_ID && loadingPresetId === selectedId ? (
-        <FunnelVisualizationSkeleton compact />
+        <FunnelVisualizationSkeleton />
       ) : null}
       {selectedId !== ACTIVATION_ID && loadingPresetId !== selectedId ? (
-        <FunnelVisualization
-          compact
-          result={customResults[selectedId]}
-          title={selectedPreset?.name ?? 'Custom funnel'}
-        />
+        <FunnelVisualization result={customResults[selectedId]} />
       ) : null}
 
       <FunnelEditorDialog
