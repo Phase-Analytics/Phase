@@ -88,7 +88,8 @@ export function UsersAppVersionCard() {
   const [activeTab, setActiveTab] = useState<'ios' | 'android'>('ios');
   const { data: overview } = useDeviceOverviewResponse(appId || '');
 
-  const versionStats = overview?.appVersionStats?.[activeTab] ?? {};
+  const versionStats: Record<string, number> =
+    overview?.appVersionStats?.[activeTab] ?? {};
 
   const listRows = useMemo(
     () =>
