@@ -85,6 +85,7 @@ export function useDeviceOverviewResponse(appId: string) {
           activeDevicesChange24h: 0,
           platformStats: {},
           countryStats: {},
+          appVersionStats: { ios: {}, android: {} },
         });
       }
       return fetchApi<DeviceOverviewResponse>(

@@ -96,6 +96,7 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
           [{ count: activeDevicesYesterday }],
           platformStatsResult,
           countryStatsResult,
+          appVersionStatsResult,
         ] = await Promise.all([
           db
             .select({ count: count() })
@@ -151,6 +152,25 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
             .from(devices)
             .where(eq(devices.appId, appId))
             .groupBy(devices.country),
+
+          db
+            .select({
+              platform: sql<string>`COALESCE(${devices.platform}, 'unknown')`,
+              version: sql<string>`TRIM(${devices.properties}->>'app_version')`,
+              count: count(),
+            })
+            .from(devices)
+            .where(
+              and(
+                eq(devices.appId, appId),
+                sql`${devices.properties}->>'app_version' IS NOT NULL`,
+                sql`TRIM(${devices.properties}->>'app_version') <> ''`
+              )
+            )
+            .groupBy(
+              devices.platform,
+              sql`TRIM(${devices.properties}->>'app_version')`
+            ),
         ]);
 
         const totalDevicesNum = Number(totalDevices);
@@ -195,12 +215,37 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
           }
         }
 
+        const appVersionStats: {
+          ios: Record<string, number>;
+          android: Record<string, number>;
+        } = {
+          ios: {},
+          android: {},
+        };
+        for (const row of appVersionStatsResult) {
+          const normalizedPlatform = normalizePlatform(row.platform);
+          if (
+            normalizedPlatform !== 'ios' &&
+            normalizedPlatform !== 'android'
+          ) {
+            continue;
+          }
+          const version = row.version?.trim();
+          if (!version) {
+            continue;
+          }
+          appVersionStats[normalizedPlatform][version] =
+            (appVersionStats[normalizedPlatform][version] ?? 0) +
+            Number(row.count);
+        }
+
         set.status = HttpStatus.OK;
         return {
           totalDevices: totalDevicesNum,
           activeDevices24h: activeDevices24hNum,
           platformStats,
           countryStats,
+          appVersionStats,
           totalDevicesChange24h: Number(totalDevicesChange24h.toFixed(2)),
           activeDevicesChange24h: Number(activeDevicesChange24h.toFixed(2)),
         };

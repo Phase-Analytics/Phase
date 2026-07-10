@@ -76,6 +76,10 @@ export type DeviceOverviewResponse = {
   activeDevices24h: number;
   platformStats: Record<string, number>;
   countryStats: Record<string, number>;
+  appVersionStats: {
+    ios: Record<string, number>;
+    android: Record<string, number>;
+  };
   totalDevicesChange24h: number;
   activeDevicesChange24h: number;
 };

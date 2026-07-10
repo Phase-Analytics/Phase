@@ -105,6 +105,10 @@ export const DeviceOverviewResponseSchema = z.object({
   activeDevices24h: z.number().min(0),
   platformStats: z.record(z.string(), z.number()),
   countryStats: z.record(z.string(), z.number()),
+  appVersionStats: z.object({
+    ios: z.record(z.string(), z.number()),
+    android: z.record(z.string(), z.number()),
+  }),
   totalDevicesChange24h: z.number(),
   activeDevicesChange24h: z.number(),
 });

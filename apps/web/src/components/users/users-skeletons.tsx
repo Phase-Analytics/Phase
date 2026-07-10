@@ -94,6 +94,42 @@ export function UsersDistributionCardSkeleton() {
   );
 }
 
+export function UsersAppVersionCardSkeleton() {
+  return (
+    <Card className="py-0">
+      <CardContent className="space-y-4 p-4">
+        <Tabs value="ios">
+          <TabsList className="h-8">
+            <TabsTrigger
+              className="text-muted-foreground text-xs uppercase"
+              value="ios"
+            >
+              <span>iOS</span>
+            </TabsTrigger>
+            <TabsTrigger
+              className="text-muted-foreground text-xs uppercase"
+              value="android"
+            >
+              <span>Android</span>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <Skeleton className="h-5 w-56" />
+        <div className="grid gap-4 md:grid-cols-2 md:items-center">
+          <div className="h-[220px] space-y-3">
+            {Array.from({ length: 4 }, (_, i) => `skeleton-version-${i}`).map(
+              (key) => (
+                <Skeleton className="h-10 w-full" key={key} />
+              )
+            )}
+          </div>
+          <Skeleton className="mx-auto size-[200px] rounded-full" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function UsersTableSkeleton() {
   const [isMounted, setIsMounted] = useState(false);
   const { pageSize } = usePaginationStore();

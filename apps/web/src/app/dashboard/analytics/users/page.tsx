@@ -11,10 +11,12 @@ import {
   UsersActivityChart,
   UsersActivityChartSkeleton,
 } from '@/components/users/users-activity-chart';
+import { UsersAppVersionCard } from '@/components/users/users-app-version-card';
 import { UsersCountryMapCard } from '@/components/users/users-country-map-card';
 import { UsersDistributionCard } from '@/components/users/users-distribution-card';
 import { UsersOverviewCards } from '@/components/users/users-overview-cards';
 import {
+  UsersAppVersionCardSkeleton,
   UsersCountryMapSkeleton,
   UsersDistributionCardSkeleton,
   UsersOverviewCardsSkeleton,
@@ -38,6 +40,7 @@ type UsersExportData = {
   summary: {
     countries: Record<string, number>;
     platforms: Record<string, number>;
+    appVersions: DeviceOverviewResponse['appVersionStats'];
     retention: DeviceRetentionResponse['summary'];
   };
   retentionCurve: DeviceRetentionResponse['data'];
@@ -132,6 +135,7 @@ function UsersExportButton() {
         summary: {
           countries: overview.countryStats,
           platforms: overview.platformStats,
+          appVersions: overview.appVersionStats,
           retention: retention.summary,
         },
         retentionCurve: retention.data,
@@ -177,6 +181,12 @@ export default function UsersPage() {
         <ErrorBoundary>
           <Suspense fallback={<UsersDistributionCardSkeleton />}>
             <UsersDistributionCard />
+          </Suspense>
+        </ErrorBoundary>
+
+        <ErrorBoundary>
+          <Suspense fallback={<UsersAppVersionCardSkeleton />}>
+            <UsersAppVersionCard />
           </Suspense>
         </ErrorBoundary>
 
