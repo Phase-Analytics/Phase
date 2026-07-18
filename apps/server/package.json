@@ -11,10 +11,11 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "test": "bun test src/lib/explore"
+    "test": "bun test src/lib/explore src/lib/links"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.67",
+    "@opencoredev/domain-sdk": "0.2.0",
     "@aws-sdk/client-s3": "^3.1057.0",
     "@elysiajs/cors": "^1.4.0",
     "@phase/shared": "workspace:*",

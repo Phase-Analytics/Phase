@@ -1,7 +1,6 @@
 import { ErrorCode, HttpStatus } from '@phase/shared';
 import { Elysia, t } from 'elysia';
 import { LINK_DEFAULT_HOST } from '@/lib/links/constants';
-import { DOMAIN_VERIFY_PATH, handleDomainVerifyRequest } from '@/lib/links/dns';
 import { resolveLinkRequestHost } from '@/lib/links/host';
 import { handleLinkRedirect } from '@/lib/links/redirect';
 import {
@@ -45,9 +44,6 @@ export const linkRedirectRouter = new Elysia()
       };
     }
   })
-  .get(DOMAIN_VERIFY_PATH, ({ request }) =>
-    handleDomainVerifyRequest(resolveLinkRequestHost(request.headers))
-  )
   .get(
     '/l/:slug',
     ({ request, params }) =>

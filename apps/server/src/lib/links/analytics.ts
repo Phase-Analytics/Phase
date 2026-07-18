@@ -7,29 +7,6 @@ import { executeQuestDBReadQuery } from '@/lib/questdb';
 import { escapeQuestDbString } from '@/lib/questdb-sql';
 import { QUESTDB_LINK_CLICKS_TABLE } from './constants';
 
-type RangeWindow = {
-  startIso: string;
-  endIso: string;
-};
-
-const RANGE_TO_MS: Record<string, number> = {
-  '7d': 7 * 24 * 60 * 60 * 1000,
-  '30d': 30 * 24 * 60 * 60 * 1000,
-  '180d': 180 * 24 * 60 * 60 * 1000,
-  '360d': 360 * 24 * 60 * 60 * 1000,
-};
-
-export function resolveLinkAnalyticsWindow(range: string): RangeWindow {
-  const ms = RANGE_TO_MS[range] ?? RANGE_TO_MS['7d'];
-  const end = new Date();
-  const start = new Date(end.getTime() - ms);
-
-  return {
-    startIso: start.toISOString(),
-    endIso: end.toISOString(),
-  };
-}
-
 function escapeSqlString(value: string): string {
   return escapeQuestDbString(value);
 }
@@ -59,20 +36,10 @@ export async function getLinkClickTotalsByApp(
 export async function getLinkAnalytics(options: {
   appId: string;
   linkId: string;
-  range: string;
 }) {
-  const { startIso, endIso } = resolveLinkAnalyticsWindow(options.range);
   const appId = escapeSqlString(options.appId);
   const linkId = escapeSqlString(options.linkId);
-  const start = escapeSqlString(startIso);
-  const end = escapeSqlString(endIso);
-
-  const baseWhere = `
-    app_id = '${appId}'
-    AND link_id = '${linkId}'
-    AND timestamp >= '${start}'
-    AND timestamp < '${end}'
-  `;
+  const baseWhere = `app_id = '${appId}' AND link_id = '${linkId}'`;
 
   const [
     summaryRows,
@@ -112,6 +79,7 @@ export async function getLinkAnalytics(options: {
         WHERE ${baseWhere}
         GROUP BY country_code
         ORDER BY count DESC
+        LIMIT 250
       `),
     executeQuestDBReadQuery<{ key: string; count: number }>(`
         SELECT os AS key, count() AS count
@@ -119,6 +87,7 @@ export async function getLinkAnalytics(options: {
         WHERE ${baseWhere}
         GROUP BY os
         ORDER BY count DESC
+        LIMIT 100
       `),
     executeQuestDBReadQuery<{ key: string; count: number }>(`
         SELECT browser AS key, count() AS count
@@ -126,6 +95,7 @@ export async function getLinkAnalytics(options: {
         WHERE ${baseWhere}
         GROUP BY browser
         ORDER BY count DESC
+        LIMIT 100
       `),
     executeQuestDBReadQuery<{ key: string; count: number }>(`
         SELECT
@@ -142,6 +112,7 @@ export async function getLinkAnalytics(options: {
         WHERE ${baseWhere}
         GROUP BY key
         ORDER BY count DESC
+        LIMIT 100
       `),
   ]);
 

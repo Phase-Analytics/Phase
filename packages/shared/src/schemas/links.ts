@@ -69,7 +69,7 @@ export const CreateLinkRequestSchema = z
     deviceOthersUrl: LinkUrlNullableSchema,
     expiresAt: z.string().datetime().nullable().optional(),
     disabled: z.boolean().optional(),
-    domainIds: z.array(z.string()).optional(),
+    domainId: z.string().nullable().optional(),
   })
   .merge(LinkUtmFieldsSchema)
   .merge(LinkOgTextFieldsSchema);
@@ -84,7 +84,7 @@ export const UpdateLinkRequestSchema = z
     deviceOthersUrl: LinkUrlNullableSchema,
     expiresAt: z.string().datetime().nullable().optional(),
     disabled: z.boolean().optional(),
-    domainIds: z.array(z.string()).optional(),
+    domainId: z.string().nullable().optional(),
   })
   .merge(LinkUtmFieldsSchema)
   .merge(LinkOgTextFieldsSchema);
@@ -119,7 +119,7 @@ export const LinkDetailSchema = LinkListItemSchema.extend({
   ogTitle: z.string().nullable(),
   ogDescription: z.string().nullable(),
   ogImageUrl: z.string().url().nullable(),
-  domainIds: z.array(z.string()),
+  domainId: z.string().nullable(),
 });
 
 export const SlugAvailableResponseSchema = z.object({
@@ -137,10 +137,23 @@ export const CreateLinkDomainRequestSchema = z.object({
     ),
 });
 
+export const LinkDomainDnsRecordSchema = z.object({
+  type: z.enum(['A', 'AAAA', 'CNAME', 'TXT', 'CAA', 'ALIAS', 'ANAME']),
+  name: z.string(),
+  value: z.string(),
+  purpose: z.enum(['routing', 'ownership', 'certificate', 'other']),
+  required: z.boolean(),
+  status: z.enum(['pending', 'valid', 'invalid', 'unknown']),
+});
+
 export const LinkDomainSchema = z.object({
   id: z.string(),
   hostname: z.string(),
   status: z.enum(['pending', 'verified', 'failed']),
+  providerStatus: z.string().nullable(),
+  verificationStatus: z.string().nullable(),
+  certificateStatus: z.string().nullable(),
+  dnsRecords: z.array(LinkDomainDnsRecordSchema),
   lastCheckAt: z.string().datetime().nullable(),
   lastError: z.string().nullable(),
   createdAt: z.string().datetime(),
@@ -194,6 +207,7 @@ export type LinkDetail = z.infer<typeof LinkDetailSchema>;
 export type CreateLinkDomainRequest = z.infer<
   typeof CreateLinkDomainRequestSchema
 >;
+export type LinkDomainDnsRecord = z.infer<typeof LinkDomainDnsRecordSchema>;
 export type LinkDomain = z.infer<typeof LinkDomainSchema>;
 export type LinkAnalyticsResponse = z.infer<typeof LinkAnalyticsResponseSchema>;
 export type LinkClickItem = z.infer<typeof LinkClickItemSchema>;

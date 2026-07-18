@@ -1,6 +1,5 @@
 'use client';
 
-import { parseAsString, useQueryState } from 'nuqs';
 import { useMemo, useState } from 'react';
 import { LinkAnalyticsBreakdownCard } from '@/components/links/link-analytics-breakdown';
 import { LinkAnalyticsGeoCard } from '@/components/links/link-analytics-geo-card';
@@ -8,10 +7,6 @@ import { TimescaleChart } from '@/components/timescale-chart';
 import { Card, CardContent } from '@/components/ui/card';
 import { CountingNumber } from '@/components/ui/counting-number';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  ANALYTICS_TIME_RANGE_OPTIONS,
-  isAnalyticsTimeRange,
-} from '@/lib/analytics-time-range';
 import { useLinkAnalytics } from '@/lib/queries';
 
 type LinkAnalyticsProps = {
@@ -19,50 +14,18 @@ type LinkAnalyticsProps = {
   linkId: string;
 };
 
-const RANGE_MS: Record<string, number> = {
-  '7d': 7 * 24 * 60 * 60 * 1000,
-  '30d': 30 * 24 * 60 * 60 * 1000,
-  '180d': 180 * 24 * 60 * 60 * 1000,
-  '360d': 360 * 24 * 60 * 60 * 1000,
-};
-
 export function LinkAnalytics({ appId, linkId }: LinkAnalyticsProps) {
-  const [range, setRange] = useQueryState(
-    'linkRange',
-    parseAsString.withDefault('7d')
-  );
   const [metric, setMetric] = useState<'clicks' | 'unique'>('clicks');
-  const { data, isPending } = useLinkAnalytics(appId, linkId, range);
+  const { data, isPending } = useLinkAnalytics(appId, linkId);
 
-  const chartData = useMemo(() => {
-    if (!data?.timeseries) {
-      return [];
-    }
-
-    const safeRange = isAnalyticsTimeRange(range) ? range : '7d';
-    const ms = RANGE_MS[safeRange] ?? RANGE_MS['7d'];
-    const end = new Date();
-    const start = new Date(end.getTime() - ms);
-    const dataMap = new Map(
-      data.timeseries.map((point) => [
-        point.date,
-        metric === 'clicks' ? point.clicks : point.uniqueVisits,
-      ])
-    );
-
-    const points: Array<{ date: string; value: number }> = [];
-    const current = new Date(start);
-    while (current <= end) {
-      const dateStr = current.toISOString().split('T')[0];
-      points.push({
-        date: dateStr,
-        value: dataMap.get(dateStr) ?? 0,
-      });
-      current.setDate(current.getDate() + 1);
-    }
-
-    return points;
-  }, [data?.timeseries, metric, range]);
+  const chartData = useMemo(
+    () =>
+      data?.timeseries.map((point) => ({
+        date: point.date,
+        value: metric === 'clicks' ? point.clicks : point.uniqueVisits,
+      })) ?? [],
+    [data?.timeseries, metric]
+  );
 
   if (isPending) {
     return (
@@ -110,7 +73,7 @@ export function LinkAnalytics({ appId, linkId }: LinkAnalyticsProps) {
         data={chartData}
         dataKey="value"
         dataLabel={metric === 'clicks' ? 'Clicks' : 'Unique visits'}
-        description="Daily link engagement"
+        description="All-time daily link engagement"
         isPending={false}
         metric={metric}
         metricOptions={[
@@ -118,10 +81,7 @@ export function LinkAnalytics({ appId, linkId }: LinkAnalyticsProps) {
           { value: 'unique', label: 'Unique visits' },
         ]}
         onMetricChange={(value) => setMetric(value as 'clicks' | 'unique')}
-        onTimeRangeChange={setRange}
-        showTimeRange
-        timeRange={range}
-        timeRangeOptions={[...ANALYTICS_TIME_RANGE_OPTIONS]}
+        showTimeRange={false}
         title="Link activity"
       />
 

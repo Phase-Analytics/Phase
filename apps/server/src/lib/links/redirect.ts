@@ -13,7 +13,6 @@ import {
 import { buildLinkOgPreviewHtml, buildLinkPreviewPageUrl } from './og-preview';
 import { resolveLinkReferrer } from './referrer';
 import {
-  isLinkAllowedOnDomain,
   isLinkUnavailable,
   resolveLinkBySlug,
   resolveVerifiedDomain,
@@ -45,16 +44,8 @@ export async function handleLinkRedirect(
   slug: string,
   options: { mode: 'default' | 'custom'; host?: string }
 ): Promise<Response> {
-  const link = await resolveLinkBySlug(slug);
-  if (!link) {
-    return notFound('link_not_found');
-  }
-
-  if (isLinkUnavailable(link)) {
-    return notFound('link_unavailable');
-  }
-
   let domainHost = LINK_DEFAULT_HOST;
+  let domainId: string | null = null;
 
   if (options.mode === 'custom') {
     const host = options.host?.split(':')[0]?.toLowerCase();
@@ -67,11 +58,17 @@ export async function handleLinkRedirect(
       return notFound('domain_not_verified');
     }
 
-    if (!isLinkAllowedOnDomain(link, domain)) {
-      return notFound('domain_not_allowed');
-    }
-
     domainHost = domain.hostname;
+    domainId = domain.id;
+  }
+
+  const link = await resolveLinkBySlug(slug, domainId);
+  if (!link) {
+    return notFound('link_not_found');
+  }
+
+  if (isLinkUnavailable(link)) {
+    return notFound('link_unavailable');
   }
 
   const userAgent = request.headers.get('user-agent');

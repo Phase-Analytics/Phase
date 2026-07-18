@@ -39,7 +39,7 @@ export default function LinkDetailPage({
     if (!link) {
       return null;
     }
-    return getPrimaryLinkUrl(link.slug, link.domainIds, domains);
+    return getPrimaryLinkUrl(link.slug, link.domainId, domains);
   }, [link, domains]);
 
   return (

@@ -97,7 +97,7 @@ function IconValueRows({
 export function LinkInfoCard({ link, domains, className }: LinkInfoCardProps) {
   const { url: shortUrl, display: shortDisplay } = getPrimaryLinkUrl(
     link.slug,
-    link.domainIds,
+    link.domainId,
     domains
   );
   const utm = linkUtmFromDetail(link);

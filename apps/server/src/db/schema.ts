@@ -1,13 +1,19 @@
-import type { ExploreSqlQuery, FunnelCustomStep } from '@phase/shared';
+import type {
+  ExploreSqlQuery,
+  FunnelCustomStep,
+  LinkDomainDnsRecord,
+} from '@phase/shared';
 import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
+  foreignKey,
   index,
   integer,
   jsonb,
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
 export const user = pgTable('user', {
@@ -187,6 +193,40 @@ export const devices = pgTable(
   })
 );
 
+export const linkDomains = pgTable(
+  'link_domains',
+  {
+    id: text('id').primaryKey(),
+    appId: text('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'cascade' }),
+    hostname: text('hostname').notNull().unique(),
+    status: text('status').notNull().default('pending'),
+    providerId: text('provider_id'),
+    providerStatus: text('provider_status'),
+    verificationStatus: text('verification_status'),
+    certificateStatus: text('certificate_status'),
+    ownershipToken: text('ownership_token'),
+    ownershipVerifiedAt: timestamp('ownership_verified_at'),
+    legacyVerified: boolean('legacy_verified').notNull().default(false),
+    dnsRecords: jsonb('dns_records')
+      .$type<LinkDomainDnsRecord[]>()
+      .notNull()
+      .default([]),
+    lastCheckAt: timestamp('last_check_at'),
+    lastError: text('last_error'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    appIdIdx: index('link_domains_app_id_idx').on(table.appId),
+    hostnameIdx: index('link_domains_hostname_idx').on(table.hostname),
+    idAppIdUnique: uniqueIndex('link_domains_id_app_id_unique').on(
+      table.id,
+      table.appId
+    ),
+  })
+);
+
 export const links = pgTable(
   'links',
   {
@@ -194,7 +234,8 @@ export const links = pgTable(
     appId: text('app_id')
       .notNull()
       .references(() => apps.id, { onDelete: 'cascade' }),
-    slug: text('slug').notNull().unique(),
+    domainId: text('domain_id'),
+    slug: text('slug').notNull(),
     name: text('name'),
     destinationUrl: text('destination_url').notNull(),
     utmSource: text('utm_source'),
@@ -221,41 +262,17 @@ export const links = pgTable(
       table.appId,
       table.createdAt.desc()
     ),
-    slugIdx: index('links_slug_idx').on(table.slug),
-  })
-);
-
-export const linkDomains = pgTable(
-  'link_domains',
-  {
-    id: text('id').primaryKey(),
-    appId: text('app_id')
-      .notNull()
-      .references(() => apps.id, { onDelete: 'cascade' }),
-    hostname: text('hostname').notNull().unique(),
-    status: text('status').notNull().default('pending'),
-    lastCheckAt: timestamp('last_check_at'),
-    lastError: text('last_error'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-  },
-  (table) => ({
-    appIdIdx: index('link_domains_app_id_idx').on(table.appId),
-    hostnameIdx: index('link_domains_hostname_idx').on(table.hostname),
-  })
-);
-
-export const linkDomainBindings = pgTable(
-  'link_domain_bindings',
-  {
-    linkId: text('link_id')
-      .notNull()
-      .references(() => links.id, { onDelete: 'cascade' }),
-    domainId: text('domain_id')
-      .notNull()
-      .references(() => linkDomains.id, { onDelete: 'cascade' }),
-  },
-  (table) => ({
-    pk: index('link_domain_bindings_pk').on(table.linkId, table.domainId),
+    defaultSlugUnique: uniqueIndex('links_default_slug_unique')
+      .on(table.slug)
+      .where(sql`${table.domainId} IS NULL`),
+    domainSlugUnique: uniqueIndex('links_domain_slug_unique')
+      .on(table.domainId, table.slug)
+      .where(sql`${table.domainId} IS NOT NULL`),
+    domainAppFk: foreignKey({
+      columns: [table.domainId, table.appId],
+      foreignColumns: [linkDomains.id, linkDomains.appId],
+      name: 'links_domain_id_app_id_link_domains_fk',
+    }).onDelete('restrict'),
   })
 );
 
@@ -351,12 +368,15 @@ export const appRelations = relations(apps, ({ one, many }) => ({
   linkDomains: many(linkDomains),
 }));
 
-export const linksRelations = relations(links, ({ one, many }) => ({
+export const linksRelations = relations(links, ({ one }) => ({
   app: one(apps, {
     fields: [links.appId],
     references: [apps.id],
   }),
-  domainBindings: many(linkDomainBindings),
+  domain: one(linkDomains, {
+    fields: [links.domainId],
+    references: [linkDomains.id],
+  }),
 }));
 
 export const linkDomainsRelations = relations(linkDomains, ({ one, many }) => ({
@@ -364,22 +384,8 @@ export const linkDomainsRelations = relations(linkDomains, ({ one, many }) => ({
     fields: [linkDomains.appId],
     references: [apps.id],
   }),
-  bindings: many(linkDomainBindings),
+  links: many(links),
 }));
-
-export const linkDomainBindingsRelations = relations(
-  linkDomainBindings,
-  ({ one }) => ({
-    link: one(links, {
-      fields: [linkDomainBindings.linkId],
-      references: [links.id],
-    }),
-    domain: one(linkDomains, {
-      fields: [linkDomainBindings.domainId],
-      references: [linkDomains.id],
-    }),
-  })
-);
 
 export const explorePresetsRelations = relations(explorePresets, ({ one }) => ({
   app: one(apps, {
@@ -470,6 +476,3 @@ export type NewLink = typeof links.$inferInsert;
 
 export type LinkDomain = typeof linkDomains.$inferSelect;
 export type NewLinkDomain = typeof linkDomains.$inferInsert;
-
-export type LinkDomainBinding = typeof linkDomainBindings.$inferSelect;
-export type NewLinkDomainBinding = typeof linkDomainBindings.$inferInsert;

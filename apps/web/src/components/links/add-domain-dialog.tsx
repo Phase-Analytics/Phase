@@ -2,6 +2,7 @@
 
 import { AddSquareIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
+import type { LinkDomain } from '@phase/shared';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { LinkDnsSetupCard } from '@/components/links/link-dns-setup-card';
@@ -27,13 +28,13 @@ export function AddDomainDialog({ appId }: AddDomainDialogProps) {
   const createDomain = useCreateLinkDomain();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<'form' | 'dns'>('form');
-  const [addedHostname, setAddedHostname] = useState('');
+  const [addedDomain, setAddedDomain] = useState<LinkDomain | null>(null);
   const [hostname, setHostname] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const reset = () => {
     setStep('form');
-    setAddedHostname('');
+    setAddedDomain(null);
     setHostname('');
     setError(null);
   };
@@ -49,11 +50,11 @@ export function AddDomainDialog({ appId }: AddDomainDialogProps) {
     setError(null);
     const normalized = hostname.trim().toLowerCase();
     try {
-      await createDomain.mutateAsync({
+      const domain = await createDomain.mutateAsync({
         appId,
         hostname: normalized,
       });
-      setAddedHostname(normalized);
+      setAddedDomain(domain);
       setStep('dns');
       toast.success('Domain added');
     } catch (err) {
@@ -119,7 +120,12 @@ export function AddDomainDialog({ appId }: AddDomainDialogProps) {
               </DialogDescription>
             </DialogHeader>
 
-            <LinkDnsSetupCard hostname={addedHostname} />
+            {addedDomain ? (
+              <LinkDnsSetupCard
+                hostname={addedDomain.hostname}
+                records={addedDomain.dnsRecords}
+              />
+            ) : null}
 
             <DialogFooter>
               <Button onClick={() => handleOpenChange(false)} type="button">

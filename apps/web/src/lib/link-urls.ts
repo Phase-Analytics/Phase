@@ -27,13 +27,11 @@ export function getLinkDisplayName(
 
 export function getPrimaryLinkUrl(
   slug: string,
-  domainIds: string[],
+  domainId: string | null,
   domains: Array<{ id: string; hostname: string; status: string }>
 ): { url: string; display: string } {
-  if (domainIds.length === 1) {
-    const domain = domains.find(
-      (entry) => entry.id === domainIds[0] && entry.status === 'verified'
-    );
+  if (domainId) {
+    const domain = domains.find((entry) => entry.id === domainId);
     if (domain) {
       const url = buildCustomShortUrl(domain.hostname, slug);
       return {

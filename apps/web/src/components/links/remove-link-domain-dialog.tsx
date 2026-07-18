@@ -59,7 +59,7 @@ export function RemoveLinkDomainDialog({
           <DialogDescription>
             Remove{' '}
             <span className="font-semibold text-foreground">{hostname}</span>?
-            Links using this domain will stop working on that host.
+            Move or remove links using this domain before deleting it.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

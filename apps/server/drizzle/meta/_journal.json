@@ -176,6 +176,13 @@
       "when": 1783600000000,
       "tag": "0025_funnel_presets",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1784383200000,
+      "tag": "0026_domain_provisioning_and_scoped_links",
+      "breakpoints": true
     }
   ]
 }

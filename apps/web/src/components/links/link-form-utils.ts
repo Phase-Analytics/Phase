@@ -67,8 +67,7 @@ export function linkDetailToFormState(link: LinkDetail): LinkFormState {
 
   return {
     name: link.name ?? '',
-    hostValue:
-      link.domainIds.length === 1 ? link.domainIds[0] : PHASE_HOST_VALUE,
+    hostValue: link.domainId ?? PHASE_HOST_VALUE,
     slug: link.slug,
     destinationUrl: formatUrlWithoutProtocol(link.destinationUrl),
     utmEnabled: hasLinkUtmValues(utm),

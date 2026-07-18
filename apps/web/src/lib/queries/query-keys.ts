@@ -112,10 +112,22 @@ export const queryKeys = {
     list: (appId: string) => [...queryKeys.links.all, 'list', appId] as const,
     detail: (appId: string, linkId: string) =>
       [...queryKeys.links.all, 'detail', appId, linkId] as const,
-    slugAvailable: (slug: string) =>
-      [...queryKeys.links.all, 'slug-available', slug] as const,
-    analytics: (appId: string, linkId: string, range: string) =>
-      [...queryKeys.links.all, 'analytics', appId, linkId, range] as const,
+    slugAvailable: (
+      appId: string,
+      slug: string,
+      domainId: string | null,
+      excludeLinkId?: string
+    ) =>
+      [
+        ...queryKeys.links.all,
+        'slug-available',
+        appId,
+        slug,
+        domainId,
+        excludeLinkId,
+      ] as const,
+    analytics: (appId: string, linkId: string) =>
+      [...queryKeys.links.all, 'analytics', appId, linkId] as const,
     clicks: (
       appId: string,
       linkId: string,

@@ -1,11 +1,12 @@
 import { getRedis } from '@/lib/rate-limit';
 
-const LINK_CACHE_PREFIX = 'link:cfg:';
+const LINK_CACHE_PREFIX = 'link:cfg:v2:';
 const LINK_CACHE_TTL_SECONDS = 300;
 
 export type CachedLinkConfig = {
   id: string;
   appId: string;
+  domainId: string | null;
   slug: string;
   name: string | null;
   destinationUrl: string;
@@ -22,7 +23,6 @@ export type CachedLinkConfig = {
   ogImageUrl: string | null;
   expiresAt: string | null;
   disabledAt: string | null;
-  allowedDomainIds: string[] | null;
 };
 
 export type CachedDomainConfig = {
@@ -32,8 +32,9 @@ export type CachedDomainConfig = {
   status: string;
 };
 
-function linkKey(slug: string) {
-  return `${LINK_CACHE_PREFIX}slug:${slug}`;
+function linkKey(slug: string, domainId: string | null) {
+  const scope = domainId ? `domain:${domainId}` : 'default';
+  return `${LINK_CACHE_PREFIX}${scope}:${slug}`;
 }
 
 function domainKey(hostname: string) {
@@ -41,24 +42,21 @@ function domainKey(hostname: string) {
 }
 
 export async function getCachedLink(
-  slug: string
+  slug: string,
+  domainId: string | null
 ): Promise<CachedLinkConfig | null> {
   const redis = getRedis();
   if (!redis) {
     return null;
   }
 
-  const raw = await redis.get(linkKey(slug));
+  const raw = await redis.get(linkKey(slug, domainId));
   if (!raw) {
     return null;
   }
 
   try {
-    const parsed = JSON.parse(raw) as CachedLinkConfig;
-    if (parsed.allowedDomainIds?.length === 0) {
-      parsed.allowedDomainIds = null;
-    }
-    return parsed;
+    return JSON.parse(raw) as CachedLinkConfig;
   } catch {
     return null;
   }
@@ -66,6 +64,7 @@ export async function getCachedLink(
 
 export async function setCachedLink(
   slug: string,
+  domainId: string | null,
   config: CachedLinkConfig
 ): Promise<void> {
   const redis = getRedis();
@@ -74,20 +73,23 @@ export async function setCachedLink(
   }
 
   await redis.set(
-    linkKey(slug),
+    linkKey(slug, domainId),
     JSON.stringify(config),
     'EX',
     LINK_CACHE_TTL_SECONDS
   );
 }
 
-export async function invalidateCachedLink(slug: string): Promise<void> {
+export async function invalidateCachedLink(
+  slug: string,
+  domainId: string | null
+): Promise<void> {
   const redis = getRedis();
   if (!redis) {
     return;
   }
 
-  await redis.del(linkKey(slug));
+  await redis.del(linkKey(slug, domainId));
 }
 
 export async function getCachedDomain(

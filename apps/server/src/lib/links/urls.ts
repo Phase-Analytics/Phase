@@ -10,12 +10,12 @@ export function buildCustomShortUrl(hostname: string, slug: string): string {
 
 export function resolvePrimaryShortUrl(
   slug: string,
-  domainIds: string[],
+  domainId: string | null,
   domainsById: Map<string, { hostname: string; status: string }>
 ): string {
-  if (domainIds.length === 1) {
-    const domain = domainsById.get(domainIds[0]);
-    if (domain?.status === 'verified') {
+  if (domainId) {
+    const domain = domainsById.get(domainId);
+    if (domain) {
       return buildCustomShortUrl(domain.hostname, slug);
     }
   }

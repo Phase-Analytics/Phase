@@ -50,10 +50,14 @@ export function CreateLinkDialog({ appId }: CreateLinkDialogProps) {
     [domainsData?.domains]
   );
 
-  const slugCheck = useLinkSlugAvailable(
-    form.slug,
-    open && form.slug.length >= 3
-  );
+  const selectedDomainId =
+    form.hostValue === PHASE_HOST_VALUE ? null : form.hostValue;
+  const slugCheck = useLinkSlugAvailable({
+    appId,
+    slug: form.slug,
+    domainId: selectedDomainId,
+    enabled: open && form.slug.length >= 3,
+  });
 
   const slugInvalid =
     form.slug.length >= 3 && slugCheck.data && !slugCheck.data.available;
@@ -90,7 +94,7 @@ export function CreateLinkDialog({ appId }: CreateLinkDialogProps) {
       destinationUrl: form.destinationUrl,
       ...linkUtmToPayload(form.utm),
       ...deviceRoutingToPayload(form.device),
-      domainIds: form.hostValue === PHASE_HOST_VALUE ? [] : [form.hostValue],
+      domainId: selectedDomainId,
       expiresAt: expiresAtToIso(form.expiresAt),
       disabled: form.disabled,
       ...linkOgToPayload(form.og),

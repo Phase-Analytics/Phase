@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import {
   CreateLinkDomainRequestSchema,
   CreateLinkRequestSchema,
@@ -16,9 +16,9 @@ import {
   SlugAvailableResponseSchema,
   UpdateLinkRequestSchema,
 } from '@phase/shared';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
-import { db, linkDomainBindings, linkDomains, links } from '@/db';
+import { db, linkDomains, links } from '@/db';
 import { auth } from '@/lib/auth';
 import { assertAppAccess } from '@/lib/links/access';
 import {
@@ -32,7 +32,12 @@ import {
   setCachedDomain,
 } from '@/lib/links/cache';
 import { LINK_CNAME_TARGET } from '@/lib/links/constants';
-import { verifyDomainCname } from '@/lib/links/dns';
+import {
+  getDomainClient,
+  getDomainProvisioningError,
+  toStoredDomainState,
+  verifyDomainOwnership,
+} from '@/lib/links/domain-provider';
 import {
   LinkOgImageError,
   processLinkOgImage,
@@ -65,32 +70,46 @@ async function loadDomainsByIdForApp(appId: string): Promise<DomainLookup> {
   );
 }
 
-async function loadLinkDomainIds(linkId: string): Promise<string[]> {
-  const rows = await db
-    .select({ domainId: linkDomainBindings.domainId })
-    .from(linkDomainBindings)
-    .where(eq(linkDomainBindings.linkId, linkId));
-
-  return rows.map((row) => row.domainId);
-}
-
-async function replaceLinkDomainBindings(
-  linkId: string,
-  domainIds: string[] | undefined
+function loadDomainForApp(
+  domainId: string | null | undefined,
+  appId: string,
+  verifiedOnly = false
 ) {
-  await db
-    .delete(linkDomainBindings)
-    .where(eq(linkDomainBindings.linkId, linkId));
-
-  if (!domainIds || domainIds.length === 0) {
-    return;
+  if (!domainId) {
+    return null;
   }
 
-  await db.insert(linkDomainBindings).values(
-    domainIds.map((domainId) => ({
-      linkId,
-      domainId,
-    }))
+  return db.query.linkDomains.findFirst({
+    where: and(
+      eq(linkDomains.id, domainId),
+      eq(linkDomains.appId, appId),
+      ...(verifiedOnly ? [eq(linkDomains.status, 'verified')] : [])
+    ),
+  });
+}
+
+async function isSlugAvailable(
+  slug: string,
+  domainId: string | null,
+  excludeLinkId?: string
+): Promise<boolean> {
+  const existing = await db.query.links.findFirst({
+    where: and(
+      eq(links.slug, slug),
+      domainId ? eq(links.domainId, domainId) : isNull(links.domainId)
+    ),
+    columns: { id: true },
+  });
+
+  return !existing || existing.id === excludeLinkId;
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === '23505'
   );
 }
 
@@ -118,10 +137,9 @@ function serializeLinkListItem(
 
 function serializeLinkDetail(
   row: typeof links.$inferSelect,
-  domainIds: string[],
   domainsById: DomainLookup
 ) {
-  const shortUrl = resolvePrimaryShortUrl(row.slug, domainIds, domainsById);
+  const shortUrl = resolvePrimaryShortUrl(row.slug, row.domainId, domainsById);
 
   return {
     ...serializeLinkListItem(row, { shortUrl }),
@@ -137,7 +155,7 @@ function serializeLinkDetail(
     ogTitle: row.ogTitle,
     ogDescription: row.ogDescription,
     ogImageUrl: row.ogImageUrl,
-    domainIds,
+    domainId: row.domainId,
   };
 }
 
@@ -146,6 +164,10 @@ function serializeDomain(row: typeof linkDomains.$inferSelect) {
     id: row.id,
     hostname: row.hostname,
     status: row.status as 'pending' | 'verified' | 'failed',
+    providerStatus: row.providerStatus,
+    verificationStatus: row.verificationStatus,
+    certificateStatus: row.certificateStatus,
+    dnsRecords: row.dnsRecords,
     lastCheckAt: row.lastCheckAt?.toISOString() ?? null,
     lastError: row.lastError,
     createdAt: row.createdAt.toISOString(),
@@ -189,7 +211,6 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         .where(eq(links.appId, query.appId))
         .orderBy(desc(links.createdAt));
 
-      const linkIds = rows.map((row) => row.id);
       const domainRows = await db.query.linkDomains.findMany({
         where: eq(linkDomains.appId, query.appId),
       });
@@ -199,41 +220,19 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
           { hostname: domain.hostname, status: domain.status },
         ])
       );
-
-      const bindingRows =
-        linkIds.length > 0
-          ? await db
-              .select({
-                linkId: linkDomainBindings.linkId,
-                domainId: linkDomainBindings.domainId,
-              })
-              .from(linkDomainBindings)
-              .where(inArray(linkDomainBindings.linkId, linkIds))
-          : [];
-
-      const domainIdsByLinkId = new Map<string, string[]>();
-      for (const binding of bindingRows) {
-        const existing = domainIdsByLinkId.get(binding.linkId) ?? [];
-        existing.push(binding.domainId);
-        domainIdsByLinkId.set(binding.linkId, existing);
-      }
-
       const clickTotals = await getLinkClickTotalsByApp(query.appId);
 
       return {
-        links: rows.map((row) => {
-          const domainIds = domainIdsByLinkId.get(row.id) ?? [];
-          const shortUrl = resolvePrimaryShortUrl(
-            row.slug,
-            domainIds,
-            domainsById
-          );
-
-          return serializeLinkListItem(row, {
-            shortUrl,
+        links: rows.map((row) =>
+          serializeLinkListItem(row, {
+            shortUrl: resolvePrimaryShortUrl(
+              row.slug,
+              row.domainId,
+              domainsById
+            ),
             totalClicks: clickTotals.get(row.id) ?? 0,
-          });
-        }),
+          })
+        ),
       };
     },
     {
@@ -267,19 +266,44 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         };
       }
 
-      const existing = await db.query.links.findFirst({
-        where: eq(links.slug, parsed.data),
-        columns: { id: true },
-      });
+      const app = await assertAppAccess(query.appId, user.id);
+      if (!app) {
+        set.status = HttpStatus.FORBIDDEN;
+        return { code: ErrorCode.FORBIDDEN, detail: 'Access denied' };
+      }
 
-      return { available: !existing };
+      const domainId = query.domainId || null;
+      if (domainId) {
+        const domain = await loadDomainForApp(domainId, query.appId);
+        if (!domain) {
+          set.status = HttpStatus.BAD_REQUEST;
+          return {
+            code: ErrorCode.VALIDATION_ERROR,
+            detail: 'Select a verified domain from this app',
+          };
+        }
+      }
+
+      return {
+        available: await isSlugAvailable(
+          parsed.data,
+          domainId,
+          query.excludeLinkId
+        ),
+      };
     },
     {
-      query: t.Object({ slug: t.String() }),
+      query: t.Object({
+        appId: t.String(),
+        slug: t.String(),
+        domainId: t.Optional(t.String()),
+        excludeLinkId: t.Optional(t.String()),
+      }),
       response: {
         200: SlugAvailableResponseSchema,
         400: ErrorResponseSchema,
         401: ErrorResponseSchema,
+        403: ErrorResponseSchema,
       },
     }
   )
@@ -311,16 +335,27 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         return { code: ErrorCode.FORBIDDEN, detail: 'Access denied' };
       }
 
-      const existing = await db.query.links.findFirst({
-        where: eq(links.slug, parsed.data.slug),
-        columns: { id: true },
-      });
+      const domainId = parsed.data.domainId ?? null;
+      if (domainId) {
+        const domain = await loadDomainForApp(
+          domainId,
+          parsed.data.appId,
+          true
+        );
+        if (!domain) {
+          set.status = HttpStatus.BAD_REQUEST;
+          return {
+            code: ErrorCode.VALIDATION_ERROR,
+            detail: 'Select a verified domain from this app',
+          };
+        }
+      }
 
-      if (existing) {
+      if (!(await isSlugAvailable(parsed.data.slug, domainId))) {
         set.status = HttpStatus.CONFLICT;
         return {
           code: ErrorCode.CONFLICT,
-          detail: 'Slug is already taken',
+          detail: 'This path is already taken on the selected domain',
         };
       }
 
@@ -329,36 +364,46 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         ? new Date(parsed.data.expiresAt)
         : null;
 
-      const [row] = await db
-        .insert(links)
-        .values({
-          id: linkId,
-          appId: parsed.data.appId,
-          name: parsed.data.name?.trim() || null,
-          slug: parsed.data.slug,
-          destinationUrl: parsed.data.destinationUrl,
-          utmSource: parsed.data.utmSource ?? null,
-          utmMedium: parsed.data.utmMedium ?? null,
-          utmCampaign: parsed.data.utmCampaign ?? null,
-          utmTerm: parsed.data.utmTerm ?? null,
-          utmContent: parsed.data.utmContent ?? null,
-          deviceIosUrl: parsed.data.deviceIosUrl ?? null,
-          deviceAndroidUrl: parsed.data.deviceAndroidUrl ?? null,
-          deviceOthersUrl: parsed.data.deviceOthersUrl ?? null,
-          ogTitle: parsed.data.ogTitle ?? null,
-          ogDescription: parsed.data.ogDescription ?? null,
-          expiresAt,
-          disabledAt: parsed.data.disabled ? new Date() : null,
-        })
-        .returning();
+      let row: typeof links.$inferSelect;
+      try {
+        [row] = await db
+          .insert(links)
+          .values({
+            id: linkId,
+            appId: parsed.data.appId,
+            domainId,
+            name: parsed.data.name?.trim() || null,
+            slug: parsed.data.slug,
+            destinationUrl: parsed.data.destinationUrl,
+            utmSource: parsed.data.utmSource ?? null,
+            utmMedium: parsed.data.utmMedium ?? null,
+            utmCampaign: parsed.data.utmCampaign ?? null,
+            utmTerm: parsed.data.utmTerm ?? null,
+            utmContent: parsed.data.utmContent ?? null,
+            deviceIosUrl: parsed.data.deviceIosUrl ?? null,
+            deviceAndroidUrl: parsed.data.deviceAndroidUrl ?? null,
+            deviceOthersUrl: parsed.data.deviceOthersUrl ?? null,
+            ogTitle: parsed.data.ogTitle ?? null,
+            ogDescription: parsed.data.ogDescription ?? null,
+            expiresAt,
+            disabledAt: parsed.data.disabled ? new Date() : null,
+          })
+          .returning();
+      } catch (error) {
+        if (isUniqueViolation(error)) {
+          set.status = HttpStatus.CONFLICT;
+          return {
+            code: ErrorCode.CONFLICT,
+            detail: 'This path is already taken on the selected domain',
+          };
+        }
+        throw error;
+      }
 
-      await replaceLinkDomainBindings(linkId, parsed.data.domainIds ?? []);
+      await invalidateCachedLink(row.slug, row.domainId);
 
-      await invalidateCachedLink(parsed.data.slug);
-
-      const domainIds = await loadLinkDomainIds(linkId);
       const domainsById = await loadDomainsByIdForApp(parsed.data.appId);
-      return serializeLinkDetail(row, domainIds, domainsById);
+      return serializeLinkDetail(row, domainsById);
     },
     {
       response: {
@@ -437,10 +482,36 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
       const hostname = parsed.data.hostname.toLowerCase();
       const existing = await db.query.linkDomains.findFirst({
         where: eq(linkDomains.hostname, hostname),
-        columns: { id: true },
       });
 
-      if (existing) {
+      if (
+        existing?.appId === parsed.data.appId &&
+        existing.status === 'verified'
+      ) {
+        return serializeDomain(existing);
+      }
+
+      let row = existing;
+      if (!row) {
+        const [inserted] = await db
+          .insert(linkDomains)
+          .values({
+            id: randomUUID(),
+            appId: parsed.data.appId,
+            hostname,
+            status: 'pending',
+            ownershipToken: randomBytes(32).toString('hex'),
+          })
+          .onConflictDoNothing()
+          .returning();
+        row =
+          inserted ??
+          (await db.query.linkDomains.findFirst({
+            where: eq(linkDomains.hostname, hostname),
+          }));
+      }
+
+      if (!row || row.appId !== parsed.data.appId) {
         set.status = HttpStatus.CONFLICT;
         return {
           code: ErrorCode.CONFLICT,
@@ -448,17 +519,41 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         };
       }
 
-      const [row] = await db
-        .insert(linkDomains)
-        .values({
-          id: randomUUID(),
-          appId: parsed.data.appId,
-          hostname,
-          status: 'pending',
-        })
-        .returning();
+      try {
+        const provisioned = await getDomainClient().add(hostname);
+        const [updated] = await db
+          .update(linkDomains)
+          .set(
+            toStoredDomainState(
+              provisioned,
+              row.ownershipToken
+                ? { token: row.ownershipToken, verified: false }
+                : undefined
+            )
+          )
+          .where(eq(linkDomains.id, row.id))
+          .returning();
 
-      return serializeDomain(row);
+        await invalidateCachedDomain(hostname);
+        if (updated.status === 'verified') {
+          await setCachedDomain(hostname, {
+            id: updated.id,
+            appId: updated.appId,
+            hostname: updated.hostname,
+            status: updated.status,
+          });
+        }
+
+        return serializeDomain(updated);
+      } catch (error) {
+        const detail = getDomainProvisioningError(error);
+        await db
+          .update(linkDomains)
+          .set({ status: 'failed', lastCheckAt: new Date(), lastError: detail })
+          .where(eq(linkDomains.id, row.id));
+        set.status = HttpStatus.INTERNAL_SERVER_ERROR;
+        return { code: ErrorCode.INTERNAL_SERVER_ERROR, detail };
+      }
     },
     {
       response: {
@@ -467,6 +562,7 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         401: ErrorResponseSchema,
         403: ErrorResponseSchema,
         409: ErrorResponseSchema,
+        500: ErrorResponseSchema,
       },
     }
   )
@@ -501,30 +597,53 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         return { code: ErrorCode.NOT_FOUND, detail: 'Domain not found' };
       }
 
-      const result = await verifyDomainCname(row.hostname);
-      const [updated] = await db
-        .update(linkDomains)
-        .set({
-          status: result.verified ? 'verified' : 'failed',
-          lastCheckAt: new Date(),
-          lastError: result.verified
-            ? null
-            : (result.error ?? 'Verification failed'),
-        })
-        .where(eq(linkDomains.id, row.id))
-        .returning();
-
-      await invalidateCachedDomain(row.hostname);
-      if (result.verified) {
-        await setCachedDomain(row.hostname, {
-          id: updated.id,
-          appId: updated.appId,
-          hostname: updated.hostname,
-          status: updated.status,
-        });
+      if (!row.providerId && row.status === 'verified') {
+        return serializeDomain(row);
       }
 
-      return serializeDomain(updated);
+      try {
+        const [domain, ownershipVerified] = await Promise.all([
+          row.providerId
+            ? getDomainClient().refresh(row.hostname)
+            : getDomainClient().add(row.hostname),
+          row.ownershipToken
+            ? verifyDomainOwnership(row.hostname, row.ownershipToken)
+            : Promise.resolve(true),
+        ]);
+        const [updated] = await db
+          .update(linkDomains)
+          .set({
+            ...toStoredDomainState(
+              domain,
+              row.ownershipToken
+                ? { token: row.ownershipToken, verified: ownershipVerified }
+                : undefined
+            ),
+            ownershipVerifiedAt: ownershipVerified ? new Date() : null,
+          })
+          .where(eq(linkDomains.id, row.id))
+          .returning();
+
+        await invalidateCachedDomain(row.hostname);
+        if (updated.status === 'verified') {
+          await setCachedDomain(row.hostname, {
+            id: updated.id,
+            appId: updated.appId,
+            hostname: updated.hostname,
+            status: updated.status,
+          });
+        }
+
+        return serializeDomain(updated);
+      } catch (error) {
+        const detail = getDomainProvisioningError(error);
+        await db
+          .update(linkDomains)
+          .set({ lastCheckAt: new Date(), lastError: detail })
+          .where(eq(linkDomains.id, row.id));
+        set.status = HttpStatus.INTERNAL_SERVER_ERROR;
+        return { code: ErrorCode.INTERNAL_SERVER_ERROR, detail };
+      }
     },
     {
       params: t.Object({ domainId: t.String() }),
@@ -534,6 +653,7 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         401: ErrorResponseSchema,
         403: ErrorResponseSchema,
         404: ErrorResponseSchema,
+        500: ErrorResponseSchema,
       },
     }
   )
@@ -568,6 +688,28 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         return { code: ErrorCode.NOT_FOUND, detail: 'Domain not found' };
       }
 
+      const linked = await db.query.links.findFirst({
+        where: eq(links.domainId, row.id),
+        columns: { id: true },
+      });
+      if (linked) {
+        set.status = HttpStatus.CONFLICT;
+        return {
+          code: ErrorCode.CONFLICT,
+          detail: 'Move or remove links using this domain first',
+        };
+      }
+
+      if (row.providerId && !row.legacyVerified) {
+        try {
+          await getDomainClient().remove(row.hostname);
+        } catch (error) {
+          const detail = getDomainProvisioningError(error);
+          set.status = HttpStatus.INTERNAL_SERVER_ERROR;
+          return { code: ErrorCode.INTERNAL_SERVER_ERROR, detail };
+        }
+      }
+
       await db.delete(linkDomains).where(eq(linkDomains.id, row.id));
       await invalidateCachedDomain(row.hostname);
 
@@ -576,6 +718,14 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
     {
       params: t.Object({ domainId: t.String() }),
       query: t.Object({ appId: t.String() }),
+      response: {
+        200: t.Object({ success: t.Boolean() }),
+        401: ErrorResponseSchema,
+        403: ErrorResponseSchema,
+        404: ErrorResponseSchema,
+        409: ErrorResponseSchema,
+        500: ErrorResponseSchema,
+      },
     }
   )
   .get(
@@ -606,9 +756,8 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         return { code: ErrorCode.NOT_FOUND, detail: 'Link not found' };
       }
 
-      const domainIds = await loadLinkDomainIds(row.id);
       const domainsById = await loadDomainsByIdForApp(query.appId);
-      return serializeLinkDetail(row, domainIds, domainsById);
+      return serializeLinkDetail(row, domainsById);
     },
     {
       params: t.Object({ linkId: t.String() }),
@@ -659,89 +808,111 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         return { code: ErrorCode.NOT_FOUND, detail: 'Link not found' };
       }
 
-      if (parsed.data.slug && parsed.data.slug !== existing.slug) {
-        const slugTaken = await db.query.links.findFirst({
-          where: eq(links.slug, parsed.data.slug),
-          columns: { id: true },
-        });
+      const nextSlug = parsed.data.slug ?? existing.slug;
+      const nextDomainId =
+        parsed.data.domainId !== undefined
+          ? parsed.data.domainId
+          : existing.domainId;
 
-        if (slugTaken) {
-          set.status = HttpStatus.CONFLICT;
+      if (nextDomainId) {
+        const domain = await loadDomainForApp(
+          nextDomainId,
+          existing.appId,
+          nextDomainId !== existing.domainId
+        );
+        if (!domain) {
+          set.status = HttpStatus.BAD_REQUEST;
           return {
-            code: ErrorCode.CONFLICT,
-            detail: 'Slug is already taken',
+            code: ErrorCode.VALIDATION_ERROR,
+            detail: 'Select a verified domain from this app',
           };
         }
       }
 
-      const [row] = await db
-        .update(links)
-        .set({
-          ...(parsed.data.name !== undefined
-            ? { name: parsed.data.name?.trim() || null }
-            : {}),
-          ...(parsed.data.slug ? { slug: parsed.data.slug } : {}),
-          ...(parsed.data.destinationUrl
-            ? { destinationUrl: parsed.data.destinationUrl }
-            : {}),
-          ...(parsed.data.utmSource !== undefined
-            ? { utmSource: parsed.data.utmSource }
-            : {}),
-          ...(parsed.data.utmMedium !== undefined
-            ? { utmMedium: parsed.data.utmMedium }
-            : {}),
-          ...(parsed.data.utmCampaign !== undefined
-            ? { utmCampaign: parsed.data.utmCampaign }
-            : {}),
-          ...(parsed.data.utmTerm !== undefined
-            ? { utmTerm: parsed.data.utmTerm }
-            : {}),
-          ...(parsed.data.utmContent !== undefined
-            ? { utmContent: parsed.data.utmContent }
-            : {}),
-          ...(parsed.data.deviceIosUrl !== undefined
-            ? { deviceIosUrl: parsed.data.deviceIosUrl }
-            : {}),
-          ...(parsed.data.deviceAndroidUrl !== undefined
-            ? { deviceAndroidUrl: parsed.data.deviceAndroidUrl }
-            : {}),
-          ...(parsed.data.deviceOthersUrl !== undefined
-            ? { deviceOthersUrl: parsed.data.deviceOthersUrl }
-            : {}),
-          ...(parsed.data.ogTitle !== undefined
-            ? { ogTitle: parsed.data.ogTitle }
-            : {}),
-          ...(parsed.data.ogDescription !== undefined
-            ? { ogDescription: parsed.data.ogDescription }
-            : {}),
-          ...(parsed.data.expiresAt !== undefined
-            ? {
-                expiresAt: parsed.data.expiresAt
-                  ? new Date(parsed.data.expiresAt)
-                  : null,
-              }
-            : {}),
-          ...(parsed.data.disabled !== undefined
-            ? {
-                disabledAt: parsed.data.disabled ? new Date() : null,
-              }
-            : {}),
-        })
-        .where(eq(links.id, params.linkId))
-        .returning();
-
-      if (parsed.data.domainIds !== undefined) {
-        await replaceLinkDomainBindings(params.linkId, parsed.data.domainIds);
+      if (!(await isSlugAvailable(nextSlug, nextDomainId, existing.id))) {
+        set.status = HttpStatus.CONFLICT;
+        return {
+          code: ErrorCode.CONFLICT,
+          detail: 'This path is already taken on the selected domain',
+        };
       }
 
-      await invalidateCachedLink(existing.slug);
-      if (row.slug !== existing.slug) {
-        await invalidateCachedLink(row.slug);
+      let row: typeof links.$inferSelect;
+      try {
+        [row] = await db
+          .update(links)
+          .set({
+            ...(parsed.data.name !== undefined
+              ? { name: parsed.data.name?.trim() || null }
+              : {}),
+            ...(parsed.data.slug ? { slug: parsed.data.slug } : {}),
+            ...(parsed.data.domainId !== undefined
+              ? { domainId: parsed.data.domainId }
+              : {}),
+            ...(parsed.data.destinationUrl
+              ? { destinationUrl: parsed.data.destinationUrl }
+              : {}),
+            ...(parsed.data.utmSource !== undefined
+              ? { utmSource: parsed.data.utmSource }
+              : {}),
+            ...(parsed.data.utmMedium !== undefined
+              ? { utmMedium: parsed.data.utmMedium }
+              : {}),
+            ...(parsed.data.utmCampaign !== undefined
+              ? { utmCampaign: parsed.data.utmCampaign }
+              : {}),
+            ...(parsed.data.utmTerm !== undefined
+              ? { utmTerm: parsed.data.utmTerm }
+              : {}),
+            ...(parsed.data.utmContent !== undefined
+              ? { utmContent: parsed.data.utmContent }
+              : {}),
+            ...(parsed.data.deviceIosUrl !== undefined
+              ? { deviceIosUrl: parsed.data.deviceIosUrl }
+              : {}),
+            ...(parsed.data.deviceAndroidUrl !== undefined
+              ? { deviceAndroidUrl: parsed.data.deviceAndroidUrl }
+              : {}),
+            ...(parsed.data.deviceOthersUrl !== undefined
+              ? { deviceOthersUrl: parsed.data.deviceOthersUrl }
+              : {}),
+            ...(parsed.data.ogTitle !== undefined
+              ? { ogTitle: parsed.data.ogTitle }
+              : {}),
+            ...(parsed.data.ogDescription !== undefined
+              ? { ogDescription: parsed.data.ogDescription }
+              : {}),
+            ...(parsed.data.expiresAt !== undefined
+              ? {
+                  expiresAt: parsed.data.expiresAt
+                    ? new Date(parsed.data.expiresAt)
+                    : null,
+                }
+              : {}),
+            ...(parsed.data.disabled !== undefined
+              ? {
+                  disabledAt: parsed.data.disabled ? new Date() : null,
+                }
+              : {}),
+          })
+          .where(eq(links.id, params.linkId))
+          .returning();
+      } catch (error) {
+        if (isUniqueViolation(error)) {
+          set.status = HttpStatus.CONFLICT;
+          return {
+            code: ErrorCode.CONFLICT,
+            detail: 'This path is already taken on the selected domain',
+          };
+        }
+        throw error;
       }
 
-      const domainIds = await loadLinkDomainIds(row.id);
+      await invalidateCachedLink(existing.slug, existing.domainId);
+      await invalidateCachedLink(row.slug, row.domainId);
+
       const domainsById = await loadDomainsByIdForApp(existing.appId);
-      return serializeLinkDetail(row, domainIds, domainsById);
+      return serializeLinkDetail(row, domainsById);
     },
     {
       params: t.Object({ linkId: t.String() }),
@@ -785,7 +956,7 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
       }
 
       await db.delete(links).where(eq(links.id, params.linkId));
-      await invalidateCachedLink(existing.slug);
+      await invalidateCachedLink(existing.slug, existing.domainId);
 
       return { success: true };
     },
@@ -891,11 +1062,10 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
           .where(eq(links.id, existing.id))
           .returning();
 
-        await invalidateCachedLink(existing.slug);
+        await invalidateCachedLink(existing.slug, existing.domainId);
 
-        const domainIds = await loadLinkDomainIds(row.id);
         const domainsById = await loadDomainsByIdForApp(existing.appId);
-        return serializeLinkDetail(row, domainIds, domainsById);
+        return serializeLinkDetail(row, domainsById);
       } catch (error) {
         console.error('[links] OG image upload failed:', error);
         set.status = HttpStatus.INTERNAL_SERVER_ERROR;
@@ -954,11 +1124,10 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         .where(eq(links.id, existing.id))
         .returning();
 
-      await invalidateCachedLink(existing.slug);
+      await invalidateCachedLink(existing.slug, existing.domainId);
 
-      const domainIds = await loadLinkDomainIds(row.id);
       const domainsById = await loadDomainsByIdForApp(existing.appId);
-      return serializeLinkDetail(row, domainIds, domainsById);
+      return serializeLinkDetail(row, domainsById);
     },
     {
       params: t.Object({ linkId: t.String() }),
@@ -1000,19 +1169,14 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         return { code: ErrorCode.NOT_FOUND, detail: 'Link not found' };
       }
 
-      const range = query.range ?? '7d';
       return getLinkAnalytics({
         appId: query.appId,
         linkId: params.linkId,
-        range,
       });
     },
     {
       params: t.Object({ linkId: t.String() }),
-      query: t.Object({
-        appId: t.String(),
-        range: t.Optional(t.String()),
-      }),
+      query: t.Object({ appId: t.String() }),
       response: {
         200: LinkAnalyticsResponseSchema,
         401: ErrorResponseSchema,

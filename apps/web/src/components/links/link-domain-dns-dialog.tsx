@@ -1,5 +1,6 @@
 'use client';
 
+import type { LinkDomainDnsRecord } from '@phase/shared';
 import { LinkDnsSetupCard } from '@/components/links/link-dns-setup-card';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,12 +14,14 @@ import {
 
 type LinkDomainDnsDialogProps = {
   hostname: string;
+  records: LinkDomainDnsRecord[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
 export function LinkDomainDnsDialog({
   hostname,
+  records,
   open,
   onOpenChange,
 }: LinkDomainDnsDialogProps) {
@@ -32,7 +35,7 @@ export function LinkDomainDnsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <LinkDnsSetupCard hostname={hostname} />
+        <LinkDnsSetupCard hostname={hostname} records={records} />
 
         <DialogFooter>
           <Button onClick={() => onOpenChange(false)} type="button">

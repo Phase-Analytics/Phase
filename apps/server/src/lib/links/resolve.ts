@@ -1,5 +1,5 @@
-import { and, eq } from 'drizzle-orm';
-import { db, linkDomainBindings, linkDomains, links } from '@/db';
+import { and, eq, isNull } from 'drizzle-orm';
+import { db, linkDomains, links } from '@/db';
 import {
   type CachedDomainConfig,
   type CachedLinkConfig,
@@ -9,29 +9,20 @@ import {
   setCachedLink,
 } from './cache';
 
-async function loadDomainBindings(linkId: string): Promise<string[] | null> {
-  const bindings = await db
-    .select({ domainId: linkDomainBindings.domainId })
-    .from(linkDomainBindings)
-    .where(eq(linkDomainBindings.linkId, linkId));
-
-  if (bindings.length === 0) {
-    return null;
-  }
-
-  return bindings.map((row) => row.domainId);
-}
-
 export async function resolveLinkBySlug(
-  slug: string
+  slug: string,
+  domainId: string | null
 ): Promise<CachedLinkConfig | null> {
-  const cached = await getCachedLink(slug);
+  const cached = await getCachedLink(slug, domainId);
   if (cached) {
     return cached;
   }
 
   const row = await db.query.links.findFirst({
-    where: eq(links.slug, slug),
+    where: and(
+      eq(links.slug, slug),
+      domainId ? eq(links.domainId, domainId) : isNull(links.domainId)
+    ),
   });
 
   if (!row) {
@@ -41,6 +32,7 @@ export async function resolveLinkBySlug(
   const config: CachedLinkConfig = {
     id: row.id,
     appId: row.appId,
+    domainId: row.domainId,
     slug: row.slug,
     name: row.name,
     destinationUrl: row.destinationUrl,
@@ -57,10 +49,9 @@ export async function resolveLinkBySlug(
     ogImageUrl: row.ogImageUrl,
     expiresAt: row.expiresAt?.toISOString() ?? null,
     disabledAt: row.disabledAt?.toISOString() ?? null,
-    allowedDomainIds: await loadDomainBindings(row.id),
   };
 
-  await setCachedLink(slug, config);
+  await setCachedLink(slug, domainId, config);
   return config;
 }
 
@@ -93,21 +84,6 @@ export async function resolveVerifiedDomain(
 
   await setCachedDomain(normalized, config);
   return config;
-}
-
-export function isLinkAllowedOnDomain(
-  link: CachedLinkConfig,
-  domain: CachedDomainConfig
-): boolean {
-  if (link.appId !== domain.appId) {
-    return false;
-  }
-
-  if (!link.allowedDomainIds || link.allowedDomainIds.length === 0) {
-    return true;
-  }
-
-  return link.allowedDomainIds.includes(domain.id);
 }
 
 export function isLinkUnavailable(link: CachedLinkConfig): boolean {

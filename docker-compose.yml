@@ -159,6 +159,10 @@ services:
       - SERVER_URL=${SERVER_URL}
       - WEB_URL=${WEB_URL}
       - PLUNK_SECRET_KEY=${PLUNK_SECRET_KEY}
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+      - CLOUDFLARE_ZONE_ID=${CLOUDFLARE_ZONE_ID}
+      - CLOUDFLARE_CNAME_TARGET=${CLOUDFLARE_CNAME_TARGET:-cname.phase.sh}
+      - CLOUDFLARE_CUSTOM_ORIGIN_SERVER=${CLOUDFLARE_CUSTOM_ORIGIN_SERVER:-}
       - DATABASE_URL=postgresql://postgres:postgres@phase-postgres:5432/phase
       - REDIS_URL=redis://redis:6379
       - QUESTDB_HOST=questdb

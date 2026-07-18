@@ -26,7 +26,7 @@ export function LinkDomainsTable({
   isLoading,
 }: LinkDomainsTableProps) {
   const verifyDomain = useVerifyLinkDomain(appId);
-  const [dnsDialogHostname, setDnsDialogHostname] = useState<string | null>(
+  const [dnsDialogDomain, setDnsDialogDomain] = useState<LinkDomain | null>(
     null
   );
 
@@ -38,7 +38,7 @@ export function LinkDomainsTable({
           toast.success('Domain verified');
           return;
         }
-        toast.error('Could not verify domain');
+        toast.info('DNS or certificate verification is still pending');
       },
       onError: () => {
         toast.error('Could not verify domain');
@@ -59,7 +59,7 @@ export function LinkDomainsTable({
       header: 'Status',
       cell: ({ row }) => (
         <LinkDomainStatusBadge
-          onDnsInfoClick={() => setDnsDialogHostname(row.original.hostname)}
+          onDnsInfoClick={() => setDnsDialogDomain(row.original)}
           status={row.original.status}
         />
       ),
@@ -130,15 +130,16 @@ export function LinkDomainsTable({
         </CardContent>
       </Card>
 
-      {dnsDialogHostname ? (
+      {dnsDialogDomain ? (
         <LinkDomainDnsDialog
-          hostname={dnsDialogHostname}
+          hostname={dnsDialogDomain.hostname}
           onOpenChange={(open) => {
             if (!open) {
-              setDnsDialogHostname(null);
+              setDnsDialogDomain(null);
             }
           }}
-          open={Boolean(dnsDialogHostname)}
+          open={Boolean(dnsDialogDomain)}
+          records={dnsDialogDomain.dnsRecords}
         />
       ) : null}
     </>

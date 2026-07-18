@@ -54,18 +54,27 @@ export function EditLinkDialog({
   const updateLink = useUpdateLink(appId, linkId);
 
   const verifiedDomains = useMemo(
-    () => domainsData?.domains.filter((d) => d.status === 'verified') ?? [],
-    [domainsData?.domains]
+    () =>
+      domainsData?.domains.filter(
+        (domain) => domain.status === 'verified' || domain.id === link?.domainId
+      ) ?? [],
+    [domainsData?.domains, link?.domainId]
   );
 
   const slugChanged = link ? form.slug !== link.slug : false;
-  const slugCheck = useLinkSlugAvailable(
-    form.slug,
-    open && slugChanged && form.slug.length >= 3
-  );
+  const selectedDomainId =
+    form.hostValue === PHASE_HOST_VALUE ? null : form.hostValue;
+  const scopeChanged = link ? selectedDomainId !== link.domainId : false;
+  const slugCheck = useLinkSlugAvailable({
+    appId,
+    slug: form.slug,
+    domainId: selectedDomainId,
+    enabled: open && (slugChanged || scopeChanged) && form.slug.length >= 3,
+    excludeLinkId: linkId,
+  });
 
   const slugInvalid =
-    slugChanged &&
+    (slugChanged || scopeChanged) &&
     form.slug.length >= 3 &&
     slugCheck.data &&
     !slugCheck.data.available;
@@ -98,7 +107,7 @@ export function EditLinkDialog({
         destinationUrl: form.destinationUrl,
         ...linkUtmToPayload(form.utm),
         ...deviceRoutingToPayload(form.device),
-        domainIds: form.hostValue === PHASE_HOST_VALUE ? [] : [form.hostValue],
+        domainId: selectedDomainId,
         expiresAt: expiresAtToIso(form.expiresAt),
         disabled: form.disabled,
         ...linkOgToPayload(form.og),

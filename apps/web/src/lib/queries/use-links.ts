@@ -48,14 +48,38 @@ export function useLink(appId: string, linkId: string) {
   });
 }
 
-export function useLinkSlugAvailable(slug: string, enabled: boolean) {
+type LinkSlugAvailabilityOptions = {
+  appId: string;
+  slug: string;
+  domainId: string | null;
+  enabled: boolean;
+  excludeLinkId?: string;
+};
+
+export function useLinkSlugAvailable({
+  appId,
+  slug,
+  domainId,
+  enabled,
+  excludeLinkId,
+}: LinkSlugAvailabilityOptions) {
   return useQuery({
-    queryKey: queryKeys.links.slugAvailable(slug),
+    queryKey: queryKeys.links.slugAvailable(
+      appId,
+      slug,
+      domainId,
+      excludeLinkId
+    ),
     queryFn: () =>
       fetchApi<SlugAvailableResponse>(
-        `/web/links/slug-available${buildQueryString({ slug })}`
+        `/web/links/slug-available${buildQueryString({
+          appId,
+          slug,
+          domainId: domainId ?? undefined,
+          excludeLinkId,
+        })}`
       ),
-    enabled: enabled && slug.length >= 3,
+    enabled: enabled && Boolean(appId) && slug.length >= 3,
     staleTime: 10_000,
   });
 }
@@ -81,12 +105,12 @@ export function useLinkClicks(
   });
 }
 
-export function useLinkAnalytics(appId: string, linkId: string, range: string) {
+export function useLinkAnalytics(appId: string, linkId: string) {
   return useQuery({
-    queryKey: queryKeys.links.analytics(appId, linkId, range),
+    queryKey: queryKeys.links.analytics(appId, linkId),
     queryFn: () =>
       fetchApi<LinkAnalyticsResponse>(
-        `/web/links/${linkId}/analytics${buildQueryString({ appId, range })}`
+        `/web/links/${linkId}/analytics${buildQueryString({ appId })}`
       ),
     ...cacheConfig.list,
     enabled: Boolean(appId) && Boolean(linkId),
@@ -167,7 +191,7 @@ export function useCreateLinkDomain() {
 
   return useMutation({
     mutationFn: (payload: CreateLinkDomainRequest) =>
-      fetchApi('/web/links/domains', {
+      fetchApi<LinkDomain>('/web/links/domains', {
         method: 'POST',
         body: JSON.stringify(payload),
       }),
