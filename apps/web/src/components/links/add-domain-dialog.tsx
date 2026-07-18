@@ -71,7 +71,13 @@ export function AddDomainDialog({ appId }: AddDomainDialogProps) {
           Add domain
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className={
+          step === 'dns'
+            ? 'max-h-[90vh] overflow-y-auto sm:max-w-3xl'
+            : 'sm:max-w-md'
+        }
+      >
         {step === 'form' ? (
           <>
             <DialogHeader>

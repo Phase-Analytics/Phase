@@ -27,7 +27,7 @@ export function LinkDomainDnsDialog({
 }: LinkDomainDnsDialogProps) {
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>DNS setup</DialogTitle>
           <DialogDescription>
