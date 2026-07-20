@@ -7,14 +7,23 @@ import { generateSessionId } from '../utils/id-generator';
 import { logger } from '../utils/logger';
 import { validateSessionId } from '../utils/validator';
 
-const PING_INTERVAL_MS = 5000;
+const INITIAL_HEARTBEAT_INTERVAL_MS = 5000;
+const EARLY_HEARTBEAT_INTERVAL_MS = 10_000;
+const STANDARD_HEARTBEAT_INTERVAL_MS = 15_000;
+const EXTENDED_HEARTBEAT_INTERVAL_MS = 20_000;
+const LONG_HEARTBEAT_INTERVAL_MS = 30_000;
+const EARLY_HEARTBEAT_AT_MS = 15_000;
+const STANDARD_HEARTBEAT_AT_MS = 65_000;
+const EXTENDED_HEARTBEAT_AT_MS = 3 * 60 * 1000;
+const LONG_HEARTBEAT_AT_MS = 5 * 60 * 1000;
 const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
 const MAX_SESSION_AGE_MS = 2 * 60 * 60 * 1000;
 
 export class SessionManager {
   private sessionId: string | null = null;
   private startPromise: Promise<string> | null = null;
-  private pingInterval: ReturnType<typeof setInterval> | null = null;
+  private heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
+  private heartbeatVersion = 0;
   private isOnline = true;
   private pausedAt: number | null = null;
   private startedAtMs: number | null = null;
@@ -163,21 +172,61 @@ export class SessionManager {
     this.isOnline = isOnline;
   }
 
+  markActivity(): void {
+    if (this.pausedAt !== null) {
+      return;
+    }
+
+    this.startPingInterval();
+  }
+
   private startPingInterval(): void {
     this.stopPingInterval();
+    const heartbeatVersion = this.heartbeatVersion;
 
-    this.pingInterval = setInterval(() => {
-      this.sendPing().catch(() => {
-        logger.error('Unhandled error in sendPing. Session may timeout.');
-      });
-    }, PING_INTERVAL_MS);
+    this.heartbeatTimer = setTimeout(() => {
+      this.heartbeatTimer = null;
+      this.sendPing()
+        .catch(() => {
+          logger.error('Unhandled error in sendPing. Session may timeout.');
+        })
+        .finally(() => {
+          if (heartbeatVersion === this.heartbeatVersion && this.sessionId) {
+            this.startPingInterval();
+          }
+        });
+    }, this.getHeartbeatIntervalMs());
   }
 
   private stopPingInterval(): void {
-    if (this.pingInterval) {
-      clearInterval(this.pingInterval);
-      this.pingInterval = null;
+    this.heartbeatVersion += 1;
+    if (this.heartbeatTimer) {
+      clearTimeout(this.heartbeatTimer);
+      this.heartbeatTimer = null;
     }
+  }
+
+  private getHeartbeatIntervalMs(): number {
+    const sessionAge =
+      this.startedAtMs === null ? 0 : Date.now() - this.startedAtMs;
+
+    if (sessionAge >= LONG_HEARTBEAT_AT_MS) {
+      return LONG_HEARTBEAT_INTERVAL_MS;
+    }
+
+    if (sessionAge >= EXTENDED_HEARTBEAT_AT_MS) {
+      return EXTENDED_HEARTBEAT_INTERVAL_MS;
+    }
+
+    if (sessionAge >= STANDARD_HEARTBEAT_AT_MS) {
+      return STANDARD_HEARTBEAT_INTERVAL_MS;
+    }
+
+    if (sessionAge >= EARLY_HEARTBEAT_AT_MS) {
+      return EARLY_HEARTBEAT_INTERVAL_MS;
+    }
+
+    return INITIAL_HEARTBEAT_INTERVAL_MS;
   }
 
   private async sendPing(): Promise<void> {
@@ -206,7 +255,10 @@ export class SessionManager {
       if (!result.success) {
         logger.error('Session ping failed. Queuing for retry.', result.error);
         await this.offlineQueue.enqueue({ type: 'ping', payload });
+        return;
       }
+
+      this.markActivity();
     } else {
       await this.offlineQueue.enqueue({ type: 'ping', payload });
     }

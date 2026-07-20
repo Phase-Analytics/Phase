@@ -99,7 +99,8 @@ export class PhaseSDK {
       this.eventManager = new EventManager(
         this.httpClient,
         this.offlineQueue,
-        () => this.sessionManager?.getSessionId() ?? null
+        () => this.sessionManager?.getSessionId() ?? null,
+        () => this.sessionManager?.markActivity()
       );
 
       this.setupNetworkListener();

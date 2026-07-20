@@ -10,17 +10,20 @@ export class EventManager {
   private readonly httpClient: HttpClient;
   private readonly offlineQueue: OfflineQueue;
   private readonly getSessionId: () => string | null;
+  private readonly markActivity?: () => void;
   private readonly rateLimiter = new RateLimiter();
   private readonly deduplicator = new EventDeduplicator();
 
   constructor(
     httpClient: HttpClient,
     offlineQueue: OfflineQueue,
-    getSessionId: () => string | null
+    getSessionId: () => string | null,
+    markActivity?: () => void
   ) {
     this.httpClient = httpClient;
     this.offlineQueue = offlineQueue;
     this.getSessionId = getSessionId;
+    this.markActivity = markActivity;
   }
 
   updateNetworkState(isOnline: boolean): void {
@@ -84,7 +87,10 @@ export class EventManager {
         } catch (error) {
           logger.error('Failed to queue event. Data may be lost.', error);
         }
+        return;
       }
+
+      this.markActivity?.();
     } else {
       try {
         await this.offlineQueue.enqueue({ type: 'event', payload });

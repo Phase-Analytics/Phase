@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.13
+
+- Use adaptive session heartbeats and reset the heartbeat after successful event or ping activity.
+- Process lifecycle work without an idle per-frame update loop.
+
 ## 0.1.12
 
 - Remove `city` from `DeviceResponse` (geolocation is country-only).
