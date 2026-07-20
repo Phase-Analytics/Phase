@@ -1,7 +1,5 @@
 'use client';
 
-import { ChartDownIcon, ChartUpIcon } from '@hugeicons/core-free-icons';
-import { HugeiconsIcon } from '@hugeicons/react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { ClientDuration } from '@/components/client-date';
 import { Card, CardContent } from '@/components/ui/card';
@@ -35,19 +33,6 @@ export function SessionsOverviewCards() {
             <CountingNumber number={overview?.totalSessions || 0} />
           </p>
           <div className="mt-1 flex items-center gap-1 text-xs">
-            {(overview?.totalSessionsChange24h || 0) !== 0 && (
-              <HugeiconsIcon
-                className={cn(
-                  'size-3',
-                  getChangeColor(overview?.totalSessionsChange24h || 0)
-                )}
-                icon={
-                  (overview?.totalSessionsChange24h || 0) > 0
-                    ? ChartUpIcon
-                    : ChartDownIcon
-                }
-              />
-            )}
             <span
               className={cn(
                 'font-medium',
@@ -70,19 +55,6 @@ export function SessionsOverviewCards() {
             <CountingNumber number={overview?.activeSessions24h || 0} />
           </p>
           <div className="mt-1 flex items-center gap-1 text-xs">
-            {(overview?.activeSessions24hChange || 0) !== 0 && (
-              <HugeiconsIcon
-                className={cn(
-                  'size-3',
-                  getChangeColor(overview?.activeSessions24hChange || 0)
-                )}
-                icon={
-                  (overview?.activeSessions24hChange || 0) > 0
-                    ? ChartUpIcon
-                    : ChartDownIcon
-                }
-              />
-            )}
             <span
               className={cn(
                 'font-medium',

@@ -1,7 +1,5 @@
 'use client';
 
-import { ChartDownIcon, ChartUpIcon } from '@hugeicons/core-free-icons';
-import { HugeiconsIcon } from '@hugeicons/react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { Card, CardContent } from '@/components/ui/card';
 import { CountingNumber } from '@/components/ui/counting-number';
@@ -34,19 +32,6 @@ export function EventsOverviewCards() {
             <CountingNumber number={overview?.totalEvents || 0} />
           </p>
           <div className="mt-1 flex items-center gap-1 text-xs">
-            {(overview?.totalEventsChange24h || 0) !== 0 && (
-              <HugeiconsIcon
-                className={cn(
-                  'size-3',
-                  getChangeColor(overview?.totalEventsChange24h || 0)
-                )}
-                icon={
-                  (overview?.totalEventsChange24h || 0) > 0
-                    ? ChartUpIcon
-                    : ChartDownIcon
-                }
-              />
-            )}
             <span
               className={cn(
                 'font-medium',
@@ -69,19 +54,6 @@ export function EventsOverviewCards() {
             <CountingNumber number={overview?.events24h || 0} />
           </p>
           <div className="mt-1 flex items-center gap-1 text-xs">
-            {(overview?.events24hChange || 0) !== 0 && (
-              <HugeiconsIcon
-                className={cn(
-                  'size-3',
-                  getChangeColor(overview?.events24hChange || 0)
-                )}
-                icon={
-                  (overview?.events24hChange || 0) > 0
-                    ? ChartUpIcon
-                    : ChartDownIcon
-                }
-              />
-            )}
             <span
               className={cn(
                 'font-medium',
