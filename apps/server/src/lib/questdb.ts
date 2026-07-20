@@ -272,9 +272,13 @@ function resolveReadTablesForEventId(eventId: string): string[] {
 function buildEventReadUnion(
   selectClause: string,
   conditions: string[] = [],
-  tableNames: string[] = QUESTDB_EVENT_READ_TABLES
+  tableNames: string[] = QUESTDB_EVENT_READ_TABLES,
+  includeDebugData = false
 ): string {
-  const whereClause = buildWhereClause(conditions);
+  const readConditions = includeDebugData
+    ? conditions
+    : [...conditions, 'COALESCE(is_debug, false) = false'];
+  const whereClause = buildWhereClause(readConditions);
 
   return tableNames
     .map(
@@ -451,12 +455,18 @@ async function verifyWriteTableSchema(tableName: string): Promise<void> {
 
 async function getEventCount(
   conditions: string[] = [],
-  tableNames: string[] = QUESTDB_EVENT_READ_TABLES
+  tableNames: string[] = QUESTDB_EVENT_READ_TABLES,
+  includeDebugData = false
 ): Promise<number> {
   const [result] = await executeQuery<{ count: number }>(`
     SELECT COUNT(*) AS count
     FROM (
-      ${buildEventReadUnion('1 AS row_marker', conditions, tableNames)}
+      ${buildEventReadUnion(
+        '1 AS row_marker',
+        conditions,
+        tableNames,
+        includeDebugData
+      )}
     ) event_rows
   `);
 
@@ -546,7 +556,12 @@ export async function getEvents(
       is_debug,
       to_str(timestamp, '${EVENT_TIMESTAMP_FORMAT}') AS timestamp
     FROM (
-      ${buildEventReadUnion(createEventListRowSelectClause(), conditions, readTables)}
+      ${buildEventReadUnion(
+        createEventListRowSelectClause(),
+        conditions,
+        readTables,
+        true
+      )}
     ) event_rows
     ORDER BY timestamp DESC
     ${limitClause}
@@ -554,7 +569,7 @@ export async function getEvents(
 
   const [events, total] = await Promise.all([
     executeQuery<EventQueryResult>(eventsQuery),
-    getEventCount(conditions, readTables),
+    getEventCount(conditions, readTables, true),
   ]);
 
   return {
@@ -662,7 +677,8 @@ export async function getEventById(
           `event_id = '${escapeSqlString(options.eventId)}'`,
           `app_id = '${escapeSqlString(options.appId)}'`,
         ],
-        readTables
+        readTables,
+        true
       )}
     ) event_rows
     ORDER BY timestamp DESC
