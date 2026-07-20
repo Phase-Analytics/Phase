@@ -1,5 +1,7 @@
 // Minimal Unity API stubs for CI compile checks (UNITY_5_3_OR_NEWER).
 #if UNITY_5_3_OR_NEWER
+using System.Collections;
+
 namespace UnityEngine
 {
     public class Object
@@ -20,9 +22,20 @@ namespace UnityEngine
 
     public class Component : Object { }
 
+    public class Coroutine { }
+
+    public class WaitForSecondsRealtime
+    {
+        public WaitForSecondsRealtime(float seconds) { }
+    }
+
     public class MonoBehaviour : Component
     {
         public GameObject gameObject { get; } = new();
+
+        protected Coroutine StartCoroutine(IEnumerator routine) => new();
+
+        protected void StopCoroutine(Coroutine routine) { }
     }
 
     public static class Application

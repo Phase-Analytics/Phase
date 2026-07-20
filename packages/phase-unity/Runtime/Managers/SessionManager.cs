@@ -121,6 +121,11 @@ public sealed class SessionManager : IDisposable
         _pingScheduler.Stop();
     }
 
+    public void MarkActivity()
+    {
+        _pingScheduler.NotifyActivity();
+    }
+
     public async Task ResumeAsync()
     {
         if (string.IsNullOrEmpty(_sessionId))
@@ -195,8 +200,11 @@ public sealed class SessionManager : IDisposable
 
     private void StartPingInterval()
     {
-        _pingScheduler.Stop();
-        _pingScheduler.Start(() => SendPingAsync());
+        var sessionStartedAt = _startedAtMs.HasValue
+            ? DateTimeOffset.FromUnixTimeMilliseconds(_startedAtMs.Value)
+            : DateTimeOffset.UtcNow;
+
+        _pingScheduler.Start(() => SendPingAsync(), sessionStartedAt);
     }
 
     private async Task SendPingAsync()
@@ -234,7 +242,10 @@ public sealed class SessionManager : IDisposable
                 await _offlineQueue
                     .EnqueueAsync(new BatchPingItem { Payload = payload })
                     .ConfigureAwait(false);
+                return;
             }
+
+            MarkActivity();
         }
         else
         {

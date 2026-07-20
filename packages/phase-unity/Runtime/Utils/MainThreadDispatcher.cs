@@ -34,6 +34,22 @@ public static class MainThreadDispatcher
         }
     }
 
+    internal static bool HasPendingWork
+    {
+        get
+        {
+            if (!Queue.IsEmpty)
+            {
+                return true;
+            }
+
+            lock (PollLock)
+            {
+                return PollCallbacks.Count > 0;
+            }
+        }
+    }
+
     public static Task<T> RunAsync<T>(Func<Task<T>> work)
     {
         var tcs = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);

@@ -1,5 +1,6 @@
 #if UNITY_5_3_OR_NEWER
 using System;
+using System.Collections;
 using Phase.Analytics.Network;
 using Phase.Analytics.Utils;
 using UnityEngine;
@@ -8,8 +9,12 @@ namespace Phase.Analytics;
 
 public sealed class PhaseLifecycleHook : MonoBehaviour
 {
+    private static readonly WaitForSecondsRealtime IdleLoopDelay =
+        new(0.1f);
+
     private static PhaseLifecycleHook? _instance;
     private static UnityNetworkMonitor? _networkMonitor;
+    private Coroutine? _mainThreadLoop;
 
     public static void RegisterNetworkMonitor(UnityNetworkMonitor monitor)
     {
@@ -45,20 +50,34 @@ public sealed class PhaseLifecycleHook : MonoBehaviour
         }
 
         _instance = this;
+        _mainThreadLoop = StartCoroutine(ProcessMainThreadWork());
     }
 
     private void OnDestroy()
     {
+        if (_mainThreadLoop != null)
+        {
+            StopCoroutine(_mainThreadLoop);
+            _mainThreadLoop = null;
+        }
+
         if (_instance == this)
         {
             _instance = null;
         }
     }
 
-    private void Update()
+    private IEnumerator ProcessMainThreadWork()
     {
-        MainThreadDispatcher.ProcessPending();
-        _networkMonitor?.PollIfDue();
+        while (true)
+        {
+            MainThreadDispatcher.ProcessPending();
+            _networkMonitor?.PollIfDue();
+
+            yield return MainThreadDispatcher.HasPendingWork
+                ? null
+                : IdleLoopDelay;
+        }
     }
 
     private void OnApplicationPause(bool paused)

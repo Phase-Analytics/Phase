@@ -12,6 +12,7 @@ public sealed class EventManager
     private readonly SdkHttpClient _httpClient;
     private readonly OfflineQueue _offlineQueue;
     private readonly Func<string?> _getSessionId;
+    private readonly Action _markActivity;
     private readonly RateLimiter _rateLimiter = new();
     private readonly EventDeduplicator _deduplicator = new();
     private bool _isOnline = true;
@@ -19,12 +20,14 @@ public sealed class EventManager
     public EventManager(
         SdkHttpClient httpClient,
         OfflineQueue offlineQueue,
-        Func<string?> getSessionId
+        Func<string?> getSessionId,
+        Action? markActivity = null
     )
     {
         _httpClient = httpClient;
         _offlineQueue = offlineQueue;
         _getSessionId = getSessionId;
+        _markActivity = markActivity ?? (() => { });
     }
 
     public void UpdateNetworkState(bool isOnline)
@@ -93,8 +96,10 @@ public sealed class EventManager
                     await _offlineQueue
                         .EnqueueAsync(new BatchEventItem { Payload = payload })
                         .ConfigureAwait(false);
+                    return;
                 }
 
+                _markActivity();
                 return;
             }
 

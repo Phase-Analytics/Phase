@@ -158,10 +158,12 @@ public sealed class SessionLifecycleTests
     {
         private Func<Task>? _onTick;
 
-        public void Start(Func<Task> onTick)
+        public void Start(Func<Task> onTick, DateTimeOffset sessionStartedAt)
         {
             _onTick = onTick;
         }
+
+        public void NotifyActivity() { }
 
         public void Stop()
         {

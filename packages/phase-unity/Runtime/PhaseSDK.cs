@@ -157,7 +157,8 @@ public sealed class PhaseSDK
             _eventManager = new EventManager(
                 _httpClient,
                 _offlineQueue,
-                () => _sessionManager?.GetSessionId()
+                () => _sessionManager?.GetSessionId(),
+                () => _sessionManager?.MarkActivity()
             );
 
             SetupNetworkListener();
