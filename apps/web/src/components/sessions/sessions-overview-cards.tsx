@@ -7,7 +7,7 @@ import { ClientDuration } from '@/components/client-date';
 import { Card, CardContent } from '@/components/ui/card';
 import { CountingNumber } from '@/components/ui/counting-number';
 import { useSessionOverviewResponse } from '@/lib/queries';
-import { cn } from '@/lib/utils';
+import { cn, formatChange } from '@/lib/utils';
 
 function getChangeColor(change: number) {
   if (change === 0) {
@@ -54,7 +54,7 @@ export function SessionsOverviewCards() {
                 getChangeColor(overview?.totalSessionsChange24h || 0)
               )}
             >
-              {Math.abs(overview?.totalSessionsChange24h || 0)}%
+              {formatChange(overview?.totalSessionsChange24h || 0)}
             </span>
             <span className="text-muted-foreground">from yesterday</span>
           </div>
@@ -89,7 +89,7 @@ export function SessionsOverviewCards() {
                 getChangeColor(overview?.activeSessions24hChange || 0)
               )}
             >
-              {Math.abs(overview?.activeSessions24hChange || 0)}%
+              {formatChange(overview?.activeSessions24hChange || 0)}
             </span>
             <span className="text-muted-foreground">from yesterday</span>
           </div>

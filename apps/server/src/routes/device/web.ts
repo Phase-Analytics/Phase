@@ -178,23 +178,10 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
         const activeDevices24hNum = Number(activeDevices24h);
         const activeDevicesYesterdayNum = Number(activeDevicesYesterday);
 
-        const totalDevicesYesterdayForCalc = Math.max(
-          totalDevicesYesterdayNum,
-          1
-        );
         const totalDevicesChange24h =
-          ((totalDevicesNum - totalDevicesYesterdayNum) /
-            totalDevicesYesterdayForCalc) *
-          100;
-
-        const activeDevicesYesterdayForCalc = Math.max(
-          activeDevicesYesterdayNum,
-          1
-        );
+          totalDevicesNum - totalDevicesYesterdayNum;
         const activeDevicesChange24h =
-          ((activeDevices24hNum - activeDevicesYesterdayNum) /
-            activeDevicesYesterdayForCalc) *
-          100;
+          activeDevices24hNum - activeDevicesYesterdayNum;
 
         const platformStats: Record<string, number> = {
           ios: 0,
@@ -246,8 +233,8 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
           platformStats,
           countryStats,
           appVersionStats,
-          totalDevicesChange24h: Number(totalDevicesChange24h.toFixed(2)),
-          activeDevicesChange24h: Number(activeDevicesChange24h.toFixed(2)),
+          totalDevicesChange24h,
+          activeDevicesChange24h,
         };
       } catch (error) {
         console.error('[Device.Overview] Error:', error);

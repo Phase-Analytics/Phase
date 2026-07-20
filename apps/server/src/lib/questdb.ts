@@ -717,19 +717,14 @@ export async function getEventStats(options: GetEventStatsOptions): Promise<{
       ),
     ]);
 
-  const totalEventsYesterdayForCalc = Math.max(totalEventsYesterday, 1);
-  const totalEventsChange24h =
-    ((totalEvents - totalEventsYesterday) / totalEventsYesterdayForCalc) * 100;
-
-  const eventsYesterdayForCalc = Math.max(eventsYesterday, 1);
-  const events24hChange =
-    ((events24h - eventsYesterday) / eventsYesterdayForCalc) * 100;
+  const totalEventsChange24h = totalEvents - totalEventsYesterday;
+  const events24hChange = events24h - eventsYesterday;
 
   return {
     totalEvents,
     events24h,
-    totalEventsChange24h: Number(totalEventsChange24h.toFixed(2)),
-    events24hChange: Number(events24hChange.toFixed(2)),
+    totalEventsChange24h,
+    events24hChange,
   };
 }
 

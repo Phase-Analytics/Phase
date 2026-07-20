@@ -341,31 +341,18 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
             ? Number(((bouncedSessions / totalSessionsNum) * 100).toFixed(2))
             : 0;
 
-        const totalSessionsYesterdayForCalc = Math.max(
-          totalSessionsYesterdayNum,
-          1
-        );
         const totalSessionsChange24h =
-          ((totalSessionsNum - totalSessionsYesterdayNum) /
-            totalSessionsYesterdayForCalc) *
-          100;
-
-        const activeSessionsYesterdayForCalc = Math.max(
-          activeSessionsYesterday,
-          1
-        );
+          totalSessionsNum - totalSessionsYesterdayNum;
         const activeSessions24hChange =
-          ((activeSessions24h - activeSessionsYesterday) /
-            activeSessionsYesterdayForCalc) *
-          100;
+          activeSessions24h - activeSessionsYesterday;
 
         set.status = HttpStatus.OK;
         return {
           totalSessions: totalSessionsNum,
           averageSessionDuration,
           activeSessions24h,
-          totalSessionsChange24h: Number(totalSessionsChange24h.toFixed(2)),
-          activeSessions24hChange: Number(activeSessions24hChange.toFixed(2)),
+          totalSessionsChange24h,
+          activeSessions24hChange,
           bounceRate,
         };
       } catch (error) {

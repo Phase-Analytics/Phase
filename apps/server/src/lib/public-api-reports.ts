@@ -249,24 +249,16 @@ export async function getPublicSessionOverview(appId: string) {
       ? Number(((bouncedSessions / totalSessionsNum) * 100).toFixed(2))
       : 0;
 
-  const totalSessionsYesterdayForCalc = Math.max(totalSessionsYesterdayNum, 1);
   const totalSessionsChange24h =
-    ((totalSessionsNum - totalSessionsYesterdayNum) /
-      totalSessionsYesterdayForCalc) *
-    100;
-
-  const activeSessionsYesterdayForCalc = Math.max(activeSessionsYesterday, 1);
-  const activeSessions24hChange =
-    ((activeSessions24h - activeSessionsYesterday) /
-      activeSessionsYesterdayForCalc) *
-    100;
+    totalSessionsNum - totalSessionsYesterdayNum;
+  const activeSessions24hChange = activeSessions24h - activeSessionsYesterday;
 
   return {
     totalSessions: totalSessionsNum,
     averageSessionDuration,
     activeSessions24h,
-    totalSessionsChange24h: Number(totalSessionsChange24h.toFixed(2)),
-    activeSessions24hChange: Number(activeSessions24hChange.toFixed(2)),
+    totalSessionsChange24h,
+    activeSessions24hChange,
     bounceRate,
   };
 }

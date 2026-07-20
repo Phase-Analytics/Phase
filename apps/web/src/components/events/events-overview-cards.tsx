@@ -6,7 +6,7 @@ import { parseAsString, useQueryState } from 'nuqs';
 import { Card, CardContent } from '@/components/ui/card';
 import { CountingNumber } from '@/components/ui/counting-number';
 import { useEventOverviewResponse } from '@/lib/queries';
-import { cn } from '@/lib/utils';
+import { cn, formatChange } from '@/lib/utils';
 
 function getChangeColor(change: number) {
   if (change === 0) {
@@ -53,7 +53,7 @@ export function EventsOverviewCards() {
                 getChangeColor(overview?.totalEventsChange24h || 0)
               )}
             >
-              {Math.abs(overview?.totalEventsChange24h || 0)}%
+              {formatChange(overview?.totalEventsChange24h || 0)}
             </span>
             <span className="text-muted-foreground">from yesterday</span>
           </div>
@@ -88,7 +88,7 @@ export function EventsOverviewCards() {
                 getChangeColor(overview?.events24hChange || 0)
               )}
             >
-              {Math.abs(overview?.events24hChange || 0)}%
+              {formatChange(overview?.events24hChange || 0)}
             </span>
             <span className="text-muted-foreground">from yesterday</span>
           </div>

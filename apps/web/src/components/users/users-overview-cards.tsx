@@ -9,7 +9,7 @@ import {
   useDeviceLiveResponse,
   useDeviceOverviewResponse,
 } from '@/lib/queries';
-import { cn } from '@/lib/utils';
+import { cn, formatChange } from '@/lib/utils';
 
 function getChangeColor(change: number) {
   if (change === 0) {
@@ -55,7 +55,7 @@ export function UsersOverviewCards() {
                 getChangeColor(overview?.totalDevicesChange24h || 0)
               )}
             >
-              {Math.abs(overview?.totalDevicesChange24h || 0)}%
+              {formatChange(overview?.totalDevicesChange24h || 0)}
             </span>
             <span className="text-muted-foreground">from yesterday</span>
           </div>
@@ -90,7 +90,7 @@ export function UsersOverviewCards() {
                 getChangeColor(overview?.activeDevicesChange24h || 0)
               )}
             >
-              {Math.abs(overview?.activeDevicesChange24h || 0)}%
+              {formatChange(overview?.activeDevicesChange24h || 0)}
             </span>
             <span className="text-muted-foreground">from yesterday</span>
           </div>
