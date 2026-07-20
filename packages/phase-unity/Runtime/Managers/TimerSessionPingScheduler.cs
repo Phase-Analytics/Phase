@@ -7,9 +7,13 @@ namespace Phase.Analytics.Managers;
 
 public sealed class TimerSessionPingScheduler : ISessionPingScheduler, IDisposable
 {
-    private static readonly TimeSpan InitialHeartbeatInterval = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan InitialHeartbeatInterval = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan EarlyHeartbeatInterval = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan StandardHeartbeatInterval = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan ExtendedHeartbeatInterval = TimeSpan.FromSeconds(20);
     private static readonly TimeSpan LongHeartbeatInterval = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan EarlyHeartbeatAt = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan StandardHeartbeatAt = TimeSpan.FromSeconds(65);
     private static readonly TimeSpan ExtendedHeartbeatAt = TimeSpan.FromMinutes(3);
     private static readonly TimeSpan LongHeartbeatAt = TimeSpan.FromMinutes(5);
 
@@ -120,6 +124,16 @@ public sealed class TimerSessionPingScheduler : ISessionPingScheduler, IDisposab
         if (sessionAge >= ExtendedHeartbeatAt)
         {
             return ExtendedHeartbeatInterval;
+        }
+
+        if (sessionAge >= StandardHeartbeatAt)
+        {
+            return StandardHeartbeatInterval;
+        }
+
+        if (sessionAge >= EarlyHeartbeatAt)
+        {
+            return EarlyHeartbeatInterval;
         }
 
         return InitialHeartbeatInterval;
