@@ -9,6 +9,7 @@ COPY packages/shared/ ./packages/shared/
 COPY packages/sdk/package.json ./packages/sdk/
 COPY apps/web/ ./apps/web/
 COPY apps/server/package.json ./apps/server/package.json
+COPY apps/mobile/package.json ./apps/mobile/package.json
 
 RUN bun install --frozen-lockfile --filter web
 
