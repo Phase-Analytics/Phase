@@ -65,8 +65,7 @@ export async function applyAuthCookieFromRedirect(url: string): Promise<void> {
     throw new Error("Sign in did not complete. Try again.");
   }
 
-  const previous = storage.getItem(COOKIE_KEY);
-  const next = getSetCookie(cookie, previous ?? undefined);
+  const next = getSetCookie(cookie);
   await storage.setItem(COOKIE_KEY, next);
 
   if (!getAuthCookie()) {
@@ -77,7 +76,11 @@ export async function applyAuthCookieFromRedirect(url: string): Promise<void> {
   authClient.$store.notify("$sessionSignal");
 
   for (let attempt = 0; attempt < 8; attempt++) {
-    const session = await authClient.getSession();
+    const session = await authClient.getSession({
+      query: {
+        disableCookieCache: true,
+      },
+    });
     if (session.error) {
       throw new Error(session.error.message ?? "Sign in failed");
     }

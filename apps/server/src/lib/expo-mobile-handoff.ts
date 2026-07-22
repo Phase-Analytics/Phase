@@ -47,36 +47,22 @@ export function expoMobileHandoff(): BetterAuthPlugin {
             user: ctx.context.session.user,
           });
 
-          const responseHeaders = (
-            ctx.context as { responseHeaders?: Headers }
-          ).responseHeaders;
-          let cookie = responseHeaders?.get('set-cookie') ?? null;
+          const cookie =
+            (
+              ctx as typeof ctx & {
+                responseHeaders?: Headers;
+              }
+            ).responseHeaders?.get('set-cookie') ??
+            (
+              ctx.context as typeof ctx.context & {
+                responseHeaders?: Headers;
+              }
+            ).responseHeaders?.get('set-cookie');
 
-          // Fallback if responseHeaders isn't populated yet — match oauth format.
           if (!cookie) {
-            const { name, attributes } = ctx.context.authCookies.sessionToken;
-            const maxAge =
-              attributes.maxAge ??
-              Math.max(
-                60,
-                Math.floor(
-                  (new Date(ctx.context.session.session.expiresAt).getTime() -
-                    Date.now()) /
-                    1000
-                )
-              );
-            cookie = [
-              `${name}=${ctx.context.session.session.token}`,
-              'Path=/',
-              `Max-Age=${maxAge}`,
-              attributes.httpOnly ? 'HttpOnly' : null,
-              attributes.secure ? 'Secure' : null,
-              attributes.sameSite
-                ? `SameSite=${String(attributes.sameSite)}`
-                : null,
-            ]
-              .filter(Boolean)
-              .join('; ');
+            throw new APIError('INTERNAL_SERVER_ERROR', {
+              message: 'Missing signed session cookie',
+            });
           }
 
           throw ctx.redirect(appendCookieToCallback(callbackURL, cookie));
