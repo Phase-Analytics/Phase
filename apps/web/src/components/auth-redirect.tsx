@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useQueryState } from 'nuqs';
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useSession } from '@/lib/auth';
 import {
@@ -15,7 +15,15 @@ type AuthRedirectProps = {
   requireAuth?: boolean;
 };
 
-export function AuthRedirect({
+export function AuthRedirect(props: AuthRedirectProps) {
+  return (
+    <Suspense fallback={props.children}>
+      <AuthRedirectInner {...props} />
+    </Suspense>
+  );
+}
+
+function AuthRedirectInner({
   children,
   requireAuth = true,
 }: AuthRedirectProps) {
