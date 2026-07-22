@@ -2,6 +2,14 @@ import { Stack } from "expo-router";
 
 import { useTheme } from "@/hooks/use-theme";
 
+const sheetOptions = {
+  presentation: "formSheet" as const,
+  sheetAllowedDetents: [0.5, 0.72] as number[],
+  sheetGrabberVisible: true,
+  sheetCornerRadius: 16,
+  headerShadowVisible: false,
+};
+
 export default function AppLayout() {
   const theme = useTheme();
 
@@ -30,20 +38,8 @@ export default function AppLayout() {
       <Stack.Screen
         name="apps/switcher"
         options={{
-          presentation: "formSheet",
+          ...sheetOptions,
           title: "Apps",
-          sheetAllowedDetents: [0.5, 0.85],
-          sheetGrabberVisible: true,
-          headerTransparent: true,
-        }}
-      />
-      <Stack.Screen
-        name="links/create"
-        options={{
-          presentation: "formSheet",
-          title: "New link",
-          sheetAllowedDetents: [0.65, 0.95],
-          sheetGrabberVisible: true,
         }}
       />
     </Stack>

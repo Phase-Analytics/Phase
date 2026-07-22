@@ -10,7 +10,12 @@ function parseString(value: unknown): string | undefined {
 }
 
 export function useSelectedApp() {
-  const { data, isLoading: appsLoading, error } = useApps();
+  const {
+    data,
+    isLoading: appsLoading,
+    error,
+    refetch,
+  } = useApps();
   const apps = data?.apps ?? [];
   const [selectedAppId, setSelectedAppIdPref] = usePref<string | null>(
     SELECTED_APP_KEY,
@@ -51,5 +56,6 @@ export function useSelectedApp() {
     setSelectedAppId,
     isLoading: appsLoading,
     error,
+    refetch,
   };
 }

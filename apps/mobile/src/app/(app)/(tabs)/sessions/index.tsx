@@ -1,4 +1,4 @@
-import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
+import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 
 import TimeseriesChart from "@/components/charts/timeseries-chart";
 import {
@@ -6,17 +6,21 @@ import {
   ErrorState,
   ListRow,
   LoadingState,
+  MetaChips,
   Screen,
   StatCard,
 } from "@/components/ui";
 import { Spacing } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useSelectedApp } from "@/hooks/use-selected-app";
 import {
   useSessionOverview,
   useSessions,
   useSessionTimeseries,
 } from "@/lib/api/queries/sessions";
+import {
+  countryDisplayName,
+  countryFlagEmoji,
+} from "@/lib/display";
 import {
   formatDuration,
   formatNumber,
@@ -25,7 +29,6 @@ import {
 } from "@/lib/format";
 
 export default function SessionsScreen() {
-  const scheme = useColorScheme();
   const { selectedAppId, isLoading: appsLoading } = useSelectedApp();
   const range = lastNDaysRange(14);
 
@@ -42,7 +45,10 @@ export default function SessionsScreen() {
   if (!selectedAppId && !appsLoading) {
     return (
       <Screen>
-        <EmptyState title="No apps yet" />
+        <EmptyState
+          subtitle="Create an app on the web, then select it here."
+          title="No apps yet"
+        />
       </Screen>
     );
   }
@@ -103,12 +109,9 @@ export default function SessionsScreen() {
               />
             </View>
             <View style={styles.chart}>
-              <TimeseriesChart
-                dark={scheme === "dark"}
-                data={chartData}
-                dom={{ matchContents: true }}
-              />
+              <TimeseriesChart dark data={chartData} height={200} />
             </View>
+            <Text style={styles.section}>Recent</Text>
           </View>
         }
         contentContainerStyle={styles.list}
@@ -136,9 +139,11 @@ export default function SessionsScreen() {
           <ListRow
             meta={formatRelative(item.lastActivityAt)}
             subtitle={
-              [item.platform, item.country, item.deviceId]
-                .filter(Boolean)
-                .join(" · ") || "—"
+              <MetaChips
+                country={countryDisplayName(item.country)}
+                flag={countryFlagEmoji(item.country)}
+                platform={item.platform}
+              />
             }
             title={item.sessionId}
           />
@@ -159,9 +164,17 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   chart: {
-    height: 160,
-    borderRadius: 14,
+    height: 200,
+    borderRadius: 12,
     overflow: "hidden",
+  },
+  section: {
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    opacity: 0.55,
+    marginTop: Spacing.one,
   },
   list: {
     paddingBottom: Spacing.six,

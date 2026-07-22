@@ -6,11 +6,11 @@ import {
   ErrorState,
   ListRow,
   LoadingState,
+  MetaChips,
   Screen,
   StatCard,
 } from "@/components/ui";
 import { Spacing } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useSelectedApp } from "@/hooks/use-selected-app";
 import { useTheme } from "@/hooks/use-theme";
 import {
@@ -23,7 +23,6 @@ import { formatNumber, formatRelative, lastNDaysRange } from "@/lib/format";
 
 export default function ActivityScreen() {
   const theme = useTheme();
-  const scheme = useColorScheme();
   const { selectedAppId, isLoading: appsLoading } = useSelectedApp();
   const range = lastNDaysRange(14);
 
@@ -38,7 +37,10 @@ export default function ActivityScreen() {
   if (!selectedAppId && !appsLoading) {
     return (
       <Screen>
-        <EmptyState title="No apps yet" />
+        <EmptyState
+          subtitle="Create an app on the web, then select it here."
+          title="No apps yet"
+        />
       </Screen>
     );
   }
@@ -89,11 +91,7 @@ export default function ActivityScreen() {
               />
             </View>
             <View style={styles.chart}>
-              <TimeseriesChart
-                dark={scheme === "dark"}
-                data={chartData}
-                dom={{ matchContents: true }}
-              />
+              <TimeseriesChart dark data={chartData} height={200} />
             </View>
             {(top.data?.events?.length ?? 0) > 0 ? (
               <View style={styles.topBlock}>
@@ -144,7 +142,19 @@ export default function ActivityScreen() {
         renderItem={({ item }) => (
           <ListRow
             meta={formatRelative(item.timestamp)}
-            subtitle={item.deviceId}
+            subtitle={
+              <View style={styles.eventMeta}>
+                <MetaChips platform={item.platform} />
+                {item.deviceId ? (
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.deviceId, { color: theme.textSecondary }]}
+                  >
+                    {item.deviceId}
+                  </Text>
+                ) : null}
+              </View>
+            }
             title={item.name}
           />
         )}
@@ -164,8 +174,8 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   chart: {
-    height: 160,
-    borderRadius: 14,
+    height: 200,
+    borderRadius: 12,
     overflow: "hidden",
   },
   topBlock: { gap: Spacing.two },
@@ -173,7 +183,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
   topRow: {
     flexDirection: "row",
@@ -185,5 +195,11 @@ const styles = StyleSheet.create({
   list: {
     paddingBottom: Spacing.six,
     flexGrow: 1,
+  },
+  eventMeta: {
+    gap: 4,
+  },
+  deviceId: {
+    fontSize: 12,
   },
 });

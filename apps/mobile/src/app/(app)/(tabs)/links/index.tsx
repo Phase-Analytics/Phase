@@ -1,12 +1,12 @@
 import { useRouter } from "expo-router";
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { SymbolView } from "expo-symbols";
 
 import {
   EmptyState,
   ErrorState,
   ListRow,
   LoadingState,
-  PrimaryButton,
   Screen,
 } from "@/components/ui";
 import { Spacing } from "@/constants/theme";
@@ -25,7 +25,10 @@ export default function LinksScreen() {
   if (!selectedAppId && !appsLoading) {
     return (
       <Screen>
-        <EmptyState title="No apps yet" />
+        <EmptyState
+          subtitle="Create an app on the web, then select it here."
+          title="No apps yet"
+        />
       </Screen>
     );
   }
@@ -49,14 +52,6 @@ export default function LinksScreen() {
   return (
     <Screen padded={false}>
       <FlatList
-        ListHeaderComponent={
-          <View style={styles.header}>
-            <PrimaryButton
-              label="Create link"
-              onPress={() => router.push("/(app)/links/create")}
-            />
-          </View>
-        }
         ListFooterComponent={
           <View style={styles.footer}>
             <Pressable
@@ -75,7 +70,7 @@ export default function LinksScreen() {
         keyExtractor={(item) => item.id}
         ListEmptyComponent={
           <EmptyState
-            subtitle="Create a short link to get started."
+            subtitle="Create short links on the web."
             title="No links yet"
           />
         }
@@ -87,6 +82,14 @@ export default function LinksScreen() {
         }
         renderItem={({ item }) => (
           <ListRow
+            leading={
+              <SymbolView
+                name="link"
+                size={16}
+                tintColor={theme.textSecondary}
+                weight="medium"
+              />
+            }
             meta={`${formatNumber(item.totalClicks ?? 0)} clicks`}
             onPress={() => router.push(`/(app)/links/${item.id}`)}
             subtitle={item.destinationUrl}
@@ -99,10 +102,6 @@ export default function LinksScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: Spacing.three,
-    paddingBottom: Spacing.three,
-  },
   list: {
     paddingBottom: Spacing.six,
     flexGrow: 1,

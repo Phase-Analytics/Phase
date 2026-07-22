@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -6,15 +7,17 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { SymbolView } from "expo-symbols";
 
 import { Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
+import { platformLabel } from "@/lib/display";
 
 export function Screen({
   children,
   padded = true,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   padded?: boolean;
 }) {
   const theme = useTheme();
@@ -44,13 +47,15 @@ export function LoadingState() {
 export function EmptyState({
   title,
   subtitle,
+  compact = false,
 }: {
   title: string;
   subtitle?: string;
+  compact?: boolean;
 }) {
   const theme = useTheme();
   return (
-    <View style={styles.centered}>
+    <View style={[styles.centered, compact && styles.centeredCompact]}>
       <Text style={[styles.emptyTitle, { color: theme.text }]}>{title}</Text>
       {subtitle ? (
         <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
@@ -61,10 +66,16 @@ export function EmptyState({
   );
 }
 
-export function ErrorState({ message }: { message: string }) {
+export function ErrorState({
+  message,
+  compact = false,
+}: {
+  message: string;
+  compact?: boolean;
+}) {
   const theme = useTheme();
   return (
-    <View style={styles.centered}>
+    <View style={[styles.centered, compact && styles.centeredCompact]}>
       <Text style={[styles.emptyTitle, { color: theme.danger }]}>{message}</Text>
     </View>
   );
@@ -112,11 +123,13 @@ export function ListRow({
   title,
   subtitle,
   meta,
+  leading,
   onPress,
 }: {
   title: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   meta?: string;
+  leading?: ReactNode;
   onPress?: () => void;
 }) {
   const theme = useTheme();
@@ -135,18 +148,21 @@ export function ListRow({
         },
       ]}
     >
+      {leading ? <View style={styles.leading}>{leading}</View> : null}
       <View style={styles.rowMain}>
         <Text style={[styles.rowTitle, { color: theme.text }]} numberOfLines={1}>
           {title}
         </Text>
-        {subtitle ? (
+        {typeof subtitle === "string" ? (
           <Text
             numberOfLines={1}
             style={[styles.rowSubtitle, { color: theme.textSecondary }]}
           >
             {subtitle}
           </Text>
-        ) : null}
+        ) : (
+          subtitle
+        )}
       </View>
       {meta ? (
         <Text style={[styles.rowMeta, { color: theme.textSecondary }]}>
@@ -154,6 +170,49 @@ export function ListRow({
         </Text>
       ) : null}
     </Pressable>
+  );
+}
+
+export function MetaChips({
+  platform,
+  country,
+  flag,
+}: {
+  platform?: string | null;
+  country?: string | null;
+  flag?: string | null;
+}) {
+  const theme = useTheme();
+  const normalized = platform?.toLowerCase();
+  const symbol =
+    normalized === "ios"
+      ? "iphone"
+      : normalized === "android"
+        ? "candybarphone"
+        : "questionmark.circle";
+
+  return (
+    <View style={styles.chips}>
+      <View style={styles.chip}>
+        <SymbolView
+          name={symbol}
+          size={13}
+          tintColor={theme.textSecondary}
+          weight="medium"
+        />
+        <Text style={[styles.chipText, { color: theme.textSecondary }]}>
+          {platformLabel(platform)}
+        </Text>
+      </View>
+      {country ? (
+        <View style={styles.chip}>
+          {flag ? <Text style={styles.flag}>{flag}</Text> : null}
+          <Text style={[styles.chipText, { color: theme.textSecondary }]}>
+            {country}
+          </Text>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -254,6 +313,10 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     gap: Spacing.two,
   },
+  centeredCompact: {
+    flex: 0,
+    paddingVertical: Spacing.four,
+  },
   emptyTitle: {
     fontSize: 17,
     fontWeight: "600",
@@ -265,47 +328,70 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    minWidth: "45%",
-    borderRadius: 14,
+    minWidth: "40%",
+    borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.three,
-    gap: Spacing.one,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 1,
   },
   statLabel: {
-    fontSize: 12,
-    fontWeight: "500",
+    fontSize: 10,
+    fontWeight: "600",
     textTransform: "uppercase",
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
   },
   statValue: {
-    fontSize: 28,
+    fontSize: 18,
     fontWeight: "700",
     fontVariant: ["tabular-nums"],
   },
   statChange: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: "500",
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: Spacing.three,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.three,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: Spacing.two,
+    gap: 10,
+  },
+  leading: {
+    width: 28,
+    alignItems: "center",
+    justifyContent: "center",
   },
   rowMain: {
     flex: 1,
-    gap: 2,
+    gap: 3,
   },
   rowTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
   },
   rowSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
   },
   rowMeta: {
     fontSize: 12,
+  },
+  chips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  chipText: {
+    fontSize: 12,
+  },
+  flag: {
+    fontSize: 13,
   },
   button: {
     borderRadius: 12,

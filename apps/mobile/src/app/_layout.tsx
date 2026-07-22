@@ -3,7 +3,6 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTheme } from "@/hooks/use-theme";
 import { useSession } from "@/lib/auth-client";
 import { AppProviders } from "@/providers/app-providers";
@@ -50,11 +49,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
-  const scheme = useColorScheme();
-
   return (
     <AppProviders>
-      <StatusBar style={scheme === "dark" ? "light" : "dark"} />
+      <StatusBar style="light" />
       <AuthGate>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(auth)" />

@@ -18,7 +18,7 @@ export default function createExpoConfig({
     orientation: "portrait",
     icon: "./assets/images/icon.png",
     scheme: APP_SCHEME,
-    userInterfaceStyle: "automatic",
+    userInterfaceStyle: "dark",
     ios: {
       ...config.ios,
       icon: "./assets/expo.icon",

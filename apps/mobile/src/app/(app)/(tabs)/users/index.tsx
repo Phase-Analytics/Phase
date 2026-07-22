@@ -1,6 +1,5 @@
 import { useRouter } from "expo-router";
-import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 
 import TimeseriesChart from "@/components/charts/timeseries-chart";
 import {
@@ -8,6 +7,7 @@ import {
   ErrorState,
   ListRow,
   LoadingState,
+  MetaChips,
   Screen,
   StatCard,
 } from "@/components/ui";
@@ -18,11 +18,14 @@ import {
   useDevices,
   useDeviceTimeseries,
 } from "@/lib/api/queries/devices";
+import {
+  countryDisplayName,
+  countryFlagEmoji,
+} from "@/lib/display";
 import { formatNumber, formatRelative, lastNDaysRange } from "@/lib/format";
 
 export default function UsersScreen() {
   const router = useRouter();
-  const scheme = useColorScheme();
   const { selectedAppId, isLoading: appsLoading } = useSelectedApp();
   const range = lastNDaysRange(14);
 
@@ -47,7 +50,7 @@ export default function UsersScreen() {
       return (
         <Screen>
           <EmptyState
-            subtitle="Create an app on the web or in the app switcher."
+            subtitle="Create an app on the web, then select it here."
             title="No apps yet"
           />
         </Screen>
@@ -98,12 +101,9 @@ export default function UsersScreen() {
               />
             </View>
             <View style={styles.chart}>
-              <TimeseriesChart
-                dark={scheme === "dark"}
-                data={chartData}
-                dom={{ matchContents: true }}
-              />
+              <TimeseriesChart dark data={chartData} height={200} />
             </View>
+            <Text style={styles.section}>Recent</Text>
           </View>
         }
         contentContainerStyle={styles.list}
@@ -123,17 +123,31 @@ export default function UsersScreen() {
         refreshControl={
           <RefreshControl onRefresh={onRefresh} refreshing={refreshing} />
         }
-        renderItem={({ item }) => (
-          <ListRow
-            meta={formatRelative(item.lastSeen)}
-            onPress={() => router.push(`/(app)/users/${item.deviceId}`)}
-            subtitle={
-              [item.platform, item.country].filter(Boolean).join(" · ") ||
-              "Unknown"
-            }
-            title={item.deviceId}
-          />
-        )}
+        renderItem={({ item }) => {
+          const flag = countryFlagEmoji(item.country);
+          const country = countryDisplayName(item.country);
+          return (
+            <ListRow
+              leading={
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>
+                    {(item.deviceId || "?").slice(0, 1).toUpperCase()}
+                  </Text>
+                </View>
+              }
+              meta={formatRelative(item.lastSeen)}
+              onPress={() => router.push(`/(app)/users/${item.deviceId}`)}
+              subtitle={
+                <MetaChips
+                  country={country}
+                  flag={flag}
+                  platform={item.platform}
+                />
+              }
+              title={item.deviceId}
+            />
+          );
+        }}
       />
     </Screen>
   );
@@ -150,12 +164,33 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   chart: {
-    height: 160,
-    borderRadius: 14,
+    height: 200,
+    borderRadius: 12,
     overflow: "hidden",
+  },
+  section: {
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    opacity: 0.55,
+    marginTop: Spacing.one,
   },
   list: {
     paddingBottom: Spacing.six,
     flexGrow: 1,
+  },
+  avatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#262626",
+  },
+  avatarText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#FAFAFA",
   },
 });

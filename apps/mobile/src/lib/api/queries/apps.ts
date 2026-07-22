@@ -18,6 +18,8 @@ export function useApps() {
     queryKey: queryKeys.apps.list(),
     queryFn: () => fetchApi<AppsListResponse>("/web/apps"),
     ...cacheConfig.static,
+    staleTime: 10_000,
+    refetchOnMount: "always",
     enabled: Boolean(session),
   });
 }

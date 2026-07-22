@@ -5,6 +5,9 @@ import type { ReactNode } from "react";
 
 const apiKey = process.env.EXPO_PUBLIC_PHASE_API_KEY?.trim();
 const isEnabled = apiKey !== undefined && apiKey.length > 0;
+const baseUrl = (
+  process.env.EXPO_PUBLIC_SERVER_URL || "https://api.phase.sh"
+).replace(/\/$/, "");
 
 if (__DEV__ && !isEnabled) {
   console.warn(
@@ -36,19 +39,25 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
   return (
     <PhaseProvider
       apiKey={apiKey}
+      baseUrl={baseUrl}
       debugData={__DEV__}
-      logLevel={__DEV__ ? "info" : "none"}
+      logLevel={__DEV__ ? "info" : "warn"}
       trackNavigation={false}
     >
-      <IdentifyOnMount />
+      <BootstrapAnalytics />
       {children}
     </PhaseProvider>
   );
 }
 
-function IdentifyOnMount() {
+function BootstrapAnalytics() {
   useEffect(() => {
-    void identify();
+    void (async () => {
+      await identify();
+      await track("mobile_app_open", {
+        platform: "expo",
+      });
+    })();
   }, []);
 
   return null;
