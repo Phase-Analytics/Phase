@@ -10,7 +10,7 @@ import { Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { track } from "@/lib/analytics";
 import {
-  establishSessionFromRedirect,
+  applyAuthCookieFromRedirect,
   getWebAuthURL,
 } from "@/lib/auth-client";
 
@@ -33,8 +33,8 @@ export default function SignInScreen() {
     setLoading(true);
 
     try {
-      // Dedicated path so Expo Router doesn't treat this like "/" auth index.
-      const redirectUri = Linking.createURL("/login-callback");
+      // Same deep-link capture style as better-auth expo social sign-in.
+      const redirectUri = Linking.createURL("/");
       const authUrl = `${getWebAuthURL()}/auth?callbackURL=${encodeURIComponent(redirectUri)}`;
       const result = await WebBrowser.openAuthSessionAsync(
         authUrl,
@@ -46,10 +46,10 @@ export default function SignInScreen() {
       }
 
       if (__DEV__) {
-        console.log("[auth] redirect url", result.url);
+        console.log("[auth] redirect", result.url.slice(0, 200));
       }
 
-      await establishSessionFromRedirect(result.url);
+      await applyAuthCookieFromRedirect(result.url);
       void track("mobile_sign_in", { method: "web" });
       router.replace("/(app)/(tabs)/users");
     } catch (err) {

@@ -1,16 +1,23 @@
 import type { BetterAuthPlugin } from 'better-auth';
 import { HIDE_METADATA } from 'better-auth';
 import { APIError, createAuthEndpoint, sessionMiddleware } from 'better-auth/api';
+import { setSessionCookie } from 'better-auth/cookies';
 import * as z from 'zod';
 
-function appendQueryParam(url: string, key: string, value: string): string {
-  const separator = url.includes('?') ? '&' : '?';
-  return `${url}${separator}${key}=${encodeURIComponent(value)}`;
+function appendCookieToCallback(callbackURL: string, cookie: string): string {
+  try {
+    const url = new URL(callbackURL);
+    url.searchParams.set('cookie', cookie);
+    return url.toString();
+  } catch {
+    const separator = callbackURL.includes('?') ? '&' : '?';
+    return `${callbackURL}${separator}cookie=${encodeURIComponent(cookie)}`;
+  }
 }
 
 /**
- * Hands a browser session to an Expo app via deep link query params.
- * RN cannot read Set-Cookie from fetch, so we pass the raw session token.
+ * Same handoff shape as @better-auth/expo OAuth callbacks:
+ * redirect to the app deep link with `?cookie=<Set-Cookie header>`.
  */
 export function expoMobileHandoff(): BetterAuthPlugin {
   return {
@@ -35,18 +42,44 @@ export function expoMobileHandoff(): BetterAuthPlugin {
             });
           }
 
-          const token = ctx.context.session.session.token;
-          const expiresAt = new Date(
-            ctx.context.session.session.expiresAt
-          ).toISOString();
-          const cookieName = ctx.context.authCookies.sessionToken.name;
+          await setSessionCookie(ctx, {
+            session: ctx.context.session.session,
+            user: ctx.context.session.user,
+          });
 
-          // Use session_token (not token) — /auth?token= is password-reset on web.
-          let location = appendQueryParam(callbackURL, 'session_token', token);
-          location = appendQueryParam(location, 'expires_at', expiresAt);
-          location = appendQueryParam(location, 'cookie_name', cookieName);
+          const responseHeaders = (
+            ctx.context as { responseHeaders?: Headers }
+          ).responseHeaders;
+          let cookie = responseHeaders?.get('set-cookie') ?? null;
 
-          throw ctx.redirect(location);
+          // Fallback if responseHeaders isn't populated yet — match oauth format.
+          if (!cookie) {
+            const { name, attributes } = ctx.context.authCookies.sessionToken;
+            const maxAge =
+              attributes.maxAge ??
+              Math.max(
+                60,
+                Math.floor(
+                  (new Date(ctx.context.session.session.expiresAt).getTime() -
+                    Date.now()) /
+                    1000
+                )
+              );
+            cookie = [
+              `${name}=${ctx.context.session.session.token}`,
+              'Path=/',
+              `Max-Age=${maxAge}`,
+              attributes.httpOnly ? 'HttpOnly' : null,
+              attributes.secure ? 'Secure' : null,
+              attributes.sameSite
+                ? `SameSite=${String(attributes.sameSite)}`
+                : null,
+            ]
+              .filter(Boolean)
+              .join('; ');
+          }
+
+          throw ctx.redirect(appendCookieToCallback(callbackURL, cookie));
         }
       ),
     },
