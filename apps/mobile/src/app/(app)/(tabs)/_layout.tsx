@@ -2,7 +2,10 @@ import { NativeTabs } from "expo-router/unstable-native-tabs";
 
 export default function TabsLayout() {
   return (
-    <NativeTabs minimizeBehavior="onScrollDown">
+    <NativeTabs
+      backgroundColor="#0A0A0A"
+      minimizeBehavior="onScrollDown"
+    >
       <NativeTabs.Trigger name="users">
         <NativeTabs.Trigger.Icon
           md="group"
@@ -19,8 +22,8 @@ export default function TabsLayout() {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="activity">
         <NativeTabs.Trigger.Icon
-          md="bolt"
-          sf={{ default: "bolt", selected: "bolt.fill" }}
+          md="bar_chart"
+          sf={{ default: "chart.bar", selected: "chart.bar.fill" }}
         />
         <NativeTabs.Trigger.Label>Activity</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>

@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 
+import { Colors } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
 const sheetOptions = {
@@ -8,6 +9,7 @@ const sheetOptions = {
   sheetGrabberVisible: true,
   sheetCornerRadius: 16,
   headerShadowVisible: false,
+  contentStyle: { backgroundColor: Colors.background },
 };
 
 export default function AppLayout() {
@@ -20,6 +22,7 @@ export default function AppLayout() {
         headerTintColor: theme.text,
         headerShadowVisible: false,
         contentStyle: { backgroundColor: theme.background },
+        animation: "slide_from_right",
       }}
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -28,12 +31,15 @@ export default function AppLayout() {
         options={{ title: "User", headerBackTitle: "Users" }}
       />
       <Stack.Screen
-        name="links/[id]"
-        options={{ title: "Link", headerBackTitle: "Links" }}
+        name="sessions/[id]"
+        options={{
+          ...sheetOptions,
+          title: "Session",
+        }}
       />
       <Stack.Screen
-        name="domains/index"
-        options={{ title: "Domains", headerBackTitle: "Links" }}
+        name="links/[id]"
+        options={{ title: "Link", headerBackTitle: "Links" }}
       />
       <Stack.Screen
         name="apps/switcher"

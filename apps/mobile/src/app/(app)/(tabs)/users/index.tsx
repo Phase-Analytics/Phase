@@ -1,14 +1,20 @@
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 
-import TimeseriesChart from "@/components/charts/timeseries-chart";
+import { PlatformIcon } from "@/components/brand-icons";
+import { ChartBlock } from "@/components/chart-block";
 import {
   EmptyState,
   ErrorState,
   ListRow,
   LoadingState,
   MetaChips,
+  PaginationBar,
+  RankList,
+  RowIcon,
   Screen,
+  SectionLabel,
   StatCard,
 } from "@/components/ui";
 import { Spacing } from "@/constants/theme";
@@ -21,19 +27,34 @@ import {
 import {
   countryDisplayName,
   countryFlagEmoji,
+  getDisplayName,
+  platformLabel,
+  topEntries,
+  userRowSymbol,
 } from "@/lib/display";
-import { formatNumber, formatRelative, lastNDaysRange } from "@/lib/format";
+import {
+  chartMonthRange,
+  formatNumber,
+  formatRelative,
+  PAGE_SIZE,
+} from "@/lib/format";
+import { useTrackScreen } from "@/hooks/use-track-screen";
+import { track } from "@/lib/analytics";
 
 export default function UsersScreen() {
   const router = useRouter();
   const { selectedAppId, isLoading: appsLoading } = useSelectedApp();
-  const range = lastNDaysRange(14);
+  useTrackScreen("screen_users", {
+    app_id: selectedAppId ?? null,
+  });
+  const range = chartMonthRange();
+  const [page, setPage] = useState(1);
 
   const overview = useDeviceOverview(selectedAppId ?? "");
-  const timeseries = useDeviceTimeseries(selectedAppId ?? "", range);
+  const timeseries = useDeviceTimeseries(selectedAppId ?? "", range, "total");
   const devices = useDevices(selectedAppId ?? "", {
-    page: "1",
-    pageSize: "50",
+    page: String(page),
+    pageSize: String(PAGE_SIZE),
   });
 
   const refreshing =
@@ -80,8 +101,24 @@ export default function UsersScreen() {
   const chartData =
     timeseries.data?.data.map((point) => ({
       date: point.date,
-      value: point.activeUsers ?? point.totalUsers ?? 0,
+      value: point.totalUsers ?? point.activeUsers ?? 0,
     })) ?? [];
+
+  const platforms = topEntries(overview.data?.platformStats, 4).map((item) => ({
+    label: platformLabel(item.key),
+    count: item.count,
+    leading: <PlatformIcon platform={item.key} size={14} />,
+  }));
+
+  const countries = topEntries(overview.data?.countryStats, 5).map((item) => ({
+    label: countryDisplayName(item.key) ?? item.key,
+    count: item.count,
+    leading: (
+      <Text style={styles.flag}>{countryFlagEmoji(item.key) ?? "🌐"}</Text>
+    ),
+  }));
+
+  const totalPages = devices.data?.pagination.totalPages ?? 1;
 
   return (
     <Screen padded={false}>
@@ -100,11 +137,23 @@ export default function UsersScreen() {
                 value={formatNumber(overview.data?.activeDevices24h)}
               />
             </View>
-            <View style={styles.chart}>
-              <TimeseriesChart dark data={chartData} height={200} />
+            <ChartBlock data={chartData} />
+            <View style={styles.distributions}>
+              <RankList items={platforms} title="Top platforms" />
+              <RankList items={countries} title="Top countries" />
             </View>
-            <Text style={styles.section}>Recent</Text>
+            <SectionLabel>Recent</SectionLabel>
           </View>
+        }
+        ListFooterComponent={
+          <PaginationBar
+            onNext={() =>
+              setPage((current) => Math.min(totalPages, current + 1))
+            }
+            onPrev={() => setPage((current) => Math.max(1, current - 1))}
+            page={page}
+            totalPages={totalPages}
+          />
         }
         contentContainerStyle={styles.list}
         contentInsetAdjustmentBehavior="automatic"
@@ -128,15 +177,12 @@ export default function UsersScreen() {
           const country = countryDisplayName(item.country);
           return (
             <ListRow
-              leading={
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>
-                    {(item.deviceId || "?").slice(0, 1).toUpperCase()}
-                  </Text>
-                </View>
-              }
+              leading={<RowIcon name={userRowSymbol()} />}
               meta={formatRelative(item.lastSeen)}
-              onPress={() => router.push(`/(app)/users/${item.deviceId}`)}
+              onPress={() => {
+                void track("user_opened", { device_id: item.deviceId });
+                router.push(`/(app)/users/${item.deviceId}`);
+              }}
               subtitle={
                 <MetaChips
                   country={country}
@@ -144,7 +190,7 @@ export default function UsersScreen() {
                   platform={item.platform}
                 />
               }
-              title={item.deviceId}
+              title={getDisplayName(item.deviceId)}
             />
           );
         }}
@@ -163,34 +209,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: Spacing.two,
   },
-  chart: {
-    height: 200,
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  section: {
-    fontSize: 12,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-    opacity: 0.55,
-    marginTop: Spacing.one,
+  distributions: {
+    gap: Spacing.four,
   },
   list: {
     paddingBottom: Spacing.six,
     flexGrow: 1,
   },
-  avatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#262626",
-  },
-  avatarText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#FAFAFA",
+  flag: {
+    fontSize: 13,
   },
 });

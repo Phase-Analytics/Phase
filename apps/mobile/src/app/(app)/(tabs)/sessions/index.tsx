@@ -1,13 +1,18 @@
-import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { type Href, useRouter } from "expo-router";
+import { useState } from "react";
+import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
 
-import TimeseriesChart from "@/components/charts/timeseries-chart";
+import { ChartBlock } from "@/components/chart-block";
 import {
   EmptyState,
   ErrorState,
   ListRow,
   LoadingState,
   MetaChips,
+  PaginationBar,
+  RowIcon,
   Screen,
+  SectionLabel,
   StatCard,
 } from "@/components/ui";
 import { Spacing } from "@/constants/theme";
@@ -20,23 +25,35 @@ import {
 import {
   countryDisplayName,
   countryFlagEmoji,
+  getDisplayName,
+  sessionRowSymbol,
 } from "@/lib/display";
 import {
+  chartMonthRange,
   formatDuration,
   formatNumber,
   formatRelative,
-  lastNDaysRange,
+  PAGE_SIZE,
 } from "@/lib/format";
+import { useTrackScreen } from "@/hooks/use-track-screen";
+import { track } from "@/lib/analytics";
 
 export default function SessionsScreen() {
+  const router = useRouter();
   const { selectedAppId, isLoading: appsLoading } = useSelectedApp();
-  const range = lastNDaysRange(14);
+  useTrackScreen("screen_sessions", { app_id: selectedAppId ?? null });
+  const range = chartMonthRange();
+  const [page, setPage] = useState(1);
 
   const overview = useSessionOverview(selectedAppId ?? "");
-  const timeseries = useSessionTimeseries(selectedAppId ?? "", range);
+  const timeseries = useSessionTimeseries(
+    selectedAppId ?? "",
+    range,
+    "daily_sessions"
+  );
   const sessions = useSessions(selectedAppId ?? "", {
-    page: "1",
-    pageSize: "50",
+    page: String(page),
+    pageSize: String(PAGE_SIZE),
   });
 
   const refreshing =
@@ -81,6 +98,8 @@ export default function SessionsScreen() {
       value: point.dailySessions ?? 0,
     })) ?? [];
 
+  const totalPages = sessions.data?.pagination.totalPages ?? 1;
+
   return (
     <Screen padded={false}>
       <FlatList
@@ -108,11 +127,17 @@ export default function SessionsScreen() {
                 value={`${(overview.data?.bounceRate ?? 0).toFixed(0)}%`}
               />
             </View>
-            <View style={styles.chart}>
-              <TimeseriesChart dark data={chartData} height={200} />
-            </View>
-            <Text style={styles.section}>Recent</Text>
+            <ChartBlock data={chartData} />
+            <SectionLabel>Recent</SectionLabel>
           </View>
+        }
+        ListFooterComponent={
+          <PaginationBar
+            onNext={() => setPage((current) => Math.min(totalPages, current + 1))}
+            onPrev={() => setPage((current) => Math.max(1, current - 1))}
+            page={page}
+            totalPages={totalPages}
+          />
         }
         contentContainerStyle={styles.list}
         contentInsetAdjustmentBehavior="automatic"
@@ -137,7 +162,22 @@ export default function SessionsScreen() {
         }
         renderItem={({ item }) => (
           <ListRow
+            leading={<RowIcon name={sessionRowSymbol()} />}
             meta={formatRelative(item.lastActivityAt)}
+            onPress={() => {
+              void track("session_opened", { session_id: item.sessionId });
+              router.push({
+                pathname: "/(app)/sessions/[id]",
+                params: {
+                  id: item.sessionId,
+                  deviceId: item.deviceId,
+                  platform: item.platform ?? "",
+                  country: item.country ?? "",
+                  startedAt: item.startedAt,
+                  lastActivityAt: item.lastActivityAt,
+                },
+              } as unknown as Href);
+            }}
             subtitle={
               <MetaChips
                 country={countryDisplayName(item.country)}
@@ -145,7 +185,7 @@ export default function SessionsScreen() {
                 platform={item.platform}
               />
             }
-            title={item.sessionId}
+            title={getDisplayName(item.deviceId)}
           />
         )}
       />
@@ -162,19 +202,6 @@ const styles = StyleSheet.create({
   stats: {
     flexDirection: "row",
     gap: Spacing.two,
-  },
-  chart: {
-    height: 200,
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  section: {
-    fontSize: 12,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-    opacity: 0.55,
-    marginTop: Spacing.one,
   },
   list: {
     paddingBottom: Spacing.six,

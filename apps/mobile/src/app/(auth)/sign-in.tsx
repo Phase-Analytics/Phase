@@ -1,37 +1,50 @@
-import { Link } from "expo-router";
+import * as Linking from "expo-linking";
+import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
-import { Field, PrimaryButton, Screen } from "@/components/ui";
+import { PhaseLogo } from "@/components/phase-logo";
+import { PrimaryButton, Screen } from "@/components/ui";
 import { Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { track } from "@/lib/analytics";
-import { signIn } from "@/lib/auth-client";
+import { authClient, getWebAuthURL } from "@/lib/auth-client";
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function SignInScreen() {
   const theme = useTheme();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function onSubmit() {
+  async function onLogin() {
     setError(null);
     setLoading(true);
     try {
-      const result = await signIn.email({ email: email.trim(), password });
-      if (result.error) {
-        setError(result.error.message ?? "Sign in failed");
+      const redirectUri = Linking.createURL("/");
+      const authUrl = `${getWebAuthURL()}/auth?callbackURL=${encodeURIComponent(redirectUri)}`;
+      const result = await WebBrowser.openAuthSessionAsync(
+        authUrl,
+        redirectUri
+      );
+
+      if (result.type !== "success") {
         return;
       }
-      void track("mobile_sign_in", { method: "email" });
+
+      const ott = new URL(result.url).searchParams.get("ott");
+      if (!ott) {
+        setError("Sign in did not complete. Try again.");
+        return;
+      }
+
+      const verified = await authClient.oneTimeToken.verify({ token: ott });
+      if (verified.error) {
+        setError(verified.error.message ?? "Sign in failed");
+        return;
+      }
+
+      void track("mobile_sign_in", { method: "web" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign in failed");
     } finally {
@@ -39,106 +52,56 @@ export default function SignInScreen() {
     }
   }
 
-  async function onGitHub() {
-    setError(null);
-    setLoading(true);
-    try {
-      const result = await signIn.social({
-        provider: "github",
-        callbackURL: "phase://",
-      });
-      if (result.error) {
-        setError(result.error.message ?? "GitHub sign in failed");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "GitHub sign in failed");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
     <Screen>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.flex}
-      >
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.brand}>
-            <Text style={[styles.logo, { color: theme.text }]}>Phase</Text>
-            <Text style={[styles.tagline, { color: theme.textSecondary }]}>
-              Privacy-first analytics
-            </Text>
-          </View>
+      <View style={styles.content}>
+        <PhaseLogo tagline="Privacy-first analytics" />
 
-          <View style={styles.form}>
-            <Field
-              autoCapitalize="none"
-              keyboardType="email-address"
-              label="Email"
-              onChangeText={setEmail}
-              placeholder="you@company.com"
-              value={email}
-            />
-            <Field
-              label="Password"
-              onChangeText={setPassword}
-              placeholder="••••••••"
-              secureTextEntry
-              value={password}
-            />
-            {error ? (
-              <Text style={[styles.error, { color: theme.danger }]}>{error}</Text>
-            ) : null}
-            <PrimaryButton
-              disabled={loading || !email || !password}
-              label={loading ? "Signing in…" : "Sign in"}
-              onPress={() => void onSubmit()}
-            />
-            <PrimaryButton
-              disabled={loading}
-              label="Continue with GitHub"
-              onPress={() => void onGitHub()}
-              variant="secondary"
-            />
-          </View>
-
-          <Text style={[styles.footer, { color: theme.textSecondary }]}>
-            No account?{" "}
-            <Link href="/(auth)/sign-up" style={{ color: theme.text }}>
-              Sign up
-            </Link>
+        <View style={styles.actions}>
+          {error ? (
+            <Text style={[styles.error, { color: theme.danger }]}>{error}</Text>
+          ) : null}
+          <PrimaryButton
+            disabled={loading}
+            label={loading ? "Opening…" : "Log in"}
+            onPress={() => void onLogin()}
+          />
+          <Text style={[styles.hint, { color: theme.textSecondary }]}>
+            Continues in your browser on phase.sh
           </Text>
-        </ScrollView>
-      </KeyboardAvoidingView>
+          <Text
+            accessibilityRole="link"
+            onPress={() => {
+              void Linking.openURL(
+                "https://phase.sh/docs/privacy/privacy-policy"
+              );
+            }}
+            style={[styles.policy, { color: theme.textSecondary }]}
+          >
+            Privacy Policy
+          </Text>
+        </View>
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
   content: {
-    flexGrow: 1,
+    flex: 1,
     justifyContent: "center",
     gap: Spacing.five,
     paddingVertical: Spacing.six,
   },
-  brand: { gap: Spacing.one },
-  logo: {
-    fontSize: 44,
-    fontWeight: "700",
-    letterSpacing: -1.5,
-  },
-  tagline: {
-    fontSize: 16,
-  },
-  form: { gap: Spacing.three },
-  error: { fontSize: 14 },
-  footer: {
-    fontSize: 15,
+  actions: { gap: Spacing.three },
+  error: { fontSize: 14, textAlign: "center" },
+  hint: {
+    fontSize: 13,
     textAlign: "center",
+  },
+  policy: {
+    fontSize: 13,
+    textAlign: "center",
+    textDecorationLine: "underline",
   },
 });

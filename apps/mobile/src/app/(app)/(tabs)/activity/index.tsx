@@ -1,13 +1,18 @@
+import { useState } from "react";
 import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 
-import TimeseriesChart from "@/components/charts/timeseries-chart";
+import { ChartBlock } from "@/components/chart-block";
 import {
   EmptyState,
   ErrorState,
   ListRow,
   LoadingState,
   MetaChips,
+  PaginationBar,
+  RankList,
+  RowIcon,
   Screen,
+  SectionLabel,
   StatCard,
 } from "@/components/ui";
 import { Spacing } from "@/constants/theme";
@@ -19,20 +24,35 @@ import {
   useEventTimeseries,
   useTopEvents,
 } from "@/lib/api/queries/events";
-import { formatNumber, formatRelative, lastNDaysRange } from "@/lib/format";
+import { eventRowSymbol } from "@/lib/display";
+import {
+  chartMonthRange,
+  formatNumber,
+  formatRelative,
+  PAGE_SIZE,
+} from "@/lib/format";
+import { useTrackScreen } from "@/hooks/use-track-screen";
 
 export default function ActivityScreen() {
   const theme = useTheme();
   const { selectedAppId, isLoading: appsLoading } = useSelectedApp();
-  const range = lastNDaysRange(14);
+  useTrackScreen("screen_activity", { app_id: selectedAppId ?? null });
+  const range = chartMonthRange();
+  const [page, setPage] = useState(1);
 
   const overview = useEventOverview(selectedAppId ?? "");
   const timeseries = useEventTimeseries(selectedAppId ?? "", range);
   const top = useTopEvents(selectedAppId ?? "", range);
-  const events = useEvents(selectedAppId ?? "", { page: "1", pageSize: "40" });
+  const events = useEvents(selectedAppId ?? "", {
+    page: String(page),
+    pageSize: String(PAGE_SIZE),
+  });
 
   const refreshing =
-    overview.isRefetching || events.isRefetching || timeseries.isRefetching;
+    overview.isRefetching ||
+    events.isRefetching ||
+    timeseries.isRefetching ||
+    top.isRefetching;
 
   if (!selectedAppId && !appsLoading) {
     return (
@@ -70,8 +90,16 @@ export default function ActivityScreen() {
   const chartData =
     timeseries.data?.data.map((point) => ({
       date: point.date,
-      value: point.dailyEvents,
+      value: point.dailyEvents ?? 0,
     })) ?? [];
+
+  const topItems =
+    top.data?.events.slice(0, 6).map((event) => ({
+      label: event.name,
+      count: event.count,
+    })) ?? [];
+
+  const totalPages = events.data?.pagination.totalPages ?? 1;
 
   return (
     <Screen padded={false}>
@@ -90,32 +118,24 @@ export default function ActivityScreen() {
                 value={formatNumber(overview.data?.events24h)}
               />
             </View>
-            <View style={styles.chart}>
-              <TimeseriesChart dark data={chartData} height={200} />
-            </View>
-            {(top.data?.events?.length ?? 0) > 0 ? (
-              <View style={styles.topBlock}>
-                <Text style={[styles.section, { color: theme.textSecondary }]}>
-                  Top events
-                </Text>
-                {top.data?.events.slice(0, 5).map((event) => (
-                  <View key={event.name} style={styles.topRow}>
-                    <Text style={[styles.topName, { color: theme.text }]}>
-                      {event.name}
-                    </Text>
-                    <Text
-                      style={[styles.topCount, { color: theme.textSecondary }]}
-                    >
-                      {formatNumber(event.count)}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-            <Text style={[styles.section, { color: theme.textSecondary }]}>
-              Recent
-            </Text>
+            {timeseries.isError ? (
+              <Text style={[styles.chartError, { color: theme.danger }]}>
+                Chart failed to load
+              </Text>
+            ) : (
+              <ChartBlock data={chartData} />
+            )}
+            <RankList items={topItems} title="Top events" />
+            <SectionLabel>Recent</SectionLabel>
           </View>
+        }
+        ListFooterComponent={
+          <PaginationBar
+            onNext={() => setPage((current) => Math.min(totalPages, current + 1))}
+            onPrev={() => setPage((current) => Math.max(1, current - 1))}
+            page={page}
+            totalPages={totalPages}
+          />
         }
         contentContainerStyle={styles.list}
         contentInsetAdjustmentBehavior="automatic"
@@ -141,21 +161,10 @@ export default function ActivityScreen() {
         }
         renderItem={({ item }) => (
           <ListRow
+            leading={<RowIcon name={eventRowSymbol(item.isScreen)} />}
             meta={formatRelative(item.timestamp)}
-            subtitle={
-              <View style={styles.eventMeta}>
-                <MetaChips platform={item.platform} />
-                {item.deviceId ? (
-                  <Text
-                    numberOfLines={1}
-                    style={[styles.deviceId, { color: theme.textSecondary }]}
-                  >
-                    {item.deviceId}
-                  </Text>
-                ) : null}
-              </View>
-            }
-            title={item.name}
+            subtitle={<MetaChips platform={item.platform} />}
+            title={item.isScreen ? `View ${item.name}` : item.name}
           />
         )}
       />
@@ -173,33 +182,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: Spacing.two,
   },
-  chart: {
-    height: 200,
-    borderRadius: 12,
-    overflow: "hidden",
+  chartError: {
+    fontSize: 13,
+    fontWeight: "500",
   },
-  topBlock: { gap: Spacing.two },
-  section: {
-    fontSize: 12,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  topRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 6,
-  },
-  topName: { fontSize: 15, fontWeight: "500" },
-  topCount: { fontSize: 14, fontVariant: ["tabular-nums"] },
   list: {
     paddingBottom: Spacing.six,
     flexGrow: 1,
-  },
-  eventMeta: {
-    gap: 4,
-  },
-  deviceId: {
-    fontSize: 12,
   },
 });

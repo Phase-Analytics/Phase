@@ -17,9 +17,19 @@ type TimeseriesChartProps = {
   dom?: import("expo/dom").DOMProps;
 };
 
+function parseChartDate(value: string): Date {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return new Date(`${value}T12:00:00.000Z`);
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime())
+    ? new Date(`${value}T12:00:00.000Z`)
+    : parsed;
+}
+
 export default function TimeseriesChart({
   data,
-  height = 220,
+  height = 200,
   dark = true,
 }: TimeseriesChartProps) {
   const gradientId = useId().replace(/:/g, "");
@@ -31,10 +41,12 @@ export default function TimeseriesChart({
 
   const points = useMemo(
     () =>
-      data.map((d) => ({
-        date: new Date(d.date),
-        value: d.value,
-      })),
+      data
+        .map((d) => ({
+          date: parseChartDate(d.date),
+          value: Number.isFinite(d.value) ? d.value : 0,
+        }))
+        .filter((d) => !Number.isNaN(d.date.getTime())),
     [data]
   );
 
@@ -43,6 +55,7 @@ export default function TimeseriesChart({
       <div
         style={{
           height,
+          width: "100%",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -71,18 +84,15 @@ export default function TimeseriesChart({
     range: [height - margin.bottom, margin.top],
   });
 
-  const solidPoints =
-    points.length > 2 ? points.slice(0, -1) : points;
-  const dashPoints =
-    points.length > 2 ? points.slice(-2) : [];
-
+  const solidPoints = points.length > 2 ? points.slice(0, -1) : points;
+  const dashPoints = points.length > 2 ? points.slice(-2) : [];
   const yTicks = [0.25, 0.5, 0.75, 1].map((t) => maxValue * 1.1 * t);
 
   return (
-    <div style={{ width: "100%", overflow: "hidden", background: "transparent" }}>
+    <div style={{ width: "100%", height, overflow: "hidden", background: "transparent" }}>
       <svg
         height={height}
-        style={{ display: "block", width: "100%" }}
+        style={{ display: "block", width: "100%", height }}
         viewBox={`0 0 ${width} ${height}`}
         width="100%"
       >

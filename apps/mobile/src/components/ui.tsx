@@ -12,6 +12,7 @@ import { SymbolView } from "expo-symbols";
 import { Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { platformLabel } from "@/lib/display";
+import { PlatformIcon } from "@/components/brand-icons";
 
 export function Screen({
   children,
@@ -92,9 +93,9 @@ export function StatCard({
 }) {
   const theme = useTheme();
   const changeColor =
-    change === undefined
+    change === undefined || change === 0
       ? theme.textSecondary
-      : change >= 0
+      : change > 0
         ? "#16A34A"
         : theme.danger;
 
@@ -111,8 +112,9 @@ export function StatCard({
       <Text style={[styles.statValue, { color: theme.text }]}>{value}</Text>
       {change !== undefined ? (
         <Text style={[styles.statChange, { color: changeColor }]}>
-          {change >= 0 ? "+" : ""}
-          {change.toFixed(1)}%
+          {change === 0
+            ? "No change"
+            : `${change > 0 ? "+" : ""}${Math.round(change)}`}
         </Text>
       ) : null}
     </View>
@@ -128,7 +130,7 @@ export function ListRow({
 }: {
   title: string;
   subtitle?: ReactNode;
-  meta?: string;
+  meta?: ReactNode;
   leading?: ReactNode;
   onPress?: () => void;
 }) {
@@ -164,11 +166,13 @@ export function ListRow({
           subtitle
         )}
       </View>
-      {meta ? (
+      {typeof meta === "string" ? (
         <Text style={[styles.rowMeta, { color: theme.textSecondary }]}>
           {meta}
         </Text>
-      ) : null}
+      ) : (
+        meta
+      )}
     </Pressable>
   );
 }
@@ -183,23 +187,11 @@ export function MetaChips({
   flag?: string | null;
 }) {
   const theme = useTheme();
-  const normalized = platform?.toLowerCase();
-  const symbol =
-    normalized === "ios"
-      ? "iphone"
-      : normalized === "android"
-        ? "candybarphone"
-        : "questionmark.circle";
 
   return (
     <View style={styles.chips}>
       <View style={styles.chip}>
-        <SymbolView
-          name={symbol}
-          size={13}
-          tintColor={theme.textSecondary}
-          weight="medium"
-        />
+        <PlatformIcon platform={platform} size={13} />
         <Text style={[styles.chipText, { color: theme.textSecondary }]}>
           {platformLabel(platform)}
         </Text>
@@ -299,6 +291,180 @@ export function Field({
   );
 }
 
+export function SectionLabel({ children }: { children: string }) {
+  const theme = useTheme();
+  return (
+    <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+      {children}
+    </Text>
+  );
+}
+
+export function RowIcon({
+  name,
+}: {
+  name: import("@/lib/display").RowSymbol;
+}) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.iconBubble, { backgroundColor: theme.backgroundElement }]}>
+      <SymbolView
+        name={name}
+        size={14}
+        tintColor={theme.text}
+        weight="medium"
+      />
+    </View>
+  );
+}
+
+export function PaginationBar({
+  page,
+  totalPages,
+  onPrev,
+  onNext,
+}: {
+  page: number;
+  totalPages: number;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const theme = useTheme();
+  if (totalPages <= 1) {
+    return null;
+  }
+
+  return (
+    <View style={styles.pagination}>
+      <Pressable
+        disabled={page <= 1}
+        onPress={onPrev}
+        style={({ pressed }) => [
+          styles.pageBtn,
+          {
+            backgroundColor: theme.backgroundElement,
+            borderColor: theme.border,
+            opacity: page <= 1 ? 0.4 : pressed ? 0.75 : 1,
+          },
+        ]}
+      >
+        <Text style={[styles.pageBtnText, { color: theme.text }]}>Prev</Text>
+      </Pressable>
+      <Text style={[styles.pageMeta, { color: theme.textSecondary }]}>
+        {page} / {totalPages}
+      </Text>
+      <Pressable
+        disabled={page >= totalPages}
+        onPress={onNext}
+        style={({ pressed }) => [
+          styles.pageBtn,
+          {
+            backgroundColor: theme.backgroundElement,
+            borderColor: theme.border,
+            opacity: page >= totalPages ? 0.4 : pressed ? 0.75 : 1,
+          },
+        ]}
+      >
+        <Text style={[styles.pageBtnText, { color: theme.text }]}>Next</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+export function RankList({
+  title,
+  items,
+}: {
+  title: string;
+  items: {
+    label: string;
+    count: number;
+    leading?: ReactNode;
+  }[];
+}) {
+  const theme = useTheme();
+  const total = items.reduce((sum, item) => sum + item.count, 0);
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <View style={styles.rankBlock}>
+      <SectionLabel>{title}</SectionLabel>
+      <View style={styles.rankList}>
+        {items.map((item) => {
+          const pct = total > 0 ? (item.count / total) * 100 : 0;
+          return (
+            <View key={item.label} style={styles.rankRow}>
+              <View style={styles.rankHead}>
+                <View style={styles.rankLabelWrap}>
+                  {item.leading}
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.rankLabel, { color: theme.text }]}
+                  >
+                    {item.label}
+                  </Text>
+                </View>
+                <Text style={[styles.rankCount, { color: theme.textSecondary }]}>
+                  {item.count.toLocaleString("en-US")}
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.rankTrack,
+                  { backgroundColor: theme.backgroundElement },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.rankFill,
+                    {
+                      backgroundColor: theme.text,
+                      width: `${pct}%`,
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+export function InfoRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: import("@/lib/display").RowSymbol | "iphone" | "globe" | "internaldrive" | "calendar" | "clock";
+  label: string;
+  value: string;
+}) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.infoRow, { borderBottomColor: theme.border }]}>
+      <View style={[styles.iconBubble, { backgroundColor: theme.backgroundElement }]}>
+        <SymbolView
+          name={icon}
+          size={14}
+          tintColor={theme.textSecondary}
+          weight="medium"
+        />
+      </View>
+      <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>
+        {label}
+      </Text>
+      <Text style={[styles.infoValue, { color: theme.text }]} numberOfLines={1}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
@@ -359,7 +525,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   leading: {
-    width: 28,
+    width: 32,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -415,5 +581,97 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: 12,
     fontSize: 16,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  iconBubble: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pagination: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
+    gap: Spacing.two,
+  },
+  pageBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  pageBtnText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  pageMeta: {
+    fontSize: 13,
+    fontVariant: ["tabular-nums"],
+  },
+  rankBlock: {
+    gap: Spacing.two,
+  },
+  rankList: {
+    gap: 10,
+  },
+  rankRow: {
+    gap: 6,
+  },
+  rankHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: Spacing.two,
+  },
+  rankLabelWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flex: 1,
+  },
+  rankLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    flexShrink: 1,
+  },
+  rankCount: {
+    fontSize: 13,
+    fontVariant: ["tabular-nums"],
+  },
+  rankTrack: {
+    height: 4,
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  rankFill: {
+    height: "100%",
+    borderRadius: 2,
+    opacity: 0.85,
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  infoLabel: {
+    fontSize: 13,
+    width: 88,
+  },
+  infoValue: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "500",
+    textAlign: "right",
   },
 });

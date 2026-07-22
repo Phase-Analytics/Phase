@@ -10,7 +10,7 @@
     "dev": "bun run dev:server & bun run dev:web",
     "dev:server": "bun run --filter server dev",
     "dev:web": "bun run --filter web dev",
-    "dev:mobile": "bun run --filter mobile dev",
+    "dev:mobile": "cd apps/mobile && bunx expo start",
     "ios": "bun --filter mobile ios",
     "android": "bun --filter mobile android",
     "ios:sim": "bun --filter mobile ios:sim",

@@ -52,7 +52,18 @@ export function formatDuration(seconds: number | null | undefined): string {
   return `${minutes}m ${rem}s`;
 }
 
-export function lastNDaysRange(days = 14): {
+export function formatShortDate(iso: string | null | undefined): string {
+  if (!iso) {
+    return "—";
+  }
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+export function lastNDaysRange(days = 30): {
   startDate: string;
   endDate: string;
 } {
@@ -63,3 +74,10 @@ export function lastNDaysRange(days = 14): {
     endDate: end.toISOString(),
   };
 }
+
+/** Hidden 1-month window for overview charts (matches web "1 Month" / 30d). */
+export function chartMonthRange() {
+  return lastNDaysRange(30);
+}
+
+export const PAGE_SIZE = 25;

@@ -1,11 +1,31 @@
 import { Stack, useRouter, useSegments } from "expo-router";
+import {
+  DarkTheme,
+  ThemeProvider,
+  type Theme,
+} from "expo-router/react-navigation";
+import * as SystemUI from "expo-system-ui";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 
+import { Colors } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { useSession } from "@/lib/auth-client";
 import { AppProviders } from "@/providers/app-providers";
+
+const navigationTheme: Theme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: Colors.text,
+    background: Colors.background,
+    card: Colors.background,
+    text: Colors.text,
+    border: Colors.border,
+    notification: Colors.danger,
+  },
+};
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { data: session, isPending } = useSession();
@@ -49,16 +69,28 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    void SystemUI.setBackgroundColorAsync(Colors.background);
+  }, []);
+
   return (
     <AppProviders>
-      <StatusBar style="light" />
-      <AuthGate>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(app)" />
-          <Stack.Screen name="index" />
-        </Stack>
-      </AuthGate>
+      <ThemeProvider value={navigationTheme}>
+        <StatusBar style="light" />
+        <AuthGate>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: Colors.background },
+              animation: "fade",
+            }}
+          >
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(app)" />
+            <Stack.Screen name="index" />
+          </Stack>
+        </AuthGate>
+      </ThemeProvider>
     </AppProviders>
   );
 }

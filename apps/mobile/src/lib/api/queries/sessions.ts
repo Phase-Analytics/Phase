@@ -50,13 +50,18 @@ export function useSessionOverview(appId: string) {
 
 export function useSessionTimeseries(
   appId: string,
-  range: DateFilterQueryParams = {}
+  range: DateFilterQueryParams = {},
+  metric: "daily_sessions" | "avg_duration" | "bounce_rate" = "daily_sessions"
 ) {
   return useQuery({
-    queryKey: queryKeys.sessions.timeseries(appId, range),
+    queryKey: queryKeys.sessions.timeseries(appId, { ...range, metric }),
     queryFn: () =>
       fetchApi<SessionTimeseriesResponse>(
-        `/web/sessions/timeseries${buildQueryString({ appId, ...range })}`
+        `/web/sessions/timeseries${buildQueryString({
+          appId,
+          ...range,
+          metric,
+        })}`
       ),
     ...cacheConfig.timeseries,
     enabled: Boolean(appId),

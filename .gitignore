@@ -11,6 +11,7 @@ packages/phase-unity-dotnet/**/obj/
 # Environment variables
 .env
 .env.local
+!apps/mobile/.env
 /node_modules
 
 .build

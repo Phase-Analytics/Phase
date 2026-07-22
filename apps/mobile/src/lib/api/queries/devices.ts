@@ -59,13 +59,18 @@ export function useDeviceOverview(appId: string) {
 
 export function useDeviceTimeseries(
   appId: string,
-  range: DateFilterQueryParams = {}
+  range: DateFilterQueryParams = {},
+  metric: "dau" | "total" = "total"
 ) {
   return useQuery({
-    queryKey: queryKeys.devices.timeseries(appId, range),
+    queryKey: queryKeys.devices.timeseries(appId, { ...range, metric }),
     queryFn: () =>
       fetchApi<DeviceTimeseriesResponse>(
-        `/web/devices/timeseries${buildQueryString({ appId, ...range })}`
+        `/web/devices/timeseries${buildQueryString({
+          appId,
+          ...range,
+          metric,
+        })}`
       ),
     ...cacheConfig.timeseries,
     enabled: Boolean(appId),

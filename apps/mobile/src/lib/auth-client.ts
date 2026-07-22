@@ -1,4 +1,5 @@
 import { expoClient } from "@better-auth/expo/client";
+import { oneTimeTokenClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 import * as SecureStore from "expo-secure-store";
 
@@ -19,10 +20,11 @@ export const authClient = createAuthClient({
       storage: SecureStore,
       storagePrefix: "phase",
     }) as never,
+    oneTimeTokenClient(),
   ],
 });
 
-export const { useSession, signIn, signOut, signUp } = authClient;
+export const { useSession, signOut } = authClient;
 
 type ExpoAuthClient = typeof authClient & {
   getCookie: () => string;
@@ -30,4 +32,14 @@ type ExpoAuthClient = typeof authClient & {
 
 export function getAuthCookie(): string {
   return (authClient as ExpoAuthClient).getCookie();
+}
+
+export function getWebAuthURL(): string {
+  const fromEnv = process.env.EXPO_PUBLIC_WEB_URL?.trim();
+  if (fromEnv) {
+    return fromEnv.replace(/\/$/, "");
+  }
+  return baseURL.includes("localhost")
+    ? "http://localhost:3002"
+    : "https://phase.sh";
 }

@@ -2,6 +2,8 @@ import type { DeviceProperties, EventParams } from "phase-analytics/expo";
 import { Phase, PhaseProvider } from "phase-analytics/expo";
 import { useEffect } from "react";
 import type { ReactNode } from "react";
+import { Platform } from "react-native";
+import Constants from "expo-constants";
 
 const apiKey = process.env.EXPO_PUBLIC_PHASE_API_KEY?.trim();
 const isEnabled = apiKey !== undefined && apiKey.length > 0;
@@ -40,7 +42,6 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
     <PhaseProvider
       apiKey={apiKey}
       baseUrl={baseUrl}
-      debugData={__DEV__}
       logLevel={__DEV__ ? "info" : "warn"}
       trackNavigation={false}
     >
@@ -53,9 +54,14 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
 function BootstrapAnalytics() {
   useEffect(() => {
     void (async () => {
-      await identify();
+      await identify({
+        app_name: "Phase Mobile",
+        app_version: Constants.expoConfig?.version ?? "0.0.1",
+        platform: Platform.OS,
+      });
       await track("mobile_app_open", {
-        platform: "expo",
+        platform: Platform.OS,
+        version: Constants.expoConfig?.version ?? "0.0.1",
       });
     })();
   }, []);

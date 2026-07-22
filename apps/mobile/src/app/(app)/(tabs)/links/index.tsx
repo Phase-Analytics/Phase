@@ -1,12 +1,13 @@
 import { useRouter } from "expo-router";
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
-import { SymbolView } from "expo-symbols";
+import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 
+import { CursorIcon } from "@/components/brand-icons";
 import {
   EmptyState,
   ErrorState,
   ListRow,
   LoadingState,
+  RowIcon,
   Screen,
 } from "@/components/ui";
 import { Spacing } from "@/constants/theme";
@@ -14,12 +15,14 @@ import { useSelectedApp } from "@/hooks/use-selected-app";
 import { useTheme } from "@/hooks/use-theme";
 import { useLinks } from "@/lib/api/queries/links";
 import { formatNumber } from "@/lib/format";
-import { signOut } from "@/lib/auth-client";
+import { useTrackScreen } from "@/hooks/use-track-screen";
+import { track } from "@/lib/analytics";
 
 export default function LinksScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { selectedAppId, isLoading: appsLoading } = useSelectedApp();
+  useTrackScreen("screen_links", { app_id: selectedAppId ?? null });
   const links = useLinks(selectedAppId ?? "");
 
   if (!selectedAppId && !appsLoading) {
@@ -52,18 +55,6 @@ export default function LinksScreen() {
   return (
     <Screen padded={false}>
       <FlatList
-        ListFooterComponent={
-          <View style={styles.footer}>
-            <Pressable
-              onPress={() => void signOut()}
-              style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-            >
-              <Text style={[styles.signOut, { color: theme.danger }]}>
-                Sign out
-              </Text>
-            </Pressable>
-          </View>
-        }
         contentContainerStyle={styles.list}
         contentInsetAdjustmentBehavior="automatic"
         data={links.data?.links ?? []}
@@ -82,16 +73,19 @@ export default function LinksScreen() {
         }
         renderItem={({ item }) => (
           <ListRow
-            leading={
-              <SymbolView
-                name="link"
-                size={16}
-                tintColor={theme.textSecondary}
-                weight="medium"
-              />
+            leading={<RowIcon name="link" />}
+            meta={
+              <View style={styles.clicksMeta}>
+                <CursorIcon framed={false} size={12} />
+                <Text style={[styles.clicksText, { color: theme.textSecondary }]}>
+                  {formatNumber(item.totalClicks ?? 0)} clicks
+                </Text>
+              </View>
             }
-            meta={`${formatNumber(item.totalClicks ?? 0)} clicks`}
-            onPress={() => router.push(`/(app)/links/${item.id}`)}
+            onPress={() => {
+              void track("link_opened", { link_id: item.id });
+              router.push(`/(app)/links/${item.id}`);
+            }}
             subtitle={item.destinationUrl}
             title={item.name || item.slug}
           />
@@ -106,12 +100,12 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.six,
     flexGrow: 1,
   },
-  footer: {
-    padding: Spacing.four,
+  clicksMeta: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: 4,
   },
-  signOut: {
-    fontSize: 15,
-    fontWeight: "600",
+  clicksText: {
+    fontSize: 12,
   },
 });

@@ -23,6 +23,7 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { authClient } from '@/lib/auth';
+import { getSocialAuthCallbackURL } from '@/lib/mobile-auth-handoff';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -31,10 +32,15 @@ type LoginFormProps = {
     email: string;
     password: string;
   };
+  mobileCallbackURL?: string | null;
   onValuesChange?: (values: { email: string; password: string }) => void;
 };
 
-function LoginForm({ defaultValues, onValuesChange }: LoginFormProps) {
+function LoginForm({
+  defaultValues,
+  mobileCallbackURL,
+  onValuesChange,
+}: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGithubLoading, setIsGithubLoading] = useState(false);
@@ -288,14 +294,11 @@ function LoginForm({ defaultValues, onValuesChange }: LoginFormProps) {
             onClick={async () => {
               setIsGithubLoading(true);
               try {
-                const webUrl = process.env.NEXT_PUBLIC_SERVER_URL?.includes(
-                  'localhost'
-                )
-                  ? 'http://localhost:3002'
-                  : 'https://phase.sh';
                 await authClient.signIn.social({
                   provider: 'github',
-                  callbackURL: `${webUrl}/dashboard`,
+                  callbackURL: getSocialAuthCallbackURL(
+                    mobileCallbackURL ?? null
+                  ),
                 });
               } finally {
                 setIsGithubLoading(false);
@@ -324,6 +327,7 @@ type SignupFormProps = {
     email: string;
     password: string;
   };
+  mobileCallbackURL?: string | null;
   onValuesChange?: (values: {
     name: string;
     email: string;
@@ -331,7 +335,11 @@ type SignupFormProps = {
   }) => void;
 };
 
-function SignupForm({ defaultValues, onValuesChange }: SignupFormProps) {
+function SignupForm({
+  defaultValues,
+  mobileCallbackURL,
+  onValuesChange,
+}: SignupFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGithubLoading, setIsGithubLoading] = useState(false);
@@ -646,14 +654,11 @@ function SignupForm({ defaultValues, onValuesChange }: SignupFormProps) {
             onClick={async () => {
               setIsGithubLoading(true);
               try {
-                const webUrl = process.env.NEXT_PUBLIC_SERVER_URL?.includes(
-                  'localhost'
-                )
-                  ? 'http://localhost:3002'
-                  : 'https://phase.sh';
                 await authClient.signIn.social({
                   provider: 'github',
-                  callbackURL: `${webUrl}/dashboard`,
+                  callbackURL: getSocialAuthCallbackURL(
+                    mobileCallbackURL ?? null
+                  ),
                 });
               } finally {
                 setIsGithubLoading(false);
@@ -960,6 +965,7 @@ function PasswordResetForm({ token }: { token: string }) {
 
 function AuthContent() {
   const [token] = useQueryState('token');
+  const [callbackURL] = useQueryState('callbackURL');
   const [loginValues, setLoginValues] = useState({
     email: '',
     password: '',
@@ -1006,6 +1012,7 @@ function AuthContent() {
                 <TabsContent value="login">
                   <LoginForm
                     defaultValues={loginValues}
+                    mobileCallbackURL={callbackURL}
                     onValuesChange={setLoginValues}
                   />
                 </TabsContent>
@@ -1013,6 +1020,7 @@ function AuthContent() {
                 <TabsContent value="signup">
                   <SignupForm
                     defaultValues={signupValues}
+                    mobileCallbackURL={callbackURL}
                     onValuesChange={setSignupValues}
                   />
                 </TabsContent>

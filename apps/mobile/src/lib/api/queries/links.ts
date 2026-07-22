@@ -2,13 +2,20 @@ import type {
   CreateLinkDomainRequest,
   CreateLinkRequest,
   LinkAnalyticsResponse,
+  LinkClicksListResponse,
   LinkDetail,
   LinkDomain,
   LinksListResponse,
+  PaginationQueryParams,
   UpdateLinkRequest,
 } from "@phase/shared";
 import { LinkDomainsListResponseSchema } from "@phase/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import type { z } from "zod";
 
 import { buildQueryString, fetchApi } from "@/lib/api/client";
@@ -48,6 +55,26 @@ export function useLinkAnalytics(appId: string, linkId: string) {
       ),
     ...cacheConfig.list,
     enabled: Boolean(appId) && Boolean(linkId),
+  });
+}
+
+export function useLinkClicks(
+  appId: string,
+  linkId: string,
+  filters?: PaginationQueryParams
+) {
+  return useQuery({
+    queryKey: [...queryKeys.links.analytics(appId, linkId), "clicks", filters],
+    queryFn: () =>
+      fetchApi<LinkClicksListResponse>(
+        `/web/links/${linkId}/clicks${buildQueryString({
+          appId,
+          ...filters,
+        })}`
+      ),
+    ...cacheConfig.list,
+    enabled: Boolean(appId) && Boolean(linkId),
+    placeholderData: keepPreviousData,
   });
 }
 

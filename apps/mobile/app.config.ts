@@ -19,11 +19,13 @@ export default function createExpoConfig({
     icon: "./assets/images/icon.png",
     scheme: APP_SCHEME,
     userInterfaceStyle: "dark",
+    backgroundColor: "#0A0A0A",
     ios: {
       ...config.ios,
       icon: "./assets/expo.icon",
       bundleIdentifier: BUNDLE_ID,
       supportsTablet: true,
+      backgroundColor: "#0A0A0A",
       ...(appleTeamId !== undefined && appleTeamId.length > 0
         ? { appleTeamId }
         : {}),
@@ -31,6 +33,7 @@ export default function createExpoConfig({
     android: {
       ...config.android,
       package: BUNDLE_ID,
+      backgroundColor: "#0A0A0A",
       adaptiveIcon: {
         backgroundColor: "#000000",
         foregroundImage: "./assets/images/android-icon-foreground.png",
@@ -44,9 +47,9 @@ export default function createExpoConfig({
       [
         "expo-splash-screen",
         {
-          backgroundColor: "#000000",
+          backgroundColor: "#0A0A0A",
           image: "./assets/images/splash-icon.png",
-          imageWidth: 76,
+          imageWidth: 96,
         },
       ],
       "expo-secure-store",
