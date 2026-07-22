@@ -1,3 +1,4 @@
+import { expo } from '@better-auth/expo';
 import { checkout, polar, portal } from '@polar-sh/better-auth';
 import { Polar } from '@polar-sh/sdk';
 import { betterAuth } from 'better-auth';
@@ -37,7 +38,9 @@ const getCookieDomain = (): string | undefined => {
   }
 };
 
-const plugins: ReturnType<typeof polar>[] = [];
+const plugins: Array<ReturnType<typeof polar> | ReturnType<typeof expo>> = [
+  expo(),
+];
 
 if (process.env.POLAR_ACCESS_TOKEN) {
   const polarClient = new Polar({
@@ -131,7 +134,10 @@ export const auth = betterAuth({
   baseURL: process.env.SERVER_URL || 'http://localhost:3001',
   trustedOrigins: [
     process.env.WEB_URL || 'http://localhost:3002',
-    ...(process.env.NODE_ENV !== 'production' ? ['http://localhost:3002'] : []),
+    'phase://',
+    ...(process.env.NODE_ENV !== 'production'
+      ? ['http://localhost:3002', 'exp://', 'exp://**']
+      : []),
   ],
   session: {
     expiresIn: 60 * 60 * 24 * 7,

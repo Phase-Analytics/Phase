@@ -49,7 +49,7 @@
     "@visx/scale": "4.0.1-alpha.0",
     "@visx/shape": "4.0.1-alpha.0",
     "@visx/zoom": "4.0.1-alpha.0",
-    "better-auth": "1.4.7",
+    "better-auth": "^1.6.3",
     "boring-avatars": "^2.0.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
