@@ -24,6 +24,7 @@ export default function createExpoConfig({
       ...config.ios,
       icon: "./assets/expo.icon",
       bundleIdentifier: BUNDLE_ID,
+      buildNumber: "1",
       supportsTablet: true,
       backgroundColor: "#0A0A0A",
       ...(appleTeamId !== undefined && appleTeamId.length > 0

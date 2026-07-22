@@ -9,8 +9,8 @@ function appendQueryParam(url: string, key: string, value: string): string {
 }
 
 /**
- * Hands a browser session to an Expo app via deep link `cookie` query param,
- * matching the @better-auth/expo OAuth callback pattern (RN cannot read Set-Cookie).
+ * Hands a browser session to an Expo app via deep link query params.
+ * RN cannot read Set-Cookie from fetch, so we pass the raw session token.
  */
 export function expoMobileHandoff(): BetterAuthPlugin {
   return {
@@ -35,33 +35,17 @@ export function expoMobileHandoff(): BetterAuthPlugin {
             });
           }
 
-          const { name, attributes } = ctx.context.authCookies.sessionToken;
           const token = ctx.context.session.session.token;
-          const maxAge =
-            attributes.maxAge ??
-            Math.max(
-              0,
-              Math.floor(
-                (new Date(ctx.context.session.session.expiresAt).getTime() -
-                  Date.now()) /
-                  1000
-              )
-            );
+          const expiresAt = new Date(
+            ctx.context.session.session.expiresAt
+          ).toISOString();
+          const cookieName = ctx.context.authCookies.sessionToken.name;
 
-          const cookie = [
-            `${name}=${token}`,
-            'Path=/',
-            `Max-Age=${maxAge}`,
-            attributes.httpOnly ? 'HttpOnly' : null,
-            attributes.secure ? 'Secure' : null,
-            attributes.sameSite
-              ? `SameSite=${String(attributes.sameSite)}`
-              : null,
-          ]
-            .filter(Boolean)
-            .join('; ');
+          let location = appendQueryParam(callbackURL, 'token', token);
+          location = appendQueryParam(location, 'expires_at', expiresAt);
+          location = appendQueryParam(location, 'cookie_name', cookieName);
 
-          throw ctx.redirect(appendQueryParam(callbackURL, 'cookie', cookie));
+          throw ctx.redirect(location);
         }
       ),
     },

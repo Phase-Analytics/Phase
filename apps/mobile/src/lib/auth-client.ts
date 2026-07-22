@@ -1,8 +1,4 @@
-import {
-  expoClient,
-  getSetCookie,
-  storageAdapter,
-} from "@better-auth/expo/client";
+import { expoClient } from "@better-auth/expo/client";
 import { createAuthClient } from "better-auth/react";
 import * as SecureStore from "expo-secure-store";
 
@@ -15,13 +11,6 @@ if (serverURL === undefined || serverURL.trim() === "") {
 const baseURL = serverURL.replace(/\/$/, "");
 const STORAGE_PREFIX = "phase";
 const COOKIE_KEY = `${STORAGE_PREFIX}_cookie`;
-
-const secureStorage = storageAdapter({
-  getItem: (key) => SecureStore.getItem(key),
-  setItem: (key, value) => {
-    SecureStore.setItem(key, value);
-  },
-});
 
 export const authClient = createAuthClient({
   baseURL,
@@ -64,10 +53,27 @@ export function getQueryParam(url: string, key: string): string | null {
   }
 }
 
-export async function persistAuthCookieFromRedirect(
-  cookieHeader: string
-): Promise<void> {
-  const previous = secureStorage.getItem(COOKIE_KEY);
-  const next = getSetCookie(cookieHeader, previous ?? undefined);
-  await secureStorage.setItem(COOKIE_KEY, next);
+export async function persistSessionToken(input: {
+  token: string;
+  expiresAt: string;
+  cookieName: string;
+}): Promise<void> {
+  const expires = new Date(input.expiresAt);
+  if (Number.isNaN(expires.getTime()) || expires.getTime() <= Date.now()) {
+    throw new Error("Session token is expired");
+  }
+
+  const entry = {
+    value: input.token,
+    expires: expires.toISOString(),
+  };
+
+  // Store both secure + plain names — production uses __Secure- prefix.
+  const stored: Record<string, { value: string; expires: string }> = {
+    [input.cookieName]: entry,
+    "better-auth.session_token": entry,
+    "__Secure-better-auth.session_token": entry,
+  };
+
+  await SecureStore.setItemAsync(COOKIE_KEY, JSON.stringify(stored));
 }
