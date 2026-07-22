@@ -7,6 +7,32 @@ import * as z from 'zod';
 
 const HANDOFF_PREFIX = 'expo-mobile-handoff:';
 
+const handoffSessionSchema = z.object({
+  session: z
+    .object({
+      id: z.string(),
+      createdAt: z.coerce.date(),
+      updatedAt: z.coerce.date(),
+      userId: z.string(),
+      expiresAt: z.coerce.date(),
+      token: z.string(),
+      ipAddress: z.string().nullable().optional(),
+      userAgent: z.string().nullable().optional(),
+    })
+    .passthrough(),
+  user: z
+    .object({
+      id: z.string(),
+      createdAt: z.coerce.date(),
+      updatedAt: z.coerce.date(),
+      email: z.string(),
+      emailVerified: z.boolean(),
+      name: z.string(),
+      image: z.string().nullable().optional(),
+    })
+    .passthrough(),
+});
+
 function appendCodeToCallback(callbackURL: string, code: string): string {
   try {
     const url = new URL(callbackURL);
@@ -48,7 +74,7 @@ export function expoMobileHandoff(): BetterAuthPlugin {
           const code = generateRandomString(32);
           await ctx.context.internalAdapter.createVerificationValue({
             identifier: `${HANDOFF_PREFIX}${code}`,
-            value: ctx.context.session.session.token,
+            value: JSON.stringify(ctx.context.session),
             expiresAt: new Date(Date.now() + 2 * 60 * 1000),
           });
 
@@ -75,12 +101,20 @@ export function expoMobileHandoff(): BetterAuthPlugin {
             });
           }
 
-          const session = await ctx.context.internalAdapter.findSession(
-            verification.value
-          );
-          if (!session || session.session.expiresAt < new Date()) {
+          let session: z.infer<typeof handoffSessionSchema>;
+          try {
+            session = handoffSessionSchema.parse(
+              JSON.parse(verification.value) as unknown
+            );
+          } catch {
             throw new APIError('BAD_REQUEST', {
-              message: 'Session not found',
+              message: 'Invalid handoff session',
+            });
+          }
+
+          if (session.session.expiresAt < new Date()) {
+            throw new APIError('BAD_REQUEST', {
+              message: 'Session expired',
             });
           }
 
