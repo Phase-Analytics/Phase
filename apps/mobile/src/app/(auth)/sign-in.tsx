@@ -10,7 +10,7 @@ import { Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { track } from "@/lib/analytics";
 import {
-  applyAuthCookieFromRedirect,
+  applyAuthCodeFromRedirect,
   getWebAuthURL,
 } from "@/lib/auth-client";
 
@@ -49,7 +49,7 @@ export default function SignInScreen() {
         console.log("[auth] redirect", result.url.slice(0, 200));
       }
 
-      await applyAuthCookieFromRedirect(result.url);
+      await applyAuthCodeFromRedirect(result.url);
       void track("mobile_sign_in", { method: "web" });
       router.replace("/(app)/(tabs)/users");
     } catch (err) {

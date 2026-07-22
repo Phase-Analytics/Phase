@@ -3,7 +3,6 @@ import { checkout, polar, portal } from '@polar-sh/better-auth';
 import { Polar } from '@polar-sh/sdk';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { oneTimeToken } from 'better-auth/plugins';
 import { db } from '@/db';
 import { account, session, user, verification } from '@/db/schema';
 import { sendPasswordResetEmail } from './email';
@@ -43,9 +42,8 @@ const getCookieDomain = (): string | undefined => {
 const plugins: Array<
   | ReturnType<typeof polar>
   | ReturnType<typeof expo>
-  | ReturnType<typeof oneTimeToken>
   | ReturnType<typeof expoMobileHandoff>
-> = [expo(), oneTimeToken(), expoMobileHandoff()];
+> = [expo(), expoMobileHandoff()];
 
 if (process.env.POLAR_ACCESS_TOKEN) {
   const polarClient = new Polar({

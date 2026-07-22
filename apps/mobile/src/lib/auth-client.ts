@@ -1,5 +1,6 @@
 import { expoClient, getSetCookie, storageAdapter } from "@better-auth/expo/client";
 import { createAuthClient } from "better-auth/react";
+import * as Linking from "expo-linking";
 import * as SecureStore from "expo-secure-store";
 
 const serverURL = process.env.EXPO_PUBLIC_SERVER_URL;
@@ -11,6 +12,7 @@ if (serverURL === undefined || serverURL.trim() === "") {
 const baseURL = serverURL.replace(/\/$/, "");
 const STORAGE_PREFIX = "phase";
 const COOKIE_KEY = `${STORAGE_PREFIX}_cookie`;
+const SESSION_CACHE_KEY = `${STORAGE_PREFIX}_session_data`;
 
 // Same storage adapter instance pattern as expoClient (SecureStore sync API).
 const storage = storageAdapter(SecureStore);
@@ -55,40 +57,63 @@ export function getQueryParam(url: string, key: string): string | null {
   }
 }
 
-/**
- * Exact same post-OAuth cookie apply path as @better-auth/expo:
- * parse Set-Cookie from deep link → SecureStore → notify session signal.
- */
-export async function applyAuthCookieFromRedirect(url: string): Promise<void> {
-  const cookie = getQueryParam(url, "cookie");
-  if (!cookie) {
+type SessionPayload = {
+  user: {
+    id: string;
+    email: string;
+    name: string;
+  };
+  session: {
+    id: string;
+    expiresAt: string | Date;
+  };
+};
+
+type HandoffExchangeResponse = {
+  cookie: string;
+  session: SessionPayload;
+};
+
+export async function applyAuthCodeFromRedirect(url: string): Promise<void> {
+  const code = getQueryParam(url, "code");
+  if (!code) {
     throw new Error("Sign in did not complete. Try again.");
   }
 
-  const next = getSetCookie(cookie);
+  const response = await fetch(`${baseURL}/api/auth/expo-mobile-exchange`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "expo-origin": Linking.createURL("/"),
+      "x-skip-oauth-proxy": "true",
+    },
+    body: JSON.stringify({ code }),
+  });
+
+  const payload = (await response.json()) as
+    | HandoffExchangeResponse
+    | { message?: string };
+  if (!response.ok || !("cookie" in payload) || !("session" in payload)) {
+    throw new Error(
+      ("message" in payload && payload.message) || "Session exchange failed"
+    );
+  }
+
+  const next = getSetCookie(payload.cookie);
   await storage.setItem(COOKIE_KEY, next);
 
   if (!getAuthCookie()) {
     throw new Error("Could not store session. Try again.");
   }
 
-  // This is what v1 GitHub OAuth did — without it useSession stays logged out.
+  await storage.setItem(SESSION_CACHE_KEY, JSON.stringify(payload.session));
+
+  const sessionAtom = authClient.$store.atoms.session;
+  sessionAtom?.set({
+    ...sessionAtom.get(),
+    data: payload.session,
+    error: null,
+    isPending: false,
+  });
   authClient.$store.notify("$sessionSignal");
-
-  for (let attempt = 0; attempt < 8; attempt++) {
-    const session = await authClient.getSession({
-      query: {
-        disableCookieCache: true,
-      },
-    });
-    if (session.error) {
-      throw new Error(session.error.message ?? "Sign in failed");
-    }
-    if (session.data?.user) {
-      return;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-
-  throw new Error("Session could not be loaded");
 }
