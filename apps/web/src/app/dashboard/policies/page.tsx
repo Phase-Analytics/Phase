@@ -15,7 +15,7 @@ export default function PoliciesPage() {
     <RequireApp>
       <div className="flex flex-1 flex-col gap-6">
         <DashboardPageHeader
-          description="Host legal docs as short links with click analytics"
+          description="Legal documents published as short links"
           title="Policies"
         />
 

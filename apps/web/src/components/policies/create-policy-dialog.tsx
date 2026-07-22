@@ -167,7 +167,7 @@ export function CreatePolicyDialog({
                 value={hostValue}
               />
               <div className="flex min-w-0 flex-1 items-center gap-0">
-                <span className="flex h-9 shrink-0 items-center rounded-l-md border border-r-0 bg-muted/50 px-2 font-mono text-muted-foreground text-xs">
+                <span className="flex h-9 shrink-0 items-center rounded-l-md border border-r-0 bg-muted/50 px-2 text-muted-foreground text-xs">
                   {slugPrefix}
                 </span>
                 <Input
@@ -213,7 +213,7 @@ export function CreatePolicyDialog({
               Content
             </label>
             <textarea
-              className="min-h-40 w-full rounded-md border bg-transparent px-3 py-2 font-mono text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              className="min-h-40 w-full rounded-md border bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
               id="policy-content"
               onChange={(e) => setContent(e.target.value)}
               placeholder="Write your policy in Markdown…"

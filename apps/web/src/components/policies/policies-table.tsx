@@ -145,8 +145,8 @@ export function PoliciesTable({
       <Card>
         <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
           <p className="text-muted-foreground text-sm">
-            Host Terms of Service, Privacy Policies, and other legal docs. Each
-            policy gets a short link with click analytics.
+            Host Terms of Service, Privacy Policies, and other legal docs as
+            short links.
           </p>
           <CreatePolicyDialog appId={appId}>
             <Button type="button">

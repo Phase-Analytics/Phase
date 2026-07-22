@@ -60,13 +60,13 @@ const components: Components = {
       return <code className={className}>{children}</code>;
     }
     return (
-      <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.875em]">
+      <code className="rounded bg-muted px-1.5 py-0.5 text-[0.875em]">
         {children}
       </code>
     );
   },
   pre: ({ children }) => (
-    <pre className="my-4 overflow-x-auto rounded-md bg-muted p-4 font-mono text-sm">
+    <pre className="my-4 overflow-x-auto rounded-md bg-muted p-4 text-sm">
       {children}
     </pre>
   ),

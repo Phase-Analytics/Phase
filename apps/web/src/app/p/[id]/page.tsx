@@ -1,7 +1,5 @@
 import type { PublicPolicyResponse } from '@phase/shared';
 import type { Metadata } from 'next';
-import Image from 'next/image';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { MarkdownContent } from '@/components/policies/markdown-content';
 import { API_URL } from '@/lib/api/client';
@@ -78,35 +76,18 @@ export default async function PublicPolicyPage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="border-border border-b">
-        <div className="mx-auto flex h-14 max-w-3xl items-center px-4 sm:px-6">
-          <Link className="flex items-center gap-2" href="/">
-            <Image
-              alt="Phase"
-              className="dark:invert"
-              height={20}
-              src="/logo.svg"
-              width={20}
-            />
-            <span className="font-semibold text-sm tracking-tight">Phase</span>
-          </Link>
-        </div>
-      </header>
+    <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
+      <div className="mb-10 space-y-3">
+        <h1 className="font-semibold text-3xl tracking-tight sm:text-4xl">
+          {policy.name}
+        </h1>
+        <p className="text-muted-foreground text-sm">
+          Last updated {formatDisplayDate(policy.date)}
+          {policy.appName ? ` · ${policy.appName}` : null}
+        </p>
+      </div>
 
-      <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
-        <div className="mb-8 space-y-2">
-          <h1 className="font-semibold text-3xl tracking-tight sm:text-4xl">
-            {policy.name}
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            Last updated {formatDisplayDate(policy.date)}
-            {policy.appName ? ` · ${policy.appName}` : null}
-          </p>
-        </div>
-
-        <MarkdownContent content={policy.content} />
-      </main>
-    </div>
+      <MarkdownContent content={policy.content} />
+    </main>
   );
 }

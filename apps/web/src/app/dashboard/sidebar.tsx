@@ -440,9 +440,11 @@ export function DashboardSidebar() {
               {linkNavItems.map((item) => {
                 const isLinkNavActive =
                   item.path === '/dashboard/links/domains'
-                    ? pathname.includes('/dashboard/links/domains')
-                    : pathname.startsWith('/dashboard/links') &&
-                      !pathname.includes('/domains');
+                    ? pathname.startsWith('/dashboard/links/domains')
+                    : item.path === '/dashboard/policies'
+                      ? pathname.startsWith('/dashboard/policies')
+                      : pathname.startsWith('/dashboard/links') &&
+                        !pathname.startsWith('/dashboard/links/domains');
 
                 return (
                   <SidebarMenuItem key={item.label}>

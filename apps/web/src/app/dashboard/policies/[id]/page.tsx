@@ -1,5 +1,7 @@
 'use client';
 
+import { ArrowTurnBackwardIcon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 import {
   formatZodError,
   LinkSlugSchema,
@@ -10,10 +12,7 @@ import { parseAsString, useQueryState } from 'nuqs';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header';
-import { LinkAnalytics } from '@/components/links/link-analytics';
-import { LinkClicksTable } from '@/components/links/link-clicks-table';
 import { PHASE_HOST_VALUE } from '@/components/links/link-form-utils';
-import { LinkQrCard } from '@/components/links/link-qr-card';
 import { MarkdownContent } from '@/components/policies/markdown-content';
 import { RemovePolicyDialog } from '@/components/policies/remove-policy-dialog';
 import { RequireApp } from '@/components/require-app';
@@ -25,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { formatApiErrorMessage } from '@/lib/format-api-error';
+import { formatUrlWithoutProtocol } from '@/lib/link-urls';
 import {
   useLinkDomains,
   usePolicy,
@@ -145,18 +145,45 @@ export default function PolicyDetailPage() {
   return (
     <RequireApp>
       <div className="flex flex-1 flex-col gap-6">
-        <DashboardPageHeader
-          description="Edit content and short link. Clicks are tracked automatically."
-          title={data?.name ?? 'Policy'}
-        />
+        <div className="flex items-center justify-between gap-2">
+          <Button
+            className="font-normal"
+            onClick={() =>
+              router.push(
+                appId
+                  ? `/dashboard/policies?app=${appId}`
+                  : '/dashboard/policies'
+              )
+            }
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <HugeiconsIcon className="size-4" icon={ArrowTurnBackwardIcon} />
+            Back
+          </Button>
+          {data && appId ? (
+            <RemovePolicyDialog
+              appId={appId}
+              onDeleted={() => router.push(`/dashboard/policies?app=${appId}`)}
+              policyId={policyId}
+              policyLabel={data.name}
+            >
+              <Button size="sm" type="button" variant="destructive">
+                Delete
+              </Button>
+            </RemovePolicyDialog>
+          ) : null}
+        </div>
 
-        {isPending ? (
-          <div className="space-y-3">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-64 w-full" />
-          </div>
-        ) : null}
+        {isPending || !data ? (
+          <Skeleton className="h-12 w-64" />
+        ) : (
+          <DashboardPageHeader
+            description={formatUrlWithoutProtocol(data.publicUrl)}
+            title={data.name}
+          />
+        )}
 
         {isError || !(isPending || data) ? (
           <Card>
@@ -166,163 +193,146 @@ export default function PolicyDetailPage() {
           </Card>
         ) : null}
 
+        {isPending ? (
+          <Card className="py-0">
+            <CardContent className="space-y-4 p-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-64 w-full" />
+            </CardContent>
+          </Card>
+        ) : null}
+
         {data && appId ? (
-          <div className="flex flex-col gap-6">
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]">
-              <Card className="py-0">
-                <CardContent className="space-y-4 p-4">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="font-medium text-sm" htmlFor="edit-name">
-                      Name
-                    </label>
+          <Card className="py-0">
+            <CardContent className="space-y-4 p-4">
+              <div>
+                <h2 className="font-semibold text-muted-foreground text-sm uppercase">
+                  Policy details
+                </h2>
+                <p className="text-muted-foreground text-sm">
+                  Name, short link, date, and Markdown content
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="font-medium text-sm" htmlFor="edit-name">
+                  Name
+                </label>
+                <Input
+                  id="edit-name"
+                  onChange={(e) => setName(e.target.value)}
+                  value={name}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="font-medium text-sm" htmlFor="edit-slug">
+                  Link
+                </label>
+                <div className="flex gap-2">
+                  <BuilderDropdown
+                    className="h-9 w-[min(42%,11rem)] shrink-0"
+                    onValueChange={setHostValue}
+                    options={hostOptions}
+                    value={hostValue}
+                  />
+                  <div className="flex min-w-0 flex-1 items-center gap-0">
+                    <span className="flex h-9 shrink-0 items-center rounded-l-md border border-r-0 bg-muted/50 px-2 text-muted-foreground text-xs">
+                      {slugPrefix}
+                    </span>
                     <Input
-                      id="edit-name"
-                      onChange={(e) => setName(e.target.value)}
-                      value={name}
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="font-medium text-sm" htmlFor="edit-slug">
-                      Link
-                    </label>
-                    <div className="flex gap-2">
-                      <BuilderDropdown
-                        className="h-9 w-[min(42%,11rem)] shrink-0"
-                        onValueChange={setHostValue}
-                        options={hostOptions}
-                        value={hostValue}
-                      />
-                      <div className="flex min-w-0 flex-1 items-center gap-0">
-                        <span className="flex h-9 shrink-0 items-center rounded-l-md border border-r-0 bg-muted/50 px-2 font-mono text-muted-foreground text-xs">
-                          {slugPrefix}
-                        </span>
-                        <Input
-                          className="rounded-l-none"
-                          id="edit-slug"
-                          onChange={(e) =>
-                            setSlug(
-                              e.target.value.toLowerCase().replace(/\s+/g, '-')
-                            )
-                          }
-                          value={slug}
-                        />
-                      </div>
-                      <CopyButton
-                        content={data.publicUrl}
-                        size="xs"
-                        variant="outline"
-                      />
-                    </div>
-                    {slugValidationError ? (
-                      <p className="text-destructive text-xs">
-                        {slugValidationError}
-                      </p>
-                    ) : null}
-                    {slugTaken ? (
-                      <p className="text-destructive text-xs">
-                        This path is already taken on the selected domain
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="font-medium text-sm" htmlFor="edit-date">
-                      Date
-                    </label>
-                    <Input
-                      id="edit-date"
-                      onChange={(e) => setDate(e.target.value)}
-                      type="date"
-                      value={date}
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center justify-between">
-                      <label
-                        className="font-medium text-sm"
-                        htmlFor="edit-content"
-                      >
-                        Content
-                      </label>
-                      <Button
-                        onClick={() => setShowPreview((v) => !v)}
-                        size="sm"
-                        type="button"
-                        variant="ghost"
-                      >
-                        {showPreview ? 'Edit' : 'Preview'}
-                      </Button>
-                    </div>
-                    {showPreview ? (
-                      <div className="min-h-64 rounded-md border p-4">
-                        <MarkdownContent content={content} />
-                      </div>
-                    ) : (
-                      <textarea
-                        className="min-h-64 w-full rounded-md border bg-transparent px-3 py-2 font-mono text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                        id="edit-content"
-                        onChange={(e) => setContent(e.target.value)}
-                        value={content}
-                      />
-                    )}
-                  </div>
-
-                  {error ? (
-                    <p className="text-destructive text-sm">{error}</p>
-                  ) : null}
-
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <RemovePolicyDialog
-                      appId={appId}
-                      onDeleted={() =>
-                        router.push(`/dashboard/policies?app=${appId}`)
+                      className="rounded-l-none"
+                      id="edit-slug"
+                      onChange={(e) =>
+                        setSlug(
+                          e.target.value.toLowerCase().replace(/\s+/g, '-')
+                        )
                       }
-                      policyId={policyId}
-                      policyLabel={data.name}
-                    >
-                      <Button type="button" variant="destructive">
-                        Delete
-                      </Button>
-                    </RemovePolicyDialog>
-
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() =>
-                          router.push(`/dashboard/policies?app=${appId}`)
-                        }
-                        type="button"
-                        variant="outline"
-                      >
-                        Back
-                      </Button>
-                      <Button
-                        className="relative"
-                        disabled={
-                          updatePolicy.isPending ||
-                          Boolean(slugValidationError) ||
-                          Boolean(slugTaken)
-                        }
-                        onClick={handleSave}
-                        type="button"
-                      >
-                        {updatePolicy.isPending ? (
-                          <Spinner className="size-4" />
-                        ) : null}
-                        Save
-                      </Button>
-                    </div>
+                      value={slug}
+                    />
                   </div>
-                </CardContent>
-              </Card>
+                  <CopyButton
+                    content={data.publicUrl}
+                    size="xs"
+                    variant="outline"
+                  />
+                </div>
+                {slugValidationError ? (
+                  <p className="text-destructive text-sm">
+                    {slugValidationError}
+                  </p>
+                ) : null}
+                {slugTaken ? (
+                  <p className="text-destructive text-sm">
+                    This path is already taken on the selected domain
+                  </p>
+                ) : null}
+              </div>
 
-              <LinkQrCard className="h-fit" shortUrl={data.publicUrl} />
-            </div>
+              <div className="space-y-2">
+                <label className="font-medium text-sm" htmlFor="edit-date">
+                  Date
+                </label>
+                <Input
+                  id="edit-date"
+                  onChange={(e) => setDate(e.target.value)}
+                  type="date"
+                  value={date}
+                />
+              </div>
 
-            <LinkAnalytics appId={appId} linkId={data.linkId} />
-            <LinkClicksTable appId={appId} linkId={data.linkId} />
-          </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-medium text-sm" htmlFor="edit-content">
+                    Content
+                  </label>
+                  <Button
+                    onClick={() => setShowPreview((v) => !v)}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    {showPreview ? 'Edit' : 'Preview'}
+                  </Button>
+                </div>
+                {showPreview ? (
+                  <div className="min-h-64 rounded-md border p-4">
+                    <MarkdownContent content={content} />
+                  </div>
+                ) : (
+                  <textarea
+                    className="min-h-64 w-full rounded-md border bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    id="edit-content"
+                    onChange={(e) => setContent(e.target.value)}
+                    value={content}
+                  />
+                )}
+              </div>
+
+              {error ? (
+                <p className="text-destructive text-sm">{error}</p>
+              ) : null}
+
+              <div className="flex justify-end">
+                <Button
+                  className="relative"
+                  disabled={
+                    updatePolicy.isPending ||
+                    Boolean(slugValidationError) ||
+                    Boolean(slugTaken)
+                  }
+                  onClick={handleSave}
+                  type="button"
+                >
+                  {updatePolicy.isPending ? (
+                    <Spinner className="size-4" />
+                  ) : null}
+                  Save
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         ) : null}
       </div>
     </RequireApp>
