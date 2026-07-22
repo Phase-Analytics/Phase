@@ -10,11 +10,8 @@ import { Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { track } from "@/lib/analytics";
 import {
-  authClient,
-  getAuthCookie,
-  getQueryParam,
+  establishSessionFromRedirect,
   getWebAuthURL,
-  persistSessionToken,
 } from "@/lib/auth-client";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -36,7 +33,8 @@ export default function SignInScreen() {
     setLoading(true);
 
     try {
-      const redirectUri = Linking.createURL("/");
+      // Dedicated path so Expo Router doesn't treat this like "/" auth index.
+      const redirectUri = Linking.createURL("/login-callback");
       const authUrl = `${getWebAuthURL()}/auth?callbackURL=${encodeURIComponent(redirectUri)}`;
       const result = await WebBrowser.openAuthSessionAsync(
         authUrl,
@@ -47,40 +45,11 @@ export default function SignInScreen() {
         return;
       }
 
-      const token = getQueryParam(result.url, "token");
-      const expiresAt = getQueryParam(result.url, "expires_at");
-      const cookieName =
-        getQueryParam(result.url, "cookie_name") ||
-        "__Secure-better-auth.session_token";
-
-      if (!token || !expiresAt) {
-        setError("Sign in did not complete. Try again.");
-        return;
+      if (__DEV__) {
+        console.log("[auth] redirect url", result.url);
       }
 
-      await persistSessionToken({ token, expiresAt, cookieName });
-
-      if (!getAuthCookie()) {
-        setError("Could not store session. Try again.");
-        return;
-      }
-
-      const session = await authClient.getSession({
-        fetchOptions: {
-          cache: "no-store",
-        },
-      });
-
-      if (session.error) {
-        setError(session.error.message ?? "Sign in failed");
-        return;
-      }
-
-      if (!session.data) {
-        setError("Session could not be loaded");
-        return;
-      }
-
+      await establishSessionFromRedirect(result.url);
       void track("mobile_sign_in", { method: "web" });
       router.replace("/(app)/(tabs)/users");
     } catch (err) {

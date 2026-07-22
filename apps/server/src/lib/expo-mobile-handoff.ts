@@ -41,7 +41,8 @@ export function expoMobileHandoff(): BetterAuthPlugin {
           ).toISOString();
           const cookieName = ctx.context.authCookies.sessionToken.name;
 
-          let location = appendQueryParam(callbackURL, 'token', token);
+          // Use session_token (not token) — /auth?token= is password-reset on web.
+          let location = appendQueryParam(callbackURL, 'session_token', token);
           location = appendQueryParam(location, 'expires_at', expiresAt);
           location = appendQueryParam(location, 'cookie_name', cookieName);
 
