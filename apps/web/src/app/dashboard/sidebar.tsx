@@ -248,17 +248,25 @@ export function DashboardSidebar() {
       try {
         const response = await polarPortal.getSubscriptions();
         if ('data' in response && response.data) {
-          // biome-ignore lint/suspicious/noExplicitAny: <>
-          const subscriptions = response.data as any[];
+          const page = response.data as unknown as {
+            result?: {
+              items?: Array<{
+                productId?: string;
+                product?: { id?: string };
+              }>;
+            };
+            items?: Array<{
+              productId?: string;
+              product?: { id?: string };
+            }>;
+          };
 
+          const subscriptions = page.result?.items ?? page.items ?? [];
           const activeSubscription = subscriptions[0];
 
           if (activeSubscription) {
             const productId =
-              // biome-ignore lint/suspicious/noExplicitAny: <>
-              (activeSubscription as any).product_id ||
-              // biome-ignore lint/suspicious/noExplicitAny: <>
-              (activeSubscription as any).product?.id;
+              activeSubscription.productId || activeSubscription.product?.id;
             const planName = productId ? PRODUCT_PLANS[productId] : null;
             setCurrentPlan(planName || 'Unknown');
           } else {
