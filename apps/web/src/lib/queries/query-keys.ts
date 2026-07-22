@@ -136,4 +136,24 @@ export const queryKeys = {
     domains: (appId: string) =>
       [...queryKeys.links.all, 'domains', appId] as const,
   },
+
+  policies: {
+    all: ['policies'] as const,
+    list: (appId: string) =>
+      [...queryKeys.policies.all, 'list', appId] as const,
+    detail: (appId: string, policyId: string) =>
+      [...queryKeys.policies.all, 'detail', appId, policyId] as const,
+    slugAvailable: (
+      slug: string,
+      domainId: string | null,
+      excludePolicyId?: string
+    ) =>
+      [
+        ...queryKeys.policies.all,
+        'slug-available',
+        slug,
+        domainId,
+        excludePolicyId,
+      ] as const,
+  },
 } as const;

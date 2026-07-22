@@ -9,7 +9,7 @@
           "image-name": "phase-logo.svg",
           "name": "phase-logo",
           "position": {
-            "scale": 0.72,
+            "scale": 1,
             "translation-in-points": [0, 0]
           }
         }

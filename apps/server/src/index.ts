@@ -36,6 +36,7 @@ import health from '@/routes/health';
 import { linkRedirectRouter } from '@/routes/links/redirect';
 import { linksWebRouter } from '@/routes/links/web';
 import { pingSdkRouter } from '@/routes/ping';
+import { policiesPublicRouter, policiesWebRouter } from '@/routes/policies';
 import { publicApiRouter } from '@/routes/public-api';
 import { realtimeWebRouter } from '@/routes/realtime';
 import { sessionSdkRouter, sessionWebRouter } from '@/routes/session';
@@ -172,12 +173,14 @@ const webRoutes = new Elysia({ prefix: '/web' })
   .use(exploreWebRouter)
   .use(funnelWebRouter)
   .use(linksWebRouter)
+  .use(policiesWebRouter)
   .use(realtimeWebRouter)
   .use(sessionWebRouter);
 
 const publicRoutes = new Elysia({ prefix: '/public' })
   .use(publicCors)
-  .use(waitlistPublicRouter);
+  .use(waitlistPublicRouter)
+  .use(policiesPublicRouter);
 
 const publicApiRoutes = new Elysia({ prefix: '/public-api' })
   .onBeforeHandle(async ({ request, set, server }) => {

@@ -13,6 +13,7 @@ export function useSelectedApp() {
   const {
     data,
     isLoading: appsLoading,
+    isRefetching,
     error,
     refetch,
   } = useApps();
@@ -55,6 +56,7 @@ export function useSelectedApp() {
     selectedAppId: selectedApp?.id ?? null,
     setSelectedAppId,
     isLoading: appsLoading,
+    isRefetching,
     error,
     refetch,
   };

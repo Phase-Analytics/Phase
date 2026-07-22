@@ -2,6 +2,11 @@ import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import {
+  QueryRefreshControl,
+  refreshScrollProps,
+  useQueryRefresh,
+} from "@/components/scroll-refresh";
+import {
   EmptyState,
   ErrorState,
   InfoRow,
@@ -38,6 +43,7 @@ export default function UserDetailScreen() {
     page: "1",
     pageSize: "10",
   });
+  const { refreshing, onRefresh } = useQueryRefresh(device, sessions);
 
   if (!selectedAppId || !id) {
     return (
@@ -74,8 +80,12 @@ export default function UserDetailScreen() {
   return (
     <Screen padded={false}>
       <ScrollView
+        {...refreshScrollProps}
         contentContainerStyle={styles.content}
         contentInsetAdjustmentBehavior="automatic"
+        refreshControl={
+          <QueryRefreshControl onRefresh={onRefresh} refreshing={refreshing} />
+        }
       >
         <View style={styles.hero}>
           <View

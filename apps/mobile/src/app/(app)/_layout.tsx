@@ -12,6 +12,11 @@ const sheetOptions = {
   contentStyle: { backgroundColor: Colors.background },
 };
 
+const appSwitcherSheetOptions = {
+  ...sheetOptions,
+  sheetAllowedDetents: [0.56, 0.88] as number[],
+};
+
 export default function AppLayout() {
   const theme = useTheme();
 
@@ -44,7 +49,7 @@ export default function AppLayout() {
       <Stack.Screen
         name="apps/switcher"
         options={{
-          ...sheetOptions,
+          ...appSwitcherSheetOptions,
           title: "Apps",
         }}
       />

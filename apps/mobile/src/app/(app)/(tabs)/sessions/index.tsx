@@ -1,8 +1,13 @@
 import { type Href, useRouter } from "expo-router";
 import { useState } from "react";
-import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
+import { FlatList, StyleSheet, View } from "react-native";
 
 import { ChartBlock } from "@/components/chart-block";
+import {
+  QueryRefreshControl,
+  refreshScrollProps,
+  useQueryRefresh,
+} from "@/components/scroll-refresh";
 import {
   EmptyState,
   ErrorState,
@@ -56,8 +61,11 @@ export default function SessionsScreen() {
     pageSize: String(PAGE_SIZE),
   });
 
-  const refreshing =
-    overview.isRefetching || sessions.isRefetching || timeseries.isRefetching;
+  const { refreshing, onRefresh } = useQueryRefresh(
+    overview,
+    sessions,
+    timeseries
+  );
 
   if (!selectedAppId && !appsLoading) {
     return (
@@ -139,6 +147,7 @@ export default function SessionsScreen() {
             totalPages={totalPages}
           />
         }
+        {...refreshScrollProps}
         contentContainerStyle={styles.list}
         contentInsetAdjustmentBehavior="automatic"
         data={sessions.data?.sessions ?? []}
@@ -151,14 +160,7 @@ export default function SessionsScreen() {
           )
         }
         refreshControl={
-          <RefreshControl
-            onRefresh={() => {
-              void overview.refetch();
-              void sessions.refetch();
-              void timeseries.refetch();
-            }}
-            refreshing={refreshing}
-          />
+          <QueryRefreshControl onRefresh={onRefresh} refreshing={refreshing} />
         }
         renderItem={({ item }) => (
           <ListRow

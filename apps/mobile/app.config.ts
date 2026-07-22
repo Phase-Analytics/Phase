@@ -25,7 +25,7 @@ export default function createExpoConfig({
       icon: "./assets/expo.icon",
       bundleIdentifier: BUNDLE_ID,
       buildNumber: "1",
-      supportsTablet: true,
+      supportsTablet: false,
       backgroundColor: "#0A0A0A",
       ...(appleTeamId !== undefined && appleTeamId.length > 0
         ? { appleTeamId }
@@ -49,8 +49,9 @@ export default function createExpoConfig({
         "expo-splash-screen",
         {
           backgroundColor: "#0A0A0A",
-          image: "./assets/images/splash-icon.png",
-          imageWidth: 96,
+          image: "./assets/images/splash.png",
+          resizeMode: "contain",
+          enableFullScreenImage_legacy: true,
         },
       ],
       "expo-secure-store",

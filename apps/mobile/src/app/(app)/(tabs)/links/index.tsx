@@ -1,7 +1,12 @@
 import { useRouter } from "expo-router";
-import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { FlatList, StyleSheet, Text, View } from "react-native";
 
 import { CursorIcon } from "@/components/brand-icons";
+import {
+  QueryRefreshControl,
+  refreshScrollProps,
+  useQueryRefresh,
+} from "@/components/scroll-refresh";
 import {
   EmptyState,
   ErrorState,
@@ -24,6 +29,7 @@ export default function LinksScreen() {
   const { selectedAppId, isLoading: appsLoading } = useSelectedApp();
   useTrackScreen("screen_links", { app_id: selectedAppId ?? null });
   const links = useLinks(selectedAppId ?? "");
+  const { refreshing, onRefresh } = useQueryRefresh(links);
 
   if (!selectedAppId && !appsLoading) {
     return (
@@ -55,6 +61,7 @@ export default function LinksScreen() {
   return (
     <Screen padded={false}>
       <FlatList
+        {...refreshScrollProps}
         contentContainerStyle={styles.list}
         contentInsetAdjustmentBehavior="automatic"
         data={links.data?.links ?? []}
@@ -66,10 +73,7 @@ export default function LinksScreen() {
           />
         }
         refreshControl={
-          <RefreshControl
-            onRefresh={() => void links.refetch()}
-            refreshing={links.isRefetching}
-          />
+          <QueryRefreshControl onRefresh={onRefresh} refreshing={refreshing} />
         }
         renderItem={({ item }) => (
           <ListRow

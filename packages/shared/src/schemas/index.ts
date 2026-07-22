@@ -9,6 +9,7 @@ export * from './funnel';
 export * from './health';
 export * from './links';
 export * from './ping';
+export * from './policies';
 export * from './public-api';
 export * from './realtime';
 export * from './session';

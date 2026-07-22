@@ -13,6 +13,7 @@ const SKIP_PREFIXES = [
   '/auth',
   '/billing',
   '/l/',
+  '/p/',
 ];
 
 const SINGLE_SLUG_PATH = /^\/([^/]+)\/?$/;

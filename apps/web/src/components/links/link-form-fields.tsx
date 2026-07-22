@@ -30,6 +30,7 @@ type LinkFormFieldsProps = {
   slugError?: string | null;
   originalSlug?: string;
   idPrefix?: string;
+  destinationLocked?: boolean;
 };
 
 const OVERVIEW_DEVICE_FIELDS = [
@@ -58,6 +59,7 @@ export function LinkFormFields({
   slugError,
   originalSlug,
   idPrefix = 'link',
+  destinationLocked = false,
 }: LinkFormFieldsProps) {
   const hostOptions = useMemo(
     () => [
@@ -149,35 +151,45 @@ export function LinkFormFields({
             Destination URL
           </label>
           <Input
+            disabled={destinationLocked}
             id={`${idPrefix}-destination`}
             onChange={(e) => patch({ destinationUrl: e.target.value })}
             placeholder="example.com/page"
             type="text"
             value={form.destinationUrl}
           />
+          {destinationLocked ? (
+            <p className="text-muted-foreground text-xs">
+              Destination is managed by the linked policy
+            </p>
+          ) : null}
         </div>
 
-        {OVERVIEW_DEVICE_FIELDS.map(({ key, label, icon, id, placeholder }) => (
-          <div className="space-y-2" key={key}>
-            <label
-              className="flex items-center gap-1.5 font-medium text-sm"
-              htmlFor={`${idPrefix}-${id}`}
-            >
-              <HugeiconsIcon
-                className="size-4 shrink-0 text-muted-foreground"
-                icon={icon}
-              />
-              {label}
-            </label>
-            <Input
-              id={`${idPrefix}-${id}`}
-              onChange={(e) => patchDevice({ [key]: e.target.value })}
-              placeholder={placeholder}
-              type="text"
-              value={form.device[key]}
-            />
-          </div>
-        ))}
+        {destinationLocked
+          ? null
+          : OVERVIEW_DEVICE_FIELDS.map(
+              ({ key, label, icon, id, placeholder }) => (
+                <div className="space-y-2" key={key}>
+                  <label
+                    className="flex items-center gap-1.5 font-medium text-sm"
+                    htmlFor={`${idPrefix}-${id}`}
+                  >
+                    <HugeiconsIcon
+                      className="size-4 shrink-0 text-muted-foreground"
+                      icon={icon}
+                    />
+                    {label}
+                  </label>
+                  <Input
+                    id={`${idPrefix}-${id}`}
+                    onChange={(e) => patchDevice({ [key]: e.target.value })}
+                    placeholder={placeholder}
+                    type="text"
+                    value={form.device[key]}
+                  />
+                </div>
+              )
+            )}
 
         <div className="space-y-2">
           <label

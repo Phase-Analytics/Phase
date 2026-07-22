@@ -8,8 +8,9 @@
 ## Commands
 
 - `bun dev` — server + web
-- `bun dev:server` / `bun dev:web` / `bun dev:mobile`
-- `bun ios` / `bun android` / `bun ios:sim` / `bun android:sim`
+- `bun dev:server` / `bun dev:web`
+- `bun dev:mobile` — Expo Metro with `--dev-client` from `apps/mobile` (no Bun filter)
+- `bun ios` / `bun android` / `bun ios:sim` / `bun android:sim` / `bun ios:device` / `bun android:device` / `bun ios:release` / `bun android:release` — run via `cd apps/mobile && bunx expo ...`
 - `bun check` — Ultracite
 - `bun typecheck`
 

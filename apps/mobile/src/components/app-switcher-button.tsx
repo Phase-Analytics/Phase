@@ -36,7 +36,6 @@ export function AppSwitcherButton() {
       <Text style={[styles.name, { color: theme.text }]} numberOfLines={1}>
         {isLoading ? "…" : (selectedApp?.name ?? "Apps")}
       </Text>
-      <Text style={[styles.chevron, { color: theme.textSecondary }]}>▾</Text>
     </Pressable>
   );
 }
@@ -49,7 +48,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: StyleSheet.hairlineWidth,
     paddingLeft: 4,
-    paddingRight: 10,
+    paddingRight: 12,
     paddingVertical: 4,
     maxWidth: 180,
   },
@@ -68,9 +67,5 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     fontSize: 14,
     fontWeight: "600",
-  },
-  chevron: {
-    fontSize: 12,
-    marginTop: 1,
   },
 });

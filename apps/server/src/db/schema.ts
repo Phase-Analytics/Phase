@@ -6,6 +6,7 @@ import type {
 import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
+  date,
   foreignKey,
   index,
   integer,
@@ -329,6 +330,34 @@ export const funnelPresets = pgTable(
   })
 );
 
+export const policies = pgTable(
+  'policies',
+  {
+    id: text('id').primaryKey(),
+    appId: text('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'cascade' }),
+    linkId: text('link_id')
+      .notNull()
+      .references(() => links.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    date: date('date').notNull(),
+    content: text('content').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    linkIdUnique: uniqueIndex('policies_link_id_unique').on(table.linkId),
+    appIdCreatedAtIdx: index('policies_app_id_created_at_idx').on(
+      table.appId,
+      table.createdAt.desc()
+    ),
+  })
+);
+
 export const sessions = pgTable(
   'sessions_analytics',
   {
@@ -366,6 +395,18 @@ export const appRelations = relations(apps, ({ one, many }) => ({
   funnelPresets: many(funnelPresets),
   links: many(links),
   linkDomains: many(linkDomains),
+  policies: many(policies),
+}));
+
+export const policiesRelations = relations(policies, ({ one }) => ({
+  app: one(apps, {
+    fields: [policies.appId],
+    references: [apps.id],
+  }),
+  link: one(links, {
+    fields: [policies.linkId],
+    references: [links.id],
+  }),
 }));
 
 export const linksRelations = relations(links, ({ one }) => ({

@@ -18,7 +18,7 @@ import {
 } from '@phase/shared';
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
-import { db, linkDomains, links } from '@/db';
+import { db, linkDomains, links, policies } from '@/db';
 import { auth } from '@/lib/auth';
 import { assertAppAccess } from '@/lib/links/access';
 import {
@@ -137,9 +137,11 @@ function serializeLinkListItem(
 
 function serializeLinkDetail(
   row: typeof links.$inferSelect,
-  domainsById: DomainLookup
+  domainsById: DomainLookup,
+  options?: { policyId?: string | null }
 ) {
   const shortUrl = resolvePrimaryShortUrl(row.slug, row.domainId, domainsById);
+  const policyId = options?.policyId ?? null;
 
   return {
     ...serializeLinkListItem(row, { shortUrl }),
@@ -156,7 +158,17 @@ function serializeLinkDetail(
     ogDescription: row.ogDescription,
     ogImageUrl: row.ogImageUrl,
     domainId: row.domainId,
+    destinationLocked: Boolean(policyId),
+    policyId,
   };
+}
+
+async function getPolicyIdForLink(linkId: string): Promise<string | null> {
+  const row = await db.query.policies.findFirst({
+    where: eq(policies.linkId, linkId),
+    columns: { id: true },
+  });
+  return row?.id ?? null;
 }
 
 function serializeDomain(row: typeof linkDomains.$inferSelect) {
@@ -757,7 +769,8 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
       }
 
       const domainsById = await loadDomainsByIdForApp(query.appId);
-      return serializeLinkDetail(row, domainsById);
+      const policyId = await getPolicyIdForLink(row.id);
+      return serializeLinkDetail(row, domainsById, { policyId });
     },
     {
       params: t.Object({ linkId: t.String() }),
@@ -808,6 +821,38 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         return { code: ErrorCode.NOT_FOUND, detail: 'Link not found' };
       }
 
+      const policyId = await getPolicyIdForLink(existing.id);
+      const destinationLocked = Boolean(policyId);
+
+      if (destinationLocked) {
+        if (
+          parsed.data.destinationUrl &&
+          parsed.data.destinationUrl !== existing.destinationUrl
+        ) {
+          set.status = HttpStatus.BAD_REQUEST;
+          return {
+            code: ErrorCode.VALIDATION_ERROR,
+            detail: 'Destination is managed by the linked policy',
+          };
+        }
+
+        const deviceChanged =
+          (parsed.data.deviceIosUrl !== undefined &&
+            parsed.data.deviceIosUrl !== existing.deviceIosUrl) ||
+          (parsed.data.deviceAndroidUrl !== undefined &&
+            parsed.data.deviceAndroidUrl !== existing.deviceAndroidUrl) ||
+          (parsed.data.deviceOthersUrl !== undefined &&
+            parsed.data.deviceOthersUrl !== existing.deviceOthersUrl);
+
+        if (deviceChanged) {
+          set.status = HttpStatus.BAD_REQUEST;
+          return {
+            code: ErrorCode.VALIDATION_ERROR,
+            detail: 'Device routing is managed by the linked policy',
+          };
+        }
+      }
+
       const nextSlug = parsed.data.slug ?? existing.slug;
       const nextDomainId =
         parsed.data.domainId !== undefined
@@ -849,7 +894,7 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
             ...(parsed.data.domainId !== undefined
               ? { domainId: parsed.data.domainId }
               : {}),
-            ...(parsed.data.destinationUrl
+            ...(!destinationLocked && parsed.data.destinationUrl
               ? { destinationUrl: parsed.data.destinationUrl }
               : {}),
             ...(parsed.data.utmSource !== undefined
@@ -867,13 +912,13 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
             ...(parsed.data.utmContent !== undefined
               ? { utmContent: parsed.data.utmContent }
               : {}),
-            ...(parsed.data.deviceIosUrl !== undefined
+            ...(!destinationLocked && parsed.data.deviceIosUrl !== undefined
               ? { deviceIosUrl: parsed.data.deviceIosUrl }
               : {}),
-            ...(parsed.data.deviceAndroidUrl !== undefined
+            ...(!destinationLocked && parsed.data.deviceAndroidUrl !== undefined
               ? { deviceAndroidUrl: parsed.data.deviceAndroidUrl }
               : {}),
-            ...(parsed.data.deviceOthersUrl !== undefined
+            ...(!destinationLocked && parsed.data.deviceOthersUrl !== undefined
               ? { deviceOthersUrl: parsed.data.deviceOthersUrl }
               : {}),
             ...(parsed.data.ogTitle !== undefined
@@ -912,7 +957,7 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
       await invalidateCachedLink(row.slug, row.domainId);
 
       const domainsById = await loadDomainsByIdForApp(existing.appId);
-      return serializeLinkDetail(row, domainsById);
+      return serializeLinkDetail(row, domainsById, { policyId });
     },
     {
       params: t.Object({ linkId: t.String() }),
@@ -955,6 +1000,15 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         return { code: ErrorCode.NOT_FOUND, detail: 'Link not found' };
       }
 
+      const policyId = await getPolicyIdForLink(existing.id);
+      if (policyId) {
+        set.status = HttpStatus.CONFLICT;
+        return {
+          code: ErrorCode.CONFLICT,
+          detail: 'Delete the linked policy instead',
+        };
+      }
+
       await db.delete(links).where(eq(links.id, params.linkId));
       await invalidateCachedLink(existing.slug, existing.domainId);
 
@@ -963,6 +1017,13 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
     {
       params: t.Object({ linkId: t.String() }),
       query: t.Object({ appId: t.String() }),
+      response: {
+        200: t.Object({ success: t.Boolean() }),
+        401: ErrorResponseSchema,
+        403: ErrorResponseSchema,
+        404: ErrorResponseSchema,
+        409: ErrorResponseSchema,
+      },
     }
   )
   .post(
@@ -1065,7 +1126,8 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
         await invalidateCachedLink(existing.slug, existing.domainId);
 
         const domainsById = await loadDomainsByIdForApp(existing.appId);
-        return serializeLinkDetail(row, domainsById);
+        const policyId = await getPolicyIdForLink(row.id);
+        return serializeLinkDetail(row, domainsById, { policyId });
       } catch (error) {
         console.error('[links] OG image upload failed:', error);
         set.status = HttpStatus.INTERNAL_SERVER_ERROR;
@@ -1127,7 +1189,8 @@ export const linksWebRouter = new Elysia({ prefix: '/links' })
       await invalidateCachedLink(existing.slug, existing.domainId);
 
       const domainsById = await loadDomainsByIdForApp(existing.appId);
-      return serializeLinkDetail(row, domainsById);
+      const policyId = await getPolicyIdForLink(row.id);
+      return serializeLinkDetail(row, domainsById, { policyId });
     },
     {
       params: t.Object({ linkId: t.String() }),

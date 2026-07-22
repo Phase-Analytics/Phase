@@ -183,6 +183,20 @@
       "when": 1784383200000,
       "tag": "0026_domain_provisioning_and_scoped_links",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1784743200000,
+      "tag": "0027_policies",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1784746800000,
+      "tag": "0028_policies_link_id",
+      "breakpoints": true
     }
   ]
 }

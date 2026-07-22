@@ -138,9 +138,21 @@ export function LinkInfoCard({ link, domains, className }: LinkInfoCardProps) {
         </div>
 
         <InfoRow label="Destination">
-          <p className="break-all font-medium text-sm">
-            {formatUrlWithoutProtocol(link.destinationUrl)}
-          </p>
+          {link.destinationLocked && link.policyId ? (
+            <div className="space-y-1">
+              <p className="font-medium text-sm">Managed by policy</p>
+              <a
+                className="text-muted-foreground text-sm underline-offset-2 hover:underline"
+                href={`/dashboard/policies/${link.policyId}?app=${link.appId}`}
+              >
+                Open policy
+              </a>
+            </div>
+          ) : (
+            <p className="break-all font-medium text-sm">
+              {formatUrlWithoutProtocol(link.destinationUrl)}
+            </p>
+          )}
         </InfoRow>
 
         <InfoRow label="Expires">

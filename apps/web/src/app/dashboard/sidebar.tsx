@@ -145,6 +145,12 @@ const linkNavItems: NavItem[] = [
     path: '/dashboard/links/domains',
     tooltip: 'Domains',
   },
+  {
+    label: 'Policies',
+    icon: File02Icon,
+    path: '/dashboard/policies',
+    tooltip: 'Policies',
+  },
 ];
 
 const applicationNavItems: NavItem[] = [

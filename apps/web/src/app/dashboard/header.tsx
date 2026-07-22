@@ -170,6 +170,22 @@ export function DashboardHeader({ children }: { children: ReactNode }) {
         path: `/dashboard/links/domains?app=${appId}`,
       },
       {
+        id: 'policies',
+        name: 'Policies',
+        description: 'Host Terms of Service, Privacy Policies, and legal docs',
+        category: 'Links',
+        icon: File02Icon,
+        keywords: [
+          'policies',
+          'legal',
+          'tos',
+          'privacy',
+          'terms',
+          'documents',
+        ],
+        path: `/dashboard/policies?app=${appId}`,
+      },
+      {
         id: 'settings',
         name: 'Settings',
         description: 'Configure application settings',

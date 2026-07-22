@@ -13,6 +13,11 @@ import {
 } from "@/components/brand-icons";
 import { ChartBlock } from "@/components/chart-block";
 import {
+  QueryRefreshControl,
+  refreshScrollProps,
+  useQueryRefresh,
+} from "@/components/scroll-refresh";
+import {
   EmptyState,
   ErrorState,
   ListRow,
@@ -48,6 +53,7 @@ export default function LinkDetailScreen() {
     page: String(clicksPage),
     pageSize: String(PAGE_SIZE),
   });
+  const { refreshing, onRefresh } = useQueryRefresh(link, analytics, clicks);
 
   if (!selectedAppId || !id) {
     return (
@@ -120,8 +126,12 @@ export default function LinkDetailScreen() {
   return (
     <Screen padded={false}>
       <ScrollView
+        {...refreshScrollProps}
         contentContainerStyle={styles.content}
         contentInsetAdjustmentBehavior="automatic"
+        refreshControl={
+          <QueryRefreshControl onRefresh={onRefresh} refreshing={refreshing} />
+        }
       >
         <View style={styles.hero}>
           <Text style={[styles.title, { color: theme.text }]}>

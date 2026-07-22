@@ -3,6 +3,10 @@ import { useRouter } from "expo-router";
 import { useEffect } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import {
+  QueryRefreshControl,
+  useQueryRefresh,
+} from "@/components/scroll-refresh";
 import { SheetScroll } from "@/components/sheet-scroll";
 import {
   EmptyState,
@@ -49,6 +53,7 @@ export default function AppSwitcherSheet() {
     selectedAppId,
     setSelectedAppId,
     isLoading,
+    isRefetching,
     error,
     refetch,
   } = useSelectedApp();
@@ -56,6 +61,11 @@ export default function AppSwitcherSheet() {
   useEffect(() => {
     void refetch();
   }, [refetch]);
+
+  const { refreshing, onRefresh } = useQueryRefresh({
+    isRefetching,
+    refetch,
+  });
 
   const userName =
     session?.user?.name?.trim() ||
@@ -73,25 +83,8 @@ export default function AppSwitcherSheet() {
 
   return (
     <SheetScroll
-      footer={
-        <View style={styles.footer}>
-          <PrimaryButton
-            label="Delete account"
-            onPress={() => {
-              void track("mobile_delete_account_request");
-              openDeleteAccountEmail(userEmail, session?.user?.id);
-            }}
-            variant="secondary"
-          />
-          <PrimaryButton
-            label="Sign out"
-            onPress={() => {
-              void track("mobile_sign_out");
-              void signOut();
-            }}
-            variant="danger"
-          />
-        </View>
+      refreshControl={
+        <QueryRefreshControl onRefresh={onRefresh} refreshing={refreshing} />
       }
     >
       <View
@@ -174,6 +167,25 @@ export default function AppSwitcherSheet() {
           })}
         </View>
       )}
+
+      <View style={styles.footer}>
+        <PrimaryButton
+          label="Delete account"
+          onPress={() => {
+            void track("mobile_delete_account_request");
+            openDeleteAccountEmail(userEmail, session?.user?.id);
+          }}
+          variant="secondary"
+        />
+        <PrimaryButton
+          label="Sign out"
+          onPress={() => {
+            void track("mobile_sign_out");
+            void signOut();
+          }}
+          variant="danger"
+        />
+      </View>
     </SheetScroll>
   );
 }
@@ -182,52 +194,56 @@ const styles = StyleSheet.create({
   account: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.three,
-    padding: Spacing.three,
-    borderRadius: 14,
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two + 2,
+    borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
   },
   accountText: {
     flex: 1,
-    gap: 2,
+    gap: 1,
   },
   accountName: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: "600",
   },
   accountEmail: {
-    fontSize: 13,
+    fontSize: 12,
   },
   footer: {
     gap: Spacing.two,
+    marginTop: Spacing.two,
+    paddingTop: Spacing.two,
   },
   list: {
-    gap: Spacing.two,
+    gap: Spacing.one + 2,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: Spacing.three,
-    borderRadius: 14,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 10,
+    borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
   },
   rowMain: {
     flex: 1,
-    gap: 2,
+    gap: 1,
   },
-  name: { fontSize: 17, fontWeight: "600" },
-  role: { fontSize: 13 },
-  check: { fontSize: 16, fontWeight: "700" },
+  name: { fontSize: 15, fontWeight: "600" },
+  role: { fontSize: 12 },
+  check: { fontSize: 15, fontWeight: "700" },
 });

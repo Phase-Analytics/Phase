@@ -1,7 +1,12 @@
 import { useState } from "react";
-import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { FlatList, StyleSheet, Text, View } from "react-native";
 
 import { ChartBlock } from "@/components/chart-block";
+import {
+  QueryRefreshControl,
+  refreshScrollProps,
+  useQueryRefresh,
+} from "@/components/scroll-refresh";
 import {
   EmptyState,
   ErrorState,
@@ -48,11 +53,12 @@ export default function ActivityScreen() {
     pageSize: String(PAGE_SIZE),
   });
 
-  const refreshing =
-    overview.isRefetching ||
-    events.isRefetching ||
-    timeseries.isRefetching ||
-    top.isRefetching;
+  const { refreshing, onRefresh } = useQueryRefresh(
+    overview,
+    events,
+    timeseries,
+    top
+  );
 
   if (!selectedAppId && !appsLoading) {
     return (
@@ -137,6 +143,7 @@ export default function ActivityScreen() {
             totalPages={totalPages}
           />
         }
+        {...refreshScrollProps}
         contentContainerStyle={styles.list}
         contentInsetAdjustmentBehavior="automatic"
         data={events.data?.events ?? []}
@@ -149,15 +156,7 @@ export default function ActivityScreen() {
           )
         }
         refreshControl={
-          <RefreshControl
-            onRefresh={() => {
-              void overview.refetch();
-              void events.refetch();
-              void timeseries.refetch();
-              void top.refetch();
-            }}
-            refreshing={refreshing}
-          />
+          <QueryRefreshControl onRefresh={onRefresh} refreshing={refreshing} />
         }
         renderItem={({ item }) => (
           <ListRow

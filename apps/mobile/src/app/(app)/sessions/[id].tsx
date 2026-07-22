@@ -1,6 +1,10 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 
+import {
+  QueryRefreshControl,
+  useQueryRefresh,
+} from "@/components/scroll-refresh";
 import { SheetScroll } from "@/components/sheet-scroll";
 import {
   EmptyState,
@@ -43,6 +47,7 @@ export default function SessionDetailSheet() {
     page: "1",
     pageSize: "50",
   });
+  const { refreshing, onRefresh } = useQueryRefresh(events);
 
   if (!(selectedAppId && params.id)) {
     return <EmptyState compact title="Missing session" />;
@@ -53,7 +58,11 @@ export default function SessionDetailSheet() {
   const userName = getDisplayName(params.deviceId);
 
   return (
-    <SheetScroll>
+    <SheetScroll
+      refreshControl={
+        <QueryRefreshControl onRefresh={onRefresh} refreshing={refreshing} />
+      }
+    >
       <View style={styles.hero}>
         <Text style={[styles.title, { color: theme.text }]}>{userName}</Text>
         <MetaChips

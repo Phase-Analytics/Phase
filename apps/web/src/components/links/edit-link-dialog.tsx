@@ -104,9 +104,13 @@ export function EditLinkDialog({
       await updateLink.mutateAsync({
         name: form.name.trim() || null,
         slug: slugChanged ? form.slug.toLowerCase() : undefined,
-        destinationUrl: form.destinationUrl,
+        ...(link?.destinationLocked
+          ? {}
+          : {
+              destinationUrl: form.destinationUrl,
+              ...deviceRoutingToPayload(form.device),
+            }),
         ...linkUtmToPayload(form.utm),
-        ...deviceRoutingToPayload(form.device),
         domainId: selectedDomainId,
         expiresAt: expiresAtToIso(form.expiresAt),
         disabled: form.disabled,
@@ -136,6 +140,7 @@ export function EditLinkDialog({
         ) : (
           <LinkFormFields
             appId={appId}
+            destinationLocked={link?.destinationLocked}
             form={form}
             idPrefix="edit-link"
             linkId={linkId}

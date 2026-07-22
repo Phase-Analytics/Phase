@@ -1,9 +1,14 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { FlatList, StyleSheet, Text, View } from "react-native";
 
 import { PlatformIcon } from "@/components/brand-icons";
 import { ChartBlock } from "@/components/chart-block";
+import {
+  QueryRefreshControl,
+  refreshScrollProps,
+  useQueryRefresh,
+} from "@/components/scroll-refresh";
 import {
   EmptyState,
   ErrorState,
@@ -57,14 +62,11 @@ export default function UsersScreen() {
     pageSize: String(PAGE_SIZE),
   });
 
-  const refreshing =
-    overview.isRefetching || devices.isRefetching || timeseries.isRefetching;
-
-  function onRefresh() {
-    void overview.refetch();
-    void devices.refetch();
-    void timeseries.refetch();
-  }
+  const { refreshing, onRefresh } = useQueryRefresh(
+    overview,
+    devices,
+    timeseries
+  );
 
   if (appsLoading || (!selectedAppId && !appsLoading)) {
     if (!selectedAppId && !appsLoading) {
@@ -155,6 +157,7 @@ export default function UsersScreen() {
             totalPages={totalPages}
           />
         }
+        {...refreshScrollProps}
         contentContainerStyle={styles.list}
         contentInsetAdjustmentBehavior="automatic"
         data={devices.data?.devices ?? []}
@@ -170,7 +173,7 @@ export default function UsersScreen() {
           )
         }
         refreshControl={
-          <RefreshControl onRefresh={onRefresh} refreshing={refreshing} />
+          <QueryRefreshControl onRefresh={onRefresh} refreshing={refreshing} />
         }
         renderItem={({ item }) => {
           const flag = countryFlagEmoji(item.country);

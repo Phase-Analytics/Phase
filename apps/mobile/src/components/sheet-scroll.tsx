@@ -1,7 +1,16 @@
-import type { ReactNode } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import type { ReactElement, ReactNode } from "react";
+import {
+  type RefreshControlProps,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import {
+  noOverscrollProps,
+  refreshScrollProps,
+} from "@/components/scroll-refresh";
 import { Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -12,9 +21,11 @@ import { useTheme } from "@/hooks/use-theme";
 export function SheetScroll({
   children,
   footer,
+  refreshControl,
 }: {
   children: ReactNode;
   footer?: ReactNode;
+  refreshControl?: ReactElement<RefreshControlProps>;
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -22,7 +33,7 @@ export function SheetScroll({
   return (
     <>
       <ScrollView
-        alwaysBounceVertical={false}
+        {...(refreshControl ? refreshScrollProps : noOverscrollProps)}
         contentContainerStyle={[
           styles.content,
           {
@@ -31,9 +42,12 @@ export function SheetScroll({
               : Math.max(insets.bottom, Spacing.four) + 24,
           },
         ]}
-        contentInsetAdjustmentBehavior="automatic"
+        contentInsetAdjustmentBehavior="never"
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled
+        refreshControl={refreshControl}
+        showsVerticalScrollIndicator
         style={[styles.scroll, { backgroundColor: theme.background }]}
       >
         {children}
@@ -64,7 +78,7 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.two,
-    gap: Spacing.three,
+    gap: Spacing.two,
   },
   footer: {
     borderTopWidth: StyleSheet.hairlineWidth,

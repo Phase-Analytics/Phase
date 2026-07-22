@@ -120,6 +120,8 @@ export const LinkDetailSchema = LinkListItemSchema.extend({
   ogDescription: z.string().nullable(),
   ogImageUrl: z.string().url().nullable(),
   domainId: z.string().nullable(),
+  destinationLocked: z.boolean(),
+  policyId: z.string().nullable(),
 });
 
 export const SlugAvailableResponseSchema = z.object({
