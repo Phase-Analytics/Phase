@@ -7,6 +7,7 @@ import { oneTimeToken } from 'better-auth/plugins';
 import { db } from '@/db';
 import { account, session, user, verification } from '@/db/schema';
 import { sendPasswordResetEmail } from './email';
+import { expoMobileHandoff } from './expo-mobile-handoff';
 
 const IP_ADDRESS_REGEX = /^\d+\.\d+\.\d+\.\d+$/;
 
@@ -40,8 +41,11 @@ const getCookieDomain = (): string | undefined => {
 };
 
 const plugins: Array<
-  ReturnType<typeof polar> | ReturnType<typeof expo> | ReturnType<typeof oneTimeToken>
-> = [expo(), oneTimeToken()];
+  | ReturnType<typeof polar>
+  | ReturnType<typeof expo>
+  | ReturnType<typeof oneTimeToken>
+  | ReturnType<typeof expoMobileHandoff>
+> = [expo(), oneTimeToken(), expoMobileHandoff()];
 
 if (process.env.POLAR_ACCESS_TOKEN) {
   const polarClient = new Polar({

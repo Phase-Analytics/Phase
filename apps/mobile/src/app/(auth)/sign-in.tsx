@@ -1,6 +1,7 @@
 import * as Linking from "expo-linking";
+import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { PhaseLogo } from "@/components/phase-logo";
@@ -8,18 +9,31 @@ import { PrimaryButton, Screen } from "@/components/ui";
 import { Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { track } from "@/lib/analytics";
-import { authClient, getWebAuthURL } from "@/lib/auth-client";
+import {
+  authClient,
+  getQueryParam,
+  getWebAuthURL,
+  persistAuthCookieFromRedirect,
+} from "@/lib/auth-client";
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function SignInScreen() {
   const theme = useTheme();
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const openingRef = useRef(false);
 
   async function onLogin() {
+    if (openingRef.current || loading) {
+      return;
+    }
+
+    openingRef.current = true;
     setError(null);
     setLoading(true);
+
     try {
       const redirectUri = Linking.createURL("/");
       const authUrl = `${getWebAuthURL()}/auth?callbackURL=${encodeURIComponent(redirectUri)}`;
@@ -32,22 +46,25 @@ export default function SignInScreen() {
         return;
       }
 
-      const ott = new URL(result.url).searchParams.get("ott");
-      if (!ott) {
+      const cookie = getQueryParam(result.url, "cookie");
+      if (!cookie) {
         setError("Sign in did not complete. Try again.");
         return;
       }
 
-      const verified = await authClient.oneTimeToken.verify({ token: ott });
-      if (verified.error) {
-        setError(verified.error.message ?? "Sign in failed");
+      await persistAuthCookieFromRedirect(cookie);
+      const session = await authClient.getSession();
+      if (session.error || !session.data) {
+        setError(session.error?.message ?? "Session could not be loaded");
         return;
       }
 
       void track("mobile_sign_in", { method: "web" });
+      router.replace("/(app)/(tabs)/users");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign in failed");
     } finally {
+      openingRef.current = false;
       setLoading(false);
     }
   }

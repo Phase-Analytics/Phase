@@ -1,7 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useQueryState } from 'nuqs';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useSession } from '@/lib/auth';
@@ -28,7 +27,8 @@ function AuthRedirectInner({
   requireAuth = true,
 }: AuthRedirectProps) {
   const router = useRouter();
-  const [callbackURL] = useQueryState('callbackURL');
+  const searchParams = useSearchParams();
+  const callbackURL = searchParams.get('callbackURL');
   const { data: session, isPending } = useSession();
   const handoffStarted = useRef(false);
   const [mobileHandoff, setMobileHandoff] = useState(false);
@@ -50,7 +50,9 @@ function AuthRedirectInner({
         }
         handoffStarted.current = true;
         setMobileHandoff(true);
-        void handoffToMobileApp(callbackURL).catch((error) => {
+        try {
+          handoffToMobileApp(callbackURL);
+        } catch (error) {
           handoffStarted.current = false;
           setMobileHandoff(false);
           toast.error(
@@ -58,7 +60,7 @@ function AuthRedirectInner({
               ? error.message
               : 'Failed to open the Phase app'
           );
-        });
+        }
         return;
       }
       router.push('/dashboard');

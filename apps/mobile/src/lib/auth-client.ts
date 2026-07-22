@@ -1,5 +1,8 @@
-import { expoClient } from "@better-auth/expo/client";
-import { oneTimeTokenClient } from "better-auth/client/plugins";
+import {
+  expoClient,
+  getSetCookie,
+  storageAdapter,
+} from "@better-auth/expo/client";
 import { createAuthClient } from "better-auth/react";
 import * as SecureStore from "expo-secure-store";
 
@@ -10,6 +13,15 @@ if (serverURL === undefined || serverURL.trim() === "") {
 }
 
 const baseURL = serverURL.replace(/\/$/, "");
+const STORAGE_PREFIX = "phase";
+const COOKIE_KEY = `${STORAGE_PREFIX}_cookie`;
+
+const secureStorage = storageAdapter({
+  getItem: (key) => SecureStore.getItem(key),
+  setItem: (key, value) => {
+    SecureStore.setItem(key, value);
+  },
+});
 
 export const authClient = createAuthClient({
   baseURL,
@@ -18,9 +30,8 @@ export const authClient = createAuthClient({
     expoClient({
       scheme: "phase",
       storage: SecureStore,
-      storagePrefix: "phase",
+      storagePrefix: STORAGE_PREFIX,
     }) as never,
-    oneTimeTokenClient(),
   ],
 });
 
@@ -42,4 +53,21 @@ export function getWebAuthURL(): string {
   return baseURL.includes("localhost")
     ? "http://localhost:3002"
     : "https://phase.sh";
+}
+
+export function getQueryParam(url: string, key: string): string | null {
+  try {
+    return new URL(url).searchParams.get(key);
+  } catch {
+    const match = url.match(new RegExp(`[?&]${key}=([^&#]*)`));
+    return match?.[1] ? decodeURIComponent(match[1]) : null;
+  }
+}
+
+export async function persistAuthCookieFromRedirect(
+  cookieHeader: string
+): Promise<void> {
+  const previous = secureStorage.getItem(COOKIE_KEY);
+  const next = getSetCookie(cookieHeader, previous ?? undefined);
+  await secureStorage.setItem(COOKIE_KEY, next);
 }

@@ -1,13 +1,13 @@
+import { StatusBar } from "expo-status-bar";
+import * as SystemUI from "expo-system-ui";
+import { useEffect, useRef } from "react";
+import { ActivityIndicator, View } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import {
   DarkTheme,
   ThemeProvider,
   type Theme,
 } from "expo-router/react-navigation";
-import * as SystemUI from "expo-system-ui";
-import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
-import { ActivityIndicator, View } from "react-native";
 
 import { Colors } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
@@ -32,6 +32,13 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const segments = useSegments();
   const router = useRouter();
   const theme = useTheme();
+  const initialLoadDone = useRef(false);
+
+  useEffect(() => {
+    if (!isPending) {
+      initialLoadDone.current = true;
+    }
+  }, [isPending]);
 
   useEffect(() => {
     if (isPending) {
@@ -50,7 +57,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     }
   }, [session, isPending, segments, router]);
 
-  if (isPending) {
+  if (isPending && !initialLoadDone.current) {
     return (
       <View
         style={{

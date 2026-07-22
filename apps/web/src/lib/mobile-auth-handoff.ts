@@ -1,6 +1,6 @@
-import { authClient } from '@/lib/auth';
-
-export function isMobileAuthCallback(url: string | null | undefined): url is string {
+export function isMobileAuthCallback(
+  url: string | null | undefined
+): url is string {
   if (!url) {
     return false;
   }
@@ -27,13 +27,10 @@ export function getSocialAuthCallbackURL(mobileCallback: string | null): string 
   return `${webUrl}/dashboard`;
 }
 
-export async function handoffToMobileApp(callbackURL: string): Promise<void> {
-  const { data, error } = await authClient.oneTimeToken.generate();
-  if (error || !data?.token) {
-    throw new Error(error?.message || 'Failed to open the Phase app');
-  }
+export function handoffToMobileApp(callbackURL: string): void {
+  const serverURL = (
+    process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001'
+  ).replace(/\/$/, '');
 
-  const target = new URL(callbackURL);
-  target.searchParams.set('ott', data.token);
-  window.location.href = target.toString();
+  window.location.href = `${serverURL}/api/auth/expo-mobile-callback?callbackURL=${encodeURIComponent(callbackURL)}`;
 }
