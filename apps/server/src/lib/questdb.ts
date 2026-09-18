@@ -1,8 +1,6 @@
-import { decodeTime } from 'ulid';
 import {
   QUESTDB_EVENT_READ_TABLES,
   QUESTDB_EVENT_WRITE_TABLE,
-  QUESTDB_LEGACY_EVENT_TABLE,
 } from './questdb-events';
 import {
   assertExploreEventName,
@@ -13,10 +11,6 @@ import {
 const QUESTDB_HTTP = 'http://questdb:9000';
 const EVENT_TIMESTAMP_FORMAT = 'yyyy-MM-ddTHH:mm:ss.SSSUUUZ';
 const QUESTDB_EVENT_WRITE_PARTITION = 'MONTH';
-const QUESTDB_EVENT_CUTOVER_AT = '2026-04-13T09:33:17Z';
-const QUESTDB_EVENT_CUTOVER_AT_MS = new Date(
-  QUESTDB_EVENT_CUTOVER_AT
-).getTime();
 
 let tablesInitialized = false;
 let initPromise: Promise<void> | null = null;
@@ -146,16 +140,17 @@ export function buildExploreEventsSubquery(options: {
   startDate?: string;
   endDate?: string;
 }): string {
-  const readTables = resolveReadTablesForRange({
-    startDate: options.startDate,
-    endDate: options.endDate,
-  });
+  const conditions = [...options.conditions];
+  if (options.startDate) {
+    validateTimestamp(options.startDate, 'startDate');
+    conditions.push(`timestamp >= '${escapeSqlString(options.startDate)}'`);
+  }
+  if (options.endDate) {
+    validateTimestamp(options.endDate, 'endDate');
+    conditions.push(`timestamp <= '${escapeSqlString(options.endDate)}'`);
+  }
 
-  return buildEventReadUnion(
-    options.selectClause,
-    options.conditions,
-    readTables
-  );
+  return buildEventReadUnion(options.selectClause, conditions);
 }
 
 async function executeQuery<T>(query: string): Promise<T[]> {
@@ -220,53 +215,6 @@ function createEventTableQuery(
 
 function buildWhereClause(conditions: string[]): string {
   return conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-}
-
-function normalizeTimeToMs(value: string | Date | undefined): number | null {
-  if (!value) {
-    return null;
-  }
-
-  const timeMs =
-    value instanceof Date ? value.getTime() : new Date(value).getTime();
-
-  return Number.isNaN(timeMs) ? null : timeMs;
-}
-
-function resolveReadTablesForRange(options: {
-  startDate?: string | Date;
-  endDate?: string | Date;
-}): string[] {
-  if (QUESTDB_LEGACY_EVENT_TABLE === QUESTDB_EVENT_WRITE_TABLE) {
-    return QUESTDB_EVENT_READ_TABLES;
-  }
-
-  const startTimeMs = normalizeTimeToMs(options.startDate);
-  const endTimeMs = normalizeTimeToMs(options.endDate);
-
-  if (endTimeMs !== null && endTimeMs < QUESTDB_EVENT_CUTOVER_AT_MS) {
-    return [QUESTDB_LEGACY_EVENT_TABLE];
-  }
-
-  if (startTimeMs !== null && startTimeMs >= QUESTDB_EVENT_CUTOVER_AT_MS) {
-    return [QUESTDB_EVENT_WRITE_TABLE];
-  }
-
-  return QUESTDB_EVENT_READ_TABLES;
-}
-
-function resolveReadTablesForEventId(eventId: string): string[] {
-  if (QUESTDB_LEGACY_EVENT_TABLE === QUESTDB_EVENT_WRITE_TABLE) {
-    return QUESTDB_EVENT_READ_TABLES;
-  }
-
-  try {
-    return decodeTime(eventId) >= QUESTDB_EVENT_CUTOVER_AT_MS
-      ? [QUESTDB_EVENT_WRITE_TABLE]
-      : [QUESTDB_LEGACY_EVENT_TABLE];
-  } catch {
-    return QUESTDB_EVENT_READ_TABLES;
-  }
 }
 
 function buildEventReadUnion(
@@ -538,10 +486,6 @@ export async function getEvents(
     conditions.push(`timestamp <= '${escapeSqlString(options.endDate)}'`);
   }
 
-  const readTables = resolveReadTablesForRange({
-    startDate: options.startDate,
-    endDate: options.endDate,
-  });
   const limit = sanitizeNumeric(options.limit, 10, 1, 1000);
   const offset = sanitizeNumeric(options.offset, 0, 0, 1_000_000);
   const limitClause =
@@ -559,7 +503,7 @@ export async function getEvents(
       ${buildEventReadUnion(
         createEventListRowSelectClause(),
         conditions,
-        readTables,
+        QUESTDB_EVENT_READ_TABLES,
         true
       )}
     ) event_rows
@@ -569,7 +513,7 @@ export async function getEvents(
 
   const [events, total] = await Promise.all([
     executeQuery<EventQueryResult>(eventsQuery),
-    getEventCount(conditions, readTables, true),
+    getEventCount(conditions, QUESTDB_EVENT_READ_TABLES, true),
   ]);
 
   return {
@@ -611,16 +555,12 @@ async function queryTopEventsByType(
     conditions.push(`timestamp <= '${escapeSqlString(options.endDate)}'`);
   }
 
-  const readTables = resolveReadTablesForRange({
-    startDate: options.startDate,
-    endDate: options.endDate,
-  });
   const limit = sanitizeNumeric(options.limit, 10, 1, 10);
 
   const query = `
     SELECT name, COUNT(*) AS count
     FROM (
-      ${buildEventReadUnion('CAST(name AS VARCHAR) AS name', conditions, readTables)}
+      ${buildEventReadUnion('CAST(name AS VARCHAR) AS name', conditions)}
     ) event_rows
     GROUP BY name
     ORDER BY count DESC
@@ -658,8 +598,6 @@ export async function getEventById(
   validateIdentifier(options.eventId, 'eventId');
   validateIdentifier(options.appId, 'appId');
 
-  const readTables = resolveReadTablesForEventId(options.eventId);
-
   const query = `
     SELECT
       event_id,
@@ -677,7 +615,7 @@ export async function getEventById(
           `event_id = '${escapeSqlString(options.eventId)}'`,
           `app_id = '${escapeSqlString(options.appId)}'`,
         ],
-        readTables,
+        QUESTDB_EVENT_READ_TABLES,
         true
       )}
     ) event_rows
@@ -712,25 +650,13 @@ export async function getEventStats(options: GetEventStatsOptions): Promise<{
   const [totalEvents, totalEventsYesterday, events24h, eventsYesterday] =
     await Promise.all([
       getEventCount([appCondition]),
-      getEventCount(
-        [appCondition, `timestamp < ${twentyFourHoursAgo}`],
-        resolveReadTablesForRange({ endDate: twentyFourHoursAgoDate })
-      ),
-      getEventCount(
-        [appCondition, `timestamp >= ${twentyFourHoursAgo}`],
-        resolveReadTablesForRange({ startDate: twentyFourHoursAgoDate })
-      ),
-      getEventCount(
-        [
-          appCondition,
-          `timestamp >= ${fortyEightHoursAgo}`,
-          `timestamp < ${twentyFourHoursAgo}`,
-        ],
-        resolveReadTablesForRange({
-          startDate: fortyEightHoursAgoDate,
-          endDate: twentyFourHoursAgoDate,
-        })
-      ),
+      getEventCount([appCondition, `timestamp < ${twentyFourHoursAgo}`]),
+      getEventCount([appCondition, `timestamp >= ${twentyFourHoursAgo}`]),
+      getEventCount([
+        appCondition,
+        `timestamp >= ${fortyEightHoursAgo}`,
+        `timestamp < ${twentyFourHoursAgo}`,
+      ]),
     ]);
 
   const totalEventsChange24h = totalEvents - totalEventsYesterday;
@@ -759,7 +685,7 @@ export async function initQuestDB(): Promise<void> {
       eventSchemaError = null;
 
       console.log(
-        `[QuestDB] Event storage config. write=${QUESTDB_EVENT_WRITE_TABLE} read=${QUESTDB_EVENT_READ_TABLES.join(',')} cutover=${QUESTDB_EVENT_CUTOVER_AT}`
+        `[QuestDB] Event storage config. write=${QUESTDB_EVENT_WRITE_TABLE} read=${QUESTDB_EVENT_READ_TABLES.join(',')}`
       );
 
       for (const tableName of QUESTDB_EVENT_READ_TABLES) {
@@ -789,7 +715,7 @@ export async function initQuestDB(): Promise<void> {
       eventSchemaVerified = true;
       tablesInitialized = true;
       console.log(
-        `[QuestDB] Event storage initialized. write=${QUESTDB_EVENT_WRITE_TABLE} read=${QUESTDB_EVENT_READ_TABLES.join(',')} cutover=${QUESTDB_EVENT_CUTOVER_AT} schema=ok retention=1y`
+        `[QuestDB] Event storage initialized. write=${QUESTDB_EVENT_WRITE_TABLE} read=${QUESTDB_EVENT_READ_TABLES.join(',')} schema=ok retention=1y`
       );
     } catch (error) {
       eventSchemaVerified = false;
@@ -830,10 +756,6 @@ export async function getEventTimeseries(
 
   const startTimestamp = start.getTime() * 1000;
   const endTimestamp = end.getTime() * 1000;
-  const readTables = resolveReadTablesForRange({
-    startDate: start,
-    endDate: end,
-  });
 
   const query = `
     SELECT
@@ -847,7 +769,7 @@ export async function getEventTimeseries(
           `timestamp >= ${startTimestamp}`,
           `timestamp < ${endTimestamp}`,
         ],
-        readTables
+        QUESTDB_EVENT_READ_TABLES
       )}
     ) event_rows
     GROUP BY to_str(timestamp, 'yyyy-MM-dd')
