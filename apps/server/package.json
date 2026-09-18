@@ -11,7 +11,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "test": "bun test src/lib/questdb.test.ts src/lib/questdb-sql.test.ts src/lib/explore src/lib/links"
+    "test": "bun test src/lib/geolocation.test.ts src/lib/questdb.test.ts src/lib/questdb-sql.test.ts src/lib/explore src/lib/links"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.67",

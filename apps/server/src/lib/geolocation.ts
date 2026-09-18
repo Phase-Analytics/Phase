@@ -1,3 +1,4 @@
+import { unwatchFile, watchFile } from 'node:fs';
 import { type CountryResponse, open, type Reader } from 'maxmind';
 
 const GEOIP_DB_PATH =
@@ -7,21 +8,43 @@ type GeoLocationData = {
   countryCode: string | null;
 };
 
-class GeoIPManager {
+export class GeoIPManager {
   private reader: Reader<CountryResponse> | null = null;
+  private stopped = false;
+  private readonly databasePath: string;
+
+  constructor(databasePath = GEOIP_DB_PATH) {
+    this.databasePath = databasePath;
+  }
+
+  private readonly onDatabaseChanged = async () => {
+    await this.loadDatabase();
+  };
 
   async initialize() {
     await this.loadDatabase();
+    if (this.stopped) {
+      return;
+    }
+    // The updater replaces the file with rename; watch the path, not its inode.
+    watchFile(
+      this.databasePath,
+      { persistent: false, interval: 5000 },
+      this.onDatabaseChanged
+    );
     console.log('✅ [GeoIP] Manager initialized');
   }
 
   private async loadDatabase() {
     try {
-      this.reader = await open<CountryResponse>(GEOIP_DB_PATH);
+      const reader = await open<CountryResponse>(this.databasePath);
+      if (this.stopped) {
+        return;
+      }
+      this.reader = reader;
       console.log('✅ [GeoIP] Database loaded');
     } catch (error) {
       console.error('❌ [GeoIP] Failed to load database:', error);
-      this.reader = null;
     }
   }
 
@@ -55,6 +78,8 @@ class GeoIPManager {
   }
 
   shutdown() {
+    this.stopped = true;
+    unwatchFile(this.databasePath, this.onDatabaseChanged);
     this.reader = null;
     console.log('✅ [GeoIP] Shutdown complete');
   }
