@@ -5,15 +5,15 @@ FROM base AS deps
 WORKDIR /app
 
 COPY package.json bun.lock ./
-COPY packages/shared/ ./packages/shared/
+COPY packages/shared/package.json ./packages/shared/
 COPY packages/sdk/package.json ./packages/sdk/
-COPY apps/web/ ./apps/web/
+COPY apps/web/package.json ./apps/web/
 COPY apps/server/package.json ./apps/server/package.json
 COPY apps/mobile/package.json ./apps/mobile/package.json
 
-RUN bun install --frozen-lockfile --filter web
+RUN --mount=type=cache,id=phase-bun,target=/root/.bun/install/cache,sharing=locked bun install --frozen-lockfile --filter web
 
-FROM base AS builder
+FROM deps AS builder
 
 ARG NODE_ENV=production
 ARG NEXT_TELEMETRY_DISABLED=1
@@ -26,11 +26,12 @@ ENV R2_PUBLIC_BASE_URL=$R2_PUBLIC_BASE_URL
 
 WORKDIR /app
 
-COPY --from=deps /app ./
+COPY packages/shared/ ./packages/shared/
+COPY apps/web/ ./apps/web/
 
 WORKDIR /app/apps/web
 
-RUN bun run build
+RUN --mount=type=cache,id=phase-next,target=/app/apps/web/.next/cache,sharing=locked bun run build
 
 FROM base AS runner
 

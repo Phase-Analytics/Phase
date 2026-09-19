@@ -4,3 +4,12 @@ packages/phase-unity/
 # Dependencies and VCS
 node_modules/
 .git/
+
+# Keep local build outputs out of the source layers.
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+**/.env
+**/.env.*
+!**/.env.example

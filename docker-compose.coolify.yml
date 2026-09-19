@@ -71,6 +71,7 @@ services:
     restart: 'no'
     container_name: coolify-phase-geoip
   cron:
+    init: true
     build:
       context: ./tooling/cron
       dockerfile: ../../infrastructure/docker/cron.Dockerfile
