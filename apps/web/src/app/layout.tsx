@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { JetBrains_Mono } from 'next/font/google';
 import './global.css';
 import { IntercomMessenger } from '@/components/intercom';
-import { OpenPanelAnalytics } from '@/components/openpanel';
+import { OpenAnalytics } from '@/components/openanalytics';
 import { ServiceWorkerRegister } from '@/components/sw-register';
 import { baseMetadata } from '@/lib/seo';
 import { ThemeProvider } from '@/lib/theme-provider';
@@ -29,7 +29,7 @@ export default function RootLayout({
         <ServiceWorkerRegister />
         <ThemeProvider>{children}</ThemeProvider>
         <IntercomMessenger />
-        <OpenPanelAnalytics />
+        <OpenAnalytics />
       </body>
     </html>
   );
