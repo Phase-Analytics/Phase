@@ -1,16 +1,8 @@
-import { randomUUID } from 'node:crypto';
-import { normalizeLinkBrowserFamily } from '@phase/shared';
-import { UAParser } from 'ua-parser-js';
-import { getLocationFromIP } from '@/lib/geolocation';
-import { sseManager } from '@/lib/sse-manager';
-import { shouldRecordLinkClick, shouldServeLinkOgPreview } from './bot';
-import { getLinkClickBuffer } from './click-buffer';
+import { classifyLinkRequest } from './bot';
 import { LINK_DEFAULT_HOST } from './constants';
-import {
-  resolveDestinationForPlatform,
-  resolveLinkDevicePlatform,
-} from './device';
+import { parseLinkUserAgent, resolveDestinationForPlatform } from './device';
 import { buildLinkOgPreviewHtml, buildLinkPreviewPageUrl } from './og-preview';
+import { recordLinkClick } from './record-click';
 import { resolveLinkReferrer } from './referrer';
 import {
   isLinkUnavailable,
@@ -20,90 +12,65 @@ import {
 import { mergeUtmIntoUrl } from './utm';
 import { resolveVisitorIdentity } from './visitor';
 
-function extractClientIp(request: Request): string | null {
-  const cfConnectingIp = request.headers.get('cf-connecting-ip');
-  const forwardedFor = request.headers.get('x-forwarded-for');
-  const realIp = request.headers.get('x-real-ip');
+export type LinkRedirectTarget =
+  | { mode: 'default' }
+  | { mode: 'custom'; host: string };
 
-  return (
-    cfConnectingIp || forwardedFor?.split(',')[0]?.trim() || realIp || null
-  );
-}
-
-function notFound(reason: string): Response {
-  return new Response('Not Found', {
-    status: 404,
-    headers: {
-      'X-Phase-Link-Error': reason,
-    },
+function errorResponse(status: 404 | 410, reason: string): Response {
+  return new Response(status === 410 ? 'Gone' : 'Not Found', {
+    status,
+    headers: { 'X-Phase-Link-Error': reason },
   });
 }
 
+/**
+ * Hot path: on a warm cache this performs no awaited network I/O. Click
+ * recording (rate limit, Redis buffer, SSE) runs after the response.
+ */
 export async function handleLinkRedirect(
   request: Request,
   slug: string,
-  options: { mode: 'default' | 'custom'; host?: string }
+  target: LinkRedirectTarget,
+  clientIp: string | null
 ): Promise<Response> {
   let domainHost = LINK_DEFAULT_HOST;
   let domainId: string | null = null;
 
-  if (options.mode === 'custom') {
-    const host = options.host?.split(':')[0]?.toLowerCase();
-    if (!host) {
-      return notFound('missing_host');
-    }
-
-    const domain = await resolveVerifiedDomain(host);
+  if (target.mode === 'custom') {
+    const domain = await resolveVerifiedDomain(target.host);
     if (!domain) {
-      return notFound('domain_not_verified');
+      return errorResponse(404, 'domain_not_verified');
     }
-
     domainHost = domain.hostname;
     domainId = domain.id;
   }
 
   const link = await resolveLinkBySlug(slug, domainId);
   if (!link) {
-    return notFound('link_not_found');
+    return errorResponse(404, 'link_not_found');
   }
-
+  if (link.banned) {
+    return errorResponse(410, 'link_banned');
+  }
   if (isLinkUnavailable(link)) {
-    return notFound('link_unavailable');
+    return errorResponse(404, 'link_unavailable');
   }
 
-  const userAgent = request.headers.get('user-agent');
-  const platform = resolveLinkDevicePlatform(userAgent);
-  const parser = new UAParser(userAgent ?? undefined);
-  const osFamily = parser.getOS().name ?? 'unknown';
-  const browserFamily = normalizeLinkBrowserFamily(
-    parser.getBrowser().name ?? 'unknown',
-    userAgent,
-    parser.getEngine().name ?? undefined
+  const rawUserAgent = request.headers.get('user-agent');
+  const kind = classifyLinkRequest(request, rawUserAgent);
+  const userAgent = parseLinkUserAgent(rawUserAgent);
+
+  const finalUrl = mergeUtmIntoUrl(
+    resolveDestinationForPlatform(userAgent.platform, link),
+    link
   );
 
-  const destination = resolveDestinationForPlatform(platform, {
-    destinationUrl: link.destinationUrl,
-    deviceIosUrl: link.deviceIosUrl,
-    deviceAndroidUrl: link.deviceAndroidUrl,
-    deviceOthersUrl: link.deviceOthersUrl,
-  });
-
-  const finalUrl = mergeUtmIntoUrl(destination, {
-    utmSource: link.utmSource,
-    utmMedium: link.utmMedium,
-    utmCampaign: link.utmCampaign,
-    utmTerm: link.utmTerm,
-    utmContent: link.utmContent,
-  });
-
-  if (shouldServeLinkOgPreview(request)) {
-    const pageUrl = buildLinkPreviewPageUrl(slug, options);
+  if (kind === 'preview') {
     const html = buildLinkOgPreviewHtml({
       link,
-      pageUrl,
+      pageUrl: buildLinkPreviewPageUrl(slug, target),
       destinationUrl: finalUrl,
     });
-
     return new Response(html, {
       status: 200,
       headers: {
@@ -113,56 +80,36 @@ export async function handleLinkRedirect(
     });
   }
 
-  const clientIp = extractClientIp(request);
-  const geo = clientIp ? getLocationFromIP(clientIp) : null;
-  const { visitorKey, setCookie } = resolveVisitorIdentity({
-    cookieHeader: request.headers.get('cookie'),
-  });
+  const headers = new Headers({ Location: finalUrl });
 
-  const buffer = getLinkClickBuffer();
-  if (buffer && shouldRecordLinkClick(request)) {
-    const clickId = randomUUID();
-    const timestamp = new Date().toISOString();
-    const countryCode = geo?.countryCode ?? null;
+  if (kind === 'human') {
+    const { visitorKey, setCookie } = resolveVisitorIdentity({
+      cookieHeader: request.headers.get('cookie'),
+      ip: clientIp,
+      userAgent: rawUserAgent,
+    });
+    if (setCookie) {
+      headers.append('Set-Cookie', setCookie);
+    }
 
-    await buffer.push({
-      appId: link.appId,
-      linkId: link.id,
+    recordLinkClick({
+      link,
+      clientIp,
+      userAgent,
       visitorKey,
-      countryCode,
-      os: osFamily,
-      browser: browserFamily,
-      platform,
       referrer: resolveLinkReferrer({
         refererHeader: request.headers.get('referer'),
         requestUrl: request.url,
         secFetchSite: request.headers.get('sec-fetch-site'),
-        userAgent,
+        userAgent: rawUserAgent,
       }),
       domainHost,
-      timestamp,
-    });
-
-    const linkName = link.name?.trim() || link.slug;
-
-    sseManager.pushLinkClick(link.appId, {
-      clickId,
-      linkId: link.id,
-      linkName,
-      timestamp,
-      countryCode,
-      os: osFamily,
-      browser: browserFamily,
+    }).catch((error) => {
+      console.error('[Links] Failed to record click:', error);
     });
   }
 
-  const headers = new Headers({ Location: finalUrl });
-  if (setCookie) {
-    headers.append('Set-Cookie', setCookie);
-  }
-
-  return new Response(null, {
-    status: 302,
-    headers,
-  });
+  // Never cached: edits must apply immediately and every click must reach us.
+  headers.set('Cache-Control', 'private, no-store');
+  return new Response(null, { status: 302, headers });
 }

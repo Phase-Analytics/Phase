@@ -39,14 +39,14 @@ const OVERVIEW_DEVICE_FIELDS = [
     label: 'Android URL',
     icon: AndroidIcon,
     id: 'device_android',
-    placeholder: 'example.com/android',
+    placeholder: 'example.com/android or myapp://path',
   },
   {
     key: 'deviceIosUrl' as const,
     label: 'iOS URL',
     icon: AppleIcon,
     id: 'device_ios',
-    placeholder: 'example.com/ios',
+    placeholder: 'example.com/ios or myapp://path',
   },
 ] as const;
 

@@ -38,10 +38,14 @@ export function LinkDomainsTable({
           toast.success('Domain verified');
           return;
         }
-        toast.info('DNS or certificate verification is still pending');
+        toast.info(
+          domain.lastError ?? 'DNS or certificate verification is still pending'
+        );
       },
-      onError: () => {
-        toast.error('Could not verify domain');
+      onError: (error) => {
+        toast.error(
+          error instanceof Error ? error.message : 'Could not verify domain'
+        );
       },
     });
   };
@@ -58,10 +62,20 @@ export function LinkDomainsTable({
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => (
-        <LinkDomainStatusBadge
-          onDnsInfoClick={() => setDnsDialogDomain(row.original)}
-          status={row.original.status}
-        />
+        <div className="flex flex-col gap-1">
+          <LinkDomainStatusBadge
+            onDnsInfoClick={() => setDnsDialogDomain(row.original)}
+            status={row.original.status}
+          />
+          {row.original.degraded ? (
+            <span
+              className="text-muted-foreground text-xs"
+              title={row.original.lastError ?? undefined}
+            >
+              Still serving; provider check needs attention
+            </span>
+          ) : null}
+        </div>
       ),
     },
     {

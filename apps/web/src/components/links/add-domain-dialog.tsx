@@ -122,7 +122,7 @@ export function AddDomainDialog({ appId }: AddDomainDialogProps) {
             <DialogHeader>
               <DialogTitle>Configure DNS</DialogTitle>
               <DialogDescription>
-                Add this record, then verify from the domains table.
+                Add these records, then verify from the domains table.
               </DialogDescription>
             </DialogHeader>
 

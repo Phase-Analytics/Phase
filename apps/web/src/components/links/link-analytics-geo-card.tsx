@@ -7,20 +7,7 @@ import type { ReactNode } from 'react';
 import 'flag-icons/css/flag-icons.min.css';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-
-const COUNTRY_CODE_REGEX = /^[A-Za-z]{2}$/;
-
-function getCountryLabel(countryCode: string) {
-  if (!(countryCode && COUNTRY_CODE_REGEX.test(countryCode))) {
-    return 'Unknown';
-  }
-
-  return (
-    new Intl.DisplayNames(['en'], { type: 'region' }).of(
-      countryCode.toUpperCase()
-    ) || countryCode
-  );
-}
+import { getCountryLabel, isCountryCode } from './country-label';
 
 function GeoBarRow({
   label,
@@ -85,8 +72,7 @@ export function LinkAnalyticsGeoCard({
               <p className="text-muted-foreground text-sm">No data yet</p>
             ) : (
               countries.map((item) => {
-                const isValid =
-                  item.key.length === 2 && COUNTRY_CODE_REGEX.test(item.key);
+                const isValid = isCountryCode(item.key);
                 const label = getCountryLabel(item.key);
                 const percentage = countryTotal
                   ? (item.count / countryTotal) * 100

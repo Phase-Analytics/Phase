@@ -2,7 +2,82 @@ import { z } from 'zod';
 import { PaginationMetaSchema } from './common';
 
 const LINK_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,62}[a-z0-9])?$/;
-const HTTP_PREFIX_RE = /^https?:\/\//i;
+const URL_SCHEME_RE = /^([a-z][a-z0-9+.-]*):(.*)$/is;
+const DIGIT_START_RE = /^\d/;
+const WEB_SCHEMES = new Set(['http', 'https']);
+const BLOCKED_SCHEMES = new Set(['javascript', 'data', 'vbscript', 'file']);
+const MAX_LINK_URL_LENGTH = 2048;
+
+/**
+ * Returns the explicit scheme of a URL-ish value, or null for bare hosts.
+ * `example.com:8080/x` and `localhost:3000` are hosts with ports, not schemes.
+ */
+function getExplicitScheme(value: string): string | null {
+  const match = URL_SCHEME_RE.exec(value);
+  if (!match) {
+    return null;
+  }
+  const [, scheme = '', rest = ''] = match;
+  if (rest.startsWith('//')) {
+    return scheme.toLowerCase();
+  }
+  if (scheme.includes('.') || DIGIT_START_RE.test(rest)) {
+    return null;
+  }
+  return scheme.toLowerCase();
+}
+
+function isParsableUrl(value: string): boolean {
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function createLinkUrlSchema(options: { allowAppSchemes: boolean }) {
+  return z
+    .string()
+    .trim()
+    .max(MAX_LINK_URL_LENGTH)
+    .transform((value, ctx) => {
+      const scheme = getExplicitScheme(value);
+      const normalized = scheme ? value : `https://${value}`;
+
+      if (
+        scheme &&
+        !WEB_SCHEMES.has(scheme) &&
+        (!options.allowAppSchemes || BLOCKED_SCHEMES.has(scheme))
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          message: options.allowAppSchemes
+            ? `URLs using ${scheme}: are not allowed`
+            : 'URL must start with http:// or https://',
+        });
+        return z.NEVER;
+      }
+
+      if (
+        normalized.length > MAX_LINK_URL_LENGTH ||
+        !isParsableUrl(normalized)
+      ) {
+        ctx.addIssue({ code: 'custom', message: 'Invalid URL' });
+        return z.NEVER;
+      }
+
+      if (!scheme || WEB_SCHEMES.has(scheme)) {
+        const { hostname } = new URL(normalized);
+        if (!hostname.includes('.') && hostname !== 'localhost') {
+          ctx.addIssue({ code: 'custom', message: 'Invalid URL' });
+          return z.NEVER;
+        }
+      }
+
+      return normalized;
+    });
+}
 
 export const LinkSlugSchema = z
   .string()
@@ -13,33 +88,20 @@ export const LinkSlugSchema = z
       'Slug must be 3-64 characters, lowercase letters, numbers, and hyphens only',
   });
 
-export const LinkUrlSchema = z
-  .string()
-  .trim()
-  .transform((value) => {
-    if (!value) {
-      return value;
-    }
-    if (HTTP_PREFIX_RE.test(value)) {
-      return value;
-    }
-    return `https://${value}`;
-  })
-  .pipe(z.string().url().max(2048));
+/** Main destination: http(s) only; bare hosts get https://. */
+export const LinkUrlSchema = createLinkUrlSchema({ allowAppSchemes: false });
 
-export const LinkUrlNullableSchema = z
-  .string()
-  .trim()
-  .transform((value) => {
-    if (!value) {
-      return value;
-    }
-    if (HTTP_PREFIX_RE.test(value)) {
-      return value;
-    }
-    return `https://${value}`;
-  })
-  .pipe(z.string().url().max(2048))
+/** Web fallback for "other" devices: http(s) only. */
+export const LinkUrlNullableSchema = createLinkUrlSchema({
+  allowAppSchemes: false,
+})
+  .nullable()
+  .optional();
+
+/** iOS / Android routing: app deep links (myapp://path) are allowed. */
+export const LinkDeviceAppUrlNullableSchema = createLinkUrlSchema({
+  allowAppSchemes: true,
+})
   .nullable()
   .optional();
 
@@ -64,8 +126,8 @@ export const CreateLinkRequestSchema = z
     name: LinkNameSchema,
     slug: LinkSlugSchema,
     destinationUrl: LinkUrlSchema,
-    deviceIosUrl: LinkUrlNullableSchema,
-    deviceAndroidUrl: LinkUrlNullableSchema,
+    deviceIosUrl: LinkDeviceAppUrlNullableSchema,
+    deviceAndroidUrl: LinkDeviceAppUrlNullableSchema,
     deviceOthersUrl: LinkUrlNullableSchema,
     expiresAt: z.string().datetime().nullable().optional(),
     disabled: z.boolean().optional(),
@@ -79,8 +141,8 @@ export const UpdateLinkRequestSchema = z
     name: LinkNameSchema,
     destinationUrl: LinkUrlSchema.optional(),
     slug: LinkSlugSchema.optional(),
-    deviceIosUrl: LinkUrlNullableSchema,
-    deviceAndroidUrl: LinkUrlNullableSchema,
+    deviceIosUrl: LinkDeviceAppUrlNullableSchema,
+    deviceAndroidUrl: LinkDeviceAppUrlNullableSchema,
     deviceOthersUrl: LinkUrlNullableSchema,
     expiresAt: z.string().datetime().nullable().optional(),
     disabled: z.boolean().optional(),
@@ -97,8 +159,11 @@ export const LinkListItemSchema = z.object({
   shortUrl: z.string(),
   expiresAt: z.string().datetime().nullable(),
   disabledAt: z.string().datetime().nullable(),
+  /** Blocked by Phase staff for abuse; the link returns 410 regardless of owner settings. */
+  banned: z.boolean(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
+  /** Omitted when click totals are temporarily unavailable. */
   totalClicks: z.number().int().nonnegative().optional(),
 });
 
@@ -158,12 +223,22 @@ export const LinkDomainSchema = z.object({
   dnsRecords: z.array(LinkDomainDnsRecordSchema),
   lastCheckAt: z.string().datetime().nullable(),
   lastError: z.string().nullable(),
+  /** Verified and still serving, but the provider currently reports a non-active state. */
+  degraded: z.boolean(),
   createdAt: z.string().datetime(),
   cnameTarget: z.string(),
 });
 
 export const LinkDomainsListResponseSchema = z.object({
   domains: z.array(LinkDomainSchema),
+});
+
+export const LINK_ANALYTICS_RANGES = ['7d', '30d', '180d', '360d'] as const;
+export const LinkAnalyticsRangeSchema = z.enum(LINK_ANALYTICS_RANGES);
+export const LINK_ANALYTICS_DEFAULT_RANGE: LinkAnalyticsRange = '30d';
+
+export const LinkBanRequestSchema = z.object({
+  banned: z.boolean(),
 });
 
 export const LinkAnalyticsBreakdownItemSchema = z.object({
@@ -212,6 +287,8 @@ export type CreateLinkDomainRequest = z.infer<
 export type LinkDomainDnsRecord = z.infer<typeof LinkDomainDnsRecordSchema>;
 export type LinkDomain = z.infer<typeof LinkDomainSchema>;
 export type LinkAnalyticsResponse = z.infer<typeof LinkAnalyticsResponseSchema>;
+export type LinkAnalyticsRange = z.infer<typeof LinkAnalyticsRangeSchema>;
+export type LinkBanRequest = z.infer<typeof LinkBanRequestSchema>;
 export type LinkClickItem = z.infer<typeof LinkClickItemSchema>;
 export type LinkClicksListResponse = z.infer<
   typeof LinkClicksListResponseSchema

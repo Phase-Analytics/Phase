@@ -82,7 +82,10 @@ export default function LinksScreen() {
               <View style={styles.clicksMeta}>
                 <CursorIcon framed={false} size={12} />
                 <Text style={[styles.clicksText, { color: theme.textSecondary }]}>
-                  {formatNumber(item.totalClicks ?? 0)} clicks
+                  {item.totalClicks === undefined
+                    ? "—"
+                    : formatNumber(item.totalClicks)}{" "}
+                  clicks
                 </Text>
               </View>
             }

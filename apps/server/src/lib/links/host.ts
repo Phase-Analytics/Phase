@@ -1,6 +1,7 @@
-import { LINK_CNAME_TARGET, LINK_DEFAULT_HOST } from './constants';
+import { LINK_DEFAULT_HOST } from './constants';
 
 const TRAILING_DOT_REGEX = /\.$/;
+const DEV_DEFAULT_HOSTS = new Set(['localhost', '127.0.0.1']);
 
 export function normalizeLinkHost(
   host: string | null | undefined
@@ -9,36 +10,32 @@ export function normalizeLinkHost(
     return null;
   }
 
-  return host
-    .trim()
-    .toLowerCase()
-    .replace(TRAILING_DOT_REGEX, '')
-    .split(':')[0];
+  return (
+    host.trim().toLowerCase().replace(TRAILING_DOT_REGEX, '').split(':')[0] ||
+    null
+  );
 }
 
-function isLinkIngressHostname(host: string): boolean {
-  const normalized = normalizeLinkHost(host);
-  if (!normalized) {
+/**
+ * Host wins: Cloudflare for SaaS delivers the customer hostname in Host and
+ * Traefik forwards it with passHostHeader, while X-Forwarded-Host can be
+ * supplied by the client. X-Forwarded-Host is only a fallback for requests
+ * that arrive without a Host header.
+ */
+export function resolveLinkRequestHost(headers: Headers): string | null {
+  return (
+    normalizeLinkHost(headers.get('host')) ??
+    normalizeLinkHost(headers.get('x-forwarded-host')?.split(',')[0])
+  );
+}
+
+/** Hosts that serve default-domain links under /l/:slug. */
+export function isDefaultLinkHost(host: string | null): boolean {
+  if (!host) {
     return false;
   }
-
-  return (
-    normalized === LINK_CNAME_TARGET ||
-    normalized === LINK_DEFAULT_HOST ||
-    normalized === `www.${LINK_CNAME_TARGET}` ||
-    normalized === `www.${LINK_DEFAULT_HOST}`
-  );
-}
-
-export function resolveLinkRequestHost(headers: Headers): string | null {
-  const host = normalizeLinkHost(headers.get('host'));
-  const forwarded = normalizeLinkHost(
-    headers.get('x-forwarded-host')?.split(',')[0]
-  );
-
-  if (forwarded && host && isLinkIngressHostname(host)) {
-    return forwarded;
+  if (host === LINK_DEFAULT_HOST || host === `www.${LINK_DEFAULT_HOST}`) {
+    return true;
   }
-
-  return forwarded ?? host;
+  return process.env.NODE_ENV !== 'production' && DEV_DEFAULT_HOSTS.has(host);
 }

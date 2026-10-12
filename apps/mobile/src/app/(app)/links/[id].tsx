@@ -1,3 +1,4 @@
+import { LINK_ANALYTICS_DEFAULT_RANGE } from "@phase/shared";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
@@ -150,14 +151,16 @@ export default function LinkDetailScreen() {
 
         <View style={styles.stats}>
           <StatCard
-            label="Clicks"
-            value={formatNumber(
-              analytics.data?.totalClicks ?? data.totalClicks ?? 0
-            )}
+            label={`Clicks (${LINK_ANALYTICS_DEFAULT_RANGE})`}
+            value={
+              analytics.data ? formatNumber(analytics.data.totalClicks) : "—"
+            }
           />
           <StatCard
-            label="Unique"
-            value={formatNumber(analytics.data?.uniqueVisits ?? 0)}
+            label={`Unique (${LINK_ANALYTICS_DEFAULT_RANGE})`}
+            value={
+              analytics.data ? formatNumber(analytics.data.uniqueVisits) : "—"
+            }
           />
         </View>
 

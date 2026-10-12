@@ -9,7 +9,10 @@ import type {
   PaginationQueryParams,
   UpdateLinkRequest,
 } from "@phase/shared";
-import { LinkDomainsListResponseSchema } from "@phase/shared";
+import {
+  LINK_ANALYTICS_DEFAULT_RANGE,
+  LinkDomainsListResponseSchema,
+} from "@phase/shared";
 import {
   keepPreviousData,
   useMutation,
@@ -48,10 +51,16 @@ export function useLink(appId: string, linkId: string) {
 
 export function useLinkAnalytics(appId: string, linkId: string) {
   return useQuery({
-    queryKey: queryKeys.links.analytics(appId, linkId),
+    queryKey: [
+      ...queryKeys.links.analytics(appId, linkId),
+      LINK_ANALYTICS_DEFAULT_RANGE,
+    ],
     queryFn: () =>
       fetchApi<LinkAnalyticsResponse>(
-        `/web/links/${linkId}/analytics${buildQueryString({ appId })}`
+        `/web/links/${linkId}/analytics${buildQueryString({
+          appId,
+          range: LINK_ANALYTICS_DEFAULT_RANGE,
+        })}`
       ),
     ...cacheConfig.list,
     enabled: Boolean(appId) && Boolean(linkId),
@@ -64,11 +73,17 @@ export function useLinkClicks(
   filters?: PaginationQueryParams
 ) {
   return useQuery({
-    queryKey: [...queryKeys.links.analytics(appId, linkId), "clicks", filters],
+    queryKey: [
+      ...queryKeys.links.analytics(appId, linkId),
+      LINK_ANALYTICS_DEFAULT_RANGE,
+      "clicks",
+      filters,
+    ],
     queryFn: () =>
       fetchApi<LinkClicksListResponse>(
         `/web/links/${linkId}/clicks${buildQueryString({
           appId,
+          range: LINK_ANALYTICS_DEFAULT_RANGE,
           ...filters,
         })}`
       ),
