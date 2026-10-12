@@ -160,8 +160,9 @@ export function getSocketAddress(
   request: Request,
   server: unknown
 ): string | null {
-  const requestIP = (
-    server as { requestIP?: (req: Request) => { address: string } | null }
-  )?.requestIP;
-  return requestIP?.(request)?.address ?? null;
+  // Call through the server: Bun's requestIP throws when invoked unbound.
+  const bunServer = server as {
+    requestIP?: (req: Request) => { address: string } | null;
+  } | null;
+  return bunServer?.requestIP?.(request)?.address ?? null;
 }
