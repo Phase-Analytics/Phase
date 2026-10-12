@@ -1,7 +1,5 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "fumadocs-ui/css/vitepress.css";
-@import "fumadocs-ui/css/preset.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -33,10 +31,6 @@
   --accent: oklch(0.921 0 358);
 
   --accent-foreground: oklch(0.205 0 0);
-
-  --color-fd-accent: oklch(0.921 0 358);
-
-  --color-fd-accent-foreground: oklch(0.205 0 0);
 
   --destructive: oklch(0.48 0.15 20);
 
@@ -85,8 +79,6 @@
   --sidebar-border: oklch(0.922 0 0);
 
   --sidebar-ring: oklch(0.708 0 0);
-
-  --color-fd-primary: oklch(0 0 0);
 
   --chart-background: var(--card);
 
@@ -178,10 +170,6 @@
 
   --accent-foreground: oklch(0.985 0 0);
 
-  --color-fd-accent: oklch(0.269 0 0);
-
-  --color-fd-accent-foreground: oklch(0.985 0 0);
-
   --destructive: oklch(0.704 0.191 22.216);
 
   --destructive-foreground: hsl(0 0% 98%);
@@ -221,8 +209,6 @@
   --sidebar-border: oklch(1 0 0 / 10%);
 
   --sidebar-ring: oklch(0.556 0 0);
-
-  --color-fd-primary: oklch(1 0 0);
 
   --chart-background: var(--card);
 
@@ -444,8 +430,4 @@
   .animate-shine {
     animation: shine 8s ease-in-out infinite;
   }
-}
-
-body.docs-page [role="dialog"] {
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }

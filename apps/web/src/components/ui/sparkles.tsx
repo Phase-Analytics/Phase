@@ -2,6 +2,7 @@
 
 import Particles, { initParticlesEngine } from '@tsparticles/react';
 import { loadSlim } from '@tsparticles/slim';
+import { useReducedMotion } from 'motion/react';
 import { useTheme } from 'next-themes';
 import { useEffect, useId, useMemo, useState } from 'react';
 
@@ -40,14 +41,18 @@ export function Sparkles({
 }: SparklesProps) {
   const [isReady, setIsReady] = useState(false);
   const { theme } = useTheme();
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
+    if (reducedMotion !== false) {
+      return;
+    }
     initParticlesEngine(async (engine) => {
       await loadSlim(engine);
     }).then(() => {
       setIsReady(true);
     });
-  }, []);
+  }, [reducedMotion]);
 
   const id = useId();
 
@@ -62,7 +67,9 @@ export function Sparkles({
         enable: false,
         zIndex: 1,
       },
-      fpsLimit: 300,
+      fpsLimit: 60,
+      pauseOnBlur: true,
+      pauseOnOutsideViewport: true,
 
       interactivity: {
         events: {
@@ -167,7 +174,8 @@ export function Sparkles({
     ]
   );
   return (
-    isReady && (
+    isReady &&
+    !reducedMotion && (
       <Particles
         className={className}
         id={id}

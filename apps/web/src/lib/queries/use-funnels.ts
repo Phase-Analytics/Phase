@@ -8,6 +8,7 @@ import type {
 } from '@phase/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { buildQueryString, fetchApi } from '@/lib/api/client';
+import { useTimezoneStore } from '@/stores/timezone-store';
 import { cacheConfig } from './query-client';
 import { queryKeys } from './query-keys';
 
@@ -15,14 +16,17 @@ export function useActivationFunnel(
   appId: string,
   range?: { startDate?: string; endDate?: string }
 ) {
+  const tz = useTimezoneStore((s) => s.timezone);
+
   return useQuery({
-    queryKey: queryKeys.funnels.activation(appId, range),
+    queryKey: queryKeys.funnels.activation(appId, range, tz),
     queryFn: () =>
       fetchApi<FunnelResult>(
         `/web/funnels/activation${buildQueryString({
           appId,
           startDate: range?.startDate,
           endDate: range?.endDate,
+          tz,
         })}`
       ),
     ...cacheConfig.overview,

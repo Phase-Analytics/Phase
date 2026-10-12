@@ -2,6 +2,7 @@ import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import { RootProvider } from 'fumadocs-ui/provider/next';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import './docs.css';
 import { baseOptions } from '@/app/docs/docs-layout';
 import { source } from '@/app/docs/docs-source';
 import { DocsBodyClass } from './docs-body-class';

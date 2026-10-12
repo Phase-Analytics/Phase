@@ -1,6 +1,7 @@
 'use client';
 
 import { parseAsString, useQueryState } from 'nuqs';
+import { useDeferredValue } from 'react';
 import { TimescaleChart } from '@/components/timescale-chart';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -9,7 +10,9 @@ import {
   toChartTimeRange,
 } from '@/lib/analytics-time-range';
 import { formatDuration } from '@/lib/date-utils';
+import { fillDailyTimeseriesGaps } from '@/lib/fill-daily-timeseries';
 import { useSessionTimeseries } from '@/lib/queries';
+import { useTimezoneStore } from '@/stores/timezone-store';
 
 function getMetricType(metric: string) {
   if (metric === 'daily_sessions') {
@@ -72,51 +75,40 @@ export function SessionsActivityChart() {
     parseAsString.withDefault('daily_sessions')
   );
 
-  const { data: timeseriesData, isLoading } = useSessionTimeseries(
+  const tz = useTimezoneStore((s) => s.timezone);
+  // Deferred so a range/metric switch keeps the current chart mounted while
+  // the next series loads instead of falling back to the Suspense skeleton.
+  const deferredRange = useDeferredValue(timeRange);
+  const deferredMetric = useDeferredValue(metric);
+  const isStale = deferredRange !== timeRange || deferredMetric !== metric;
+
+  const { data: timeseriesData } = useSessionTimeseries(
     appId || '',
-    toChartTimeRange(timeRange || '7d'),
-    getMetricType(metric)
+    toChartTimeRange(deferredRange || '7d'),
+    getMetricType(deferredMetric)
   );
 
   if (!appId) {
     return null;
   }
 
-  const chartData = (() => {
-    if (!(timeseriesData?.data && timeseriesData.period)) {
-      return [];
-    }
-
-    const valueKey = getValueKey(metric);
-    const dataMap = new Map(
-      timeseriesData.data.map((item) => [item.date, item[valueKey] || 0])
-    );
-
-    const startDate = new Date(timeseriesData.period.startDate);
-    const endDate = new Date(timeseriesData.period.endDate);
-    const allDates: Array<{ date: string; value: number }> = [];
-
-    const currentDate = new Date(startDate);
-    while (currentDate <= endDate) {
-      const dateStr = currentDate.toISOString().split('T')[0];
-      allDates.push({
-        date: dateStr,
-        value: dataMap.get(dateStr) || 0,
-      });
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    return allDates;
-  })();
+  const chartData = fillDailyTimeseriesGaps(
+    timeseriesData.data.map((item) => ({
+      date: item.date,
+      value: item[getValueKey(deferredMetric)] || 0,
+    })),
+    timeseriesData.period,
+    tz
+  );
 
   return (
     <TimescaleChart
       chartColor="var(--color-chart-2)"
       data={chartData}
       dataKey="value"
-      dataLabel={getDataLabel(metric)}
-      description={getDescription(metric)}
-      isPending={isLoading}
+      dataLabel={getDataLabel(deferredMetric)}
+      description={getDescription(deferredMetric)}
+      isPending={isStale}
       metric={metric}
       metricOptions={[
         { value: 'daily_sessions', label: 'Daily Sessions' },
@@ -128,7 +120,7 @@ export function SessionsActivityChart() {
       timeRange={timeRange}
       timeRangeOptions={[...ANALYTICS_TIME_RANGE_OPTIONS]}
       title="Session Activity"
-      valueFormatter={getValueFormatter(metric)}
+      valueFormatter={getValueFormatter(deferredMetric)}
     />
   );
 }

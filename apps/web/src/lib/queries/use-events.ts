@@ -1,8 +1,10 @@
 import {
   keepPreviousData,
+  queryOptions,
   useQuery,
   useSuspenseQuery,
 } from '@tanstack/react-query';
+import { toDateRangeParams } from '@/lib/analytics-time-range';
 import { buildQueryString, fetchApi } from '@/lib/api/client';
 import type {
   DateRangeParams,
@@ -14,19 +16,9 @@ import type {
   TimeRange,
   TopEventsResponse,
 } from '@/lib/api/types';
+import { useTimezoneStore } from '@/stores/timezone-store';
 import { cacheConfig } from './query-client';
 import { queryKeys } from './query-keys';
-
-function getTimeRangeDates(range: TimeRange): DateRangeParams {
-  const now = new Date();
-  const days = Number.parseInt(range, 10);
-  const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-
-  return {
-    startDate: startDate.toISOString(),
-    endDate: now.toISOString(),
-  };
-}
 
 type EventFilters = PaginationQueryParams & {
   eventName?: string;
@@ -69,10 +61,10 @@ export function useEvent(eventId: string, appId: string) {
   });
 }
 
-export function useEventOverviewResponse(appId: string) {
-  return useSuspenseQuery({
-    queryKey: queryKeys.events.overview(appId),
-    queryFn: () => {
+export function eventOverviewQuery(appId: string, tz: string) {
+  return queryOptions({
+    queryKey: queryKeys.events.overview(appId, tz),
+    queryFn: (): Promise<EventOverviewResponse> => {
       if (!appId) {
         return Promise.resolve({
           totalEvents: 0,
@@ -82,17 +74,21 @@ export function useEventOverviewResponse(appId: string) {
         });
       }
       return fetchApi<EventOverviewResponse>(
-        `/web/events/overview?appId=${appId}`
+        `/web/events/overview${buildQueryString({ appId, tz })}`
       );
     },
     ...cacheConfig.overview,
   });
 }
 
-export function useTopEvents(appId: string, dateRange?: DateRangeParams) {
-  return useSuspenseQuery({
-    queryKey: queryKeys.events.top(appId, dateRange),
-    queryFn: () => {
+export function topEventsQuery(
+  appId: string,
+  dateRange: DateRangeParams | undefined,
+  tz: string
+) {
+  return queryOptions({
+    queryKey: queryKeys.events.top(appId, dateRange, tz),
+    queryFn: (): Promise<TopEventsResponse> => {
       if (!appId) {
         return Promise.resolve({
           events: [],
@@ -103,43 +99,54 @@ export function useTopEvents(appId: string, dateRange?: DateRangeParams) {
         });
       }
       return fetchApi<TopEventsResponse>(
-        `/web/events/top${buildQueryString({ ...dateRange, appId })}`
+        `/web/events/top${buildQueryString({ ...dateRange, appId, tz })}`
       );
     },
     ...cacheConfig.overview,
   });
 }
 
-export function useEventTimeseries(
+export function eventTimeseriesQuery(
   appId: string,
-  range?: TimeRange | DateRangeParams
+  range: TimeRange | DateRangeParams | undefined,
+  tz: string
 ) {
-  const queryKeyParams = {
-    range,
-  };
-
-  return useSuspenseQuery({
-    queryKey: queryKeys.events.timeseries(appId, queryKeyParams),
-    queryFn: () => {
+  return queryOptions({
+    queryKey: queryKeys.events.timeseries(appId, { range, tz }),
+    queryFn: (): Promise<EventTimeseriesResponse> => {
       if (!appId) {
+        const now = new Date().toISOString();
         return Promise.resolve({
           data: [],
-          period: {
-            startDate: new Date().toISOString(),
-            endDate: new Date().toISOString(),
-          },
+          period: { startDate: now, endDate: now },
         });
       }
-
-      const dateParams =
-        range && typeof range === 'string'
-          ? getTimeRangeDates(range)
-          : (range as DateRangeParams | undefined);
-
       return fetchApi<EventTimeseriesResponse>(
-        `/web/events/timeseries${buildQueryString({ appId, ...dateParams })}`
+        `/web/events/timeseries${buildQueryString({
+          appId,
+          ...toDateRangeParams(range),
+          tz,
+        })}`
       );
     },
     ...cacheConfig.timeseries,
   });
+}
+
+export function useEventOverviewResponse(appId: string) {
+  const tz = useTimezoneStore((s) => s.timezone);
+  return useSuspenseQuery(eventOverviewQuery(appId, tz));
+}
+
+export function useTopEvents(appId: string, dateRange?: DateRangeParams) {
+  const tz = useTimezoneStore((s) => s.timezone);
+  return useSuspenseQuery(topEventsQuery(appId, dateRange, tz));
+}
+
+export function useEventTimeseries(
+  appId: string,
+  range?: TimeRange | DateRangeParams
+) {
+  const tz = useTimezoneStore((s) => s.timezone);
+  return useSuspenseQuery(eventTimeseriesQuery(appId, range, tz));
 }

@@ -12,7 +12,6 @@ import { PasswordResetDialog } from '@/components/password-reset-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import PixelBlast from '@/components/ui/pixelblast';
 import { AutoHeight } from '@/components/ui/primitives/effects/auto-height';
 import { Spinner } from '@/components/ui/spinner';
 import {
@@ -24,6 +23,7 @@ import {
 } from '@/components/ui/tabs';
 import { authClient } from '@/lib/auth';
 import { getSocialAuthCallbackURL } from '@/lib/mobile-auth-handoff';
+import { AuthPixelBackground } from './auth-pixel-background';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -1030,16 +1030,7 @@ function AuthContent() {
         </div>
       </div>
 
-      <div className="pointer-events-none fixed top-0 right-0 hidden h-screen w-[70%] lg:block">
-        <div className="h-full w-full [mask-image:linear-gradient(to_right,black_35%,black_100%)]">
-          <PixelBlast
-            enableRipples={false}
-            patternScale={5}
-            pixelSize={3}
-            speed={1}
-          />
-        </div>
-      </div>
+      <AuthPixelBackground />
     </div>
   );
 }

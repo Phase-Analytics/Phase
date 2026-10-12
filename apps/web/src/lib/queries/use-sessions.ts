@@ -1,8 +1,10 @@
 import {
   keepPreviousData,
+  queryOptions,
   useQuery,
   useSuspenseQuery,
 } from '@tanstack/react-query';
+import { toDateRangeParams } from '@/lib/analytics-time-range';
 import { buildQueryString, fetchApi } from '@/lib/api/client';
 import type {
   DateRangeParams,
@@ -13,19 +15,9 @@ import type {
   SessionTimeseriesResponse,
   TimeRange,
 } from '@/lib/api/types';
+import { useTimezoneStore } from '@/stores/timezone-store';
 import { cacheConfig } from './query-client';
 import { queryKeys } from './query-keys';
-
-function getTimeRangeDates(range: TimeRange): DateRangeParams {
-  const now = new Date();
-  const days = Number.parseInt(range, 10);
-  const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-
-  return {
-    startDate: startDate.toISOString(),
-    endDate: now.toISOString(),
-  };
-}
 
 type SessionFilters = PaginationQueryParams & {
   startDate?: string;
@@ -55,10 +47,10 @@ export function useSessions(
   });
 }
 
-export function useSessionOverviewResponse(appId: string) {
-  return useSuspenseQuery({
-    queryKey: queryKeys.sessions.overview(appId),
-    queryFn: () => {
+export function sessionOverviewQuery(appId: string, tz: string) {
+  return queryOptions({
+    queryKey: queryKeys.sessions.overview(appId, tz),
+    queryFn: (): Promise<SessionOverviewResponse> => {
       if (!appId) {
         return Promise.resolve({
           totalSessions: 0,
@@ -70,11 +62,49 @@ export function useSessionOverviewResponse(appId: string) {
         });
       }
       return fetchApi<SessionOverviewResponse>(
-        `/web/sessions/overview?appId=${appId}`
+        `/web/sessions/overview${buildQueryString({ appId, tz })}`
       );
     },
     ...cacheConfig.overview,
   });
+}
+
+export function sessionTimeseriesQuery(
+  appId: string,
+  range: TimeRange | DateRangeParams | undefined,
+  metric: SessionMetric | undefined,
+  tz: string
+) {
+  return queryOptions({
+    queryKey: queryKeys.sessions.timeseries(appId, {
+      range,
+      ...(metric && { metric }),
+      tz,
+    }),
+    queryFn: (): Promise<SessionTimeseriesResponse> => {
+      if (!appId) {
+        const now = new Date().toISOString();
+        return Promise.resolve({
+          data: [],
+          period: { startDate: now, endDate: now },
+        });
+      }
+      return fetchApi<SessionTimeseriesResponse>(
+        `/web/sessions/timeseries${buildQueryString({
+          appId,
+          ...toDateRangeParams(range),
+          ...(metric && { metric }),
+          tz,
+        })}`
+      );
+    },
+    ...cacheConfig.timeseries,
+  });
+}
+
+export function useSessionOverviewResponse(appId: string) {
+  const tz = useTimezoneStore((s) => s.timezone);
+  return useSuspenseQuery(sessionOverviewQuery(appId, tz));
 }
 
 export function useSessionTimeseries(
@@ -82,38 +112,6 @@ export function useSessionTimeseries(
   range?: TimeRange | DateRangeParams,
   metric?: SessionMetric
 ) {
-  const queryKeyParams = {
-    range,
-    ...(metric && { metric }),
-  };
-
-  return useSuspenseQuery({
-    queryKey: queryKeys.sessions.timeseries(appId, queryKeyParams),
-    queryFn: () => {
-      if (!appId) {
-        return Promise.resolve({
-          data: [],
-          period: {
-            startDate: new Date().toISOString(),
-            endDate: new Date().toISOString(),
-          },
-        });
-      }
-
-      const dateParams =
-        range && typeof range === 'string'
-          ? getTimeRangeDates(range)
-          : (range as DateRangeParams | undefined);
-
-      const queryParams = {
-        ...dateParams,
-        ...(metric && { metric }),
-      };
-
-      return fetchApi<SessionTimeseriesResponse>(
-        `/web/sessions/timeseries${buildQueryString({ appId, ...queryParams })}`
-      );
-    },
-    ...cacheConfig.timeseries,
-  });
+  const tz = useTimezoneStore((s) => s.timezone);
+  return useSuspenseQuery(sessionTimeseriesQuery(appId, range, metric, tz));
 }

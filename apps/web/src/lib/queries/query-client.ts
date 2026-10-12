@@ -1,10 +1,25 @@
 import { QueryClient } from '@tanstack/react-query';
+import { ApiError } from '@/lib/api/client';
+
+function shouldRetry(failureCount: number, error: Error): boolean {
+  // Client errors (auth, access, not found, validation) won't succeed on retry.
+  if (
+    error instanceof ApiError &&
+    error.status >= 400 &&
+    error.status < 500 &&
+    error.status !== 408 &&
+    error.status !== 429
+  ) {
+    return false;
+  }
+  return failureCount < 1;
+}
 
 function makeQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        retry: 1,
+        retry: shouldRetry,
         retryDelay: (attemptIndex) =>
           Math.min(1000 * 2 ** attemptIndex, 30_000),
         refetchOnWindowFocus: true,

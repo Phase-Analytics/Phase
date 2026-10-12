@@ -1,6 +1,7 @@
 'use client';
 
 import { parseAsString, useQueryState } from 'nuqs';
+import { useDeferredValue } from 'react';
 import { TimescaleChart } from '@/components/timescale-chart';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -8,7 +9,9 @@ import {
   ANALYTICS_TIME_RANGE_OPTIONS,
   toChartTimeRange,
 } from '@/lib/analytics-time-range';
+import { fillDailyTimeseriesGaps } from '@/lib/fill-daily-timeseries';
 import { useDeviceTimeseries } from '@/lib/queries';
+import { useTimezoneStore } from '@/stores/timezone-store';
 
 export function UsersActivityChart() {
   const [appId] = useQueryState('app', parseAsString);
@@ -21,55 +24,44 @@ export function UsersActivityChart() {
     parseAsString.withDefault('total')
   );
 
-  const { data: timeseriesData, isLoading } = useDeviceTimeseries(
+  const tz = useTimezoneStore((s) => s.timezone);
+  // Deferred so a range/metric switch keeps the current chart mounted while
+  // the next series loads instead of falling back to the Suspense skeleton.
+  const deferredRange = useDeferredValue(timeRange);
+  const deferredMetric = useDeferredValue(metric);
+  const isStale = deferredRange !== timeRange || deferredMetric !== metric;
+
+  const { data: timeseriesData } = useDeviceTimeseries(
     appId || '',
-    toChartTimeRange(timeRange || '7d'),
-    metric === 'dau' ? 'dau' : 'total'
+    toChartTimeRange(deferredRange || '7d'),
+    deferredMetric === 'dau' ? 'dau' : 'total'
   );
 
   if (!appId) {
     return null;
   }
 
-  const chartData = (() => {
-    if (!(timeseriesData?.data && timeseriesData.period)) {
-      return [];
-    }
-
-    const valueKey = metric === 'dau' ? 'activeUsers' : 'totalUsers';
-    const dataMap = new Map(
-      timeseriesData.data.map((item) => [item.date, item[valueKey] || 0])
-    );
-
-    const startDate = new Date(timeseriesData.period.startDate);
-    const endDate = new Date(timeseriesData.period.endDate);
-    const allDates: Array<{ date: string; value: number }> = [];
-
-    const currentDate = new Date(startDate);
-    while (currentDate <= endDate) {
-      const dateStr = currentDate.toISOString().split('T')[0];
-      allDates.push({
-        date: dateStr,
-        value: dataMap.get(dateStr) || 0,
-      });
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    return allDates;
-  })();
+  const chartData = fillDailyTimeseriesGaps(
+    timeseriesData.data.map((item) => ({
+      date: item.date,
+      value: item[deferredMetric === 'dau' ? 'activeUsers' : 'totalUsers'] || 0,
+    })),
+    timeseriesData.period,
+    tz
+  );
 
   return (
     <TimescaleChart
       chartColor="var(--color-chart-2)"
       data={chartData}
       dataKey="value"
-      dataLabel={metric === 'dau' ? 'Active Users' : 'Total Users'}
+      dataLabel={deferredMetric === 'dau' ? 'Active Users' : 'Total Users'}
       description={
-        metric === 'dau'
+        deferredMetric === 'dau'
           ? 'Daily active users over selected period'
           : 'Cumulative total users over selected period'
       }
-      isPending={isLoading}
+      isPending={isStale}
       metric={metric}
       metricOptions={[
         { value: 'total', label: 'Total Users' },

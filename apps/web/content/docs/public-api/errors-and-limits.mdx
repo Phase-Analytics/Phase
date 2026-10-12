@@ -22,7 +22,7 @@ Phase returns structured error responses.
 ## Status codes
 
 - `400 Bad Request`
-  - Invalid query parameters
+  - Invalid query parameters, such as an unknown `tz` time zone or a `limit` that is not a positive integer
   - Unsupported query shapes
   - Date range larger than 365 days
 
@@ -57,8 +57,9 @@ When rate limiting applies, responses may include these headers:
 Current limits:
 
 - Maximum report range: **365 days**
-- Maximum breakdown size: **50 rows**
+- Maximum breakdown size: **50 rows** (`limit` values above 50 are capped, invalid values return `400`)
 - Default breakdown size: **10 rows**
+- Default time zone for timeseries day buckets: **UTC** (override with `tz`)
 - Maximum query page size: **50 rows** (`LIMIT` in SQL, API only)
 - Maximum dashboard query page size: **1000 rows**
 - Maximum skipped rows per query: **100,000** (pagination cap)

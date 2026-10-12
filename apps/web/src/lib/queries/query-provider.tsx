@@ -6,7 +6,34 @@ import { getQueryClient } from './query-client';
 
 const persister = createSyncStoragePersister({
   storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+  // Serializing the cache blocks the main thread; batch bursts of query updates.
+  throttleTime: 2000,
 });
+
+// Only aggregate analytics are persisted: no lists, details, admin data or PII.
+const PERSISTED_QUERY_KINDS: Record<string, ReadonlySet<string>> = {
+  devices: new Set(['overview', 'timeseries', 'retention']),
+  sessions: new Set(['overview', 'timeseries']),
+  events: new Set(['overview', 'timeseries', 'top']),
+  funnels: new Set(['activation']),
+};
+
+// Structural type: the persist packages currently resolve their own query-core copy.
+type PersistableQuery = {
+  queryKey: readonly unknown[];
+  state: { status: string };
+};
+
+function shouldPersistQuery(query: PersistableQuery): boolean {
+  if (query.state.status !== 'success') {
+    return false;
+  }
+  const [domain, kind] = query.queryKey;
+  if (typeof domain !== 'string' || typeof kind !== 'string') {
+    return false;
+  }
+  return PERSISTED_QUERY_KINDS[domain]?.has(kind) ?? false;
+}
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
   const queryClient = getQueryClient();
@@ -17,17 +44,9 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       persistOptions={{
         persister,
         maxAge: 60 * 60 * 1000,
+        buster: process.env.NEXT_PUBLIC_BUILD_ID,
         dehydrateOptions: {
-          shouldDehydrateQuery: (query) => {
-            const queryKey = query.queryKey;
-            if (Array.isArray(queryKey) && queryKey.includes('live')) {
-              return false;
-            }
-            if (Array.isArray(queryKey) && queryKey[0] === 'apps') {
-              return false;
-            }
-            return query.state.status === 'success';
-          },
+          shouldDehydrateQuery: shouldPersistQuery,
         },
       }}
     >

@@ -19,6 +19,18 @@ type UseRealtimeReturn = {
   resume: () => void;
 };
 
+const RECONNECT_BASE_DELAY_MS = 1000;
+const RECONNECT_MAX_DELAY_MS = 30_000;
+
+function getReconnectDelay(attempt: number): number {
+  const ceiling = Math.min(
+    RECONNECT_MAX_DELAY_MS,
+    RECONNECT_BASE_DELAY_MS * 2 ** attempt
+  );
+  // Equal jitter: spreads reconnect storms after a server restart.
+  return ceiling / 2 + Math.random() * (ceiling / 2);
+}
+
 export function useRealtime(
   appId: string | undefined,
   options: UseRealtimeOptions = {}
@@ -29,100 +41,89 @@ export function useRealtime(
   const [status, setStatus] = useState<RealtimeStatus>('disconnected');
   const [error, setError] = useState<Event | null>(null);
   const [isPaused, setIsPaused] = useState(false);
+  const [connectionNonce, setConnectionNonce] = useState(0);
 
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Latest handlers live in refs so a new callback identity never tears down
+  // the EventSource; only appId/enabled/pause/reconnect do.
+  const onMessageRef = useRef(onMessage);
+  const onErrorRef = useRef(onError);
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+    onErrorRef.current = onError;
+  });
 
-  const connect = useCallback(() => {
+  // biome-ignore lint/correctness/useExhaustiveDependencies: connectionNonce forces a fresh connection on reconnect()
+  useEffect(() => {
     if (!(appId && enabled) || isPaused) {
       return;
     }
 
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
+    let eventSource: EventSource | null = null;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+    let attempt = 0;
+    let disposed = false;
 
-    setStatus('connecting');
-    setError(null);
-
-    const url = `${API_BASE}/web/realtime/stream?appId=${appId}`;
-    const eventSource = new EventSource(url, { withCredentials: true });
-
-    eventSource.addEventListener('connected', (e) => {
-      setStatus('connected');
-      const message: RealtimeMessage = JSON.parse(e.data);
+    const handleMessage = (e: MessageEvent<string>) => {
+      const message = JSON.parse(e.data) as RealtimeMessage;
       setData(message);
-      onMessage?.(message);
-    });
+      onMessageRef.current?.(message);
+    };
 
-    eventSource.addEventListener('realtime', (e) => {
-      const message: RealtimeMessage = JSON.parse(e.data);
-      setData(message);
-      onMessage?.(message);
-    });
+    const connect = () => {
+      setStatus('connecting');
+      setError(null);
 
-    eventSource.addEventListener('error', (e) => {
-      setStatus('error');
-      setError(e);
-      onError?.(e);
+      const source = new EventSource(
+        `${API_BASE}/web/realtime/stream?appId=${encodeURIComponent(appId)}`,
+        { withCredentials: true }
+      );
+      eventSource = source;
 
-      if (eventSource.readyState === EventSource.CLOSED) {
-        setStatus('disconnected');
-        reconnectTimeoutRef.current = setTimeout(() => {
-          connect();
-        }, 4000);
+      source.addEventListener('connected', (e) => {
+        attempt = 0;
+        setStatus('connected');
+        handleMessage(e);
+      });
+
+      source.addEventListener('realtime', handleMessage);
+
+      source.addEventListener('error', (e) => {
+        setStatus('error');
+        setError(e);
+        onErrorRef.current?.(e);
+
+        // The browser retries on its own unless the stream was closed.
+        if (source.readyState === EventSource.CLOSED && !disposed) {
+          setStatus('disconnected');
+          reconnectTimeout = setTimeout(connect, getReconnectDelay(attempt));
+          attempt += 1;
+        }
+      });
+    };
+
+    connect();
+
+    return () => {
+      disposed = true;
+      eventSource?.close();
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
       }
-    });
-
-    eventSourceRef.current = eventSource;
-  }, [appId, enabled, isPaused, onMessage, onError]);
+    };
+  }, [appId, enabled, isPaused, connectionNonce]);
 
   const reconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-    connect();
-  }, [connect]);
+    setConnectionNonce((n) => n + 1);
+  }, []);
 
   const pause = useCallback(() => {
     setIsPaused(true);
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
     setStatus('disconnected');
   }, []);
 
   const resume = useCallback(() => {
     setIsPaused(false);
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-    connect();
-  }, [connect]);
-
-  useEffect(() => {
-    if (enabled && appId && !isPaused) {
-      connect();
-    }
-
-    return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
-    };
-  }, [appId, enabled, isPaused, connect]);
+  }, []);
 
   return {
     data,

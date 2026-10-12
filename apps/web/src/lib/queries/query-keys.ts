@@ -23,8 +23,10 @@ export const queryKeys = {
     details: () => [...queryKeys.devices.all, 'detail'] as const,
     detail: (deviceId: string, appId: string) =>
       [...queryKeys.devices.details(), deviceId, appId] as const,
-    overview: (appId: string) =>
+    overviews: (appId: string) =>
       [...queryKeys.devices.all, 'overview', appId] as const,
+    overview: (appId: string, tz: string) =>
+      [...queryKeys.devices.overviews(appId), tz] as const,
     live: (appId: string) => [...queryKeys.devices.all, 'live', appId] as const,
     retention: (appId: string, params?: Record<string, unknown>) =>
       [...queryKeys.devices.all, 'retention', appId, params] as const,
@@ -33,7 +35,8 @@ export const queryKeys = {
     activityTimeseries: (
       deviceId: string,
       appId: string,
-      params?: DateRangeParams
+      params: DateRangeParams | undefined,
+      tz: string
     ) =>
       [
         ...queryKeys.devices.all,
@@ -41,6 +44,7 @@ export const queryKeys = {
         deviceId,
         appId,
         params,
+        tz,
       ] as const,
   },
 
@@ -52,8 +56,8 @@ export const queryKeys = {
       deviceId: string,
       filters?: PaginationQueryParams & DateRangeParams
     ) => [...queryKeys.sessions.lists(), appId, deviceId, filters] as const,
-    overview: (appId: string) =>
-      [...queryKeys.sessions.all, 'overview', appId] as const,
+    overview: (appId: string, tz: string) =>
+      [...queryKeys.sessions.all, 'overview', appId, tz] as const,
     timeseries: (appId: string, params?: Record<string, unknown>) =>
       [...queryKeys.sessions.all, 'timeseries', appId, params] as const,
   },
@@ -73,10 +77,10 @@ export const queryKeys = {
     details: () => [...queryKeys.events.all, 'detail'] as const,
     detail: (eventId: string, appId: string) =>
       [...queryKeys.events.details(), eventId, appId] as const,
-    overview: (appId: string) =>
-      [...queryKeys.events.all, 'overview', appId] as const,
-    top: (appId: string, filters?: DateRangeParams) =>
-      [...queryKeys.events.all, 'top', appId, filters] as const,
+    overview: (appId: string, tz: string) =>
+      [...queryKeys.events.all, 'overview', appId, tz] as const,
+    top: (appId: string, filters: DateRangeParams | undefined, tz: string) =>
+      [...queryKeys.events.all, 'top', appId, filters, tz] as const,
     timeseries: (appId: string, params?: Record<string, unknown>) =>
       [...queryKeys.events.all, 'timeseries', appId, params] as const,
   },
@@ -101,8 +105,9 @@ export const queryKeys = {
     all: ['funnels'] as const,
     activation: (
       appId: string,
-      range?: { startDate?: string; endDate?: string }
-    ) => [...queryKeys.funnels.all, 'activation', appId, range] as const,
+      range: { startDate?: string; endDate?: string } | undefined,
+      tz: string
+    ) => [...queryKeys.funnels.all, 'activation', appId, range, tz] as const,
     presets: (appId: string) =>
       [...queryKeys.funnels.all, 'presets', appId] as const,
   },

@@ -135,16 +135,39 @@ console.log(data);
     - Sessions: `platform`, `country`
     - Users: `platform`, `country`
 
+- `tz`
+  - Type: `string`
+  - Required: no
+  - Format: IANA time zone name
+  - Example: `Europe/Istanbul`
+  - Default: `UTC`
+  - Used by: timeseries endpoints (events, sessions, users)
+  - Days are bucketed in this time zone. Raw UTC offsets such as `+03:00` are not accepted
+
 - `limit`
-  - Type: `number`
+  - Type: `integer`
   - Required: no
   - Used by: breakdown endpoints
   - Range: `1` to `50`
   - Default: `10`
+  - Values above `50` are capped at `50`. Non-integer or non-positive values return `400`
 
 <Callout type="info">
 The maximum supported date range is 365 days.
 </Callout>
+
+### Time zones
+
+Timeseries endpoints group data by day. By default, days are bucketed in `UTC`. Pass `tz` with an IANA time zone name to bucket days in that zone instead:
+
+<CodeBlock lang="bash" allowCopy={true}>
+```bash
+curl "https://api.phase.sh/public-api/v1/apps/<app_id>/reports/events/timeseries?startDate=2026-01-15T00:00:00.000Z&endDate=2026-02-15T23:59:59.999Z&tz=Europe/Istanbul" \
+  -H "Authorization: Bearer phase_public_your_key"
+```
+</CodeBlock>
+
+An unknown time zone name returns `400`.
 
 ## Events
 
@@ -157,7 +180,7 @@ Use event reports for headline counts, daily trends, and top events or screens.
 
 - `GET /apps/:appId/reports/events/timeseries`
   - Returns daily event counts.
-  - Supports `startDate` and `endDate`.
+  - Supports `startDate`, `endDate`, and `tz`.
 
 - `GET /apps/:appId/reports/events/breakdown`
   - Returns event counts grouped by `eventName` or `screenName`.
@@ -215,7 +238,7 @@ Use session reports for totals, duration, bounce rate, and session distribution 
 - `GET /apps/:appId/reports/sessions/timeseries`
   - Returns daily session metrics.
   - Supported `metric` values: `sessionCount`, `avgSessionDuration`, `bounceRate`.
-  - Supports `startDate`, `endDate`, and `metric`.
+  - Supports `startDate`, `endDate`, `metric`, and `tz`.
 
 - `GET /apps/:appId/reports/sessions/breakdown`
   - Returns session counts grouped by `platform` or `country`.
@@ -272,7 +295,7 @@ Use user reports for totals, active users, new users, and user distribution by p
 - `GET /apps/:appId/reports/users/timeseries`
   - Returns daily user metrics.
   - Supported `metric` values: `activeUsers`, `totalUsers`, `newUsers`.
-  - Supports `startDate`, `endDate`, and `metric`.
+  - Supports `startDate`, `endDate`, `metric`, and `tz`.
 
 - `GET /apps/:appId/reports/users/breakdown`
   - Returns user counts grouped by `platform` or `country`.
