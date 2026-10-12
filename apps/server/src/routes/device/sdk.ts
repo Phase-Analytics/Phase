@@ -7,10 +7,9 @@ import {
   type Platform,
   resolveDeviceModel,
 } from '@phase/shared';
-import { eq } from 'drizzle-orm';
 import { Elysia } from 'elysia';
-import { db, devices } from '@/db';
-import { getLocationFromIP } from '@/lib/geolocation';
+import { getClientIp, getSocketAddress } from '@/lib/client-ip';
+import { upsertDevice } from '@/lib/ingest-store';
 import { sdkAuthPlugin } from '@/lib/middleware';
 import { sseManager } from '@/lib/sse-manager';
 
@@ -31,68 +30,21 @@ export const deviceSdkRouter = new Elysia({ prefix: '/devices' })
   .use(sdkAuthPlugin)
   .post(
     '/',
-    async ({ body, app, set, request }) => {
+    async ({ body, app, set, request, server }) => {
       try {
-        const ip =
-          request.headers.get('cf-connecting-ip') ??
-          request.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
-          request.headers.get('x-real-ip') ??
-          '';
+        const ip = getClientIp(request, getSocketAddress(request, server));
+        const result = await upsertDevice(body, app.id, ip);
 
-        let country: string | null = null;
-        const existingDevice = await db.query.devices.findFirst({
-          where: (table, { eq: eqFn }) => eqFn(table.deviceId, body.deviceId),
-        });
+        if (result.status === 'forbidden') {
+          set.status = HttpStatus.FORBIDDEN;
+          return {
+            code: ErrorCode.FORBIDDEN,
+            detail: 'You do not have permission to update this device',
+          };
+        }
 
-        const mergedProperties = body.properties
-          ? {
-              ...(existingDevice?.properties ?? {}),
-              ...body.properties,
-            }
-          : existingDevice?.properties;
-
-        let device: typeof devices.$inferSelect;
-
-        if (existingDevice) {
-          if (existingDevice.appId !== app.id) {
-            set.status = HttpStatus.FORBIDDEN;
-            return {
-              code: ErrorCode.FORBIDDEN,
-              detail: 'You do not have permission to update this device',
-            };
-          }
-
-          [device] = await db
-            .update(devices)
-            .set({
-              osVersion: body.osVersion ?? existingDevice.osVersion,
-              platform: body.platform ?? existingDevice.platform,
-              locale: body.locale ?? existingDevice.locale,
-              model: body.model ?? existingDevice.model,
-              properties: mergedProperties,
-            })
-            .where(eq(devices.deviceId, body.deviceId))
-            .returning();
-        } else {
-          if (ip && !body.disableGeolocation) {
-            const location = await getLocationFromIP(ip);
-            country = location.countryCode;
-          }
-
-          [device] = await db
-            .insert(devices)
-            .values({
-              deviceId: body.deviceId,
-              appId: app.id,
-              osVersion: body.osVersion ?? null,
-              platform: body.platform ?? null,
-              locale: body.locale ?? null,
-              model: body.model ?? null,
-              country: country ?? null,
-              properties: body.properties ?? null,
-            })
-            .returning();
-
+        const { device, inserted } = result;
+        if (inserted) {
           sseManager.pushDevice(app.id, {
             deviceId: device.deviceId,
             country: device.country,

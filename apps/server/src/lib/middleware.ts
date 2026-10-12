@@ -124,12 +124,7 @@ export const sdkAuthPlugin = new ElysiaClass({ name: 'sdkAuth' })
   })
   .as('scoped');
 
-export const authPlugin = new ElysiaClass({ name: 'auth' })
-  .state({
-    app: null as App | null,
-    userId: null as string | null,
-  })
-  .macro(({ onBeforeHandle }) => ({
+export const authPlugin = new ElysiaClass({ name: 'auth' }).macro(({ onBeforeHandle }) => ({
     requireAuth(enabled: boolean) {
       if (!enabled) {
         return;
@@ -183,11 +178,9 @@ export const authPlugin = new ElysiaClass({ name: 'auth' })
         async ({
           request,
           set,
-          store,
         }: {
           request: Request;
           set: { status: number; headers: Record<string, string> };
-          store: { app: App | null; userId: string | null };
         }) => {
           const authHeader = request.headers.get('authorization');
 
@@ -230,9 +223,6 @@ export const authPlugin = new ElysiaClass({ name: 'auth' })
                 detail: 'Invalid app key',
               };
             }
-
-            store.app = app;
-            store.userId = app.userId;
           } catch (error) {
             console.error('[Middleware] App key verification error:', error);
             set.status = HttpStatus.INTERNAL_SERVER_ERROR;
@@ -255,12 +245,10 @@ export const authPlugin = new ElysiaClass({ name: 'auth' })
           request,
           query,
           set,
-          store,
         }: {
           request: Request;
           query: Record<string, string | string[] | undefined>;
           set: { status: number };
-          store: { app: App | null; userId: string | null };
         }) => {
           const session = await auth.api.getSession({
             headers: request.headers,
@@ -302,8 +290,6 @@ export const authPlugin = new ElysiaClass({ name: 'auth' })
                 detail: 'You do not have permission to access this app',
               };
             }
-
-            store.app = userApp;
           } catch (error) {
             console.error('[Middleware] App access verification error:', error);
             set.status = HttpStatus.INTERNAL_SERVER_ERROR;
@@ -326,12 +312,10 @@ export const authPlugin = new ElysiaClass({ name: 'auth' })
           request,
           query,
           set,
-          store,
         }: {
           request: Request;
           query: Record<string, string | string[] | undefined>;
           set: { status: number };
-          store: { app: App | null; userId: string | null };
         }) => {
           const session = await auth.api.getSession({
             headers: request.headers,
@@ -370,8 +354,6 @@ export const authPlugin = new ElysiaClass({ name: 'auth' })
                 detail: 'You must be the app owner to perform this action',
               };
             }
-
-            store.app = userApp;
           } catch (error) {
             console.error(
               '[Middleware] App ownership verification error:',

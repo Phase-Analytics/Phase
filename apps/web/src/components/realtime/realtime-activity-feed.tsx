@@ -9,7 +9,7 @@ import {
   ViewIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { formatLinkBrowserFamilyLabel } from '@phase/shared';
+import { formatLinkBrowserFamilyLabel, getDisplayName } from '@phase/shared';
 import { AnimatePresence, motion } from 'motion/react';
 import { useRouter } from 'next/navigation';
 import { parseAsString, useQueryState } from 'nuqs';
@@ -22,7 +22,7 @@ import { EventsSheet } from '@/components/events/event-details-sheet';
 import { LinkBrowserIcon } from '@/components/links/link-browser-icon';
 import { SessionDetailsDialog } from '@/components/sessions/session-details-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { getGeneratedName, UserAvatar } from '@/components/user-profile';
+import { UserAvatar } from '@/components/user-profile';
 import { getLinkOsIcon } from '@/lib/link-os-icon';
 
 const COUNTRY_CODE_REGEX = /^[A-Za-z]{2}$/;
@@ -198,7 +198,7 @@ export function RealtimeActivityFeed({
                             variant="marble"
                           />
                           <span className="text-muted-foreground">
-                            {getGeneratedName(activity.deviceId)}
+                            {getDisplayName(activity.deviceId)}
                           </span>
                           {activity.country &&
                             activity.country.length === 2 &&

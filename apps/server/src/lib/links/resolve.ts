@@ -9,27 +9,10 @@ import {
   setCachedLink,
 } from './cache';
 
-export async function resolveLinkBySlug(
-  slug: string,
-  domainId: string | null
-): Promise<CachedLinkConfig | null> {
-  const cached = await getCachedLink(slug, domainId);
-  if (cached) {
-    return cached;
-  }
-
-  const row = await db.query.links.findFirst({
-    where: and(
-      eq(links.slug, slug),
-      domainId ? eq(links.domainId, domainId) : isNull(links.domainId)
-    ),
-  });
-
-  if (!row) {
-    return null;
-  }
-
-  const config: CachedLinkConfig = {
+export function toCachedLinkConfig(
+  row: typeof links.$inferSelect
+): CachedLinkConfig {
+  return {
     id: row.id,
     appId: row.appId,
     domainId: row.domainId,
@@ -49,9 +32,28 @@ export async function resolveLinkBySlug(
     ogImageUrl: row.ogImageUrl,
     expiresAt: row.expiresAt?.toISOString() ?? null,
     disabledAt: row.disabledAt?.toISOString() ?? null,
+    banned: row.banned,
   };
+}
 
-  await setCachedLink(slug, domainId, config);
+export async function resolveLinkBySlug(
+  slug: string,
+  domainId: string | null
+): Promise<CachedLinkConfig | null> {
+  const cached = await getCachedLink(slug, domainId);
+  if (cached.hit) {
+    return cached.value;
+  }
+
+  const row = await db.query.links.findFirst({
+    where: and(
+      eq(links.slug, slug),
+      domainId ? eq(links.domainId, domainId) : isNull(links.domainId)
+    ),
+  });
+
+  const config = row ? toCachedLinkConfig(row) : null;
+  setCachedLink(slug, domainId, config);
   return config;
 }
 
@@ -60,8 +62,8 @@ export async function resolveVerifiedDomain(
 ): Promise<CachedDomainConfig | null> {
   const normalized = hostname.toLowerCase();
   const cached = await getCachedDomain(normalized);
-  if (cached) {
-    return cached.status === 'verified' ? cached : null;
+  if (cached.hit) {
+    return cached.value;
   }
 
   const row = await db.query.linkDomains.findFirst({
@@ -69,20 +71,13 @@ export async function resolveVerifiedDomain(
       eq(linkDomains.hostname, normalized),
       eq(linkDomains.status, 'verified')
     ),
+    columns: { id: true, appId: true, hostname: true },
   });
 
-  if (!row) {
-    return null;
-  }
-
-  const config: CachedDomainConfig = {
-    id: row.id,
-    appId: row.appId,
-    hostname: row.hostname,
-    status: row.status,
-  };
-
-  await setCachedDomain(normalized, config);
+  const config = row
+    ? { id: row.id, appId: row.appId, hostname: row.hostname }
+    : null;
+  setCachedDomain(normalized, config);
   return config;
 }
 

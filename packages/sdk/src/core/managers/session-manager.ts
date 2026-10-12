@@ -1,11 +1,6 @@
-import type { HttpClient } from '../client/http-client';
 import type { OfflineQueue } from '../queue/offline-queue';
-import { getItem, setItem } from '../storage/storage';
-import type { CreateSessionRequest, PingSessionRequest } from '../types';
-import { STORAGE_KEYS } from '../types';
 import { generateSessionId } from '../utils/id-generator';
 import { logger } from '../utils/logger';
-import { validateSessionId } from '../utils/validator';
 
 const INITIAL_HEARTBEAT_INTERVAL_MS = 5000;
 const EARLY_HEARTBEAT_INTERVAL_MS = 10_000;
@@ -19,248 +14,189 @@ const LONG_HEARTBEAT_AT_MS = 5 * 60 * 1000;
 const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
 const MAX_SESSION_AGE_MS = 2 * 60 * 60 * 1000;
 
+type Instant = { wall: number; mono: number };
+
+const perf = (globalThis as { performance?: { now?: () => number } })
+  .performance;
+
+function monotonicNow(): number {
+  return typeof perf?.now === 'function' ? perf.now() : Date.now();
+}
+
+function now(): Instant {
+  return { wall: Date.now(), mono: monotonicNow() };
+}
+
+/**
+ * Elapsed time since `since`. The monotonic clock is immune to wall-clock
+ * changes, but on iOS/Android it stops while the device sleeps, so take the
+ * larger of the two: a suspended app must still rotate its session.
+ */
+function elapsedSince(since: Instant): number {
+  const current = now();
+  return Math.max(current.wall - since.wall, current.mono - since.mono);
+}
+
 export class SessionManager {
   private sessionId: string | null = null;
-  private startPromise: Promise<string> | null = null;
+  private startedAt: Instant | null = null;
+  private pausedAt: Instant | null = null;
   private heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
-  private heartbeatVersion = 0;
-  private isOnline = true;
-  private pausedAt: number | null = null;
-  private startedAtMs: number | null = null;
-  private readonly httpClient: HttpClient;
-  private readonly offlineQueue: OfflineQueue;
-  private readonly deviceId: string;
+  private readonly queue: OfflineQueue;
+  private readonly getDeviceId: () => string | null;
 
-  constructor(
-    httpClient: HttpClient,
-    offlineQueue: OfflineQueue,
-    deviceId: string
-  ) {
-    this.httpClient = httpClient;
-    this.offlineQueue = offlineQueue;
-    this.deviceId = deviceId;
+  constructor(queue: OfflineQueue, getDeviceId: () => string | null) {
+    this.queue = queue;
+    this.getDeviceId = getDeviceId;
   }
 
-  async start(isOnline: boolean): Promise<string> {
-    if (this.startPromise) {
-      return this.startPromise;
-    }
+  /**
+   * Starts a session unless one is active. `startedAtMs` lets events captured
+   * before identify() fall inside the session (server rejects events older
+   * than their session).
+   */
+  start(startedAtMs?: number): string | null {
     if (this.sessionId) {
       return this.sessionId;
     }
 
-    this.startPromise = this.doStart(isOnline);
-
-    try {
-      return await this.startPromise;
-    } finally {
-      this.startPromise = null;
+    const deviceId = this.getDeviceId();
+    if (!deviceId) {
+      logger.error('Device ID not set. Cannot start session.');
+      return null;
     }
-  }
 
-  private async doStart(isOnline: boolean): Promise<string> {
-    this.stopPingInterval();
+    const current = now();
+    const offset =
+      startedAtMs !== undefined && startedAtMs < current.wall
+        ? current.wall - startedAtMs
+        : 0;
 
-    this.isOnline = isOnline;
     this.sessionId = generateSessionId();
+    this.startedAt = { wall: current.wall - offset, mono: current.mono - offset };
+    this.pausedAt = null;
 
-    const validation = validateSessionId(this.sessionId);
-    if (!validation.success) {
-      logger.error('Generated session ID invalid. Retrying.');
-      this.sessionId = generateSessionId();
-      const retryValidation = validateSessionId(this.sessionId);
-      if (!retryValidation.success) {
-        logger.error('Failed to generate valid session ID. Using fallback.');
-      }
-    }
+    this.queue.enqueue({
+      type: 'session',
+      payload: {
+        sessionId: this.sessionId,
+        deviceId,
+        startedAt: new Date(this.startedAt.wall).toISOString(),
+      },
+    });
 
-    const startedAt = new Date().toISOString();
-    this.startedAtMs = Date.now();
-    const payload: CreateSessionRequest = {
-      sessionId: this.sessionId,
-      deviceId: this.deviceId,
-      startedAt,
-    };
-
-    const persistResult = await setItem(
-      STORAGE_KEYS.SESSION_STARTED_AT,
-      startedAt
-    );
-    if (!persistResult.success) {
-      logger.warn(
-        'Failed to persist session start time. Session age checks may not work correctly.'
-      );
-    }
-
-    if (isOnline) {
-      const result = await this.httpClient.createSession(payload);
-      if (!result.success) {
-        logger.error(
-          'Session creation failed. Queuing for retry.',
-          result.error
-        );
-        await this.offlineQueue.enqueue({ type: 'session', payload });
-      }
-    } else {
-      await this.offlineQueue.enqueue({ type: 'session', payload });
-    }
-
-    this.startPingInterval();
-
+    this.startHeartbeat();
     return this.sessionId;
   }
 
-  pause(): void {
-    this.pausedAt = Date.now();
-    this.stopPingInterval();
+  /** Ends the current session without starting a new one (used by reset()). */
+  end(): void {
+    this.stopHeartbeat();
+    this.sessionId = null;
+    this.startedAt = null;
+    this.pausedAt = null;
   }
 
-  async resume(): Promise<void> {
+  pause(): void {
+    if (!this.pausedAt) {
+      this.pausedAt = now();
+    }
+    this.stopHeartbeat();
+  }
+
+  resume(): void {
     if (!this.sessionId) {
       return;
     }
 
-    const sessionStartedResult = await getItem<string>(
-      STORAGE_KEYS.SESSION_STARTED_AT
-    );
-    if (sessionStartedResult.success && sessionStartedResult.data) {
-      const sessionStartTime = new Date(sessionStartedResult.data).getTime();
-      const sessionAge = Date.now() - sessionStartTime;
+    const inactiveFor = this.pausedAt ? elapsedSince(this.pausedAt) : 0;
+    this.pausedAt = null;
 
-      if (sessionAge > MAX_SESSION_AGE_MS) {
-        logger.info('Session too old, starting new session', {
-          sessionAge: Math.round(sessionAge / 1000),
-          maxAge: Math.round(MAX_SESSION_AGE_MS / 1000),
-        });
-
-        this.sessionId = null;
-        this.startedAtMs = null;
-        this.pausedAt = null;
-
-        await this.start(this.isOnline);
-        return;
-      }
+    if (inactiveFor > INACTIVITY_TIMEOUT_MS) {
+      logger.info('Session inactive for too long, starting new session', {
+        inactiveSeconds: Math.round(inactiveFor / 1000),
+      });
+      this.rotate();
+      return;
     }
 
-    if (this.pausedAt) {
-      const inactiveDuration = Date.now() - this.pausedAt;
-
-      if (inactiveDuration > INACTIVITY_TIMEOUT_MS) {
-        logger.info('Session inactive for too long, starting new session', {
-          inactiveDuration: Math.round(inactiveDuration / 1000),
-          threshold: Math.round(INACTIVITY_TIMEOUT_MS / 1000),
-        });
-
-        this.sessionId = null;
-        this.pausedAt = null;
-
-        await this.start(this.isOnline);
-        return;
-      }
-
-      this.pausedAt = null;
+    if (this.getSessionAge() >= MAX_SESSION_AGE_MS) {
+      logger.info('Session reached maximum age, starting new session');
+      this.rotate();
+      return;
     }
 
-    this.startPingInterval();
+    this.startHeartbeat();
   }
 
   getSessionId(): string | null {
     return this.sessionId;
   }
 
-  updateNetworkState(isOnline: boolean): void {
-    this.isOnline = isOnline;
-  }
-
+  /** Activity already proves liveness, so push the next heartbeat back. */
   markActivity(): void {
-    if (this.pausedAt !== null) {
-      return;
+    if (this.sessionId && !this.pausedAt) {
+      this.startHeartbeat();
     }
-
-    this.startPingInterval();
   }
 
-  private startPingInterval(): void {
-    this.stopPingInterval();
-    const heartbeatVersion = this.heartbeatVersion;
+  private rotate(): void {
+    this.end();
+    this.start();
+  }
 
+  private getSessionAge(): number {
+    return this.startedAt ? elapsedSince(this.startedAt) : 0;
+  }
+
+  private startHeartbeat(): void {
+    this.stopHeartbeat();
     this.heartbeatTimer = setTimeout(() => {
       this.heartbeatTimer = null;
-      this.sendPing()
-        .catch(() => {
-          logger.error('Unhandled error in sendPing. Session may timeout.');
-        })
-        .finally(() => {
-          if (heartbeatVersion === this.heartbeatVersion && this.sessionId) {
-            this.startPingInterval();
-          }
-        });
+      this.beat();
     }, this.getHeartbeatIntervalMs());
   }
 
-  private stopPingInterval(): void {
-    this.heartbeatVersion += 1;
+  private stopHeartbeat(): void {
     if (this.heartbeatTimer) {
       clearTimeout(this.heartbeatTimer);
       this.heartbeatTimer = null;
     }
   }
 
+  private beat(): void {
+    if (!this.sessionId || this.pausedAt) {
+      return;
+    }
+
+    if (this.getSessionAge() >= MAX_SESSION_AGE_MS) {
+      logger.info('Session reached maximum age, starting new session');
+      this.rotate();
+      return;
+    }
+
+    this.queue.enqueue({
+      type: 'ping',
+      payload: { sessionId: this.sessionId, timestamp: new Date().toISOString() },
+    });
+    this.startHeartbeat();
+  }
+
   private getHeartbeatIntervalMs(): number {
-    const sessionAge =
-      this.startedAtMs === null ? 0 : Date.now() - this.startedAtMs;
+    const sessionAge = this.getSessionAge();
 
     if (sessionAge >= LONG_HEARTBEAT_AT_MS) {
       return LONG_HEARTBEAT_INTERVAL_MS;
     }
-
     if (sessionAge >= EXTENDED_HEARTBEAT_AT_MS) {
       return EXTENDED_HEARTBEAT_INTERVAL_MS;
     }
-
     if (sessionAge >= STANDARD_HEARTBEAT_AT_MS) {
       return STANDARD_HEARTBEAT_INTERVAL_MS;
     }
-
     if (sessionAge >= EARLY_HEARTBEAT_AT_MS) {
       return EARLY_HEARTBEAT_INTERVAL_MS;
     }
-
     return INITIAL_HEARTBEAT_INTERVAL_MS;
-  }
-
-  private async sendPing(): Promise<void> {
-    if (!this.sessionId) {
-      return;
-    }
-
-    if (
-      this.startedAtMs !== null &&
-      Date.now() - this.startedAtMs >= MAX_SESSION_AGE_MS
-    ) {
-      logger.info('Session reached maximum age, starting new session');
-      this.sessionId = null;
-      this.startedAtMs = null;
-      await this.start(this.isOnline);
-      return;
-    }
-
-    const payload: PingSessionRequest = {
-      sessionId: this.sessionId,
-      timestamp: new Date().toISOString(),
-    };
-
-    if (this.isOnline) {
-      const result = await this.httpClient.pingSession(payload);
-      if (!result.success) {
-        logger.error('Session ping failed. Queuing for retry.', result.error);
-        await this.offlineQueue.enqueue({ type: 'ping', payload });
-        return;
-      }
-
-      this.markActivity();
-    } else {
-      await this.offlineQueue.enqueue({ type: 'ping', payload });
-    }
   }
 }

@@ -1,6 +1,5 @@
 using System;
-using System.Threading.Tasks;
-using Phase.Analytics.Client;
+using System.Collections.Generic;
 using Phase.Analytics.Models;
 using Phase.Analytics.Queue;
 using Phase.Analytics.Utils;
@@ -9,38 +8,73 @@ namespace Phase.Analytics.Managers;
 
 public sealed class EventManager
 {
-    private readonly SdkHttpClient _httpClient;
     private readonly OfflineQueue _offlineQueue;
     private readonly Func<string?> _getSessionId;
     private readonly Action _markActivity;
+    private readonly Action _onEnqueued;
+    private readonly object _sync = new();
     private readonly RateLimiter _rateLimiter = new();
     private readonly EventDeduplicator _deduplicator = new();
-    private bool _isOnline = true;
 
     public EventManager(
-        SdkHttpClient httpClient,
         OfflineQueue offlineQueue,
         Func<string?> getSessionId,
-        Action? markActivity = null
+        Action? markActivity = null,
+        Action? onEnqueued = null
     )
     {
-        _httpClient = httpClient;
         _offlineQueue = offlineQueue;
         _getSessionId = getSessionId;
         _markActivity = markActivity ?? (() => { });
+        _onEnqueued = onEnqueued ?? (() => { });
     }
 
-    public void UpdateNetworkState(bool isOnline)
+    public void Track(string name, EventParams? parameters = null, bool isScreen = false)
     {
-        _isOnline = isOnline;
+        var pending = Capture(name, parameters, isScreen);
+        if (pending == null)
+        {
+            return;
+        }
+
+        lock (_sync)
+        {
+            if (!_rateLimiter.CanTrack())
+            {
+                return;
+            }
+
+            if (_deduplicator.IsDuplicate(name, pending.Params))
+            {
+                Logger.Warn(
+                    "Duplicate event detected. Ignoring.",
+                    new Dictionary<string, object> { ["name"] = name }
+                );
+                return;
+            }
+        }
+
+        Enqueue(pending, notBeforeUtc: null);
     }
 
-    public void Track(string name, EventParams? parameters = null)
+    /// <summary>
+    /// Enqueues an event captured before identify. Rate limiting and dedup are skipped: they would
+    /// judge the burst by replay time rather than by when the calls happened. The timestamp is
+    /// raised to <paramref name="notBeforeUtc"/> because the server rejects events that predate
+    /// their session.
+    /// </summary>
+    public void TrackPending(PendingEvent pending, DateTime? notBeforeUtc)
+    {
+        Enqueue(pending, notBeforeUtc);
+    }
+
+    /// <summary>Validates and stamps an event with its id and timestamp. Returns null if invalid.</summary>
+    public static PendingEvent? Capture(string name, EventParams? parameters, bool isScreen)
     {
         if (!Validator.ValidateEventName(name).Success)
         {
             Logger.Error("Invalid event name. Use alphanumeric, _, -, ., /, or space");
-            return;
+            return null;
         }
 
         var paramsValidation = Validator.ValidateEventParams(parameters);
@@ -49,21 +83,20 @@ public sealed class EventManager
             Logger.Error(
                 "Invalid event params. Use up to 32 primitive keys. Keys max 32 chars. String values max 256 chars. Payload max 8 KB."
             );
-            return;
+            return null;
         }
 
-        var normalizedParams = paramsValidation.Data;
-        if (!_rateLimiter.CanTrack())
-        {
-            return;
-        }
+        return new PendingEvent(
+            IdGenerator.GenerateEventId(),
+            name,
+            paramsValidation.Data,
+            isScreen,
+            DateTime.UtcNow
+        );
+    }
 
-        if (_deduplicator.IsDuplicate(name, normalizedParams))
-        {
-            Logger.Warn("Duplicate event detected. Ignoring.", new System.Collections.Generic.Dictionary<string, object> { ["name"] = name });
-            return;
-        }
-
+    private void Enqueue(PendingEvent pending, DateTime? notBeforeUtc)
+    {
         var sessionId = _getSessionId();
         if (string.IsNullOrEmpty(sessionId))
         {
@@ -71,45 +104,26 @@ public sealed class EventManager
             return;
         }
 
-        var payload = new CreateEventRequest
-        {
-            SessionId = sessionId,
-            Name = name,
-            Params = normalizedParams,
-            IsScreen = false,
-            Timestamp = DateTime.UtcNow.ToString("o"),
-        };
+        var timestamp = notBeforeUtc.HasValue && notBeforeUtc.Value > pending.TimestampUtc
+            ? notBeforeUtc.Value
+            : pending.TimestampUtc;
 
-        _ = SendEventAsync(payload);
-    }
-
-    private async Task SendEventAsync(CreateEventRequest payload)
-    {
-        try
-        {
-            if (_isOnline)
+        _offlineQueue.Enqueue(
+            new BatchEventItem
             {
-                var result = await _httpClient.CreateEventAsync(payload).ConfigureAwait(false);
-                if (!result.Success)
+                Payload = new CreateEventRequest
                 {
-                    Logger.Error("Event tracking failed. Queuing for retry.", result.Error);
-                    await _offlineQueue
-                        .EnqueueAsync(new BatchEventItem { Payload = payload })
-                        .ConfigureAwait(false);
-                    return;
-                }
-
-                _markActivity();
-                return;
+                    EventId = pending.EventId,
+                    SessionId = sessionId!,
+                    Name = pending.Name,
+                    Params = pending.Params,
+                    IsScreen = pending.IsScreen,
+                    Timestamp = timestamp.ToString("o"),
+                },
             }
+        );
 
-            await _offlineQueue
-                .EnqueueAsync(new BatchEventItem { Payload = payload })
-                .ConfigureAwait(false);
-        }
-        catch (Exception error)
-        {
-            Logger.Error("Unhandled error in sendEvent. Event may be lost.", error);
-        }
+        _markActivity();
+        _onEnqueued();
     }
 }

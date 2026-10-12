@@ -6,7 +6,9 @@ import {
   SessionSchema,
 } from '@phase/shared';
 import { Elysia } from 'elysia';
-import { db, sessions } from '@/db';
+import { db } from '@/db';
+import { rememberSession } from '@/lib/ingest-cache';
+import { createSession } from '@/lib/ingest-store';
 import { sdkAuthPlugin } from '@/lib/middleware';
 import { sseManager } from '@/lib/sse-manager';
 import { validateDevice, validateTimestamp } from '@/lib/validators';
@@ -62,25 +64,39 @@ export const sessionSdkRouter = new Elysia({ prefix: '/sessions' })
           };
         }
 
-        const clientStartedAt = timestampValidation.data;
+        const result = await createSession({
+          sessionId: body.sessionId,
+          deviceId: body.deviceId,
+          startedAt: timestampValidation.data,
+        });
+        if (result.status === 'foreign-device') {
+          set.status = HttpStatus.BAD_REQUEST;
+          return {
+            code: ErrorCode.VALIDATION_ERROR,
+            detail: 'Session ID belongs to another device',
+          };
+        }
 
-        const [newSession] = await db
-          .insert(sessions)
-          .values({
-            sessionId: body.sessionId,
-            deviceId: body.deviceId,
-            startedAt: clientStartedAt,
-            lastActivityAt: clientStartedAt,
-          })
-          .returning();
-
-        sseManager.pushSession(device.appId, {
+        const { session: newSession, inserted } = result;
+        rememberSession({
           sessionId: newSession.sessionId,
           deviceId: newSession.deviceId,
-          startedAt: newSession.startedAt.toISOString(),
+          appId: device.appId,
+          startedAt: newSession.startedAt,
+          lastActivityAt: newSession.lastActivityAt,
           country: device.country,
           platform: device.platform,
         });
+
+        if (inserted) {
+          sseManager.pushSession(device.appId, {
+            sessionId: newSession.sessionId,
+            deviceId: newSession.deviceId,
+            startedAt: newSession.startedAt.toISOString(),
+            country: device.country,
+            platform: device.platform,
+          });
+        }
 
         set.status = HttpStatus.OK;
         return {

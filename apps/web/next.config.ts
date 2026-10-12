@@ -1,6 +1,12 @@
 import { createMDX } from 'fumadocs-mdx/next';
 import type { NextConfig } from 'next';
 
+// Pinned on process.env so build workers inline the same value; it busts the
+// persisted React Query cache on every deploy.
+process.env.NEXT_PUBLIC_BUILD_ID ||=
+  process.env.SOURCE_COMMIT || Date.now().toString(36);
+const buildId = process.env.NEXT_PUBLIC_BUILD_ID;
+
 const getContentSecurityPolicy = () => {
   const serverUrl =
     process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
@@ -81,6 +87,10 @@ const getContentSecurityPolicy = () => {
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  generateBuildId: () => buildId,
+  experimental: {
+    optimizePackageImports: ['@hugeicons/core-free-icons', '@hugeicons/react'],
+  },
   output: 'standalone',
   poweredByHeader: false,
   compress: true,

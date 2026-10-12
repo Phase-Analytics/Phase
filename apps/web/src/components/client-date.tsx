@@ -9,6 +9,7 @@ import {
   formatTime,
 } from '@/lib/date-utils';
 import { useDateDisplayStore } from '@/stores/date-display-store';
+import { useTimezoneStore } from '@/stores/timezone-store';
 
 type DateFormat = 'datetime' | 'date' | 'time' | 'datetime-long';
 
@@ -34,6 +35,9 @@ export function ClientDate({
   display = 'auto',
 }: ClientDateProps) {
   const mode = useDateDisplayStore((s) => s.mode);
+  const userTimezone = useTimezoneStore((s) => s.timezone);
+  const dateFormat = useTimezoneStore((s) => s.dateFormat);
+  const timeFormat = useTimezoneStore((s) => s.timeFormat);
   const useRelative =
     display === 'relative' || (display === 'auto' && mode === 'relative');
 
@@ -49,17 +53,18 @@ export function ClientDate({
     );
   }
 
-  const formatters: Record<
-    DateFormat,
-    (d: string | null | undefined, tz?: string) => string
-  > = {
+  const formatters: Record<DateFormat, typeof formatDateTime> = {
     datetime: formatDateTime,
     date: formatDate,
     time: formatTime,
     'datetime-long': formatDateTimeLong,
   };
 
-  const formatted = formatters[format](date, timezone);
+  const formatted = formatters[format](date, {
+    timezone: timezone ?? userTimezone,
+    dateFormat,
+    timeFormat,
+  });
 
   return (
     <span className={className} suppressHydrationWarning>

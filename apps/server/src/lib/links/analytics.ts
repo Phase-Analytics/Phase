@@ -1,34 +1,53 @@
 import {
   formatLinkBrowserFamilyLabel,
   getLinkOsLabel,
+  type LinkAnalyticsRange,
   trimLinkReferrerDisplay,
 } from '@phase/shared';
+import { eq } from 'drizzle-orm';
+import { db, links } from '@/db';
 import { executeQuestDBReadQuery } from '@/lib/questdb';
 import { escapeQuestDbString } from '@/lib/questdb-sql';
+import { getLinkClickTotals } from './click-totals';
 import { QUESTDB_LINK_CLICKS_TABLE } from './constants';
 
-function escapeSqlString(value: string): string {
-  return escapeQuestDbString(value);
+const RANGE_DAYS: Record<LinkAnalyticsRange, number> = {
+  '7d': 7,
+  '30d': 30,
+  '180d': 180,
+  '360d': 360,
+};
+
+function buildLinkWhereClause(options: {
+  appId: string;
+  linkId: string;
+  range: LinkAnalyticsRange;
+}): string {
+  return [
+    `app_id = '${escapeQuestDbString(options.appId)}'`,
+    `link_id = '${escapeQuestDbString(options.linkId)}'`,
+    `timestamp >= dateadd('d', -${RANGE_DAYS[options.range]}, now())`,
+  ].join(' AND ');
 }
 
+/**
+ * Totals for every link in an app (policies list). Logs and returns an empty
+ * map when totals are unavailable so callers can omit them.
+ */
 export async function getLinkClickTotalsByApp(
   appId: string
 ): Promise<Map<string, number>> {
   try {
-    const rows = await executeQuestDBReadQuery<{
-      link_id: string;
-      total_clicks: number;
-    }>(`
-        SELECT link_id, count() AS total_clicks
-        FROM ${QUESTDB_LINK_CLICKS_TABLE}
-        WHERE app_id = '${escapeSqlString(appId)}'
-        GROUP BY link_id
-      `);
-
-    return new Map(
-      rows.map((row) => [row.link_id, Number(row.total_clicks ?? 0)])
+    const rows = await db
+      .select({ id: links.id })
+      .from(links)
+      .where(eq(links.appId, appId));
+    return await getLinkClickTotals(
+      appId,
+      rows.map((row) => row.id)
     );
-  } catch {
+  } catch (error) {
+    console.error('[Links] Click totals unavailable:', error);
     return new Map();
   }
 }
@@ -36,10 +55,9 @@ export async function getLinkClickTotalsByApp(
 export async function getLinkAnalytics(options: {
   appId: string;
   linkId: string;
+  range: LinkAnalyticsRange;
 }) {
-  const appId = escapeSqlString(options.appId);
-  const linkId = escapeSqlString(options.linkId);
-  const baseWhere = `app_id = '${appId}' AND link_id = '${linkId}'`;
+  const baseWhere = buildLinkWhereClause(options);
 
   const [
     summaryRows,
@@ -145,25 +163,17 @@ export async function getLinkAnalytics(options: {
   };
 }
 
-function buildLinkClicksWhereClause(options: {
-  appId: string;
-  linkId: string;
-}): string {
-  const appId = escapeSqlString(options.appId);
-  const linkId = escapeSqlString(options.linkId);
-  return [`app_id = '${appId}'`, `link_id = '${linkId}'`].join(' AND ');
-}
-
 export async function getLinkClicks(options: {
   appId: string;
   linkId: string;
+  range: LinkAnalyticsRange;
   page: number;
   pageSize: number;
 }) {
   const page = Math.max(1, options.page);
   const pageSize = Math.min(Math.max(1, options.pageSize), 100);
   const offset = (page - 1) * pageSize;
-  const where = buildLinkClicksWhereClause(options);
+  const where = buildLinkWhereClause(options);
   const limitClause =
     offset > 0 ? `LIMIT ${offset}, ${offset + pageSize}` : `LIMIT ${pageSize}`;
 
@@ -228,14 +238,4 @@ function normalizeLinkClickCountry(value: string): string | null {
     return null;
   }
   return value;
-}
-
-export async function getLinkClickCount(linkId: string): Promise<number> {
-  const rows = await executeQuestDBReadQuery<{ count: number }>(`
-    SELECT count() AS count
-    FROM ${QUESTDB_LINK_CLICKS_TABLE}
-    WHERE link_id = '${escapeSqlString(linkId)}'
-  `);
-
-  return Number(rows[0]?.count ?? 0);
 }

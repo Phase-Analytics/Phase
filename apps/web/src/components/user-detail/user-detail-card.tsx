@@ -9,12 +9,13 @@ import {
   SmartPhone01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
+import { getDisplayName } from '@phase/shared';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useMemo } from 'react';
 import 'flag-icons/css/flag-icons.min.css';
 import { Card, CardContent } from '@/components/ui/card';
 import { CopyButton } from '@/components/ui/copy-button';
-import { getGeneratedName, UserAvatar } from '@/components/user-profile';
+import { UserAvatar } from '@/components/user-profile';
 import { useDevice } from '@/lib/queries';
 
 const COUNTRY_CODE_REGEX = /^[A-Za-z]{2}$/;
@@ -64,7 +65,7 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
     if (!device?.deviceId) {
       return '';
     }
-    return getGeneratedName(device.deviceId);
+    return getDisplayName(device.deviceId);
   }, [device?.deviceId]);
 
   const appVersion = useMemo(() => {

@@ -2,8 +2,8 @@ import type { ExploreRunResponse, ExploreSqlQuery } from '@phase/shared';
 import {
   executePostgresExploreQuery,
   executeQuestDbExploreQuery,
-  rewriteExploreSql,
 } from './sql-execute';
+import { rewriteExploreSql } from './sql-rewrite';
 import {
   applyExplorePagination,
   parseExploreSql,
@@ -34,14 +34,10 @@ export async function runExploreQuery(
 
   validateExplorePage(page, pageSize);
 
-  const { sql: rewritten, target } = rewriteExploreSql(
-    parsed.baseSql,
-    parsed.tables,
-    {
-      appId,
-      dateRange,
-    }
-  );
+  const { sql: rewritten, target } = rewriteExploreSql(parsed, {
+    appId,
+    dateRange,
+  });
 
   const { sql: paginatedSql, offset } = applyExplorePagination(
     rewritten,

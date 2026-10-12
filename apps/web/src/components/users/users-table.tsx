@@ -9,13 +9,14 @@ import {
   Flag02Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
+import { getDisplayName } from '@phase/shared';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useRouter } from 'next/navigation';
 import { parseAsInteger, parseAsString, useQueryState } from 'nuqs';
 import 'flag-icons/css/flag-icons.min.css';
 import { ClientDate } from '@/components/client-date';
 import { DataTableServer } from '@/components/ui/data-table-server';
-import { getGeneratedName, UserAvatar } from '@/components/user-profile';
+import { UserAvatar } from '@/components/user-profile';
 import type { DeviceListItem } from '@/lib/api/types';
 import { parseAsPropertySearch } from '@/lib/parsers/property-search';
 import { useDevices } from '@/lib/queries';
@@ -60,7 +61,7 @@ const columns: ColumnDef<DeviceListItem>[] = [
     size: 350,
     cell: ({ row }) => {
       const deviceId = row.getValue('deviceId') as string;
-      const generatedName = getGeneratedName(deviceId);
+      const generatedName = getDisplayName(deviceId);
       return (
         <div
           className="flex max-w-xs items-center gap-2 lg:max-w-sm"

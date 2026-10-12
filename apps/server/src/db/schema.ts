@@ -252,6 +252,7 @@ export const links = pgTable(
     ogImageUrl: text('og_image_url'),
     expiresAt: timestamp('expires_at'),
     disabledAt: timestamp('disabled_at'),
+    banned: boolean('banned').notNull().default(false),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
       .defaultNow()
@@ -274,6 +275,25 @@ export const links = pgTable(
       foreignColumns: [linkDomains.id, linkDomains.appId],
       name: 'links_domain_id_app_id_link_domains_fk',
     }).onDelete('restrict'),
+  })
+);
+
+/**
+ * Default-domain slugs recently freed by link or app deletion. Other apps
+ * cannot claim them until the hold expires, so printed links cannot be
+ * hijacked. No FK to apps: the hold must outlive the app.
+ */
+export const linkSlugTombstones = pgTable(
+  'link_slug_tombstones',
+  {
+    slug: text('slug').primaryKey(),
+    appId: text('app_id').notNull(),
+    deletedAt: timestamp('deleted_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    deletedAtIdx: index('link_slug_tombstones_deleted_at_idx').on(
+      table.deletedAt
+    ),
   })
 );
 

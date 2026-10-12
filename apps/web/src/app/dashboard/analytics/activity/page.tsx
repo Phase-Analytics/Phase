@@ -21,13 +21,13 @@ import { TopScreensCard } from '@/components/events/top-screens-card';
 import { ExportButton } from '@/components/export-button';
 import { RequireApp } from '@/components/require-app';
 import { Card, CardContent } from '@/components/ui/card';
-import { buildQueryString, fetchApi } from '@/lib/api/client';
-import type {
-  EventOverviewResponse,
-  EventTimeseriesResponse,
-  TopEventsResponse,
-} from '@/lib/api/types';
-import { cacheConfig, getQueryClient, queryKeys } from '@/lib/queries';
+import {
+  eventOverviewQuery,
+  eventTimeseriesQuery,
+  getQueryClient,
+  topEventsQuery,
+} from '@/lib/queries';
+import { useTimezoneStore } from '@/stores/timezone-store';
 
 type ActivityExportData = {
   exportedAt: string;
@@ -48,6 +48,7 @@ type ActivityExportData = {
 
 function ActivityExportButton() {
   const [appId] = useQueryState('app', parseAsString);
+  const tz = useTimezoneStore((s) => s.timezone);
 
   const fetchActivityData = useCallback(
     async (startDate: string, endDate: string): Promise<ActivityExportData> => {
@@ -56,40 +57,12 @@ function ActivityExportButton() {
       }
 
       const queryClient = getQueryClient();
+      const range = { startDate, endDate };
 
       const [overview, topEvents, eventsTs] = await Promise.all([
-        queryClient.fetchQuery({
-          queryKey: queryKeys.events.overview(appId),
-          queryFn: () =>
-            fetchApi<EventOverviewResponse>(
-              `/web/events/overview${buildQueryString({ appId })}`
-            ),
-          ...cacheConfig.overview,
-        }),
-        queryClient.fetchQuery({
-          queryKey: queryKeys.events.top(appId, { startDate, endDate }),
-          queryFn: () =>
-            fetchApi<
-              TopEventsResponse & {
-                screens: Array<{ name: string; count: number }>;
-              }
-            >(
-              `/web/events/top${buildQueryString({ appId, startDate, endDate })}`
-            ),
-          ...cacheConfig.overview,
-        }),
-        queryClient.fetchQuery({
-          queryKey: queryKeys.events.timeseries(appId, { startDate, endDate }),
-          queryFn: () =>
-            fetchApi<EventTimeseriesResponse>(
-              `/web/events/timeseries${buildQueryString({
-                appId,
-                startDate,
-                endDate,
-              })}`
-            ),
-          ...cacheConfig.timeseries,
-        }),
+        queryClient.fetchQuery(eventOverviewQuery(appId, tz)),
+        queryClient.fetchQuery(topEventsQuery(appId, range, tz)),
+        queryClient.fetchQuery(eventTimeseriesQuery(appId, range, tz)),
       ]);
 
       return {
@@ -109,7 +82,7 @@ function ActivityExportButton() {
         })),
       };
     },
-    [appId]
+    [appId, tz]
   );
 
   if (!appId) {

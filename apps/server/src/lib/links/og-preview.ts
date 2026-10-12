@@ -74,6 +74,7 @@ export function buildLinkOgPreviewHtml(params: {
   const imageUrl =
     rawImageUrl && isAllowedOgImageUrl(rawImageUrl) ? rawImageUrl : null;
   const imageType = imageUrl?.includes('.webp') ? 'image/webp' : 'image/jpeg';
+  const destination = escapeHtml(destinationUrl);
 
   const metaTags = [
     `<meta property="og:type" content="website" />`,
@@ -95,7 +96,7 @@ export function buildLinkOgPreviewHtml(params: {
     imageUrl
       ? `<meta name="twitter:image" content="${escapeHtml(imageUrl)}" />`
       : '',
-    `<link rel="canonical" href="${escapeHtml(destinationUrl)}" />`,
+    `<link rel="canonical" href="${destination}" />`,
   ]
     .filter(Boolean)
     .join('\n    ');
@@ -107,8 +108,11 @@ export function buildLinkOgPreviewHtml(params: {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${title}</title>
     ${metaTags}
+    <meta http-equiv="refresh" content="0; url=${destination}" />
   </head>
-  <body></body>
+  <body>
+    <p><a href="${destination}">Continue to ${destination}</a></p>
+  </body>
 </html>`;
 }
 

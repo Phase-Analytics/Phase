@@ -16,6 +16,13 @@ export const SESSION_ID = {
   PATTERN: /^[\w-]+$/,
 } as const;
 
+// ULID: 48-bit timestamp + 80-bit randomness, Crockford base32. The first
+// character is limited to 0-7 because the timestamp must fit in 48 bits.
+export const EVENT_ID = {
+  LENGTH: 26,
+  PATTERN: /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i,
+} as const;
+
 export const EVENT_NAME = {
   MIN_LENGTH: 1,
   MAX_LENGTH: 256,

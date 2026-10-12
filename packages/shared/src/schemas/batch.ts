@@ -29,7 +29,7 @@ export const BatchPingItemSchema = z.object({
   clientOrder: z.number().min(0),
 });
 
-export const BatchItemSchema = z.union([
+export const BatchItemSchema = z.discriminatedUnion('type', [
   BatchDeviceItemSchema,
   BatchSessionItemSchema,
   BatchEventItemSchema,
@@ -44,6 +44,9 @@ export const BatchErrorSchema = z.object({
   clientOrder: z.number(),
   code: z.string(),
   detail: z.string(),
+  // true when the item failed for a transient server-side reason and the
+  // client should resend it; false for validation and other client errors.
+  retryable: z.boolean(),
 });
 
 export const BatchResultItemSchema = z.object({

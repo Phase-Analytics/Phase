@@ -1,4 +1,14 @@
 const WWW_PREFIX = /^www\./;
+// biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control characters is the point
+const CONTROL_CHARS = /[\u0000-\u001f\u007f]/g;
+const MAX_REFERRER_LENGTH = 120;
+const MAX_PARAM_SOURCE_LENGTH = 64;
+
+/** Referrer labels come from attacker-controlled headers and query params. */
+function cleanLabel(value: string, maxLength: number): string | null {
+  const cleaned = value.replace(CONTROL_CHARS, '').trim().slice(0, maxLength);
+  return cleaned || null;
+}
 
 const KNOWN_REFERRER_HOSTS: Array<{ match: RegExp; label: string }> = [
   { match: /(^|\.)whatsapp\.com$/i, label: 'WhatsApp' },
@@ -88,23 +98,27 @@ export function resolveLinkReferrer(options: {
     const lower = referer.toLowerCase();
     if (lower !== 'direct' && lower !== '(direct)' && lower !== 'null') {
       const host = hostFromUrl(referer);
-      if (host) {
-        return labelForHost(host);
+      const label = cleanLabel(
+        host ? labelForHost(host) : referer,
+        MAX_REFERRER_LENGTH
+      );
+      if (label) {
+        return label;
       }
-      return referer.slice(0, 120);
     }
   }
 
   if (options.requestUrl) {
     try {
       const url = new URL(options.requestUrl);
-      const utmSource = url.searchParams.get('utm_source')?.trim();
-      if (utmSource) {
-        return utmSource.slice(0, 64);
-      }
-      const ref = url.searchParams.get('ref')?.trim();
-      if (ref) {
-        return ref.slice(0, 64);
+      const source =
+        url.searchParams.get('utm_source')?.trim() ||
+        url.searchParams.get('ref');
+      const label = source
+        ? cleanLabel(source, MAX_PARAM_SOURCE_LENGTH)
+        : null;
+      if (label) {
+        return label;
       }
     } catch {
       // ignore invalid request URL
@@ -122,9 +136,4 @@ export function resolveLinkReferrer(options: {
   }
 
   return 'direct';
-}
-
-/** @deprecated Prefer resolveLinkReferrer for new click paths */
-export function normalizeReferrer(referrer: string | null | undefined): string {
-  return resolveLinkReferrer({ refererHeader: referrer });
 }

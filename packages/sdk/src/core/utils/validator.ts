@@ -1,4 +1,4 @@
-import type { EventParams, Result } from '../types';
+import type { DeviceProperties, EventParams, Result } from '../types';
 import { VALIDATION } from '../types';
 
 export class ValidationError extends Error {
@@ -201,4 +201,51 @@ export function validateSessionId(sessionId: string): Result<void> {
   }
 
   return { success: true, data: undefined };
+}
+
+/**
+ * Keeps valid device properties and reports the keys that were dropped.
+ * Limits mirror the server (flat primitives, key <= 128 chars, <= 50 KB JSON).
+ */
+export function sanitizeDeviceProperties(
+  properties: DeviceProperties | undefined
+): { properties: DeviceProperties | undefined; droppedKeys: string[] } {
+  if (!properties || typeof properties !== 'object' || Array.isArray(properties)) {
+    return {
+      properties: undefined,
+      droppedKeys: properties === undefined ? [] : ['<all>'],
+    };
+  }
+
+  const valid: DeviceProperties = {};
+  const droppedKeys: string[] = [];
+
+  for (const [key, value] of Object.entries(properties)) {
+    if (
+      key.length > VALIDATION.DEVICE_PROPERTIES.MAX_KEY_LENGTH ||
+      !isFlatValue(value) ||
+      (typeof value === 'number' && !Number.isFinite(value))
+    ) {
+      droppedKeys.push(key);
+      continue;
+    }
+    valid[key] = value;
+  }
+
+  if (JSON.stringify(valid).length > VALIDATION.DEVICE_PROPERTIES.MAX_SIZE) {
+    return { properties: undefined, droppedKeys: Object.keys(properties) };
+  }
+
+  return {
+    properties: Object.keys(valid).length > 0 ? valid : undefined,
+    droppedKeys,
+  };
+}
+
+/** Returns the value if it fits the server's length limit, otherwise null. */
+export function limitLength(
+  value: string | null | undefined,
+  maxLength: number
+): string | null {
+  return value && value.length <= maxLength ? value : null;
 }

@@ -9,9 +9,8 @@ import { Elysia } from 'elysia';
 import { sdkAuthPlugin } from '@/lib/middleware';
 import { getSessionActivityBuffer } from '@/lib/session-activity-buffer';
 import {
-  invalidateSessionCache,
   SESSION_MAX_DURATION_MS,
-  validateSession,
+  validateIngestSession,
   validateTimestamp,
 } from '@/lib/validators';
 
@@ -21,7 +20,10 @@ export const pingSdkRouter = new Elysia({ prefix: '/ping' })
     '/',
     async ({ body, app, set }) => {
       try {
-        const sessionValidation = await validateSession(body.sessionId, app.id);
+        const sessionValidation = await validateIngestSession(
+          body.sessionId,
+          app.id
+        );
         if (!sessionValidation.success) {
           set.status = sessionValidation.error.status;
           return {
@@ -40,7 +42,7 @@ export const pingSdkRouter = new Elysia({ prefix: '/ping' })
         }
 
         const clientTimestamp = timestampValidation.data;
-        const { session, device } = sessionValidation.data;
+        const session = sessionValidation.data;
 
         const oldestRealtimeSession = new Date(
           Date.now() - SESSION_MAX_DURATION_MS
@@ -69,10 +71,8 @@ export const pingSdkRouter = new Elysia({ prefix: '/ping' })
           activityBuffer.getLastActivityAt(session.sessionId) ??
           session.lastActivityAt;
         if (clientTimestamp > latestActivity) {
-          activityBuffer.push(session.sessionId, clientTimestamp, device.appId);
+          activityBuffer.push(session.sessionId, clientTimestamp, session.appId);
         }
-
-        await invalidateSessionCache(session.sessionId);
 
         set.status = HttpStatus.OK;
         return {

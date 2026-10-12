@@ -109,17 +109,10 @@ public sealed class UnityWebRequestTransport : IHttpTransport
             return new HttpTransportResponse(0, webRequest.error ?? string.Empty);
         }
 
-        if (webRequest.result == UnityWebRequest.Result.ProtocolError)
-        {
-            return new HttpTransportResponse(
-                (int)webRequest.responseCode,
-                webRequest.downloadHandler?.text ?? string.Empty
-            );
-        }
-
         return new HttpTransportResponse(
             (int)webRequest.responseCode,
-            webRequest.downloadHandler?.text ?? string.Empty
+            webRequest.downloadHandler?.text ?? string.Empty,
+            retryAfter: webRequest.GetResponseHeader("Retry-After")
         );
     }
 #endif

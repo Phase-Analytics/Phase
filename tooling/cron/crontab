@@ -1,2 +1,2 @@
-# Run GeoIP update check daily at 3 AM
-0 3 * * * /app/jobs/geoip-update.sh >> /var/log/cron.log 2>&1
+# GeoIP refresh check daily at 03:00. Output goes to the container log.
+0 3 * * * /usr/local/bin/geoip-update >/proc/1/fd/1 2>/proc/1/fd/2

@@ -17,6 +17,13 @@ type MutationOption = {
   tags?: string | string[];
 };
 
+function toArray<T>(value: T | T[] | undefined): T[] {
+  if (value === undefined) {
+    return [];
+  }
+  return Array.isArray(value) ? value : [value];
+}
+
 export class RedisCache extends Cache {
   private readonly redis: Redis;
   private readonly config: CacheConfig;
@@ -166,15 +173,14 @@ export class RedisCache extends Cache {
     }
 
     try {
-      if (!params.tables) {
-        return;
+      // Tagged queries are stored under the tag itself, so invalidating a tag
+      // is a direct delete.
+      const tags = toArray(params.tags);
+      if (tags.length > 0) {
+        await this.redis.del(...tags);
       }
 
-      const tables = Array.isArray(params.tables)
-        ? params.tables
-        : [params.tables];
-
-      for (const table of tables) {
+      for (const table of toArray(params.tables)) {
         const tableName = typeof table === 'string' ? table : table._.name;
         const keys = this.tableKeysMap.get(tableName);
 

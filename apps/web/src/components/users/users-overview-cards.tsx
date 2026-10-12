@@ -1,13 +1,12 @@
 'use client';
 
+import { useSuspenseQueries } from '@tanstack/react-query';
 import { parseAsString, useQueryState } from 'nuqs';
 import { Card, CardContent } from '@/components/ui/card';
 import { CountingNumber } from '@/components/ui/counting-number';
-import {
-  useDeviceLiveResponse,
-  useDeviceOverviewResponse,
-} from '@/lib/queries';
+import { deviceLiveQuery, deviceOverviewQuery } from '@/lib/queries';
 import { cn, formatChange } from '@/lib/utils';
+import { useTimezoneStore } from '@/stores/timezone-store';
 
 function getChangeColor(change: number) {
   if (change === 0) {
@@ -18,8 +17,14 @@ function getChangeColor(change: number) {
 
 export function UsersOverviewCards() {
   const [appId] = useQueryState('app', parseAsString);
-  const { data: overview } = useDeviceOverviewResponse(appId || '');
-  const { data: liveData } = useDeviceLiveResponse(appId || '');
+  const tz = useTimezoneStore((s) => s.timezone);
+  // Fetched in parallel; two useSuspenseQuery calls would run as a waterfall.
+  const [{ data: overview }, { data: liveData }] = useSuspenseQueries({
+    queries: [
+      deviceOverviewQuery(appId || '', tz),
+      deviceLiveQuery(appId || ''),
+    ],
+  });
 
   if (!appId) {
     return null;

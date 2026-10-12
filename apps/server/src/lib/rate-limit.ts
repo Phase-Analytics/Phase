@@ -214,6 +214,15 @@ export async function checkPublicApiRateLimit(
   });
 }
 
+/** Raw SQL over the public API shares the dashboard explore budget. */
+export async function checkPublicApiQueryRateLimit(
+  tokenId: string
+): Promise<RateLimitResult> {
+  return await checkRateLimit(RATE_LIMIT_STRATEGIES.EXPLORE_RUN, {
+    deviceId: `public-api-token:${tokenId}`,
+  });
+}
+
 export async function checkExploreRunRateLimit(
   userId: string
 ): Promise<RateLimitResult> {

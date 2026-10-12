@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EVENT_NAME, SESSION_ID } from '../constants/validation';
+import { EVENT_ID, EVENT_NAME, SESSION_ID } from '../constants/validation';
 import { PaginationMetaSchema } from './common';
 import { PlatformSchema } from './device';
 
@@ -30,6 +30,7 @@ export const EventSchema = z.object({
 });
 
 export const CreateEventRequestSchema = z.object({
+  eventId: z.string().length(EVENT_ID.LENGTH).regex(EVENT_ID.PATTERN).optional(),
   sessionId: z
     .string()
     .min(SESSION_ID.MIN_LENGTH)

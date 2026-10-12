@@ -1,7 +1,12 @@
 import { z } from 'zod';
+import { SESSION_ID } from '../constants/validation';
 
 export const PingSessionRequestSchema = z.object({
-  sessionId: z.string().min(1),
+  sessionId: z
+    .string()
+    .min(SESSION_ID.MIN_LENGTH)
+    .max(SESSION_ID.MAX_LENGTH)
+    .regex(SESSION_ID.PATTERN),
   timestamp: z.string().datetime(),
 });
 

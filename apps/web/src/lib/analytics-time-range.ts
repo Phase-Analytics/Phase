@@ -1,5 +1,7 @@
 import type { ExploreTimeRange } from '@phase/shared';
-import type { TimeRange } from '@/lib/api/types';
+import type { DateRangeParams, TimeRange } from '@/lib/api/types';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const ANALYTICS_TIME_RANGE_OPTIONS = [
   { value: '7d', label: '7 Days' },
@@ -41,4 +43,22 @@ export function getAnalyticsTimeRangeLabel(value: string): string {
     ANALYTICS_TIME_RANGE_OPTIONS.find((option) => option.value === value)
       ?.label ?? '7 Days'
   );
+}
+
+/** Resolves a relative range ("7d") to concrete dates at request time. */
+export function toDateRangeParams(
+  range: TimeRange | DateRangeParams | undefined
+): DateRangeParams | undefined {
+  if (typeof range !== 'string') {
+    return range;
+  }
+  const days = Number.parseInt(range, 10);
+  if (Number.isNaN(days)) {
+    return;
+  }
+  const now = new Date();
+  return {
+    startDate: new Date(now.getTime() - days * DAY_MS).toISOString(),
+    endDate: now.toISOString(),
+  };
 }

@@ -1,7 +1,8 @@
 # Coolify production deployment; data volumes must already exist.
 services:
   postgres:
-    image: postgres@sha256:dca7512acaa113409df7e40d977d801e53c0c8088e45d4311a45b4065ccfdcd3
+    image: postgres:17.7@sha256:dca7512acaa113409df7e40d977d801e53c0c8088e45d4311a45b4065ccfdcd3
+    shm_size: 1g
     volumes:
     - postgres-data:/var/lib/postgresql/data
     environment:
@@ -31,11 +32,19 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'
     restart: unless-stopped
     container_name: coolify-phase-postgres
   redis:
-    image: redis@sha256:862134b1b4ebe820d8b72ab090d30f8868467bc4d7fecd23422efb5596554efc
-    command: redis-server --maxmemory 2gb --maxmemory-policy allkeys-lru
+    image: redis:8.0.5-alpine@sha256:862134b1b4ebe820d8b72ab090d30f8868467bc4d7fecd23422efb5596554efc
+    # Event/click buffers have no TTL, so volatile-lru never evicts them; AOF
+    # (in /data on the redis-data volume) keeps them across restarts. maxmemory
+    # stays below the container limit to leave room for the AOF rewrite fork.
+    command: redis-server --maxmemory 1536mb --maxmemory-policy volatile-lru --appendonly yes --appendfsync everysec
     volumes:
     - redis-data:/data
     deploy:
@@ -55,44 +64,63 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'
     restart: unless-stopped
     container_name: coolify-phase-redis
   geoip:
     build:
-      context: ./tooling/geoip
-      dockerfile: ../../infrastructure/docker/geoip.Dockerfile
+      context: ./tooling
+      dockerfile: ../infrastructure/docker/geoip.Dockerfile
     volumes:
     - geoip-data:/app/geoip
+    environment:
+    - MAXMIND_ACCOUNT_ID=${MAXMIND_ACCOUNT_ID:-}
+    - MAXMIND_LICENSE_KEY=${MAXMIND_LICENSE_KEY:-}
     networks:
       private:
         aliases:
         - geoip
         - phase-geoip
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'
     restart: 'no'
-    container_name: coolify-phase-geoip
   cron:
     init: true
     build:
-      context: ./tooling/cron
-      dockerfile: ../../infrastructure/docker/cron.Dockerfile
+      context: ./tooling
+      dockerfile: ../infrastructure/docker/cron.Dockerfile
     volumes:
     - geoip-data:/app/geoip
+    environment:
+    - MAXMIND_ACCOUNT_ID=${MAXMIND_ACCOUNT_ID:-}
+    - MAXMIND_LICENSE_KEY=${MAXMIND_LICENSE_KEY:-}
     networks:
       private:
         aliases:
         - cron
         - phase-cron
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'
     restart: unless-stopped
     depends_on:
       geoip:
         condition: service_completed_successfully
-    container_name: coolify-phase-cron
   questdb:
-    image: questdb/questdb@sha256:e62916bd62087cc48ab56f10b72a183e8f6aa987b4d46e0f316be083bbee2373
+    image: questdb/questdb:9.1.1@sha256:e62916bd62087cc48ab56f10b72a183e8f6aa987b4d46e0f316be083bbee2373
     volumes:
     - questdb-data:/var/lib/questdb
     environment:
-    - QDB_JAVA_OPTS=-Xms8G -Xmx16G -XX:+UseG1GC -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=16M
+    - QDB_JAVA_OPTS=-Xms6G -Xmx6G -XX:+UseG1GC -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=16M
       -XX:InitiatingHeapOccupancyPercent=45 -XX:+ParallelRefProcEnabled
     - QDB_HTTP_ENABLED=true
     - QDB_HTTP_BIND_TO=0.0.0.0:9000
@@ -117,8 +145,6 @@ services:
     - QDB_CAIRO_O3_COLUMN_MEMORY_SIZE=4M
     - QDB_CAIRO_SQL_MAP_PAGE_SIZE=4M
     - QDB_CAIRO_WRITER_DATA_APPEND_PAGE_SIZE=2M
-    - QDB_CAIRO_MAX_UNCOMMITTED_ROWS=500000
-    - QDB_CAIRO_COMMIT_LAG=2000
     - QDB_CAIRO_SQL_QUERY_TIMEOUT=120000
     - QDB_CAIRO_SQL_JIT_MODE=on
     - QDB_CAIRO_SQL_PARALLEL_FILTER_ENABLED=true
@@ -144,6 +170,11 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'
     restart: unless-stopped
     container_name: coolify-phase-questdb
   server:
@@ -166,15 +197,10 @@ services:
     - CLOUDFLARE_CUSTOM_ORIGIN_SERVER=${CLOUDFLARE_CUSTOM_ORIGIN_SERVER:-}
     - DATABASE_URL=postgresql://postgres:postgres@phase-postgres:5432/phase
     - REDIS_URL=redis://redis:6379
-    - QUESTDB_HOST=questdb
-    - QUESTDB_ILP_PORT=9009
     - GEOIP_DB_PATH=/app/geoip/GeoLite2-Country.mmdb
     - POLAR_ACCESS_TOKEN=${POLAR_ACCESS_TOKEN}
     - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
     - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
-    - OPENAI_API_KEY=${OPENAI_API_KEY}
-    - OPENAI_MODEL=${OPENAI_MODEL:-gpt-5.4-mini}
-    - OPENAI_REASONING_EFFORT=${OPENAI_REASONING_EFFORT:-low}
     - R2_ACCOUNT_ID=${R2_ACCOUNT_ID:-}
     - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-}
     - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
@@ -209,10 +235,16 @@ services:
       - CMD-SHELL
       - 'bun -e "fetch(''http://localhost:3001/health'').then(r => process.exit(r.ok
         ? 0 : 1)).catch(() => process.exit(1))"'
-      interval: 10s
+      interval: 15s
       timeout: 5s
-      retries: 5
-      start_period: 10s
+      retries: 3
+      start_period: 60s
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'
     restart: unless-stopped
     container_name: coolify-phase-server
   web:
@@ -258,8 +290,12 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'
     restart: unless-stopped
-    container_name: coolify-phase-web
 networks:
   private: {}
   coolify:

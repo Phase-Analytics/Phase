@@ -17,8 +17,10 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { formatDate } from '@/lib/date-utils';
+import { getTrailingDayKeys } from '@/lib/fill-daily-timeseries';
 import { useDeviceActivityTimeseries } from '@/lib/queries';
 import { cn } from '@/lib/utils';
+import { useTimezoneStore } from '@/stores/timezone-store';
 import { UserActivityCalendarSkeleton } from './user-detail-skeletons';
 
 type UserActivityCalendarProps = {
@@ -59,6 +61,8 @@ function getSessionLabel(sessionCount: number): string {
 
 export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
   const [appId] = useQueryState('app', parseAsString);
+  const tz = useTimezoneStore((s) => s.timezone);
+  const dateFormat = useTimezoneStore((s) => s.dateFormat);
 
   const { data, isPending } = useDeviceActivityTimeseries(
     deviceId,
@@ -74,23 +78,13 @@ export function UserActivityCalendar({ deviceId }: UserActivityCalendarProps) {
       data.data.map((item) => [item.date, item.sessionCount])
     );
 
-    const days: DayData[] = [];
-    const now = new Date();
-
-    for (let i = 364; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-
-      days.push({
-        date: dateStr,
-        sessionCount: dataMap.get(dateStr) || 0,
-        formattedDate: formatDate(dateStr),
-      });
-    }
-
-    return days;
-  }, [data]);
+    return getTrailingDayKeys(365, tz).map((dateStr) => ({
+      date: dateStr,
+      sessionCount: dataMap.get(dateStr) || 0,
+      // Day keys are calendar dates, so format them without a zone shift.
+      formattedDate: formatDate(dateStr, { timezone: 'UTC', dateFormat }),
+    }));
+  }, [data, tz, dateFormat]);
 
   if (isPending) {
     return <UserActivityCalendarSkeleton />;

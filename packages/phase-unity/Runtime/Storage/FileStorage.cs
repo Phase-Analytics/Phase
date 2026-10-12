@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 using Phase.Analytics.Utils;
 
@@ -7,6 +8,8 @@ namespace Phase.Analytics.Storage;
 
 public sealed class FileStorage : IStorage
 {
+    private static readonly UTF8Encoding Utf8NoBom = new(false);
+
     private readonly string _rootDirectory;
 
     public FileStorage(string rootDirectory)
@@ -97,8 +100,11 @@ public sealed class FileStorage : IStorage
         {
             var path = GetFilePath(key);
             var tempPath = path + ".tmp";
-            var serialized = JsonHelper.Serialize(value);
-            File.WriteAllText(tempPath, serialized);
+            using (var writer = new StreamWriter(tempPath, append: false, Utf8NoBom))
+            {
+                JsonHelper.Serialize(writer, value);
+            }
+
             if (File.Exists(path))
             {
                 File.Replace(tempPath, path, null);

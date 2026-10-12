@@ -1,4 +1,4 @@
-import { and, eq, lt } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { db, sessions } from '@/db';
 
 type SessionActivity = {
@@ -41,19 +41,6 @@ export class SessionActivityBuffer {
     this.isFlushing = false;
     this.isShuttingDown = false;
     this.flushPromise = null;
-
-    this.setupGracefulShutdown();
-  }
-
-  private setupGracefulShutdown(): void {
-    const shutdown = async () => {
-      console.log('[SessionActivityBuffer] Graceful shutdown initiated');
-      await this.flushAndClose();
-      process.exit(0);
-    };
-
-    process.on('SIGTERM', shutdown);
-    process.on('SIGINT', shutdown);
   }
 
   push(sessionId: string, timestamp: Date, appId: string): void {
@@ -171,18 +158,8 @@ export class SessionActivityBuffer {
       return;
     }
 
-    const startTime = Date.now();
-    console.log(
-      `[SessionActivityBuffer] Flushing ${snapshot.size} session updates (${this.pendingBuffer.size} pending)`
-    );
-
     try {
       await this.writeBatchToDatabase(snapshot);
-
-      const duration = Date.now() - startTime;
-      console.log(
-        `[SessionActivityBuffer] Flushed ${snapshot.size} sessions in ${duration}ms`
-      );
 
       for (const [sessionId, activity] of this.pendingBuffer.entries()) {
         const existing = this.activeBuffer.get(sessionId);
@@ -212,40 +189,21 @@ export class SessionActivityBuffer {
       return;
     }
 
-    try {
-      await db.transaction(async (tx) => {
-        const BATCH_SIZE = 500;
-        const entries = Array.from(snapshot.entries());
-
-        for (let i = 0; i < entries.length; i += BATCH_SIZE) {
-          const batch = entries.slice(i, i + BATCH_SIZE);
-
-          await Promise.all(
-            batch.map(async ([sessionId, activity]) => {
-              try {
-                await tx
-                  .update(sessions)
-                  .set({ lastActivityAt: activity.timestamp })
-                  .where(
-                    and(
-                      eq(sessions.sessionId, sessionId),
-                      lt(sessions.lastActivityAt, activity.timestamp)
-                    )
-                  );
-              } catch (error) {
-                console.error(
-                  `[SessionActivityBuffer] Failed to update session ${sessionId}:`,
-                  error
-                );
-              }
-            })
-          );
-        }
-      });
-    } catch (error) {
-      console.error('[SessionActivityBuffer] Transaction failed:', error);
-      throw error;
+    const sessionIds: string[] = [];
+    // last_activity_at is timestamp without time zone holding UTC wall time
+    // (drizzle writes toISOString()); casting an ISO string drops the "Z".
+    const timestamps: string[] = [];
+    for (const [sessionId, activity] of snapshot) {
+      sessionIds.push(sessionId);
+      timestamps.push(activity.timestamp.toISOString());
     }
+
+    await db.execute(sql`
+      UPDATE ${sessions} AS s
+      SET last_activity_at = v.ts
+      FROM unnest(${sql.param(sessionIds)}::text[], ${sql.param(timestamps)}::timestamp[]) AS v(id, ts)
+      WHERE s.session_id = v.id AND s.last_activity_at < v.ts
+    `);
   }
 
   async flushAndClose(): Promise<void> {
@@ -256,27 +214,29 @@ export class SessionActivityBuffer {
       '[SessionActivityBuffer] Flushing remaining data before shutdown'
     );
 
-    let retries = 3;
-    while (retries > 0) {
+    // An in-progress flush parks new updates in pendingBuffer and merges them
+    // back afterwards, so keep flushing until both buffers are empty.
+    let failures = 0;
+    while (
+      this.activeBuffer.size > 0 ||
+      this.pendingBuffer.size > 0 ||
+      this.flushPromise
+    ) {
       try {
         await this.flush();
-        console.log('[SessionActivityBuffer] Shutdown flush completed');
-        break;
       } catch (error) {
-        retries--;
-        if (retries === 0) {
+        failures++;
+        if (failures >= 3) {
           console.error(
-            '[SessionActivityBuffer] Failed to flush on shutdown after retries:',
+            `[SessionActivityBuffer] Dropping ${this.activeBuffer.size + this.pendingBuffer.size} session updates after failed shutdown flushes:`,
             error
           );
-        } else {
-          console.warn(
-            `[SessionActivityBuffer] Flush failed, retrying (${retries} left)...`
-          );
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+          return;
         }
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
+    console.log('[SessionActivityBuffer] Shutdown flush completed');
   }
 
   getStats() {

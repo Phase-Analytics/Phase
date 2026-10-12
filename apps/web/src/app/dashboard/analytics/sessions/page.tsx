@@ -21,12 +21,12 @@ import {
   UsersRetentionChart,
   UsersRetentionChartSkeleton,
 } from '@/components/users/users-retention';
-import { buildQueryString, fetchApi } from '@/lib/api/client';
-import type {
-  SessionOverviewResponse,
-  SessionTimeseriesResponse,
-} from '@/lib/api/types';
-import { cacheConfig, getQueryClient, queryKeys } from '@/lib/queries';
+import {
+  getQueryClient,
+  sessionOverviewQuery,
+  sessionTimeseriesQuery,
+} from '@/lib/queries';
+import { useTimezoneStore } from '@/stores/timezone-store';
 
 type SessionsExportData = {
   exportedAt: string;
@@ -47,6 +47,7 @@ type SessionsExportData = {
 
 function SessionsExportButton() {
   const [appId] = useQueryState('app', parseAsString);
+  const tz = useTimezoneStore((s) => s.timezone);
 
   const fetchSessionsData = useCallback(
     async (startDate: string, endDate: string): Promise<SessionsExportData> => {
@@ -55,67 +56,19 @@ function SessionsExportButton() {
       }
 
       const queryClient = getQueryClient();
+      const range = { startDate, endDate };
 
       const [overview, sessionsTs, durationTs, bounceTs] = await Promise.all([
-        queryClient.fetchQuery({
-          queryKey: queryKeys.sessions.overview(appId),
-          queryFn: () =>
-            fetchApi<SessionOverviewResponse>(
-              `/web/sessions/overview${buildQueryString({ appId })}`
-            ),
-          ...cacheConfig.overview,
-        }),
-        queryClient.fetchQuery({
-          queryKey: queryKeys.sessions.timeseries(appId, {
-            startDate,
-            endDate,
-            metric: 'daily_sessions',
-          }),
-          queryFn: () =>
-            fetchApi<SessionTimeseriesResponse>(
-              `/web/sessions/timeseries${buildQueryString({
-                appId,
-                startDate,
-                endDate,
-                metric: 'daily_sessions',
-              })}`
-            ),
-          ...cacheConfig.timeseries,
-        }),
-        queryClient.fetchQuery({
-          queryKey: queryKeys.sessions.timeseries(appId, {
-            startDate,
-            endDate,
-            metric: 'avg_duration',
-          }),
-          queryFn: () =>
-            fetchApi<SessionTimeseriesResponse>(
-              `/web/sessions/timeseries${buildQueryString({
-                appId,
-                startDate,
-                endDate,
-                metric: 'avg_duration',
-              })}`
-            ),
-          ...cacheConfig.timeseries,
-        }),
-        queryClient.fetchQuery({
-          queryKey: queryKeys.sessions.timeseries(appId, {
-            startDate,
-            endDate,
-            metric: 'bounce_rate',
-          }),
-          queryFn: () =>
-            fetchApi<SessionTimeseriesResponse>(
-              `/web/sessions/timeseries${buildQueryString({
-                appId,
-                startDate,
-                endDate,
-                metric: 'bounce_rate',
-              })}`
-            ),
-          ...cacheConfig.timeseries,
-        }),
+        queryClient.fetchQuery(sessionOverviewQuery(appId, tz)),
+        queryClient.fetchQuery(
+          sessionTimeseriesQuery(appId, range, 'daily_sessions', tz)
+        ),
+        queryClient.fetchQuery(
+          sessionTimeseriesQuery(appId, range, 'avg_duration', tz)
+        ),
+        queryClient.fetchQuery(
+          sessionTimeseriesQuery(appId, range, 'bounce_rate', tz)
+        ),
       ]);
 
       const durationByDate = new Map(
@@ -142,7 +95,7 @@ function SessionsExportButton() {
         })),
       };
     },
-    [appId]
+    [appId, tz]
   );
 
   if (!appId) {

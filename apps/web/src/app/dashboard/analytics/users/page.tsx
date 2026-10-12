@@ -23,13 +23,17 @@ import {
   UsersTableSkeleton,
 } from '@/components/users/users-skeletons';
 import { UsersTable } from '@/components/users/users-table';
-import { buildQueryString, fetchApi } from '@/lib/api/client';
 import type {
   DeviceOverviewResponse,
   DeviceRetentionResponse,
-  DeviceTimeseriesResponse,
 } from '@/lib/api/types';
-import { cacheConfig, getQueryClient, queryKeys } from '@/lib/queries';
+import {
+  deviceOverviewQuery,
+  deviceRetentionQuery,
+  deviceTimeseriesQuery,
+  getQueryClient,
+} from '@/lib/queries';
+import { useTimezoneStore } from '@/stores/timezone-store';
 
 type UsersExportData = {
   exportedAt: string;
@@ -53,6 +57,7 @@ type UsersExportData = {
 
 function UsersExportButton() {
   const [appId] = useQueryState('app', parseAsString);
+  const tz = useTimezoneStore((s) => s.timezone);
 
   const fetchUsersData = useCallback(
     async (startDate: string, endDate: string): Promise<UsersExportData> => {
@@ -61,66 +66,18 @@ function UsersExportButton() {
       }
 
       const queryClient = getQueryClient();
+      const range = { startDate, endDate };
 
       const [overview, totalTimeseries, dauTimeseries, retention] =
         await Promise.all([
-          queryClient.fetchQuery({
-            queryKey: queryKeys.devices.overview(appId),
-            queryFn: () =>
-              fetchApi<DeviceOverviewResponse>(
-                `/web/devices/overview${buildQueryString({ appId })}`
-              ),
-            ...cacheConfig.overview,
-          }),
-          queryClient.fetchQuery({
-            queryKey: queryKeys.devices.timeseries(appId, {
-              startDate,
-              endDate,
-              metric: 'total',
-            }),
-            queryFn: () =>
-              fetchApi<DeviceTimeseriesResponse>(
-                `/web/devices/timeseries${buildQueryString({
-                  appId,
-                  startDate,
-                  endDate,
-                  metric: 'total',
-                })}`
-              ),
-            ...cacheConfig.timeseries,
-          }),
-          queryClient.fetchQuery({
-            queryKey: queryKeys.devices.timeseries(appId, {
-              startDate,
-              endDate,
-              metric: 'dau',
-            }),
-            queryFn: () =>
-              fetchApi<DeviceTimeseriesResponse>(
-                `/web/devices/timeseries${buildQueryString({
-                  appId,
-                  startDate,
-                  endDate,
-                  metric: 'dau',
-                })}`
-              ),
-            ...cacheConfig.timeseries,
-          }),
-          queryClient.fetchQuery({
-            queryKey: queryKeys.devices.retention(appId, {
-              startDate,
-              endDate,
-            }),
-            queryFn: () =>
-              fetchApi<DeviceRetentionResponse>(
-                `/web/devices/retention${buildQueryString({
-                  appId,
-                  startDate,
-                  endDate,
-                })}`
-              ),
-            ...cacheConfig.timeseries,
-          }),
+          queryClient.fetchQuery(deviceOverviewQuery(appId, tz)),
+          queryClient.fetchQuery(
+            deviceTimeseriesQuery(appId, range, 'total', tz)
+          ),
+          queryClient.fetchQuery(
+            deviceTimeseriesQuery(appId, range, 'dau', tz)
+          ),
+          queryClient.fetchQuery(deviceRetentionQuery(appId, range, tz)),
         ]);
 
       const dauByDate = new Map(
@@ -146,7 +103,7 @@ function UsersExportButton() {
         })),
       };
     },
-    [appId]
+    [appId, tz]
   );
 
   if (!appId) {

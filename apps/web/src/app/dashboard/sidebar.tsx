@@ -54,14 +54,8 @@ import {
 } from '@/components/ui/sidebar';
 import { UserSettings } from '@/components/user-settings';
 import { authClient, checkout, polarPortal, useSession } from '@/lib/auth';
+import { useCurrentPlan } from '@/lib/queries/use-billing';
 import { getQueryClient } from '@/lib/queries/query-client';
-
-const PRODUCT_PLANS: Record<string, string> = {
-  '424d9f27-70f9-4c59-9194-53b9203e759d': 'Starter',
-  '502762e6-b5d7-4e5a-8f5d-8ce981d0f8b9': 'Starter',
-  '746f7856-ed6a-439b-969f-392d0e97b510': 'Enterprise',
-  '2f41af77-87b9-4a17-ae1d-6ef179b48bdc': 'Enterprise',
-};
 
 type NavItem = {
   label: string;
@@ -207,8 +201,7 @@ export function DashboardSidebar() {
   const [isUserLoaded, setIsUserLoaded] = useState(false);
   const [appId] = useQueryState('app');
   const { isMobile, setOpenMobile } = useSidebar();
-  const [currentPlan, setCurrentPlan] = useState<string | null>(null);
-  const [isLoadingPlan, setIsLoadingPlan] = useState(true);
+  const { currentPlan, isLoadingPlan } = useCurrentPlan(session?.user?.id);
 
   const user = session?.user;
   const username = user?.email || 'User';
@@ -243,52 +236,6 @@ export function DashboardSidebar() {
       sessionStorage.removeItem('prevUserId');
     }
   }, [session?.user?.id]);
-
-  useEffect(() => {
-    const fetchCustomerPlan = async () => {
-      if (!session?.user) {
-        setIsLoadingPlan(false);
-        return;
-      }
-
-      try {
-        const response = await polarPortal.getSubscriptions();
-        if ('data' in response && response.data) {
-          const page = response.data as unknown as {
-            result?: {
-              items?: Array<{
-                productId?: string;
-                product?: { id?: string };
-              }>;
-            };
-            items?: Array<{
-              productId?: string;
-              product?: { id?: string };
-            }>;
-          };
-
-          const subscriptions = page.result?.items ?? page.items ?? [];
-          const activeSubscription = subscriptions[0];
-
-          if (activeSubscription) {
-            const productId =
-              activeSubscription.productId || activeSubscription.product?.id;
-            const planName = productId ? PRODUCT_PLANS[productId] : null;
-            setCurrentPlan(planName || 'Unknown');
-          } else {
-            setCurrentPlan(null);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch customer plan:', error);
-        setCurrentPlan(null);
-      } finally {
-        setIsLoadingPlan(false);
-      }
-    };
-
-    fetchCustomerPlan();
-  }, [session?.user]);
 
   const handleLogout = async () => {
     await authClient.signOut();

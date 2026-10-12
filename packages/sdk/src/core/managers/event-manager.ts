@@ -1,41 +1,41 @@
-import type { HttpClient } from '../client/http-client';
 import type { OfflineQueue } from '../queue/offline-queue';
-import type { CreateEventRequest, EventParams } from '../types';
+import type { EventParams } from '../types';
+import { generateEventId } from '../utils/id-generator';
 import { logger } from '../utils/logger';
 import { EventDeduplicator, RateLimiter } from '../utils/rate-limiter';
 import { validateEventName, validateEventParams } from '../utils/validator';
 
+const MAX_PENDING_EVENTS = 200;
+// Older buffered events would fall outside any session the server accepts.
+const MAX_PENDING_AGE_MS = 60 * 60 * 1000;
+
+type CapturedEvent = {
+  eventId: string;
+  name: string;
+  params?: EventParams;
+  isScreen: boolean;
+  timestampMs: number;
+};
+
+export type EventSink = {
+  queue: OfflineQueue;
+  getSessionId: () => string | null;
+  markActivity: () => void;
+};
+
+/**
+ * Validates and stamps events at call time (id + timestamp), then queues them,
+ * or buffers them until a session exists (before init/identify).
+ */
 export class EventManager {
-  private isOnline = true;
-  private readonly httpClient: HttpClient;
-  private readonly offlineQueue: OfflineQueue;
-  private readonly getSessionId: () => string | null;
-  private readonly markActivity?: () => void;
   private readonly rateLimiter = new RateLimiter();
   private readonly deduplicator = new EventDeduplicator();
-
-  constructor(
-    httpClient: HttpClient,
-    offlineQueue: OfflineQueue,
-    getSessionId: () => string | null,
-    markActivity?: () => void
-  ) {
-    this.httpClient = httpClient;
-    this.offlineQueue = offlineQueue;
-    this.getSessionId = getSessionId;
-    this.markActivity = markActivity;
-  }
-
-  updateNetworkState(isOnline: boolean): void {
-    this.isOnline = isOnline;
-  }
+  private pending: CapturedEvent[] = [];
+  private sink: EventSink | null = null;
 
   track(name: string, params?: EventParams, isScreen = false): void {
-    const nameValidation = validateEventName(name);
-    if (!nameValidation.success) {
-      logger.error(
-        'Invalid event name. Use alphanumeric, _, -, ., /, or space'
-      );
+    if (!validateEventName(name).success) {
+      logger.error('Invalid event name. Use alphanumeric, _, -, ., /, or space');
       return;
     }
 
@@ -46,7 +46,6 @@ export class EventManager {
       );
       return;
     }
-
     const normalizedParams = paramsValidation.data;
 
     if (!this.rateLimiter.canTrack()) {
@@ -58,45 +57,86 @@ export class EventManager {
       return;
     }
 
-    const sessionId = this.getSessionId();
-    if (!sessionId) {
-      logger.error('Session not started. Cannot track event.');
-      return;
-    }
-
-    const payload: CreateEventRequest = {
-      sessionId,
+    const event: CapturedEvent = {
+      eventId: generateEventId(),
       name,
       params: normalizedParams,
       isScreen,
-      timestamp: new Date().toISOString(),
+      timestampMs: Date.now(),
     };
 
-    this.sendEvent(payload).catch(() => {
-      logger.error('Unhandled error in sendEvent. Event may be lost.');
-    });
+    if (!this.write(event)) {
+      this.buffer(event);
+    }
   }
 
-  private async sendEvent(payload: CreateEventRequest): Promise<void> {
-    if (this.isOnline) {
-      const result = await this.httpClient.createEvent(payload);
-      if (!result.success) {
-        logger.error('Event tracking failed. Queuing for retry.', result.error);
-        try {
-          await this.offlineQueue.enqueue({ type: 'event', payload });
-        } catch (error) {
-          logger.error('Failed to queue event. Data may be lost.', error);
-        }
-        return;
-      }
+  /** Earliest timestamp among buffered events that can still be delivered. */
+  getEarliestPendingMs(): number | undefined {
+    this.dropExpired();
+    return this.pending[0]?.timestampMs;
+  }
 
-      this.markActivity?.();
-    } else {
-      try {
-        await this.offlineQueue.enqueue({ type: 'event', payload });
-      } catch (error) {
-        logger.error('Failed to queue event. Data may be lost.', error);
+  /** Starts delivering to the queue and replays the buffer (no rate limit/dedup again). */
+  attach(sink: EventSink): void {
+    this.sink = sink;
+    this.dropExpired();
+
+    const buffered = this.pending;
+    this.pending = [];
+    if (buffered.length > 0) {
+      logger.info(`Replaying ${buffered.length} event(s) tracked before identify()`);
+    }
+    for (const event of buffered) {
+      if (!this.write(event)) {
+        this.buffer(event);
       }
+    }
+  }
+
+  detach(): void {
+    this.sink = null;
+  }
+
+  private write(event: CapturedEvent): boolean {
+    const sessionId = this.sink?.getSessionId();
+    if (!(this.sink && sessionId)) {
+      return false;
+    }
+
+    this.sink.queue.enqueue({
+      type: 'event',
+      payload: {
+        eventId: event.eventId,
+        sessionId,
+        name: event.name,
+        params: event.params,
+        isScreen: event.isScreen,
+        timestamp: new Date(event.timestampMs).toISOString(),
+      },
+    });
+    this.sink.markActivity();
+    return true;
+  }
+
+  private buffer(event: CapturedEvent): void {
+    if (this.pending.length >= MAX_PENDING_EVENTS) {
+      const dropped = this.pending.shift();
+      logger.warn(
+        `More than ${MAX_PENDING_EVENTS} events tracked before identify(). Dropping the oldest.`,
+        { name: dropped?.name }
+      );
+    }
+    this.pending.push(event);
+  }
+
+  private dropExpired(): void {
+    const cutoff = Date.now() - MAX_PENDING_AGE_MS;
+    const before = this.pending.length;
+    this.pending = this.pending.filter((event) => event.timestampMs >= cutoff);
+    if (this.pending.length < before) {
+      logger.warn(
+        `Dropped ${before - this.pending.length} event(s) buffered for over an hour without identify().`
+      );
     }
   }
 }
