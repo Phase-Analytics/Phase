@@ -129,8 +129,25 @@ function assertTableTtl(
   }
 }
 
+/**
+ * `SET TTL` on a WAL table is applied asynchronously, so on a fresh volume the
+ * metadata can lag the statement for a moment.
+ */
+async function getTableMetadataWithTtl(
+  tableName: string
+): Promise<QuestDBTableMetadata | null> {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const metadata = await getTableMetadata(tableName);
+    if (metadata && isOneYearTtl(metadata.ttlValue, metadata.ttlUnit)) {
+      return metadata;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  return await getTableMetadata(tableName);
+}
+
 async function verifyWriteTableSchema(tableName: string): Promise<void> {
-  const metadata = await getTableMetadata(tableName);
+  const metadata = await getTableMetadataWithTtl(tableName);
   assertTableTtl(tableName, metadata);
 
   if (metadata?.partitionBy !== QUESTDB_EVENT_WRITE_PARTITION) {
@@ -254,7 +271,7 @@ export async function initQuestDB(): Promise<void> {
       }
 
       for (const tableName of QUESTDB_EVENT_READ_TABLES) {
-        const metadata = await getTableMetadata(tableName);
+        const metadata = await getTableMetadataWithTtl(tableName);
         assertTableTtl(tableName, metadata);
       }
 

@@ -49,7 +49,9 @@ export async function runActivationFunnel(
       FROM cohorts c
       LEFT JOIN sessions_analytics s
         ON s.device_id = c.device_id
-        AND s.started_at >= c.first_seen
+        -- first_seen is server time, started_at client time; allow the first
+        -- session to start slightly before the device registered.
+        AND s.started_at >= c.first_seen - INTERVAL '5 minutes'
         AND s.started_at < c.first_seen + (${windowHours} * INTERVAL '1 hour')
       GROUP BY c.device_id, c.first_seen
     )

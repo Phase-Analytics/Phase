@@ -1,5 +1,5 @@
 import type { CreateDeviceRequest } from '@phase/shared';
-import { eq, getTableColumns, sql } from 'drizzle-orm';
+import { and, eq, getTableColumns, gt, sql } from 'drizzle-orm';
 import { db, devices, sessions } from '@/db';
 import { getLocationFromIP } from './geolocation';
 
@@ -108,6 +108,17 @@ export async function createSession(values: {
     .returning();
 
   if (created) {
+    // Sessions carry client time and may predate the server-stamped
+    // first_seen (offline installs flush later), so pull first_seen back.
+    await db
+      .update(devices)
+      .set({ firstSeen: values.startedAt })
+      .where(
+        and(
+          eq(devices.deviceId, values.deviceId),
+          gt(devices.firstSeen, values.startedAt)
+        )
+      );
     return { status: 'ok', session: created, inserted: true };
   }
 

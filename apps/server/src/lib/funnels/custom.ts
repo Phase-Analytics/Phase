@@ -18,6 +18,19 @@ import { buildStepResults, type FunnelPeriod, toFunnelResult } from './results';
 const SESSION_30S = 30;
 const SESSION_10M = 10 * 60;
 const DAY_MS = 24 * 60 * 60 * 1000;
+// first_seen is stamped by the server when the device registers, while
+// session and event times come from the client, which usually starts the
+// session a moment earlier. Without slack the first session never counts as
+// happening "after" first seen.
+const FIRST_SEEN_SKEW_MS = 5 * 60 * 1000;
+
+function firstSeenAt(
+  firstSeenMap: Map<string, number>,
+  deviceId: string
+): number | undefined {
+  const ts = firstSeenMap.get(deviceId);
+  return ts === undefined ? undefined : ts - FIRST_SEEN_SKEW_MS;
+}
 
 function startOfUtcDay(ms: number): number {
   const date = new Date(ms);
@@ -130,7 +143,7 @@ function resolveStepTimestamp(options: {
 
   if (previousTs === null) {
     if (kind === 'first_seen') {
-      return firstSeenMap.get(deviceId) ?? null;
+      return firstSeenAt(firstSeenMap, deviceId) ?? null;
     }
     if (kind === 'session') {
       return firstSessionAfter(
@@ -171,7 +184,7 @@ function resolveStepTimestamp(options: {
   }
 
   if (kind === 'first_seen') {
-    const ts = firstSeenMap.get(deviceId);
+    const ts = firstSeenAt(firstSeenMap, deviceId);
     return ts !== undefined && ts > previousTs && ts <= windowEndMs ? ts : null;
   }
   if (kind === 'session') {
