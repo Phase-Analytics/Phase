@@ -12,6 +12,8 @@ import { sseManager } from '@/lib/sse-manager';
 
 type AuthContext = { user: BetterAuthUser; session: BetterAuthSession };
 
+const MAX_QUEUED_MESSAGES = 50;
+
 export const realtimeWebRouter = new Elysia({ prefix: '/realtime' })
   .derive(async ({ request }) => {
     const session = await auth.api.getSession({
@@ -26,7 +28,7 @@ export const realtimeWebRouter = new Elysia({ prefix: '/realtime' })
   .get(
     '/stream',
     async function* (ctx) {
-      const { query, set, user } = ctx as typeof ctx & AuthContext;
+      const { query, request, set, user } = ctx as typeof ctx & AuthContext;
       try {
         if (!user?.id) {
           set.status = HttpStatus.UNAUTHORIZED;
@@ -94,30 +96,45 @@ export const realtimeWebRouter = new Elysia({ prefix: '/realtime' })
         });
 
         const messageQueue: RealtimeMessage[] = [];
-        let isConnected = true;
+        let closed = false;
+        let wake: (() => void) | null = null;
+        const notify = () => {
+          wake?.();
+          wake = null;
+        };
+        const close = () => {
+          closed = true;
+          notify();
+        };
 
-        const cleanup = sseManager.addConnection(query.appId, (data) => {
-          if (isConnected) {
+        request.signal.addEventListener('abort', close, { once: true });
+        const cleanup = sseManager.addConnection(
+          query.appId,
+          (data) => {
             messageQueue.push(data);
-          }
-        });
+            // A client that stops reading must not grow the queue unbounded.
+            if (messageQueue.length > MAX_QUEUED_MESSAGES) {
+              messageQueue.shift();
+            }
+            notify();
+          },
+          close
+        );
 
         try {
-          while (isConnected) {
-            if (messageQueue.length > 0) {
-              const message = messageQueue.shift();
-              if (message) {
-                yield sse({
-                  event: 'realtime',
-                  data: message,
-                });
-              }
+          while (!closed) {
+            const message = messageQueue.shift();
+            if (message) {
+              yield sse({ event: 'realtime', data: message });
+              continue;
             }
-
-            await new Promise((resolve) => setTimeout(resolve, 100));
+            await new Promise<void>((resolve) => {
+              wake = resolve;
+            });
           }
         } finally {
-          isConnected = false;
+          closed = true;
+          request.signal.removeEventListener('abort', close);
           cleanup();
         }
       } catch (error) {

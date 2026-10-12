@@ -181,8 +181,8 @@ export const devices = pgTable(
     > | null>(),
     firstSeen: timestamp('first_seen').defaultNow().notNull(),
   },
+  // app_id lookups use the leading column of devices_app_id_first_seen_idx.
   (table) => ({
-    appIdIdx: index('devices_app_id_idx').on(table.appId),
     appIdFirstSeenIdx: index('devices_app_id_first_seen_idx').on(
       table.appId,
       table.firstSeen.desc()
@@ -194,6 +194,11 @@ export const devices = pgTable(
   })
 );
 
+/**
+ * Several apps may hold a pending claim on the same hostname, each with its
+ * own ownership token; only the app that proves the TXT record owns it
+ * (partial unique index on verified rows).
+ */
 export const linkDomains = pgTable(
   'link_domains',
   {
@@ -201,7 +206,7 @@ export const linkDomains = pgTable(
     appId: text('app_id')
       .notNull()
       .references(() => apps.id, { onDelete: 'cascade' }),
-    hostname: text('hostname').notNull().unique(),
+    hostname: text('hostname').notNull(),
     status: text('status').notNull().default('pending'),
     providerId: text('provider_id'),
     providerStatus: text('provider_status'),
@@ -225,6 +230,13 @@ export const linkDomains = pgTable(
       table.id,
       table.appId
     ),
+    appHostnameUnique: uniqueIndex('link_domains_app_id_hostname_unique').on(
+      table.appId,
+      table.hostname
+    ),
+    verifiedHostnameUnique: uniqueIndex('link_domains_verified_hostname_unique')
+      .on(table.hostname)
+      .where(sql`${table.ownershipVerifiedAt} IS NOT NULL`),
   })
 );
 
@@ -252,6 +264,7 @@ export const links = pgTable(
     ogImageUrl: text('og_image_url'),
     expiresAt: timestamp('expires_at'),
     disabledAt: timestamp('disabled_at'),
+    banned: boolean('banned').notNull().default(false),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
       .defaultNow()
@@ -274,6 +287,25 @@ export const links = pgTable(
       foreignColumns: [linkDomains.id, linkDomains.appId],
       name: 'links_domain_id_app_id_link_domains_fk',
     }).onDelete('restrict'),
+  })
+);
+
+/**
+ * Default-domain slugs recently freed by link or app deletion. Other apps
+ * cannot claim them until the hold expires, so printed links cannot be
+ * hijacked. No FK to apps: the hold must outlive the app.
+ */
+export const linkSlugTombstones = pgTable(
+  'link_slug_tombstones',
+  {
+    slug: text('slug').primaryKey(),
+    appId: text('app_id').notNull(),
+    deletedAt: timestamp('deleted_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    deletedAtIdx: index('link_slug_tombstones_deleted_at_idx').on(
+      table.deletedAt
+    ),
   })
 );
 
@@ -377,6 +409,7 @@ export const sessions = pgTable(
     lastActivityAtIdx: index('sessions_analytics_last_activity_at_idx').on(
       table.lastActivityAt.desc()
     ),
+    // Device list "last seen": one index-only probe per returned device.
     deviceLastActivityIdx: index('sessions_device_last_activity_idx').on(
       table.deviceId,
       table.lastActivityAt.desc()

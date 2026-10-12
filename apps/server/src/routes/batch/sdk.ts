@@ -8,24 +8,32 @@ import {
 import { Elysia } from 'elysia';
 import { processBatch } from '@/lib/batch-processor';
 import { shouldRejectBatch } from '@/lib/batch-validator';
+import { getClientIp, getSocketAddress } from '@/lib/client-ip';
 import { gzipDecompressionPlugin } from '@/lib/gzip-middleware';
 import { sdkAuthPlugin } from '@/lib/middleware';
 
-function getClientIP(request: Request): string {
-  return (
-    request.headers.get('cf-connecting-ip') ??
-    request.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
-    request.headers.get('x-real-ip') ??
-    ''
-  );
-}
+const MULTI_STATUS = 207;
 
 export const batchSdkRouter = new Elysia({ prefix: '/batch' })
   .use(gzipDecompressionPlugin)
   .use(sdkAuthPlugin)
+  .onError(({ code, error, set }) => {
+    // An invalid envelope is a client error the SDK must not retry.
+    if (code === 'VALIDATION' || code === 'PARSE') {
+      const summary = code === 'VALIDATION' ? error.all[0]?.summary : undefined;
+      set.status = HttpStatus.BAD_REQUEST;
+      return {
+        code: ErrorCode.VALIDATION_ERROR,
+        detail:
+          code === 'PARSE'
+            ? 'Malformed request body'
+            : (summary ?? 'Invalid request body'),
+      };
+    }
+  })
   .post(
     '/',
-    async ({ body, app, request, set, sdkDebugData }) => {
+    async ({ body, app, request, server, set, sdkDebugData }) => {
       try {
         const validation = shouldRejectBatch(body.items);
 
@@ -44,23 +52,17 @@ export const batchSdkRouter = new Elysia({ prefix: '/batch' })
                 clientOrder: -1,
                 code: ErrorCode.FORBIDDEN,
                 detail: 'Request rejected',
+                retryable: false,
               },
             ],
             results: [],
           };
         }
 
-        const ip = getClientIP(request);
+        const ip = getClientIp(request, getSocketAddress(request, server));
         const result = await processBatch(body.items, app.id, ip, sdkDebugData);
 
-        if (result.failed > 0 && result.processed === 0) {
-          set.status = HttpStatus.BAD_REQUEST;
-        } else if (result.failed > 0) {
-          set.status = 207;
-        } else {
-          set.status = HttpStatus.OK;
-        }
-
+        set.status = result.failed > 0 ? MULTI_STATUS : HttpStatus.OK;
         return result;
       } catch (error) {
         console.error('[Batch.Process] Error:', error);
@@ -73,6 +75,7 @@ export const batchSdkRouter = new Elysia({ prefix: '/batch' })
               clientOrder: -1,
               code: ErrorCode.INTERNAL_SERVER_ERROR,
               detail: 'Failed to process batch',
+              retryable: true,
             },
           ],
           results: [],
@@ -84,7 +87,7 @@ export const batchSdkRouter = new Elysia({ prefix: '/batch' })
       response: {
         200: BatchResponseSchema,
         207: BatchResponseSchema,
-        400: BatchResponseSchema,
+        400: ErrorResponseSchema,
         401: ErrorResponseSchema,
         403: BatchResponseSchema,
         500: BatchResponseSchema,

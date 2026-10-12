@@ -1,5 +1,6 @@
 export * from './apple-device-identifiers';
 export * from './constants';
+export * from './display-name';
 export * from './format-zod-error';
 export * from './link-browser';
 export * from './link-og';

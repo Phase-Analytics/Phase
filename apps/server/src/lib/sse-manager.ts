@@ -35,6 +35,7 @@ type RealtimeBuffer = {
 
 type SSEConnection = {
   sendFn: SSESendFunction;
+  onClose: () => void;
   lastActivity: number;
 };
 
@@ -79,21 +80,17 @@ export class SSEManager {
     this.heartbeatIntervalMs = config.heartbeatIntervalMs;
     this.connectionTimeoutMs = config.connectionTimeoutMs;
     this.isRefreshingOnlineUsers = false;
-
-    this.setupGracefulShutdown();
   }
 
-  private setupGracefulShutdown(): void {
-    const shutdown = () => {
-      this.stop();
-      process.exit(0);
-    };
-
-    process.on('SIGTERM', shutdown);
-    process.on('SIGINT', shutdown);
-  }
-
-  addConnection(appId: string, sendFn: SSESendFunction): () => void {
+  /**
+   * Registers a stream. `onClose` is called when the manager drops the
+   * connection (stale or shutdown) so the stream can end its response.
+   */
+  addConnection(
+    appId: string,
+    sendFn: SSESendFunction,
+    onClose: () => void
+  ): () => void {
     if (!this.connections.has(appId)) {
       this.connections.set(appId, new Map());
     }
@@ -108,6 +105,7 @@ export class SSEManager {
 
     const connection: SSEConnection = {
       sendFn,
+      onClose,
       lastActivity: Date.now(),
     };
     this.connections.get(appId)?.set(sendFn, connection);
@@ -149,6 +147,7 @@ export class SSEManager {
       }
 
       for (const sendFn of staleConnections) {
+        connections.get(sendFn)?.onClose();
         this.removeConnection(appId, sendFn);
       }
     }
@@ -246,6 +245,7 @@ export class SSEManager {
         sendFn(data);
         connection.lastActivity = Date.now();
       } catch {
+        connection.onClose();
         this.removeConnection(appId, sendFn);
       }
     }
@@ -335,6 +335,11 @@ export class SSEManager {
       this.heartbeatInterval = null;
     }
 
+    for (const connections of this.connections.values()) {
+      for (const connection of connections.values()) {
+        connection.onClose();
+      }
+    }
     this.connections.clear();
     this.buffers.clear();
     this.onlineUsersCache.clear();

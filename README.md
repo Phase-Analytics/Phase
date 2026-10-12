@@ -51,7 +51,7 @@ Phase is built with privacy as a core principle:
 
 - **GDPR Compliant**: Full compliance with EU data protection regulations (GDPR, CCPA, ePrivacy Directive)
 - **EU Data Centers**: All data stored in Falkenstein, Germany
-- **Data Retention**: Analytics data retained for 12 months, then automatically deleted
+- **Data Retention**: Analytics data is kept for 12 months. Events are stored in monthly partitions that are dropped once they are entirely older than a year, and a daily job deletes sessions started more than 12 months ago and devices with no remaining sessions that were first seen more than 12 months ago
 - **Encryption**: Industry-standard encryption (HTTPS/TLS in transit, AES-256 at rest)
 - **Privacy by Default**: No personal data collected without explicit user properties
 - **Your Rights**: Full GDPR rights including access, deletion, portability, and rectification

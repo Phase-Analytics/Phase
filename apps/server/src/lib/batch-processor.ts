@@ -11,60 +11,67 @@ import type {
 import { ErrorCode } from '@phase/shared';
 import { eq } from 'drizzle-orm';
 import { ulid } from 'ulid';
-import { db, devices, sessions } from '@/db';
-import { getEventBuffer } from './event-buffer';
-import { getLocationFromIP } from './geolocation';
+import { db, devices } from '@/db';
+import { type BufferedEvent, getEventBuffer } from './event-buffer';
+import {
+  getIngestSessions,
+  type IngestSession,
+  rememberSession,
+} from './ingest-cache';
+import { createSession, type DeviceRow, upsertDevice } from './ingest-store';
 import { normalizePath } from './path-normalizer';
 import { getSessionActivityBuffer } from './session-activity-buffer';
 import { sseManager } from './sse-manager';
 import {
   SESSION_MAX_AGE,
   SESSION_MAX_DURATION_MS,
-  validateDeviceId,
-  validateEventName,
   validateEventParams,
-  validateSessionId,
   validateTimestamp,
 } from './validators';
 
-type SortedItems = {
-  devices: BatchDeviceItem[];
-  sessions: BatchSessionItem[];
-  events: BatchEventItem[];
-  pings: BatchPingItem[];
-};
-
-type ProcessResult = {
+type BatchContext = {
+  appId: string;
+  ip: string | null;
+  isDebugData: boolean;
+  devices: Map<string, DeviceRow>;
+  sessions: Map<string, IngestSession>;
+  // Ids whose creation failed for a transient reason in this batch; items
+  // that depend on them are retryable instead of permanently "not found".
+  transientDeviceIds: Set<string>;
+  transientSessionIds: Set<string>;
+  sessionLookupFailed: boolean;
   results: BatchResultItem[];
   errors: BatchError[];
 };
 
-function sortBatchItems(items: BatchItem[]): SortedItems {
-  const sorted: SortedItems = {
-    devices: [],
-    sessions: [],
-    events: [],
-    pings: [],
-  };
+type SessionCheck =
+  | { ok: true; session: IngestSession }
+  | { ok: false; error: Omit<BatchError, 'clientOrder'> };
+
+function byClientOrder<T extends { clientOrder: number }>(items: T[]): T[] {
+  return items.sort((a, b) => a.clientOrder - b.clientOrder);
+}
+
+function partitionItems(items: BatchItem[]) {
+  const deviceItems: BatchDeviceItem[] = [];
+  const sessionItems: BatchSessionItem[] = [];
+  const eventItems: BatchEventItem[] = [];
+  const pingItems: BatchPingItem[] = [];
 
   for (const item of items) {
     switch (item.type) {
-      case 'device': {
-        sorted.devices.push(item);
+      case 'device':
+        deviceItems.push(item);
         break;
-      }
-      case 'session': {
-        sorted.sessions.push(item);
+      case 'session':
+        sessionItems.push(item);
         break;
-      }
-      case 'event': {
-        sorted.events.push(item);
+      case 'event':
+        eventItems.push(item);
         break;
-      }
-      case 'ping': {
-        sorted.pings.push(item);
+      case 'ping':
+        pingItems.push(item);
         break;
-      }
       default: {
         const _exhaustive: never = item;
         break;
@@ -72,750 +79,457 @@ function sortBatchItems(items: BatchItem[]): SortedItems {
     }
   }
 
-  sorted.devices.sort((a, b) => a.clientOrder - b.clientOrder);
-  sorted.sessions.sort((a, b) => a.clientOrder - b.clientOrder);
-  sorted.events.sort((a, b) => a.clientOrder - b.clientOrder);
-  sorted.pings.sort((a, b) => a.clientOrder - b.clientOrder);
-
-  return sorted;
+  return {
+    deviceItems: byClientOrder(deviceItems),
+    sessionItems: byClientOrder(sessionItems),
+    eventItems: byClientOrder(eventItems),
+    pingItems: byClientOrder(pingItems),
+  };
 }
 
-function _normalizePlatform(
-  platform: string | null | undefined
-): 'ios' | 'android' | 'unknown' | null {
-  if (!platform) {
-    return null;
-  }
-  const lower = platform.toLowerCase();
-  if (lower === 'ios' || lower === 'android') {
-    return lower;
-  }
-  return 'unknown';
+function fail(
+  ctx: BatchContext,
+  clientOrder: number,
+  code: ErrorCode,
+  detail: string
+): void {
+  ctx.errors.push({ clientOrder, code, detail, retryable: false });
+}
+
+/** A server-side failure the SDK should resend the item for. */
+function failTransient(
+  ctx: BatchContext,
+  clientOrder: number,
+  detail: string
+): void {
+  ctx.errors.push({
+    clientOrder,
+    code: ErrorCode.INTERNAL_SERVER_ERROR,
+    detail,
+    retryable: true,
+  });
+}
+
+function transientError(detail: string): Omit<BatchError, 'clientOrder'> {
+  return { code: ErrorCode.INTERNAL_SERVER_ERROR, detail, retryable: true };
+}
+
+function validationError(detail: string): Omit<BatchError, 'clientOrder'> {
+  return { code: ErrorCode.VALIDATION_ERROR, detail, retryable: false };
 }
 
 async function processDevices(
-  items: BatchDeviceItem[],
-  appId: string,
-  ip: string
-): Promise<ProcessResult> {
-  const results: BatchResultItem[] = [];
-  const errors: BatchError[] = [];
-
-  let country: string | null = null;
-  let locationFetched = false;
-
-  for (const item of items) {
-    const { payload, clientOrder } = item;
-
+  ctx: BatchContext,
+  items: BatchDeviceItem[]
+): Promise<void> {
+  for (const { payload, clientOrder } of items) {
     try {
-      const deviceIdValidation = validateDeviceId(payload.deviceId);
-      if (!deviceIdValidation.success) {
-        errors.push({
+      const result = await upsertDevice(payload, ctx.appId, ctx.ip);
+      if (result.status === 'forbidden') {
+        fail(
+          ctx,
           clientOrder,
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: deviceIdValidation.error.detail,
-        });
+          ErrorCode.FORBIDDEN,
+          'You do not have permission to update this device'
+        );
         continue;
       }
 
-      const existingDevice = await db.query.devices.findFirst({
-        where: (table, { eq: eqFn }) => eqFn(table.deviceId, payload.deviceId),
-      });
-
-      let device: typeof devices.$inferSelect;
-
-      if (existingDevice) {
-        if (existingDevice.appId !== appId) {
-          errors.push({
-            clientOrder,
-            code: ErrorCode.FORBIDDEN,
-            detail: 'You do not have permission to update this device',
-          });
-          continue;
-        }
-
-        [device] = await db
-          .update(devices)
-          .set({
-            osVersion: payload.osVersion ?? existingDevice.osVersion,
-            platform: payload.platform ?? existingDevice.platform,
-            locale: payload.locale ?? existingDevice.locale,
-            model: payload.model ?? existingDevice.model,
-            properties: payload.properties
-              ? {
-                  ...(existingDevice.properties ?? {}),
-                  ...payload.properties,
-                }
-              : existingDevice.properties,
-          })
-          .where(eq(devices.deviceId, payload.deviceId))
-          .returning();
-      } else {
-        if (!locationFetched && ip && !payload.disableGeolocation) {
-          const location = await getLocationFromIP(ip);
-          country = location.countryCode;
-          locationFetched = true;
-        }
-
-        [device] = await db
-          .insert(devices)
-          .values({
-            deviceId: payload.deviceId,
-            appId,
-            osVersion: payload.osVersion ?? null,
-            platform: payload.platform ?? null,
-            locale: payload.locale ?? null,
-            model: payload.model ?? null,
-            country: country ?? null,
-            properties: payload.properties ?? null,
-          })
-          .returning();
-      }
-
-      sseManager.pushDevice(appId, {
-        deviceId: device.deviceId,
-        country: device.country,
-        platform: device.platform,
-      });
-
-      results.push({
-        clientOrder,
-        type: 'device',
-        id: device.deviceId,
-      });
-    } catch (error) {
-      console.error('[BatchProcessor.Device] Error:', error);
-      errors.push({
-        clientOrder,
-        code: ErrorCode.INTERNAL_SERVER_ERROR,
-        detail: 'Failed to process device',
-      });
-    }
-  }
-
-  return { results, errors };
-}
-
-async function processSessions(
-  items: BatchSessionItem[],
-  appId: string,
-  processedDeviceIds: Set<string>
-): Promise<ProcessResult> {
-  const results: BatchResultItem[] = [];
-  const errors: BatchError[] = [];
-
-  for (const item of items) {
-    const { payload, clientOrder } = item;
-
-    try {
-      const sessionIdValidation = validateSessionId(payload.sessionId);
-      if (!sessionIdValidation.success) {
-        errors.push({
-          clientOrder,
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: sessionIdValidation.error.detail,
-        });
-        continue;
-      }
-
-      const deviceIdValidation = validateDeviceId(payload.deviceId);
-      if (!deviceIdValidation.success) {
-        errors.push({
-          clientOrder,
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: deviceIdValidation.error.detail,
-        });
-        continue;
-      }
-
-      const timestampValidation = validateTimestamp(
-        payload.startedAt,
-        'startedAt',
-        'offline'
-      );
-      if (!timestampValidation.success) {
-        errors.push({
-          clientOrder,
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: timestampValidation.error.detail,
-        });
-        continue;
-      }
-
-      let deviceExists = processedDeviceIds.has(payload.deviceId);
-      let device: typeof devices.$inferSelect | undefined;
-
-      if (!deviceExists) {
-        device = await db.query.devices.findFirst({
-          where: (table, { eq: eqFn }) =>
-            eqFn(table.deviceId, payload.deviceId),
-        });
-
-        if (device) {
-          if (device.appId !== appId) {
-            errors.push({
-              clientOrder,
-              code: ErrorCode.FORBIDDEN,
-              detail: 'You do not have permission to access this device',
-            });
-            continue;
-          }
-          deviceExists = true;
-        }
-      }
-
-      if (!deviceExists) {
-        errors.push({
-          clientOrder,
-          code: ErrorCode.NOT_FOUND,
-          detail: 'Device not found',
-        });
-        continue;
-      }
-
-      const existingSession = await db.query.sessions.findFirst({
-        where: (table, { eq: eqFn }) =>
-          eqFn(table.sessionId, payload.sessionId),
-      });
-
-      if (existingSession) {
-        results.push({
-          clientOrder,
-          type: 'session',
-          id: existingSession.sessionId,
-        });
-        continue;
-      }
-
-      const clientStartedAt = timestampValidation.data;
-
-      const [newSession] = await db
-        .insert(sessions)
-        .values({
-          sessionId: payload.sessionId,
-          deviceId: payload.deviceId,
-          startedAt: clientStartedAt,
-          lastActivityAt: clientStartedAt,
-        })
-        .returning();
-
-      if (!device) {
-        device = await db.query.devices.findFirst({
-          where: (table, { eq: eqFn }) =>
-            eqFn(table.deviceId, payload.deviceId),
-        });
-      }
-
-      if (device) {
-        sseManager.pushSession(appId, {
-          sessionId: newSession.sessionId,
-          deviceId: newSession.deviceId,
-          startedAt: newSession.startedAt.toISOString(),
+      const { device, inserted } = result;
+      ctx.devices.set(device.deviceId, device);
+      if (inserted) {
+        sseManager.pushDevice(ctx.appId, {
+          deviceId: device.deviceId,
           country: device.country,
           platform: device.platform,
         });
       }
+      ctx.results.push({ clientOrder, type: 'device', id: device.deviceId });
+    } catch (error) {
+      console.error('[BatchProcessor.Device] Error:', error);
+      ctx.transientDeviceIds.add(payload.deviceId);
+      failTransient(ctx, clientOrder, 'Failed to process device');
+    }
+  }
+}
 
-      results.push({
+async function findDevice(
+  ctx: BatchContext,
+  deviceId: string
+): Promise<DeviceRow | undefined> {
+  const known = ctx.devices.get(deviceId);
+  if (known) {
+    return known;
+  }
+  const device = await db.query.devices.findFirst({
+    where: eq(devices.deviceId, deviceId),
+  });
+  if (device?.appId === ctx.appId) {
+    ctx.devices.set(deviceId, device);
+  }
+  return device;
+}
+
+async function processSessions(
+  ctx: BatchContext,
+  items: BatchSessionItem[]
+): Promise<void> {
+  for (const { payload, clientOrder } of items) {
+    const startedAt = validateTimestamp(
+      payload.startedAt,
+      'startedAt',
+      'offline'
+    );
+    if (!startedAt.success) {
+      fail(ctx, clientOrder, startedAt.error.code, startedAt.error.detail);
+      continue;
+    }
+
+    try {
+      const device = await findDevice(ctx, payload.deviceId);
+      if (!device) {
+        if (ctx.transientDeviceIds.has(payload.deviceId)) {
+          failTransient(ctx, clientOrder, 'Device could not be saved');
+        } else {
+          fail(ctx, clientOrder, ErrorCode.NOT_FOUND, 'Device not found');
+        }
+        continue;
+      }
+      if (device.appId !== ctx.appId) {
+        fail(
+          ctx,
+          clientOrder,
+          ErrorCode.FORBIDDEN,
+          'You do not have permission to access this device'
+        );
+        continue;
+      }
+
+      const result = await createSession({
+        sessionId: payload.sessionId,
+        deviceId: payload.deviceId,
+        startedAt: startedAt.data,
+      });
+      if (result.status === 'foreign-device') {
+        fail(
+          ctx,
+          clientOrder,
+          ErrorCode.VALIDATION_ERROR,
+          'Session ID belongs to another device'
+        );
+        continue;
+      }
+
+      const { session, inserted } = result;
+      const ingestSession: IngestSession = {
+        sessionId: session.sessionId,
+        deviceId: session.deviceId,
+        appId: device.appId,
+        startedAt: session.startedAt,
+        lastActivityAt: session.lastActivityAt,
+        country: device.country,
+        platform: device.platform,
+      };
+      ctx.sessions.set(session.sessionId, ingestSession);
+      rememberSession(ingestSession);
+
+      if (inserted) {
+        sseManager.pushSession(ctx.appId, {
+          sessionId: session.sessionId,
+          deviceId: session.deviceId,
+          startedAt: session.startedAt.toISOString(),
+          country: device.country,
+          platform: device.platform,
+        });
+      }
+      ctx.results.push({
         clientOrder,
         type: 'session',
-        id: newSession.sessionId,
+        id: session.sessionId,
       });
     } catch (error) {
       console.error('[BatchProcessor.Session] Error:', error);
-      errors.push({
-        clientOrder,
-        code: ErrorCode.INTERNAL_SERVER_ERROR,
-        detail: 'Failed to process session',
-      });
+      ctx.transientSessionIds.add(payload.sessionId);
+      failTransient(ctx, clientOrder, 'Failed to process session');
     }
   }
-
-  return { results, errors };
 }
 
-type ValidatedEvent = {
+async function resolveSessions(
+  ctx: BatchContext,
+  sessionIds: Iterable<string>
+): Promise<void> {
+  const missing = [...new Set(sessionIds)].filter(
+    (sessionId) => !ctx.sessions.has(sessionId)
+  );
+  if (missing.length === 0) {
+    return;
+  }
+  try {
+    const found = await getIngestSessions(missing);
+    for (const [sessionId, session] of found) {
+      ctx.sessions.set(sessionId, session);
+    }
+  } catch (error) {
+    console.error('[BatchProcessor] Session lookup failed:', error);
+    ctx.sessionLookupFailed = true;
+  }
+}
+
+function checkSession(
+  ctx: BatchContext,
+  sessionId: string,
+  timestamp: Date,
+  label: 'Event' | 'Ping'
+): SessionCheck {
+  const session = ctx.sessions.get(sessionId);
+  if (!session) {
+    if (ctx.sessionLookupFailed || ctx.transientSessionIds.has(sessionId)) {
+      return { ok: false, error: transientError('Session lookup failed') };
+    }
+    return {
+      ok: false,
+      error: {
+        code: ErrorCode.NOT_FOUND,
+        detail: 'Session not found',
+        retryable: false,
+      },
+    };
+  }
+
+  if (session.appId !== ctx.appId) {
+    return {
+      ok: false,
+      error: {
+        code: ErrorCode.FORBIDDEN,
+        detail: 'You do not have permission to access this session',
+        retryable: false,
+      },
+    };
+  }
+
+  const startedAtMs = session.startedAt.getTime();
+  if (Date.now() - startedAtMs > SESSION_MAX_AGE.offline) {
+    return {
+      ok: false,
+      error: validationError('Session is too old, please start a new session'),
+    };
+  }
+  if (timestamp.getTime() - startedAtMs > SESSION_MAX_DURATION_MS) {
+    return {
+      ok: false,
+      error: validationError(
+        `${label} timestamp too far from session start (max 2h session duration)`
+      ),
+    };
+  }
+  if (timestamp.getTime() < startedAtMs) {
+    return {
+      ok: false,
+      error: validationError(
+        `${label} timestamp cannot be before session startedAt`
+      ),
+    };
+  }
+
+  return { ok: true, session };
+}
+
+function recordActivity(
+  latest: Map<string, { session: IngestSession; timestamp: Date }>,
+  session: IngestSession,
+  timestamp: Date
+): void {
+  const current = latest.get(session.sessionId);
+  if (!current || timestamp > current.timestamp) {
+    latest.set(session.sessionId, { session, timestamp });
+  }
+}
+
+function flushActivity(
+  latest: Map<string, { session: IngestSession; timestamp: Date }>
+): void {
+  const activityBuffer = getSessionActivityBuffer();
+  for (const { session, timestamp } of latest.values()) {
+    const known =
+      activityBuffer.getLastActivityAt(session.sessionId) ??
+      session.lastActivityAt;
+    if (timestamp > known) {
+      activityBuffer.push(session.sessionId, timestamp);
+    }
+  }
+}
+
+type PendingEvent = {
   clientOrder: number;
-  eventId: string;
-  sessionId: string;
-  deviceId: string;
-  appId: string;
-  name: string;
-  params: Record<string, string | number | boolean | null> | null;
-  isScreen: boolean;
+  event: BufferedEvent;
+  session: IngestSession;
   timestamp: Date;
-  country: string | null;
-  platform: string | null;
 };
 
 async function processEvents(
-  items: BatchEventItem[],
-  appId: string,
-  processedSessionIds: Set<string>,
-  isDebugData: boolean
-): Promise<ProcessResult> {
-  const results: BatchResultItem[] = [];
-  const errors: BatchError[] = [];
+  ctx: BatchContext,
+  items: BatchEventItem[]
+): Promise<void> {
+  const pending: PendingEvent[] = [];
 
-  const sessionCache = new Map<
-    string,
-    {
-      session: typeof sessions.$inferSelect;
-      device: typeof devices.$inferSelect;
+  for (const { payload, clientOrder } of items) {
+    const timestamp = validateTimestamp(
+      payload.timestamp,
+      'timestamp',
+      'offline'
+    );
+    if (!timestamp.success) {
+      fail(ctx, clientOrder, timestamp.error.code, timestamp.error.detail);
+      continue;
     }
+
+    const params = validateEventParams(payload.params);
+    if (!params.success) {
+      fail(ctx, clientOrder, params.error.code, params.error.detail);
+      continue;
+    }
+
+    const check = checkSession(ctx, payload.sessionId, timestamp.data, 'Event');
+    if (!check.ok) {
+      ctx.errors.push({ clientOrder, ...check.error });
+      continue;
+    }
+
+    const { session } = check;
+    pending.push({
+      clientOrder,
+      session,
+      timestamp: timestamp.data,
+      event: {
+        eventId: payload.eventId?.toUpperCase() ?? ulid(),
+        sessionId: session.sessionId,
+        deviceId: session.deviceId,
+        appId: session.appId,
+        name: payload.isScreen ? normalizePath(payload.name) : payload.name,
+        params: params.data,
+        isScreen: payload.isScreen,
+        isDebug: ctx.isDebugData,
+        timestamp: timestamp.data.toISOString(),
+      },
+    });
+  }
+
+  if (pending.length === 0) {
+    return;
+  }
+
+  let rejected: Map<number, string>;
+  try {
+    const pushResult = await getEventBuffer().pushMany(
+      pending.map(({ event }) => event)
+    );
+    rejected = new Map(pushResult.failed.map((f) => [f.index, f.error]));
+  } catch (error) {
+    console.error('[BatchProcessor.Event] Buffer push failed:', error);
+    for (const { clientOrder } of pending) {
+      failTransient(ctx, clientOrder, 'Failed to buffer event');
+    }
+    return;
+  }
+
+  const latestActivity = new Map<
+    string,
+    { session: IngestSession; timestamp: Date }
   >();
 
-  const validatedEvents: ValidatedEvent[] = [];
-  const sessionMaxTimestamps = new Map<string, Date>();
-
-  for (const item of items) {
-    const { payload, clientOrder } = item;
-
-    try {
-      const sessionIdValidation = validateSessionId(payload.sessionId);
-      if (!sessionIdValidation.success) {
-        errors.push({
-          clientOrder,
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: sessionIdValidation.error.detail,
-        });
-        continue;
-      }
-
-      const eventNameValidation = validateEventName(payload.name);
-      if (!eventNameValidation.success) {
-        errors.push({
-          clientOrder,
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: eventNameValidation.error.detail,
-        });
-        continue;
-      }
-
-      const timestampValidation = validateTimestamp(
-        payload.timestamp,
-        'timestamp',
-        'offline'
-      );
-      if (!timestampValidation.success) {
-        errors.push({
-          clientOrder,
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: timestampValidation.error.detail,
-        });
-        continue;
-      }
-
-      const paramsValidation = validateEventParams(payload.params);
-      if (!paramsValidation.success) {
-        errors.push({
-          clientOrder,
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: paramsValidation.error.detail,
-        });
-        continue;
-      }
-
-      const normalizedParams = paramsValidation.data;
-      let sessionData = sessionCache.get(payload.sessionId);
-
-      if (!sessionData) {
-        const result = await db
-          .select({
-            session: sessions,
-            device: devices,
-          })
-          .from(sessions)
-          .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
-          .where(eq(sessions.sessionId, payload.sessionId))
-          .limit(1);
-
-        if (result.length === 0) {
-          if (processedSessionIds.has(payload.sessionId)) {
-            const freshResult = await db
-              .select({
-                session: sessions,
-                device: devices,
-              })
-              .from(sessions)
-              .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
-              .where(eq(sessions.sessionId, payload.sessionId))
-              .limit(1);
-
-            if (freshResult.length > 0) {
-              sessionData = freshResult[0];
-              sessionCache.set(payload.sessionId, sessionData);
-            }
-          }
-
-          if (!sessionData) {
-            errors.push({
-              clientOrder,
-              code: ErrorCode.NOT_FOUND,
-              detail: 'Session not found',
-            });
-            continue;
-          }
-        } else {
-          sessionData = result[0];
-          sessionCache.set(payload.sessionId, sessionData);
-        }
-      }
-
-      if (sessionData.device.appId !== appId) {
-        errors.push({
-          clientOrder,
-          code: ErrorCode.FORBIDDEN,
-          detail: 'You do not have permission to access this session',
-        });
-        continue;
-      }
-
-      const clientTimestamp = timestampValidation.data;
-
-      const sessionAge = Date.now() - sessionData.session.startedAt.getTime();
-      if (sessionAge > SESSION_MAX_AGE.offline) {
-        errors.push({
-          clientOrder,
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: 'Session is too old, please start a new session',
-        });
-        continue;
-      }
-
-      const timeSinceSessionStart =
-        clientTimestamp.getTime() - sessionData.session.startedAt.getTime();
-      if (timeSinceSessionStart > SESSION_MAX_DURATION_MS) {
-        errors.push({
-          clientOrder,
-          code: ErrorCode.VALIDATION_ERROR,
-          detail:
-            'Event timestamp too far from session start (max 2h session duration)',
-        });
-        continue;
-      }
-
-      if (clientTimestamp < sessionData.session.startedAt) {
-        errors.push({
-          clientOrder,
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: 'Event timestamp cannot be before session startedAt',
-        });
-        continue;
-      }
-
-      const eventId = ulid();
-      const eventName = payload.isScreen
-        ? normalizePath(payload.name)
-        : payload.name;
-
-      validatedEvents.push({
-        clientOrder,
-        eventId,
-        sessionId: payload.sessionId,
-        deviceId: sessionData.session.deviceId,
-        appId: sessionData.device.appId,
-        name: eventName,
-        params: normalizedParams,
-        isScreen: payload.isScreen,
-        timestamp: clientTimestamp,
-        country: sessionData.device.country,
-        platform: sessionData.device.platform,
-      });
-
-      const currentMax = sessionMaxTimestamps.get(payload.sessionId);
-      if (!currentMax || clientTimestamp > currentMax) {
-        sessionMaxTimestamps.set(payload.sessionId, clientTimestamp);
-      }
-    } catch (error) {
-      console.error('[BatchProcessor.Event] Error:', error);
-      errors.push({
-        clientOrder,
-        code: ErrorCode.INTERNAL_SERVER_ERROR,
-        detail: 'Failed to process event',
-      });
+  for (const [
+    index,
+    { clientOrder, event, session, timestamp },
+  ] of pending.entries()) {
+    const rejection = rejected.get(index);
+    if (rejection) {
+      fail(ctx, clientOrder, ErrorCode.VALIDATION_ERROR, rejection);
+      continue;
     }
+
+    sseManager.pushEvent(event.appId, {
+      eventId: event.eventId,
+      deviceId: event.deviceId,
+      name: event.name,
+      isScreen: event.isScreen,
+      isDebug: event.isDebug,
+      timestamp: event.timestamp,
+      country: session.country,
+      platform: session.platform,
+    });
+    ctx.results.push({ clientOrder, type: 'event', id: event.eventId });
+    recordActivity(latestActivity, session, timestamp);
   }
 
-  if (validatedEvents.length > 0) {
-    const bufferEvents = validatedEvents.map((e) => ({
-      eventId: e.eventId,
-      sessionId: e.sessionId,
-      deviceId: e.deviceId,
-      appId: e.appId,
-      name: e.name,
-      params: e.params,
-      isScreen: e.isScreen,
-      isDebug: isDebugData,
-      timestamp: e.timestamp.toISOString(),
-    }));
-
-    const pushResult = await getEventBuffer().pushMany(bufferEvents);
-
-    const failedIndices = new Set(pushResult.failed.map((f) => f.index));
-
-    for (let i = 0; i < validatedEvents.length; i++) {
-      const event = validatedEvents[i];
-
-      if (failedIndices.has(i)) {
-        const failInfo = pushResult.failed.find((f) => f.index === i);
-        errors.push({
-          clientOrder: event.clientOrder,
-          code: ErrorCode.INTERNAL_SERVER_ERROR,
-          detail: failInfo?.error ?? 'Failed to buffer event',
-        });
-        continue;
-      }
-
-      sseManager.pushEvent(event.appId, {
-        eventId: event.eventId,
-        deviceId: event.deviceId,
-        name: event.name,
-        isScreen: event.isScreen,
-        isDebug: isDebugData,
-        timestamp: event.timestamp.toISOString(),
-        country: event.country,
-        platform: event.platform,
-      });
-
-      results.push({
-        clientOrder: event.clientOrder,
-        type: 'event',
-        id: event.eventId,
-      });
-    }
-
-    const sessionBuffer = getSessionActivityBuffer();
-    for (const [sessionId, maxTimestamp] of sessionMaxTimestamps) {
-      const sessionData = sessionCache.get(sessionId);
-      if (sessionData && maxTimestamp > sessionData.session.lastActivityAt) {
-        sessionBuffer.push(sessionId, maxTimestamp, sessionData.device.appId);
-      }
-    }
-  }
-
-  return { results, errors };
+  flushActivity(latestActivity);
 }
 
-async function processPings(
-  items: BatchPingItem[],
-  appId: string,
-  processedSessionIds: Set<string>
-): Promise<ProcessResult> {
-  const results: BatchResultItem[] = [];
-  const errors: BatchError[] = [];
-
-  const sessionBuffer = getSessionActivityBuffer();
-  const sessionCache = new Map<
+function processPings(ctx: BatchContext, items: BatchPingItem[]): void {
+  const latestActivity = new Map<
     string,
-    {
-      session: typeof sessions.$inferSelect;
-      device: typeof devices.$inferSelect;
-    }
+    { session: IngestSession; timestamp: Date }
   >();
 
-  for (const item of items) {
-    const { payload, clientOrder } = item;
-
-    try {
-      const sessionIdValidation = validateSessionId(payload.sessionId);
-      if (!sessionIdValidation.success) {
-        errors.push({
-          clientOrder,
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: sessionIdValidation.error.detail,
-        });
-        continue;
-      }
-
-      const timestampValidation = validateTimestamp(
-        payload.timestamp,
-        'timestamp',
-        'offline'
-      );
-      if (!timestampValidation.success) {
-        errors.push({
-          clientOrder,
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: timestampValidation.error.detail,
-        });
-        continue;
-      }
-
-      let sessionData = sessionCache.get(payload.sessionId);
-
-      if (!sessionData) {
-        const result = await db
-          .select({
-            session: sessions,
-            device: devices,
-          })
-          .from(sessions)
-          .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
-          .where(eq(sessions.sessionId, payload.sessionId))
-          .limit(1);
-
-        if (result.length === 0) {
-          if (processedSessionIds.has(payload.sessionId)) {
-            const freshResult = await db
-              .select({
-                session: sessions,
-                device: devices,
-              })
-              .from(sessions)
-              .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
-              .where(eq(sessions.sessionId, payload.sessionId))
-              .limit(1);
-
-            if (freshResult.length > 0) {
-              sessionData = freshResult[0];
-              sessionCache.set(payload.sessionId, sessionData);
-            }
-          }
-
-          if (!sessionData) {
-            errors.push({
-              clientOrder,
-              code: ErrorCode.NOT_FOUND,
-              detail: 'Session not found',
-            });
-            continue;
-          }
-        } else {
-          sessionData = result[0];
-          sessionCache.set(payload.sessionId, sessionData);
-        }
-      }
-
-      if (sessionData.device.appId !== appId) {
-        errors.push({
-          clientOrder,
-          code: ErrorCode.FORBIDDEN,
-          detail: 'You do not have permission to access this session',
-        });
-        continue;
-      }
-
-      const clientTimestamp = timestampValidation.data;
-
-      const sessionAge = Date.now() - sessionData.session.startedAt.getTime();
-      if (sessionAge > SESSION_MAX_AGE.offline) {
-        errors.push({
-          clientOrder,
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: 'Session is too old, please start a new session',
-        });
-        continue;
-      }
-
-      const timeSinceSessionStart =
-        clientTimestamp.getTime() - sessionData.session.startedAt.getTime();
-      if (timeSinceSessionStart > SESSION_MAX_DURATION_MS) {
-        errors.push({
-          clientOrder,
-          code: ErrorCode.VALIDATION_ERROR,
-          detail:
-            'Ping timestamp too far from session start (max 2h session duration)',
-        });
-        continue;
-      }
-
-      if (clientTimestamp < sessionData.session.startedAt) {
-        errors.push({
-          clientOrder,
-          code: ErrorCode.VALIDATION_ERROR,
-          detail: 'Ping timestamp cannot be before session startedAt',
-        });
-        continue;
-      }
-
-      sessionBuffer.push(
-        payload.sessionId,
-        clientTimestamp,
-        sessionData.device.appId
-      );
-
-      results.push({
-        clientOrder,
-        type: 'ping',
-        id: payload.sessionId,
-      });
-    } catch (error) {
-      console.error('[BatchProcessor.Ping] Error:', error);
-      errors.push({
-        clientOrder,
-        code: ErrorCode.INTERNAL_SERVER_ERROR,
-        detail: 'Failed to process ping',
-      });
+  for (const { payload, clientOrder } of items) {
+    const timestamp = validateTimestamp(
+      payload.timestamp,
+      'timestamp',
+      'offline'
+    );
+    if (!timestamp.success) {
+      fail(ctx, clientOrder, timestamp.error.code, timestamp.error.detail);
+      continue;
     }
+
+    const check = checkSession(ctx, payload.sessionId, timestamp.data, 'Ping');
+    if (!check.ok) {
+      ctx.errors.push({ clientOrder, ...check.error });
+      continue;
+    }
+
+    recordActivity(latestActivity, check.session, timestamp.data);
+    ctx.results.push({ clientOrder, type: 'ping', id: payload.sessionId });
   }
 
-  return { results, errors };
+  flushActivity(latestActivity);
 }
 
 export async function processBatch(
   items: BatchItem[],
   appId: string,
-  ip: string,
+  ip: string | null,
   isDebugData: boolean
 ): Promise<BatchResponse> {
-  const sorted = sortBatchItems(items);
+  const { deviceItems, sessionItems, eventItems, pingItems } =
+    partitionItems(items);
 
-  const allResults: BatchResultItem[] = [];
-  const allErrors: BatchError[] = [];
+  const ctx: BatchContext = {
+    appId,
+    ip,
+    isDebugData,
+    devices: new Map(),
+    sessions: new Map(),
+    transientDeviceIds: new Set(),
+    transientSessionIds: new Set(),
+    sessionLookupFailed: false,
+    results: [],
+    errors: [],
+  };
 
-  const processedDeviceIds = new Set<string>();
-  const processedSessionIds = new Set<string>();
-
-  if (sorted.devices.length > 0) {
-    const deviceResult = await processDevices(sorted.devices, appId, ip);
-    allResults.push(...deviceResult.results);
-    allErrors.push(...deviceResult.errors);
-
-    for (const result of deviceResult.results) {
-      processedDeviceIds.add(result.id);
-    }
-  }
-
-  if (sorted.sessions.length > 0) {
-    const sessionResult = await processSessions(
-      sorted.sessions,
-      appId,
-      processedDeviceIds
-    );
-    allResults.push(...sessionResult.results);
-    allErrors.push(...sessionResult.errors);
-
-    for (const result of sessionResult.results) {
-      processedSessionIds.add(result.id);
-    }
-  }
-
-  if (sorted.events.length > 0) {
-    const eventResult = await processEvents(
-      sorted.events,
-      appId,
-      processedSessionIds,
-      isDebugData
-    );
-    allResults.push(...eventResult.results);
-    allErrors.push(...eventResult.errors);
-  }
-
-  if (sorted.pings.length > 0) {
-    const pingResult = await processPings(
-      sorted.pings,
-      appId,
-      processedSessionIds
-    );
-    allResults.push(...pingResult.results);
-    allErrors.push(...pingResult.errors);
-  }
+  await processDevices(ctx, deviceItems);
+  await processSessions(ctx, sessionItems);
+  await resolveSessions(ctx, [
+    ...eventItems.map((item) => item.payload.sessionId),
+    ...pingItems.map((item) => item.payload.sessionId),
+  ]);
+  await processEvents(ctx, eventItems);
+  processPings(ctx, pingItems);
 
   return {
-    processed: allResults.length,
-    failed: allErrors.length,
-    results: allResults,
-    errors: allErrors,
+    processed: ctx.results.length,
+    failed: ctx.errors.length,
+    results: ctx.results,
+    errors: ctx.errors,
   };
 }
