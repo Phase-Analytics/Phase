@@ -1,3 +1,5 @@
+import { once } from 'node:events';
+import { setTimeout as sleep } from 'node:timers/promises';
 import Redis, { type RedisOptions } from 'ioredis';
 
 /**
@@ -52,4 +54,21 @@ export function getLinksRedis(): Redis | null {
     commandClient = createLinksRedisClient('command');
   }
   return commandClient;
+}
+
+/**
+ * Connects the command client before the server takes traffic. It does not
+ * queue commands while connecting, so a lazily created client failed the
+ * first cache invalidation in every new process and left stale redirects in
+ * Redis. Bounded so a down Redis cannot block startup.
+ */
+export async function connectLinksRedis(timeoutMs = 2000): Promise<void> {
+  const client = getLinksRedis();
+  if (!client || client.status === 'ready') {
+    return;
+  }
+  await Promise.race([
+    once(client, 'ready').catch(() => undefined),
+    sleep(timeoutMs),
+  ]);
 }

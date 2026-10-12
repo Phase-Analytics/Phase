@@ -16,6 +16,7 @@ import {
   initLinkClickBuffer,
   initLinkClicksTable,
 } from '@/lib/links/click-buffer';
+import { connectLinksRedis } from '@/lib/links/redis';
 import { runMigrations } from '@/lib/migrate';
 import { initQuestDB } from '@/lib/questdb';
 import {
@@ -241,6 +242,7 @@ try {
     eventBuffer = initEventBuffer(process.env.REDIS_URL);
     eventBuffer.start();
     initLinkClickBuffer(process.env.REDIS_URL);
+    await connectLinksRedis();
   } else {
     console.warn(
       '[Server] REDIS_URL not set, event buffering disabled - events will not be persisted'
