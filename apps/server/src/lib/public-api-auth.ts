@@ -1,5 +1,5 @@
 import { ErrorCode, HttpStatus } from '@phase/shared';
-import { and, eq, isNull, or, sql } from 'drizzle-orm';
+import { and, eq, isNull, lt, or, sql } from 'drizzle-orm';
 import { Elysia as ElysiaClass } from 'elysia';
 import { apps, db, publicApiTokens } from '@/db';
 import { hashPublicApiToken } from '@/lib/keys';
@@ -18,11 +18,40 @@ class PublicApiAuthError extends Error {
   }
 }
 
+const LAST_USED_AT_REFRESH_MS = 5 * 60 * 1000;
+
+async function touchLastUsedAt(
+  token: typeof publicApiTokens.$inferSelect
+): Promise<void> {
+  if (
+    token.lastUsedAt &&
+    Date.now() - token.lastUsedAt.getTime() < LAST_USED_AT_REFRESH_MS
+  ) {
+    return;
+  }
+
+  const now = new Date();
+  const staleBefore = new Date(now.getTime() - LAST_USED_AT_REFRESH_MS);
+
+  try {
+    await db
+      .update(publicApiTokens)
+      .set({ lastUsedAt: now })
+      .where(
+        and(
+          eq(publicApiTokens.id, token.id),
+          or(
+            isNull(publicApiTokens.lastUsedAt),
+            lt(publicApiTokens.lastUsedAt, staleBefore)
+          )
+        )
+      );
+  } catch (error) {
+    console.error('[API Auth] Failed to update lastUsedAt:', error);
+  }
+}
+
 export const publicApiAuthPlugin = new ElysiaClass({ name: 'publicApiAuth' })
-  .state({
-    publicApiApp: null as typeof apps.$inferSelect | null,
-    publicApiToken: null as typeof publicApiTokens.$inferSelect | null,
-  })
   .error({ PUBLIC_API_AUTH_ERROR: PublicApiAuthError })
   .onError(({ error, set }) => {
     if (error instanceof PublicApiAuthError) {
@@ -33,7 +62,7 @@ export const publicApiAuthPlugin = new ElysiaClass({ name: 'publicApiAuth' })
       };
     }
   })
-  .resolve(async ({ request, params, store }) => {
+  .resolve(async ({ request, params }) => {
     const authHeader = request.headers.get('authorization');
 
     if (!authHeader) {
@@ -92,17 +121,7 @@ export const publicApiAuthPlugin = new ElysiaClass({ name: 'publicApiAuth' })
       );
     }
 
-    store.publicApiApp = result.app;
-    store.publicApiToken = result.token;
-
-    try {
-      await db
-        .update(publicApiTokens)
-        .set({ lastUsedAt: new Date() })
-        .where(eq(publicApiTokens.id, result.token.id));
-    } catch (error) {
-      console.error('[API Auth] Failed to update lastUsedAt:', error);
-    }
+    await touchLastUsedAt(result.token);
 
     return {
       publicApiApp: result.app,

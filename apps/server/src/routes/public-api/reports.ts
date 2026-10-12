@@ -25,8 +25,10 @@ import {
   getPublicUserBreakdown,
   getPublicUserOverview,
   getPublicUserTimeseries,
+  parseBreakdownLimit,
   validatePublicReportDateRange,
 } from '@/lib/public-api-reports';
+import { parseTimeZone } from '@/lib/reports/day-range';
 
 export const publicApiReportsRouter = new Elysia({
   prefix: '/v1/apps/:appId/reports',
@@ -77,10 +79,20 @@ export const publicApiReportsRouter = new Elysia({
           };
         }
 
+        const timeZone = parseTimeZone(query.tz);
+        if (!timeZone.success) {
+          set.status = timeZone.error.status;
+          return {
+            code: timeZone.error.code,
+            detail: timeZone.error.detail,
+          };
+        }
+
         const result = await getPublicEventTimeseries({
           appId: params.appId,
           startDate: query.startDate,
           endDate: query.endDate,
+          timeZone: timeZone.data,
         });
 
         set.status = HttpStatus.OK;
@@ -102,6 +114,7 @@ export const publicApiReportsRouter = new Elysia({
       query: t.Object({
         startDate: t.Optional(t.String()),
         endDate: t.Optional(t.String()),
+        tz: t.Optional(t.String()),
       }),
       response: {
         200: PublicApiEventTimeseriesResponseSchema,
@@ -128,12 +141,21 @@ export const publicApiReportsRouter = new Elysia({
           };
         }
 
+        const limit = parseBreakdownLimit(query.limit);
+        if (!limit.success) {
+          set.status = limit.error.status;
+          return {
+            code: limit.error.code,
+            detail: limit.error.detail,
+          };
+        }
+
         const rows = await getPublicEventBreakdown({
           appId: params.appId,
           dimension: query.dimension,
           startDate: query.startDate,
           endDate: query.endDate,
-          limit: query.limit ? Number.parseInt(query.limit, 10) : undefined,
+          limit: limit.data,
         });
 
         set.status = HttpStatus.OK;
@@ -214,11 +236,21 @@ export const publicApiReportsRouter = new Elysia({
           };
         }
 
+        const timeZone = parseTimeZone(query.tz);
+        if (!timeZone.success) {
+          set.status = timeZone.error.status;
+          return {
+            code: timeZone.error.code,
+            detail: timeZone.error.detail,
+          };
+        }
+
         const metric = query.metric ?? 'sessionCount';
         const result = await getPublicSessionTimeseries({
           appId: params.appId,
           startDate: query.startDate,
           endDate: query.endDate,
+          timeZone: timeZone.data,
           metric,
         });
 
@@ -241,6 +273,7 @@ export const publicApiReportsRouter = new Elysia({
       query: t.Object({
         startDate: t.Optional(t.String()),
         endDate: t.Optional(t.String()),
+        tz: t.Optional(t.String()),
         metric: t.Optional(
           t.Union([
             t.Literal('sessionCount'),
@@ -274,12 +307,21 @@ export const publicApiReportsRouter = new Elysia({
           };
         }
 
+        const limit = parseBreakdownLimit(query.limit);
+        if (!limit.success) {
+          set.status = limit.error.status;
+          return {
+            code: limit.error.code,
+            detail: limit.error.detail,
+          };
+        }
+
         const rows = await getPublicSessionBreakdown({
           appId: params.appId,
           dimension: query.dimension,
           startDate: query.startDate,
           endDate: query.endDate,
-          limit: query.limit ? Number.parseInt(query.limit, 10) : undefined,
+          limit: limit.data,
         });
 
         set.status = HttpStatus.OK;
@@ -360,11 +402,21 @@ export const publicApiReportsRouter = new Elysia({
           };
         }
 
+        const timeZone = parseTimeZone(query.tz);
+        if (!timeZone.success) {
+          set.status = timeZone.error.status;
+          return {
+            code: timeZone.error.code,
+            detail: timeZone.error.detail,
+          };
+        }
+
         const metric = query.metric ?? 'activeUsers';
         const result = await getPublicUserTimeseries({
           appId: params.appId,
           startDate: query.startDate,
           endDate: query.endDate,
+          timeZone: timeZone.data,
           metric,
         });
 
@@ -387,6 +439,7 @@ export const publicApiReportsRouter = new Elysia({
       query: t.Object({
         startDate: t.Optional(t.String()),
         endDate: t.Optional(t.String()),
+        tz: t.Optional(t.String()),
         metric: t.Optional(
           t.Union([
             t.Literal('activeUsers'),
@@ -408,10 +461,19 @@ export const publicApiReportsRouter = new Elysia({
     '/users/breakdown',
     async ({ params, query, set }) => {
       try {
+        const limit = parseBreakdownLimit(query.limit);
+        if (!limit.success) {
+          set.status = limit.error.status;
+          return {
+            code: limit.error.code,
+            detail: limit.error.detail,
+          };
+        }
+
         const rows = await getPublicUserBreakdown({
           appId: params.appId,
           dimension: query.dimension,
-          limit: query.limit ? Number.parseInt(query.limit, 10) : undefined,
+          limit: limit.data,
         });
 
         set.status = HttpStatus.OK;

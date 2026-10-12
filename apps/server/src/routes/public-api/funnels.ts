@@ -11,6 +11,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 import { db, funnelPresets } from '@/db';
 import {
+  FunnelTooLargeError,
   resolveFunnelPeriod,
   runActivationFunnel,
   runCustomFunnel,
@@ -79,6 +80,10 @@ export const publicApiFunnelsRouter = new Elysia({
           meta: getPublicApiMeta(),
         };
       } catch (error) {
+        if (error instanceof FunnelTooLargeError) {
+          set.status = HttpStatus.BAD_REQUEST;
+          return { code: ErrorCode.VALIDATION_ERROR, detail: error.message };
+        }
         console.error('[PublicAPI.Funnels.Activation] Error:', error);
         set.status = HttpStatus.INTERNAL_SERVER_ERROR;
         return {
@@ -188,6 +193,10 @@ export const publicApiFunnelsRouter = new Elysia({
           meta: getPublicApiMeta(),
         };
       } catch (error) {
+        if (error instanceof FunnelTooLargeError) {
+          set.status = HttpStatus.BAD_REQUEST;
+          return { code: ErrorCode.VALIDATION_ERROR, detail: error.message };
+        }
         console.error('[PublicAPI.Funnels.Run] Error:', error);
         set.status = HttpStatus.INTERNAL_SERVER_ERROR;
         return {
@@ -256,6 +265,10 @@ export const publicApiFunnelsRouter = new Elysia({
           meta: getPublicApiMeta(),
         };
       } catch (error) {
+        if (error instanceof FunnelTooLargeError) {
+          set.status = HttpStatus.BAD_REQUEST;
+          return { code: ErrorCode.VALIDATION_ERROR, detail: error.message };
+        }
         console.error('[PublicAPI.Funnels.Get] Error:', error);
         set.status = HttpStatus.INTERNAL_SERVER_ERROR;
         return {

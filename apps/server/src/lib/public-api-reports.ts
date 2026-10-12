@@ -1,5 +1,4 @@
 import type {
-  Platform,
   PublicApiEventBreakdownDimension,
   PublicApiSessionBreakdownDimension,
   PublicApiSessionTimeseriesMetric,
@@ -7,93 +6,115 @@ import type {
   PublicApiUserTimeseriesMetric,
 } from '@phase/shared';
 import { ErrorCode, HttpStatus } from '@phase/shared';
-import { and, count, countDistinct, eq, gte, lt, lte, sql } from 'drizzle-orm';
+import { and, count, eq, gte, lte, type SQL, sql } from 'drizzle-orm';
 import { db, devices, sessions } from '@/db';
 import {
   PUBLIC_API_DEFAULT_BREAKDOWN_LIMIT,
   PUBLIC_API_MAX_BREAKDOWN_LIMIT,
   PUBLIC_API_MAX_REPORT_RANGE_DAYS,
 } from '@/lib/public-api-capabilities';
+import { cachedRead, READ_CACHE_TTL } from '@/lib/read-cache';
+import { DEFAULT_TIME_ZONE, resolveDayRange } from '@/lib/reports/day-range';
+import {
+  getCumulativeDevices,
+  getDailyActiveDevices,
+  getDailyNewDevices,
+  getDeviceBreakdowns,
+  getDeviceCounts,
+  normalizePlatform,
+} from '@/lib/reports/devices';
 import {
   getEventStats,
   getEventTimeseries,
   getTopEvents,
   getTopScreens,
-} from '@/lib/questdb';
+} from '@/lib/reports/events';
+import { validateReportDateRange } from '@/lib/reports/range-validation';
 import {
-  SESSION_BOUNCE_DURATION_SECONDS,
-  SESSION_MIN_DURATION_SECONDS,
-  type ValidationResult,
-  validateDateRange,
-} from '@/lib/validators';
+  getSessionDailySeries,
+  getSessionOverview,
+} from '@/lib/reports/sessions';
+import type { ValidationResult } from '@/lib/validators';
 
-function normalizePlatform(
-  platform: string | null | undefined
-): Platform | null {
-  if (!platform) {
-    return null;
+const INTEGER_REGEX = /^\d+$/;
+
+type ReportRange = {
+  appId: string;
+  startDate?: string;
+  endDate?: string;
+  /** IANA zone validated by parseTimeZone; defaults to UTC. */
+  timeZone?: string;
+};
+
+function getBreakdownLimit(limit?: number): number {
+  if (limit === undefined) {
+    return PUBLIC_API_DEFAULT_BREAKDOWN_LIMIT;
   }
-
-  const lower = platform.toLowerCase();
-  if (lower === 'ios' || lower === 'android') {
-    return lower as Platform;
+  if (!Number.isInteger(limit)) {
+    throw new RangeError(`Invalid breakdown limit: ${limit}`);
   }
-
-  return 'unknown';
+  return Math.max(1, Math.min(limit, PUBLIC_API_MAX_BREAKDOWN_LIMIT));
 }
 
-function getBreakdownLimit(limit?: number) {
-  return Math.max(
-    1,
-    Math.min(
-      Math.floor(limit ?? PUBLIC_API_DEFAULT_BREAKDOWN_LIMIT),
-      PUBLIC_API_MAX_BREAKDOWN_LIMIT
-    )
-  );
-}
-
-export function validatePublicReportDateRange(
-  startDate?: string,
-  endDate?: string
-): ValidationResult<void> {
-  const baseValidation = validateDateRange(startDate, endDate);
-  if (!baseValidation.success) {
-    return baseValidation;
+/** Parses the `limit` query string of breakdown endpoints. */
+export function parseBreakdownLimit(
+  raw: string | undefined
+): ValidationResult<number | undefined> {
+  if (raw === undefined || raw === '') {
+    return { success: true, data: undefined };
   }
-
-  if (!(startDate && endDate)) {
-    return baseValidation;
-  }
-
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const diffMs = end.getTime() - start.getTime();
-  const maxRangeMs = PUBLIC_API_MAX_REPORT_RANGE_DAYS * 24 * 60 * 60 * 1000;
-
-  if (diffMs > maxRangeMs) {
+  const limit = INTEGER_REGEX.test(raw) ? Number(raw) : Number.NaN;
+  if (!Number.isSafeInteger(limit) || limit < 1) {
     return {
       success: false,
       error: {
         code: ErrorCode.VALIDATION_ERROR,
-        detail: `Date range cannot exceed ${PUBLIC_API_MAX_REPORT_RANGE_DAYS} days`,
+        detail: `Invalid limit: must be an integer between 1 and ${PUBLIC_API_MAX_BREAKDOWN_LIMIT}`,
         status: HttpStatus.BAD_REQUEST,
       },
     };
   }
-
-  return baseValidation;
+  return { success: true, data: limit };
 }
 
-export async function getPublicEventOverview(appId: string) {
-  return await getEventStats({ appId });
+/** Date validation plus the 365-day cap, also when only startDate is set. */
+export function validatePublicReportDateRange(
+  startDate?: string,
+  endDate?: string
+): ValidationResult<void> {
+  return validateReportDateRange(
+    startDate,
+    endDate,
+    PUBLIC_API_MAX_REPORT_RANGE_DAYS
+  );
 }
 
-export async function getPublicEventTimeseries(options: {
-  appId: string;
-  startDate?: string;
-  endDate?: string;
-}) {
-  const result = await getEventTimeseries(options);
+function dayRange(options: ReportRange, defaultDays: number) {
+  return resolveDayRange({
+    startDate: options.startDate,
+    endDate: options.endDate,
+    defaultDays,
+    timeZone: options.timeZone ?? DEFAULT_TIME_ZONE,
+  });
+}
+
+function percentChange(current: number, previous: number): number {
+  return Number(
+    (((current - previous) / Math.max(previous, 1)) * 100).toFixed(2)
+  );
+}
+
+export function getPublicEventOverview(appId: string) {
+  return getEventStats({ appId });
+}
+
+export async function getPublicEventTimeseries(options: ReportRange) {
+  const result = await getEventTimeseries({
+    appId: options.appId,
+    startDate: options.startDate,
+    endDate: options.endDate,
+    timeZone: options.timeZone ?? DEFAULT_TIME_ZONE,
+  });
 
   return {
     data: result.data.map((row) => ({
@@ -104,673 +125,196 @@ export async function getPublicEventTimeseries(options: {
   };
 }
 
-export async function getPublicEventBreakdown(options: {
-  appId: string;
-  dimension: PublicApiEventBreakdownDimension;
-  startDate?: string;
-  endDate?: string;
-  limit?: number;
-}) {
-  const limit = getBreakdownLimit(options.limit);
-
-  if (options.dimension === 'eventName') {
-    const { events } = await getTopEvents({
-      appId: options.appId,
-      startDate: options.startDate,
-      endDate: options.endDate,
-      limit,
-    });
-
-    return events.map((row) => ({
-      value: row.name,
-      count: row.count,
-    }));
+export async function getPublicEventBreakdown(
+  options: ReportRange & {
+    dimension: PublicApiEventBreakdownDimension;
+    limit?: number;
   }
-
-  const screens = await getTopScreens({
+) {
+  const query = {
     appId: options.appId,
     startDate: options.startDate,
     endDate: options.endDate,
-    limit,
+    limit: getBreakdownLimit(options.limit),
+  };
+
+  const rows =
+    options.dimension === 'eventName'
+      ? (await getTopEvents(query)).events
+      : await getTopScreens(query);
+
+  return rows.map((row) => ({ value: row.name, count: row.count }));
+}
+
+export function getPublicSessionOverview(appId: string) {
+  return getSessionOverview(appId);
+}
+
+export async function getPublicSessionTimeseries(
+  options: ReportRange & { metric: PublicApiSessionTimeseriesMetric }
+) {
+  const range = dayRange(options, 7);
+  const series = await getSessionDailySeries(options.appId, range);
+
+  const data = series.map((point) => {
+    if (options.metric === 'sessionCount') {
+      return { date: point.date, sessionCount: point.sessions };
+    }
+    if (options.metric === 'bounceRate') {
+      return { date: point.date, bounceRate: point.bounceRate };
+    }
+    return { date: point.date, avgSessionDuration: point.avgDuration };
   });
 
-  return screens.map((row) => ({
-    value: row.name,
-    count: row.count,
-  }));
+  return { data, period: range.period };
 }
 
-export async function getPublicSessionOverview(appId: string) {
-  const now = new Date();
-  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-  const thirtySecondsAgo = new Date(now.getTime() - 30 * 1000);
+type BreakdownRow = { value: string; count: number };
 
-  const deviceIdsSubquery = db
-    .select({ deviceId: devices.deviceId })
-    .from(devices)
-    .where(eq(devices.appId, appId));
-  const measurableSession = sql`EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt})) >= ${SESSION_MIN_DURATION_SECONDS}`;
-
-  const [
-    [{ count: totalSessions }],
-    [{ count: totalSessionsYesterday }],
-    activeSessions24hResult,
-    activeSessionsYesterdayResult,
-    avgDurationResult,
-    bouncedSessionsResult,
-  ] = await Promise.all([
-    db
-      .select({ count: count() })
-      .from(sessions)
-      .where(
-        and(
-          sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-          measurableSession
-        )
-      ),
-
-    db
-      .select({ count: count() })
-      .from(sessions)
-      .where(
-        and(
-          sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-          measurableSession,
-          lt(sessions.startedAt, twentyFourHoursAgo)
-        )
-      ),
-
-    db
-      .select({ count: count() })
-      .from(sessions)
-      .where(
-        and(
-          sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-          measurableSession,
-          gte(sessions.startedAt, twentyFourHoursAgo),
-          lte(sessions.startedAt, now)
-        )
-      ),
-
-    db
-      .select({ count: count() })
-      .from(sessions)
-      .where(
-        and(
-          sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-          measurableSession,
-          gte(sessions.startedAt, fortyEightHoursAgo),
-          lt(sessions.startedAt, twentyFourHoursAgo)
-        )
-      ),
-
-    db
-      .select({
-        avg: sql<number | null>`AVG(
-          EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt}))
-        )`,
-      })
-      .from(sessions)
-      .where(
-        and(
-          sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-          measurableSession,
-          lt(sessions.startedAt, thirtySecondsAgo)
-        )
-      ),
-
-    db
-      .select({ count: count() })
-      .from(sessions)
-      .where(
-        and(
-          sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-          measurableSession,
-          sql`EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt})) < ${SESSION_BOUNCE_DURATION_SECONDS}`
-        )
-      ),
-  ]);
-
-  const totalSessionsNum = Number(totalSessions);
-  const totalSessionsYesterdayNum = Number(totalSessionsYesterday);
-  const activeSessions24h = Number(activeSessions24hResult[0]?.count ?? 0);
-  const activeSessionsYesterday = Number(
-    activeSessionsYesterdayResult[0]?.count ?? 0
+function cachedBreakdown(
+  appId: string,
+  scope: string,
+  params: Record<string, unknown>,
+  load: () => Promise<BreakdownRow[]>
+): Promise<BreakdownRow[]> {
+  return cachedRead(
+    { appId, scope, params, ttlSeconds: READ_CACHE_TTL.standard },
+    load
   );
-  const bouncedSessions = Number(bouncedSessionsResult[0]?.count ?? 0);
-
-  const averageSessionDuration = avgDurationResult[0]?.avg
-    ? Number(avgDurationResult[0].avg)
-    : null;
-
-  const bounceRate =
-    totalSessionsNum > 0
-      ? Number(((bouncedSessions / totalSessionsNum) * 100).toFixed(2))
-      : 0;
-
-  const totalSessionsChange24h =
-    totalSessionsNum - totalSessionsYesterdayNum;
-  const activeSessions24hChange = activeSessions24h - activeSessionsYesterday;
-
-  return {
-    totalSessions: totalSessionsNum,
-    averageSessionDuration,
-    activeSessions24h,
-    totalSessionsChange24h,
-    activeSessions24hChange,
-    bounceRate,
-  };
 }
 
-export async function getPublicSessionTimeseries(options: {
-  appId: string;
-  startDate?: string;
-  endDate?: string;
-  metric: PublicApiSessionTimeseriesMetric;
-}) {
-  const now = new Date();
-  const defaultStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const start = options.startDate ? new Date(options.startDate) : defaultStart;
-  const end = options.endDate ? new Date(options.endDate) : now;
-
-  if (options.metric === 'sessionCount') {
-    const result = await db.execute<{
-      date: string;
-      sessionCount: number;
-    }>(sql`
-      WITH date_series AS (
-        SELECT DATE(generate_series(
-          ${start}::timestamp,
-          ${end}::timestamp,
-          '1 day'::interval
-        )) as date
-      )
-      SELECT
-        ds.date::text,
-        COALESCE(COUNT(s.session_id), 0)::int as "sessionCount"
-      FROM date_series ds
-      LEFT JOIN (
-        SELECT s.session_id, s.started_at
-        FROM sessions_analytics s
-        INNER JOIN devices d ON s.device_id = d.device_id
-        WHERE d.app_id = ${options.appId}
-          AND EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at)) >= ${SESSION_MIN_DURATION_SECONDS}
-      ) s ON DATE(s.started_at) = ds.date
-      WHERE ds.date <= CURRENT_DATE
-      GROUP BY ds.date
-      ORDER BY ds.date
-    `);
-
-    return {
-      data: result.rows.map((row) => ({
-        date: row.date,
-        sessionCount: Number(row.sessionCount),
-      })),
-      period: {
-        startDate: start.toISOString(),
-        endDate: end.toISOString(),
-      },
-    };
+export function getPublicSessionBreakdown(
+  options: ReportRange & {
+    dimension: PublicApiSessionBreakdownDimension;
+    limit?: number;
   }
-
-  if (options.metric === 'bounceRate') {
-    const result = await db.execute<{
-      date: string;
-      bounceRate: number;
-    }>(sql`
-      WITH date_series AS (
-        SELECT DATE(generate_series(
-          ${start}::timestamp,
-          ${end}::timestamp,
-          '1 day'::interval
-        )) as date
-      )
-      SELECT
-        ds.date::text,
-        COALESCE(
-          (SUM(CASE WHEN EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at)) < ${SESSION_BOUNCE_DURATION_SECONDS} THEN 1 ELSE 0 END)::float
-          / NULLIF(COUNT(s.session_id), 0)) * 100,
-          0
-        )::float as "bounceRate"
-      FROM date_series ds
-      LEFT JOIN (
-        SELECT s.session_id, s.started_at, s.last_activity_at
-        FROM sessions_analytics s
-        INNER JOIN devices d ON s.device_id = d.device_id
-        WHERE d.app_id = ${options.appId}
-          AND EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at)) >= ${SESSION_MIN_DURATION_SECONDS}
-      ) s ON DATE(s.started_at) = ds.date
-      WHERE ds.date <= CURRENT_DATE
-      GROUP BY ds.date
-      ORDER BY ds.date
-    `);
-
-    return {
-      data: result.rows.map((row) => ({
-        date: row.date,
-        bounceRate: Number(row.bounceRate.toFixed(2)),
-      })),
-      period: {
-        startDate: start.toISOString(),
-        endDate: end.toISOString(),
-      },
-    };
-  }
-
-  const result = await db.execute<{
-    date: string;
-    avgSessionDuration: number;
-  }>(sql`
-    WITH date_series AS (
-      SELECT DATE(generate_series(
-        ${start}::timestamp,
-        ${end}::timestamp,
-        '1 day'::interval
-      )) as date
-    )
-    SELECT
-      ds.date::text,
-      COALESCE(
-        AVG(EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at))),
-        0
-      )::float as "avgSessionDuration"
-    FROM date_series ds
-    LEFT JOIN (
-      SELECT s.started_at, s.last_activity_at
-      FROM sessions_analytics s
-      INNER JOIN devices d ON s.device_id = d.device_id
-      WHERE d.app_id = ${options.appId}
-        AND EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at)) >= ${SESSION_MIN_DURATION_SECONDS}
-    ) s ON DATE(s.started_at) = ds.date
-    WHERE ds.date <= CURRENT_DATE
-    GROUP BY ds.date
-    ORDER BY ds.date
-  `);
-
-  return {
-    data: result.rows.map((row) => ({
-      date: row.date,
-      avgSessionDuration: Number(row.avgSessionDuration),
-    })),
-    period: {
-      startDate: start.toISOString(),
-      endDate: end.toISOString(),
-    },
-  };
-}
-
-export async function getPublicSessionBreakdown(options: {
-  appId: string;
-  dimension: PublicApiSessionBreakdownDimension;
-  startDate?: string;
-  endDate?: string;
-  limit?: number;
-}) {
+) {
   const limit = getBreakdownLimit(options.limit);
-  const filters = [eq(devices.appId, options.appId)];
-
+  const filters: SQL[] = [eq(devices.appId, options.appId)];
   if (options.startDate) {
     filters.push(gte(sessions.startedAt, new Date(options.startDate)));
   }
-
   if (options.endDate) {
     filters.push(lte(sessions.startedAt, new Date(options.endDate)));
   }
 
-  if (options.dimension === 'platform') {
-    const rows = await db
-      .select({
-        value: sql<string>`COALESCE(${devices.platform}, 'unknown')`,
-        count: count(),
-      })
-      .from(sessions)
-      .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
-      .where(and(...filters))
-      .groupBy(devices.platform)
-      .orderBy(sql`count DESC`)
-      .limit(limit);
+  const column =
+    options.dimension === 'platform' ? devices.platform : devices.country;
 
-    return rows.map((row) => ({
-      value: normalizePlatform(row.value) || 'unknown',
-      count: Number(row.count),
-    }));
-  }
+  return cachedBreakdown(
+    options.appId,
+    `public:sessions-by-${options.dimension}`,
+    { startDate: options.startDate, endDate: options.endDate, limit },
+    async () => {
+      const rows = await db
+        .select({
+          value: sql<string>`COALESCE(${column}, 'unknown')`,
+          count: count(),
+        })
+        .from(sessions)
+        .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
+        .where(and(...filters))
+        .groupBy(column)
+        .orderBy(sql`count DESC`)
+        .limit(limit);
 
-  if (options.dimension === 'country') {
-    const rows = await db
-      .select({
-        value: sql<string>`COALESCE(${devices.country}, 'unknown')`,
-        count: count(),
-      })
-      .from(sessions)
-      .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
-      .where(and(...filters))
-      .groupBy(devices.country)
-      .orderBy(sql`count DESC`)
-      .limit(limit);
-
-    return rows.map((row) => ({
-      value: row.value,
-      count: Number(row.count),
-    }));
-  }
-
-  throw new Error(
-    `Unsupported session breakdown dimension: ${options.dimension}`
+      return rows.map((row) => ({
+        value:
+          options.dimension === 'platform'
+            ? (normalizePlatform(row.value) ?? 'unknown')
+            : row.value,
+        count: Number(row.count),
+      }));
+    }
   );
 }
 
 export async function getPublicUserOverview(appId: string) {
-  const now = new Date();
-  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-
-  const deviceIdsSubquery = db
-    .select({ deviceId: devices.deviceId })
-    .from(devices)
-    .where(eq(devices.appId, appId));
-
-  const [
-    [{ count: totalUsers }],
-    [{ count: totalUsersYesterday }],
-    [{ count: newUsers24h }],
-    [{ count: newUsersYesterday }],
-    [{ count: activeUsers24h }],
-    [{ count: activeUsersYesterday }],
-    platformStatsResult,
-    countryStatsResult,
-  ] = await Promise.all([
-    db.select({ count: count() }).from(devices).where(eq(devices.appId, appId)),
-
-    db
-      .select({ count: count() })
-      .from(devices)
-      .where(
-        and(eq(devices.appId, appId), lt(devices.firstSeen, twentyFourHoursAgo))
-      ),
-
-    db
-      .select({ count: count() })
-      .from(devices)
-      .where(
-        and(
-          eq(devices.appId, appId),
-          gte(devices.firstSeen, twentyFourHoursAgo),
-          lte(devices.firstSeen, now)
-        )
-      ),
-
-    db
-      .select({ count: count() })
-      .from(devices)
-      .where(
-        and(
-          eq(devices.appId, appId),
-          gte(devices.firstSeen, fortyEightHoursAgo),
-          lt(devices.firstSeen, twentyFourHoursAgo)
-        )
-      ),
-
-    db
-      .select({ count: countDistinct(sessions.deviceId) })
-      .from(sessions)
-      .where(
-        and(
-          sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-          gte(sessions.lastActivityAt, twentyFourHoursAgo),
-          lte(sessions.lastActivityAt, now)
-        )
-      ),
-
-    db
-      .select({ count: countDistinct(sessions.deviceId) })
-      .from(sessions)
-      .where(
-        and(
-          sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-          gte(sessions.lastActivityAt, fortyEightHoursAgo),
-          lt(sessions.lastActivityAt, twentyFourHoursAgo)
-        )
-      ),
-
-    db
-      .select({
-        platform: sql<string>`COALESCE(${devices.platform}, 'unknown')`,
-        count: count(),
-      })
-      .from(devices)
-      .where(eq(devices.appId, appId))
-      .groupBy(devices.platform),
-
-    db
-      .select({
-        country: devices.country,
-        count: count(),
-      })
-      .from(devices)
-      .where(eq(devices.appId, appId))
-      .groupBy(devices.country),
+  const [counts, breakdowns] = await Promise.all([
+    getDeviceCounts(appId),
+    getDeviceBreakdowns(appId),
   ]);
 
-  const totalUsersNum = Number(totalUsers);
-  const totalUsersYesterdayNum = Number(totalUsersYesterday);
-  const newUsers24hNum = Number(newUsers24h);
-  const newUsersYesterdayNum = Number(newUsersYesterday);
-  const activeUsers24hNum = Number(activeUsers24h);
-  const activeUsersYesterdayNum = Number(activeUsersYesterday);
-
-  const totalUsersYesterdayForCalc = Math.max(totalUsersYesterdayNum, 1);
-  const totalUsersChange24h =
-    ((totalUsersNum - totalUsersYesterdayNum) / totalUsersYesterdayForCalc) *
-    100;
-
-  const activeUsersYesterdayForCalc = Math.max(activeUsersYesterdayNum, 1);
-  const activeUsers24hChange =
-    ((activeUsers24hNum - activeUsersYesterdayNum) /
-      activeUsersYesterdayForCalc) *
-    100;
-
-  const newUsersYesterdayForCalc = Math.max(newUsersYesterdayNum, 1);
-  const newUsers24hChange =
-    ((newUsers24hNum - newUsersYesterdayNum) / newUsersYesterdayForCalc) * 100;
-
-  const platformStats: Record<string, number> = {
-    ios: 0,
-    android: 0,
-    unknown: 0,
-  };
-  for (const row of platformStatsResult) {
-    const normalizedPlatform = normalizePlatform(row.platform);
-    if (normalizedPlatform) {
-      platformStats[normalizedPlatform] = Number(row.count);
-    }
-  }
-
-  const countryStats: Record<string, number> = {};
-  for (const row of countryStatsResult) {
-    if (row.country !== null) {
-      countryStats[row.country] = Number(row.count);
-    }
-  }
+  const totalUsersYesterday = counts.total - counts.firstSeenSince24h;
 
   return {
-    totalUsers: totalUsersNum,
-    activeUsers24h: activeUsers24hNum,
-    newUsers24h: newUsers24hNum,
-    platformStats,
-    countryStats,
-    totalUsersChange24h: Number(totalUsersChange24h.toFixed(2)),
-    activeUsers24hChange: Number(activeUsers24hChange.toFixed(2)),
-    newUsers24hChange: Number(newUsers24hChange.toFixed(2)),
+    totalUsers: counts.total,
+    activeUsers24h: counts.active24h,
+    newUsers24h: counts.new24h,
+    platformStats: breakdowns.platformStats,
+    countryStats: breakdowns.countryStats,
+    totalUsersChange24h: percentChange(counts.total, totalUsersYesterday),
+    activeUsers24hChange: percentChange(
+      counts.active24h,
+      counts.activeYesterday
+    ),
+    newUsers24hChange: percentChange(counts.new24h, counts.newYesterday),
   };
 }
 
-export async function getPublicUserTimeseries(options: {
-  appId: string;
-  startDate?: string;
-  endDate?: string;
-  metric: PublicApiUserTimeseriesMetric;
-}) {
-  const now = new Date();
-  const defaultStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const start = options.startDate ? new Date(options.startDate) : defaultStart;
-  const end = options.endDate ? new Date(options.endDate) : now;
+export async function getPublicUserTimeseries(
+  options: ReportRange & { metric: PublicApiUserTimeseriesMetric }
+) {
+  const range = dayRange(options, 7);
 
   if (options.metric === 'activeUsers') {
-    const result = await db.execute<{
-      date: string;
-      activeUsers: number;
-    }>(sql`
-      WITH date_series AS (
-        SELECT DATE(generate_series(
-          ${start}::timestamp,
-          ${end}::timestamp,
-          '1 day'::interval
-        )) as date
-      )
-      SELECT
-        ds.date::text,
-        COALESCE(COUNT(DISTINCT s.device_id), 0)::int as "activeUsers"
-      FROM date_series ds
-      LEFT JOIN (
-        SELECT s.device_id, s.last_activity_at
-        FROM sessions_analytics s
-        INNER JOIN devices d ON s.device_id = d.device_id
-        WHERE d.app_id = ${options.appId}
-      ) s ON DATE(s.last_activity_at) = ds.date
-      WHERE ds.date <= CURRENT_DATE
-      GROUP BY ds.date
-      ORDER BY ds.date
-    `);
-
+    const series = await getDailyActiveDevices(options.appId, range);
     return {
-      data: result.rows.map((row) => ({
-        date: row.date,
-        activeUsers: Number(row.activeUsers),
+      data: series.map(({ date, count: value }) => ({
+        date,
+        activeUsers: value,
       })),
-      period: {
-        startDate: start.toISOString(),
-        endDate: end.toISOString(),
-      },
+      period: range.period,
     };
   }
 
   if (options.metric === 'newUsers') {
-    const result = await db.execute<{
-      date: string;
-      newUsers: number;
-    }>(sql`
-      WITH date_series AS (
-        SELECT DATE(generate_series(
-          ${start}::timestamp,
-          ${end}::timestamp,
-          '1 day'::interval
-        )) as date
-      )
-      SELECT
-        ds.date::text,
-        COALESCE(COUNT(d.device_id), 0)::int as "newUsers"
-      FROM date_series ds
-      LEFT JOIN devices d
-        ON DATE(d.first_seen) = ds.date
-        AND d.app_id = ${options.appId}
-      WHERE ds.date <= CURRENT_DATE
-      GROUP BY ds.date
-      ORDER BY ds.date
-    `);
-
+    const series = await getDailyNewDevices(options.appId, range);
     return {
-      data: result.rows.map((row) => ({
-        date: row.date,
-        newUsers: Number(row.newUsers),
-      })),
-      period: {
-        startDate: start.toISOString(),
-        endDate: end.toISOString(),
-      },
+      data: series.map(({ date, count: value }) => ({ date, newUsers: value })),
+      period: range.period,
     };
   }
 
-  const result = await db.execute<{
-    date: string;
-    totalUsers: number;
-  }>(sql`
-    WITH date_series AS (
-      SELECT DATE(generate_series(
-        ${start}::timestamp,
-        ${end}::timestamp,
-        '1 day'::interval
-      )) as date
-    )
-    SELECT
-      ds.date::text,
-      COALESCE(
-        (SELECT COUNT(DISTINCT d.device_id)::int
-          FROM devices d
-          WHERE d.app_id = ${options.appId}
-            AND DATE(d.first_seen) <= ds.date),
-        0
-      ) as "totalUsers"
-    FROM date_series ds
-    WHERE ds.date <= CURRENT_DATE
-    ORDER BY ds.date
-  `);
-
+  const series = await getCumulativeDevices(options.appId, range);
   return {
-    data: result.rows.map((row) => ({
-      date: row.date,
-      totalUsers: Number(row.totalUsers),
-    })),
-    period: {
-      startDate: start.toISOString(),
-      endDate: end.toISOString(),
-    },
+    data: series.map(({ date, count: value }) => ({ date, totalUsers: value })),
+    period: range.period,
   };
 }
 
-export async function getPublicUserBreakdown(options: {
+export function getPublicUserBreakdown(options: {
   appId: string;
   dimension: PublicApiUserBreakdownDimension;
   limit?: number;
 }) {
   const limit = getBreakdownLimit(options.limit);
+  const column =
+    options.dimension === 'platform' ? devices.platform : devices.country;
 
-  if (options.dimension === 'platform') {
-    const rows = await db
-      .select({
-        value: sql<string>`COALESCE(${devices.platform}, 'unknown')`,
-        count: count(),
-      })
-      .from(devices)
-      .where(eq(devices.appId, options.appId))
-      .groupBy(devices.platform)
-      .orderBy(sql`count DESC`)
-      .limit(limit);
+  return cachedBreakdown(
+    options.appId,
+    `public:users-by-${options.dimension}`,
+    { limit },
+    async () => {
+      const rows = await db
+        .select({
+          value: sql<string>`COALESCE(${column}, 'unknown')`,
+          count: count(),
+        })
+        .from(devices)
+        .where(eq(devices.appId, options.appId))
+        .groupBy(column)
+        .orderBy(sql`count DESC`)
+        .limit(limit);
 
-    return rows.map((row) => ({
-      value: normalizePlatform(row.value) || 'unknown',
-      count: Number(row.count),
-    }));
-  }
-
-  if (options.dimension === 'country') {
-    const rows = await db
-      .select({
-        value: sql<string>`COALESCE(${devices.country}, 'unknown')`,
-        count: count(),
-      })
-      .from(devices)
-      .where(eq(devices.appId, options.appId))
-      .groupBy(devices.country)
-      .orderBy(sql`count DESC`)
-      .limit(limit);
-
-    return rows.map((row) => ({
-      value: row.value,
-      count: Number(row.count),
-    }));
-  }
-
-  throw new Error(`Unsupported user breakdown dimension: ${options.dimension}`);
+      return rows.map((row) => ({
+        value:
+          options.dimension === 'platform'
+            ? (normalizePlatform(row.value) ?? 'unknown')
+            : row.value,
+        count: Number(row.count),
+      }));
+    }
+  );
 }

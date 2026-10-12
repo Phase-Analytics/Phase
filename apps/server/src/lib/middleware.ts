@@ -1,8 +1,10 @@
 import { ErrorCode, HttpStatus } from '@phase/shared';
-import { and, eq, or, sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { Elysia as ElysiaClass } from 'elysia';
 import { apps as appsTable, db } from '@/db';
+import { findAccessibleApp } from '@/lib/app-access';
 import { auth } from '@/lib/auth';
+import { getAppByKey } from '@/lib/ingest-cache';
 
 export type BetterAuthUser = {
   id: string;
@@ -91,9 +93,7 @@ export const sdkAuthPlugin = new ElysiaClass({ name: 'sdkAuth' })
     }
 
     try {
-      const app = await db.query.apps.findFirst({
-        where: eq(appsTable.key, bearerToken),
-      });
+      const app = await getAppByKey(bearerToken);
 
       if (!app) {
         throw new SdkAuthError(
@@ -124,266 +124,190 @@ export const sdkAuthPlugin = new ElysiaClass({ name: 'sdkAuth' })
   })
   .as('scoped');
 
-export const authPlugin = new ElysiaClass({ name: 'auth' })
-  .state({
-    app: null as App | null,
-    userId: null as string | null,
-  })
-  .macro(({ onBeforeHandle }) => ({
-    requireAuth(enabled: boolean) {
-      if (!enabled) {
-        return;
-      }
+export const ADMIN_USER_ID = 'C28lEs9hf2vqiFyQDJ8JmPx4HQvQimGl';
 
-      onBeforeHandle(
-        ({ user, set }: { user: BetterAuthUser; set: { status: number } }) => {
-          if (!user) {
-            set.status = HttpStatus.UNAUTHORIZED;
-            return {
-              code: ErrorCode.UNAUTHORIZED,
-              detail: 'Authentication required',
-            };
-          }
-        }
+type GuardContext = {
+  request: Request;
+  query: Record<string, string | string[] | undefined>;
+  set: { status?: number | string };
+  user?: BetterAuthUser;
+};
+
+function guardError(
+  set: GuardContext['set'],
+  status: number,
+  code: string,
+  detail: string
+) {
+  set.status = status;
+  return { code, detail };
+}
+
+async function resolveGuardUser(ctx: GuardContext): Promise<BetterAuthUser> {
+  if (ctx.user) {
+    return ctx.user;
+  }
+  const session = await auth.api.getSession({ headers: ctx.request.headers });
+  return (session?.user as BetterAuthUser) ?? null;
+}
+
+async function checkAppAccess(
+  ctx: GuardContext,
+  ownerOnly: boolean
+): Promise<{ code: string; detail: string } | undefined> {
+  const user = await resolveGuardUser(ctx);
+  if (!user) {
+    return guardError(
+      ctx.set,
+      HttpStatus.UNAUTHORIZED,
+      ErrorCode.UNAUTHORIZED,
+      'Authentication required'
+    );
+  }
+
+  const appId = ctx.query.appId;
+  if (typeof appId !== 'string' || appId.length === 0) {
+    return guardError(
+      ctx.set,
+      HttpStatus.BAD_REQUEST,
+      ErrorCode.VALIDATION_ERROR,
+      'appId is required'
+    );
+  }
+
+  try {
+    const app = ownerOnly
+      ? await db.query.apps.findFirst({
+          where: and(eq(appsTable.id, appId), eq(appsTable.userId, user.id)),
+        })
+      : await findAccessibleApp(appId, user.id);
+
+    if (!app) {
+      return guardError(
+        ctx.set,
+        HttpStatus.FORBIDDEN,
+        ErrorCode.FORBIDDEN,
+        ownerOnly
+          ? 'You must be the app owner to perform this action'
+          : 'You do not have permission to access this app'
       );
-    },
+    }
+  } catch (error) {
+    console.error('[Middleware] App access verification error:', error);
+    return guardError(
+      ctx.set,
+      HttpStatus.INTERNAL_SERVER_ERROR,
+      ErrorCode.INTERNAL_SERVER_ERROR,
+      'Failed to verify app access'
+    );
+  }
+}
 
-    requireAdmin(enabled: boolean) {
-      if (!enabled) {
-        return;
-      }
-
-      onBeforeHandle(
-        ({ user, set }: { user: BetterAuthUser; set: { status: number } }) => {
-          if (!user) {
-            set.status = HttpStatus.UNAUTHORIZED;
-            return {
-              code: ErrorCode.UNAUTHORIZED,
-              detail: 'Authentication required',
-            };
-          }
-
-          if (user.id !== 'C28lEs9hf2vqiFyQDJ8JmPx4HQvQimGl') {
-            set.status = HttpStatus.FORBIDDEN;
-            return {
-              code: ErrorCode.FORBIDDEN,
-              detail: 'Admin access required',
-            };
-          }
+// Elysia 1.4 only runs object-style macros; the old functional
+// `macro(({ onBeforeHandle }) => ...)` form silently registers nothing.
+export const authPlugin = new ElysiaClass({ name: 'auth' }).macro({
+  requireAuth(enabled: boolean) {
+    if (!enabled) {
+      return;
+    }
+    return {
+      async beforeHandle(ctx) {
+        const user = await resolveGuardUser(ctx as unknown as GuardContext);
+        if (!user) {
+          return guardError(
+            ctx.set,
+            HttpStatus.UNAUTHORIZED,
+            ErrorCode.UNAUTHORIZED,
+            'Authentication required'
+          );
         }
-      );
-    },
+      },
+    };
+  },
 
-    requireAppKey(enabled: boolean) {
-      if (!enabled) {
-        return;
-      }
-
-      onBeforeHandle(
-        async ({
-          request,
-          set,
-          store,
-        }: {
-          request: Request;
-          set: { status: number; headers: Record<string, string> };
-          store: { app: App | null; userId: string | null };
-        }) => {
-          const authHeader = request.headers.get('authorization');
-
-          if (!authHeader) {
-            set.status = HttpStatus.UNAUTHORIZED;
-            return {
-              code: ErrorCode.UNAUTHORIZED,
-              detail: 'Authorization header is required',
-            };
-          }
-
-          const parts = authHeader.split(' ');
-          if (parts.length !== 2 || parts[0].toLowerCase() !== 'bearer') {
-            set.status = HttpStatus.UNAUTHORIZED;
-            return {
-              code: ErrorCode.UNAUTHORIZED,
-              detail: 'Invalid authorization format. Use: Bearer <token>',
-            };
-          }
-
-          const appKey = parts[1];
-
-          if (!appKey) {
-            set.status = HttpStatus.UNAUTHORIZED;
-            return {
-              code: ErrorCode.UNAUTHORIZED,
-              detail: 'App key is required',
-            };
-          }
-
-          try {
-            const app = await db.query.apps.findFirst({
-              where: eq(appsTable.key, appKey),
-            });
-
-            if (!app) {
-              set.status = HttpStatus.UNAUTHORIZED;
-              return {
-                code: ErrorCode.UNAUTHORIZED,
-                detail: 'Invalid app key',
-              };
-            }
-
-            store.app = app;
-            store.userId = app.userId;
-          } catch (error) {
-            console.error('[Middleware] App key verification error:', error);
-            set.status = HttpStatus.INTERNAL_SERVER_ERROR;
-            return {
-              code: ErrorCode.INTERNAL_SERVER_ERROR,
-              detail: 'Failed to verify app key',
-            };
-          }
+  requireAdmin(enabled: boolean) {
+    if (!enabled) {
+      return;
+    }
+    return {
+      async beforeHandle(ctx) {
+        const user = await resolveGuardUser(ctx as unknown as GuardContext);
+        if (!user) {
+          return guardError(
+            ctx.set,
+            HttpStatus.UNAUTHORIZED,
+            ErrorCode.UNAUTHORIZED,
+            'Authentication required'
+          );
         }
-      );
-    },
-
-    verifyAppAccess(enabled: boolean) {
-      if (!enabled) {
-        return;
-      }
-
-      onBeforeHandle(
-        async ({
-          request,
-          query,
-          set,
-          store,
-        }: {
-          request: Request;
-          query: Record<string, string | string[] | undefined>;
-          set: { status: number };
-          store: { app: App | null; userId: string | null };
-        }) => {
-          const session = await auth.api.getSession({
-            headers: request.headers,
-          });
-
-          if (!session?.user) {
-            set.status = HttpStatus.UNAUTHORIZED;
-            return {
-              code: ErrorCode.UNAUTHORIZED,
-              detail: 'Authentication required',
-            };
-          }
-
-          const appId = query.appId;
-
-          if (!appId) {
-            set.status = HttpStatus.BAD_REQUEST;
-            return {
-              code: ErrorCode.VALIDATION_ERROR,
-              detail: 'appId is required',
-            };
-          }
-
-          try {
-            const userApp = await db.query.apps.findFirst({
-              where: and(
-                eq(appsTable.id, appId as string),
-                or(
-                  eq(appsTable.userId, session.user.id),
-                  sql`${session.user.id} = ANY(${appsTable.memberIds})`
-                )
-              ),
-            });
-
-            if (!userApp) {
-              set.status = HttpStatus.FORBIDDEN;
-              return {
-                code: ErrorCode.FORBIDDEN,
-                detail: 'You do not have permission to access this app',
-              };
-            }
-
-            store.app = userApp;
-          } catch (error) {
-            console.error('[Middleware] App access verification error:', error);
-            set.status = HttpStatus.INTERNAL_SERVER_ERROR;
-            return {
-              code: ErrorCode.INTERNAL_SERVER_ERROR,
-              detail: 'Failed to verify app access',
-            };
-          }
+        if (user.id !== ADMIN_USER_ID) {
+          return guardError(
+            ctx.set,
+            HttpStatus.FORBIDDEN,
+            ErrorCode.FORBIDDEN,
+            'Admin access required'
+          );
         }
-      );
-    },
+      },
+    };
+  },
 
-    verifyAppOwnership(enabled: boolean) {
-      if (!enabled) {
-        return;
-      }
-
-      onBeforeHandle(
-        async ({
-          request,
-          query,
-          set,
-          store,
-        }: {
-          request: Request;
-          query: Record<string, string | string[] | undefined>;
-          set: { status: number };
-          store: { app: App | null; userId: string | null };
-        }) => {
-          const session = await auth.api.getSession({
-            headers: request.headers,
-          });
-
-          if (!session?.user) {
-            set.status = HttpStatus.UNAUTHORIZED;
-            return {
-              code: ErrorCode.UNAUTHORIZED,
-              detail: 'Authentication required',
-            };
-          }
-
-          const appId = query.appId;
-
-          if (!appId) {
-            set.status = HttpStatus.BAD_REQUEST;
-            return {
-              code: ErrorCode.VALIDATION_ERROR,
-              detail: 'appId is required',
-            };
-          }
-
-          try {
-            const userApp = await db.query.apps.findFirst({
-              where: and(
-                eq(appsTable.id, appId as string),
-                eq(appsTable.userId, session.user.id)
-              ),
-            });
-
-            if (!userApp) {
-              set.status = HttpStatus.FORBIDDEN;
-              return {
-                code: ErrorCode.FORBIDDEN,
-                detail: 'You must be the app owner to perform this action',
-              };
-            }
-
-            store.app = userApp;
-          } catch (error) {
-            console.error(
-              '[Middleware] App ownership verification error:',
-              error
+  requireAppKey(enabled: boolean) {
+    if (!enabled) {
+      return;
+    }
+    return {
+      async beforeHandle(ctx) {
+        const [scheme, appKey] = (
+          ctx.request.headers.get('authorization') ?? ''
+        ).split(' ');
+        if (scheme?.toLowerCase() !== 'bearer' || !appKey) {
+          return guardError(
+            ctx.set,
+            HttpStatus.UNAUTHORIZED,
+            ErrorCode.UNAUTHORIZED,
+            'Authorization header is required. Use: Bearer <app_key>'
+          );
+        }
+        try {
+          if (!(await getAppByKey(appKey))) {
+            return guardError(
+              ctx.set,
+              HttpStatus.UNAUTHORIZED,
+              ErrorCode.UNAUTHORIZED,
+              'Invalid app key'
             );
-            set.status = HttpStatus.INTERNAL_SERVER_ERROR;
-            return {
-              code: ErrorCode.INTERNAL_SERVER_ERROR,
-              detail: 'Failed to verify app ownership',
-            };
           }
+        } catch (error) {
+          console.error('[Middleware] App key verification error:', error);
+          return guardError(
+            ctx.set,
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            ErrorCode.INTERNAL_SERVER_ERROR,
+            'Failed to verify app key'
+          );
         }
-      );
-    },
-  }));
+      },
+    };
+  },
+
+  verifyAppAccess(enabled: boolean) {
+    if (!enabled) {
+      return;
+    }
+    return {
+      beforeHandle: (ctx) =>
+        checkAppAccess(ctx as unknown as GuardContext, false),
+    };
+  },
+
+  verifyAppOwnership(enabled: boolean) {
+    if (!enabled) {
+      return;
+    }
+    return {
+      beforeHandle: (ctx) =>
+        checkAppAccess(ctx as unknown as GuardContext, true),
+    };
+  },
+});

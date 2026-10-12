@@ -1,81 +1,97 @@
+import { gunzipSync } from 'node:zlib';
+import { ErrorCode, HttpStatus } from '@phase/shared';
 import { Elysia } from 'elysia';
 
-declare const Bun: {
-  gunzipSync(data: Uint8Array): Uint8Array;
-};
-
+const PAYLOAD_TOO_LARGE = 413;
 const MAX_COMPRESSED_SIZE = 10 * 1024 * 1024;
 const MAX_DECOMPRESSED_SIZE = 50 * 1024 * 1024;
-const MAX_COMPRESSION_RATIO = 100;
+
+class GzipBodyError extends Error {
+  readonly status: number;
+  readonly errorCode: string;
+
+  constructor(status: number, errorCode: string, detail: string) {
+    super(detail);
+    this.name = 'GzipBodyError';
+    this.status = status;
+    this.errorCode = errorCode;
+  }
+}
+
+function payloadTooLarge(detail: string): GzipBodyError {
+  return new GzipBodyError(PAYLOAD_TOO_LARGE, 'PAYLOAD_TOO_LARGE', detail);
+}
+
+function badRequest(detail: string): GzipBodyError {
+  return new GzipBodyError(
+    HttpStatus.BAD_REQUEST,
+    ErrorCode.BAD_REQUEST,
+    detail
+  );
+}
+
+function isOutputLimitError(error: unknown): boolean {
+  return (error as { code?: unknown } | null)?.code === 'ERR_BUFFER_TOO_LARGE';
+}
+
+/**
+ * Inflates into a buffer capped at MAX_DECOMPRESSED_SIZE, so a gzip bomb
+ * stops at the cap instead of being fully expanded first.
+ */
+function gunzipBounded(compressed: ArrayBuffer): Buffer {
+  try {
+    return gunzipSync(new Uint8Array(compressed), {
+      maxOutputLength: MAX_DECOMPRESSED_SIZE,
+    });
+  } catch (error) {
+    if (isOutputLimitError(error)) {
+      throw payloadTooLarge(
+        `Decompressed payload exceeds limit of ${MAX_DECOMPRESSED_SIZE} bytes`
+      );
+    }
+    throw badRequest('Invalid gzip payload');
+  }
+}
 
 export const gzipDecompressionPlugin = new Elysia({
   name: 'gzip-decompression',
-}).onParse(async ({ request, contentType }) => {
-  const contentEncoding = request.headers.get('content-encoding');
+})
+  .onParse(async ({ request, contentType }) => {
+    if (request.headers.get('content-encoding')?.toLowerCase() !== 'gzip') {
+      return;
+    }
 
-  if (contentEncoding?.toLowerCase() === 'gzip') {
-    let text: string;
+    if (Number(request.headers.get('content-length')) > MAX_COMPRESSED_SIZE) {
+      throw payloadTooLarge(
+        `Compressed payload exceeds limit of ${MAX_COMPRESSED_SIZE} bytes`
+      );
+    }
+
+    const compressed = await request.arrayBuffer();
+    if (compressed.byteLength > MAX_COMPRESSED_SIZE) {
+      throw payloadTooLarge(
+        `Compressed payload exceeds limit of ${MAX_COMPRESSED_SIZE} bytes`
+      );
+    }
+
+    const text = new TextDecoder().decode(gunzipBounded(compressed));
+
+    if (!contentType?.includes('application/json')) {
+      return text;
+    }
 
     try {
-      const compressed = await request.arrayBuffer();
-
-      if (compressed.byteLength > MAX_COMPRESSED_SIZE) {
-        throw new Error(
-          `Compressed payload exceeds limit of ${MAX_COMPRESSED_SIZE} bytes`
-        );
-      }
-
-      const theoreticalMaxSize = compressed.byteLength * MAX_COMPRESSION_RATIO;
-      if (theoreticalMaxSize > MAX_DECOMPRESSED_SIZE) {
-        throw new Error(
-          `Compressed payload (${compressed.byteLength} bytes) could expand beyond safe limits (theoretical max: ${theoreticalMaxSize} bytes)`
-        );
-      }
-
-      let decompressed: Uint8Array;
-      try {
-        decompressed = Bun.gunzipSync(new Uint8Array(compressed));
-      } catch (error) {
-        console.error('[GzipMiddleware] Decompression error:', error);
-        throw new Error('Decompression failed - invalid or malicious payload');
-      }
-
-      if (decompressed.byteLength > MAX_DECOMPRESSED_SIZE) {
-        throw new Error(
-          `Decompressed payload exceeds limit of ${MAX_DECOMPRESSED_SIZE} bytes`
-        );
-      }
-
-      const compressionRatio =
-        compressed.byteLength > 0
-          ? decompressed.byteLength / compressed.byteLength
-          : 0;
-      if (compressionRatio > MAX_COMPRESSION_RATIO) {
-        throw new Error(
-          `Suspicious compression ratio ${compressionRatio.toFixed(1)}:1 exceeds limit of ${MAX_COMPRESSION_RATIO}:1`
-        );
-      }
-
-      text = new TextDecoder().decode(decompressed);
-
-      console.log(
-        `[GzipMiddleware] Decompressed ${compressed.byteLength} → ${decompressed.byteLength} bytes`
-      );
-    } catch (error) {
-      console.error('[GzipMiddleware] Decompression failed:', error);
-      throw new Error('Failed to decompress gzip content');
+      return JSON.parse(text);
+    } catch {
+      throw badRequest('Decompressed body is not valid JSON');
     }
-
-    if (contentType?.includes('application/json')) {
-      try {
-        return JSON.parse(text);
-      } catch (parseError) {
-        throw new Error(
-          `Failed to parse decompressed content as JSON: ${parseError instanceof Error ? parseError.message : String(parseError)}`
-        );
-      }
+  })
+  // Elysia wraps anything thrown from a parser in a generic ParseError.
+  .onError(({ code, error, set }) => {
+    const cause = code === 'PARSE' ? error.cause : null;
+    if (cause instanceof GzipBodyError) {
+      set.status = cause.status;
+      return { code: cause.errorCode, detail: cause.message };
     }
-
-    return text;
-  }
-});
+  })
+  .as('scoped');
