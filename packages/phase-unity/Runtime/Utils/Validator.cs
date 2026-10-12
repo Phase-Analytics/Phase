@@ -13,6 +13,10 @@ public static class Validator
         ValidationConstants.DeviceIdPattern,
         RegexOptions.Compiled
     );
+    private static readonly Regex UlidRegex = new(
+        ValidationConstants.UlidPattern,
+        RegexOptions.Compiled | RegexOptions.IgnoreCase
+    );
     private static readonly Regex SessionIdRegex = new(
         ValidationConstants.SessionIdPattern,
         RegexOptions.Compiled
@@ -70,6 +74,9 @@ public static class Validator
             DeviceIdRegex,
             "Device ID"
         );
+
+    /// <summary>Whether <paramref name="value"/> is a ULID, the format the server requires for device IDs.</summary>
+    public static bool IsUlid(string? value) => value != null && UlidRegex.IsMatch(value);
 
     public static Result ValidateSessionId(string sessionId) =>
         ValidateId(

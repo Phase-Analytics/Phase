@@ -1,124 +1,113 @@
 using System;
 using System.Threading.Tasks;
-using Phase.Analytics.Client;
 using Phase.Analytics.Constants;
 using Phase.Analytics.Models;
 using Phase.Analytics.Queue;
-using Phase.Analytics.Storage;
 using Phase.Analytics.Utils;
 
 namespace Phase.Analytics.Managers;
 
+/// <summary>
+/// Owns the current session. State is shared between the main thread (lifecycle) and the ping
+/// timer, so every transition happens under one lock and rotation is atomic.
+/// </summary>
 public sealed class SessionManager : IDisposable
 {
-    private readonly SdkHttpClient _httpClient;
     private readonly OfflineQueue _offlineQueue;
     private readonly ISessionPingScheduler _pingScheduler;
-    private readonly string _deviceId;
+    private readonly Func<string?> _getDeviceId;
+    private readonly object _sync = new();
     private string? _sessionId;
-    private Task<string>? _startTask;
-    private bool _isOnline = true;
+    private DateTime? _startedAt;
     private long? _pausedAtMs;
-    private long? _startedAtMs;
+    private bool _isPaused;
 
     public SessionManager(
-        SdkHttpClient httpClient,
         OfflineQueue offlineQueue,
-        string deviceId,
+        Func<string?> getDeviceId,
         ISessionPingScheduler? pingScheduler = null
     )
     {
-        _httpClient = httpClient;
         _offlineQueue = offlineQueue;
-        _deviceId = deviceId;
+        _getDeviceId = getDeviceId;
         _pingScheduler = pingScheduler ?? new TimerSessionPingScheduler();
     }
 
-    public async Task<string> StartAsync(bool isOnline)
+    /// <summary>
+    /// Starts a session unless one is already active and returns the active session id.
+    /// <paramref name="startedAtUtc"/> backdates a new session so events tracked before identify
+    /// fall inside it (the server rejects events older than their session).
+    /// </summary>
+    public string? Start(DateTime? startedAtUtc = null)
     {
-        if (_startTask != null)
+        lock (_sync)
         {
-            return await _startTask.ConfigureAwait(false);
-        }
-
-        if (!string.IsNullOrEmpty(_sessionId))
-        {
-            return _sessionId;
-        }
-
-        _startTask = StartInternalAsync(isOnline);
-        try
-        {
-            return await _startTask.ConfigureAwait(false);
-        }
-        finally
-        {
-            _startTask = null;
-        }
-    }
-
-    private async Task<string> StartInternalAsync(bool isOnline)
-    {
-        _pingScheduler.Stop();
-        _isOnline = isOnline;
-        _sessionId = IdGenerator.GenerateSessionId();
-
-        var validation = Validator.ValidateSessionId(_sessionId);
-        if (!validation.Success)
-        {
-            Logger.Error("Generated session ID invalid. Retrying.");
-            _sessionId = IdGenerator.GenerateSessionId();
-            if (!Validator.ValidateSessionId(_sessionId).Success)
+            if (_sessionId != null)
             {
-                Logger.Error("Failed to generate valid session ID.");
+                return _sessionId;
             }
-        }
 
-        var startedAt = DateTime.UtcNow.ToString("o");
-        _startedAtMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        var payload = new CreateSessionRequest
-        {
-            SessionId = _sessionId,
-            DeviceId = _deviceId,
-            StartedAt = startedAt,
-        };
-
-        var persistResult = await StorageService
-            .SetItemAsync(StorageKeys.SessionStartedAt, startedAt)
-            .ConfigureAwait(false);
-        if (!persistResult.Success)
-        {
-            Logger.Warn(
-                "Failed to persist session start time. Session age checks may not work correctly."
+            var now = DateTime.UtcNow;
+            return StartNewSessionLocked(
+                startedAtUtc.HasValue && startedAtUtc.Value < now ? startedAtUtc.Value : now
             );
         }
-
-        if (isOnline)
-        {
-            var result = await _httpClient.CreateSessionAsync(payload).ConfigureAwait(false);
-            if (!result.Success)
-            {
-                Logger.Error("Session creation failed. Queuing for retry.", result.Error);
-                await _offlineQueue
-                    .EnqueueAsync(new BatchSessionItem { Payload = payload })
-                    .ConfigureAwait(false);
-            }
-        }
-        else
-        {
-            await _offlineQueue
-                .EnqueueAsync(new BatchSessionItem { Payload = payload })
-                .ConfigureAwait(false);
-        }
-
-        StartPingInterval();
-        return _sessionId;
     }
 
+    /// <summary>Idempotent: repeated calls (pause + focus loss) keep the first pause time.</summary>
     public void Pause()
     {
-        _pausedAtMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        _pingScheduler.Stop();
+        lock (_sync)
+        {
+            if (_isPaused)
+            {
+                return;
+            }
+
+            _isPaused = true;
+            _pausedAtMs = NowMs();
+            _pingScheduler.Stop();
+        }
+    }
+
+    /// <summary>
+    /// Rotates the session if it is too old or was inactive too long, otherwise resumes pings.
+    /// Idempotent: a second call without an intervening pause does nothing.
+    /// </summary>
+    public void Resume()
+    {
+        lock (_sync)
+        {
+            var wasPaused = _isPaused;
+            var pausedAtMs = _pausedAtMs;
+            _isPaused = false;
+            _pausedAtMs = null;
+
+            if (_sessionId == null)
+            {
+                return;
+            }
+
+            var now = NowMs();
+            if (_startedAt.HasValue && now - ToUnixMs(_startedAt.Value) > ValidationConstants.MaxSessionAgeMs)
+            {
+                Logger.Info("Session too old, starting new session");
+                StartNewSessionLocked(DateTime.UtcNow);
+                return;
+            }
+
+            if (pausedAtMs.HasValue && now - pausedAtMs.Value > ValidationConstants.InactivityTimeoutMs)
+            {
+                Logger.Info("Session inactive for too long, starting new session");
+                StartNewSessionLocked(DateTime.UtcNow);
+                return;
+            }
+
+            if (wasPaused)
+            {
+                StartPingIntervalLocked();
+            }
+        }
     }
 
     public void MarkActivity()
@@ -126,67 +115,24 @@ public sealed class SessionManager : IDisposable
         _pingScheduler.NotifyActivity();
     }
 
-    public async Task ResumeAsync()
+    public string? GetSessionId()
     {
-        if (string.IsNullOrEmpty(_sessionId))
+        lock (_sync)
         {
-            return;
+            return _sessionId;
         }
-
-        var sessionStartedResult = await StorageService
-            .GetItemAsync<string>(StorageKeys.SessionStartedAt)
-            .ConfigureAwait(false);
-        if (sessionStartedResult.Success && !string.IsNullOrEmpty(sessionStartedResult.Data))
-        {
-            if (
-                !DateTimeOffset.TryParse(
-                    sessionStartedResult.Data,
-                    out var sessionStartTime
-                )
-            )
-            {
-                Logger.Warn("Failed to parse session start time.");
-                StartPingInterval();
-                return;
-            }
-
-            var sessionStartMs = sessionStartTime.ToUnixTimeMilliseconds();
-            var sessionAge = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - sessionStartMs;
-            if (sessionAge > ValidationConstants.MaxSessionAgeMs)
-            {
-                Logger.Info("Session too old, starting new session");
-                _sessionId = null;
-                _startedAtMs = null;
-                _pausedAtMs = null;
-                await StartAsync(_isOnline).ConfigureAwait(false);
-                return;
-            }
-        }
-
-        if (_pausedAtMs.HasValue)
-        {
-            var inactiveDuration = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - _pausedAtMs.Value;
-            if (inactiveDuration > ValidationConstants.InactivityTimeoutMs)
-            {
-                Logger.Info("Session inactive for too long, starting new session");
-                _sessionId = null;
-                _startedAtMs = null;
-                _pausedAtMs = null;
-                await StartAsync(_isOnline).ConfigureAwait(false);
-                return;
-            }
-
-            _pausedAtMs = null;
-        }
-
-        StartPingInterval();
     }
 
-    public string? GetSessionId() => _sessionId;
-
-    public void UpdateNetworkState(bool isOnline)
+    /// <summary>Ends the current session without starting a new one (used by reset).</summary>
+    public void End()
     {
-        _isOnline = isOnline;
+        lock (_sync)
+        {
+            _pingScheduler.Stop();
+            _sessionId = null;
+            _startedAt = null;
+            _pausedAtMs = null;
+        }
     }
 
     public void Dispose()
@@ -198,60 +144,89 @@ public sealed class SessionManager : IDisposable
         }
     }
 
-    private void StartPingInterval()
+    private string? StartNewSessionLocked(DateTime startedAt)
     {
-        var sessionStartedAt = _startedAtMs.HasValue
-            ? DateTimeOffset.FromUnixTimeMilliseconds(_startedAtMs.Value)
+        _pingScheduler.Stop();
+
+        var deviceId = _getDeviceId();
+        if (string.IsNullOrEmpty(deviceId))
+        {
+            Logger.Error("Device ID not set. Cannot start session.");
+            _sessionId = null;
+            _startedAt = null;
+            return null;
+        }
+
+        var sessionId = IdGenerator.GenerateSessionId();
+        _sessionId = sessionId;
+        _startedAt = startedAt;
+        _pausedAtMs = null;
+
+        _offlineQueue.Enqueue(
+            new BatchSessionItem
+            {
+                Payload = new CreateSessionRequest
+                {
+                    SessionId = sessionId,
+                    DeviceId = deviceId!,
+                    StartedAt = startedAt.ToString("o"),
+                },
+            }
+        );
+
+        if (!_isPaused)
+        {
+            StartPingIntervalLocked();
+        }
+
+        return sessionId;
+    }
+
+    private void StartPingIntervalLocked()
+    {
+        var sessionStartedAt = _startedAt.HasValue
+            ? new DateTimeOffset(_startedAt.Value)
             : DateTimeOffset.UtcNow;
 
-        _pingScheduler.Start(() => SendPingAsync(), sessionStartedAt);
+        _pingScheduler.Start(SendPingAsync, sessionStartedAt);
     }
 
-    private async Task SendPingAsync()
+    private Task SendPingAsync()
     {
-        if (string.IsNullOrEmpty(_sessionId))
+        lock (_sync)
         {
-            return;
-        }
-
-        if (
-            _startedAtMs.HasValue
-            && DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - _startedAtMs.Value
-                >= ValidationConstants.MaxSessionAgeMs
-        )
-        {
-            Logger.Info("Session reached maximum age, starting new session");
-            _sessionId = null;
-            _startedAtMs = null;
-            await StartAsync(_isOnline).ConfigureAwait(false);
-            return;
-        }
-
-        var payload = new PingSessionRequest
-        {
-            SessionId = _sessionId,
-            Timestamp = DateTime.UtcNow.ToString("o"),
-        };
-
-        if (_isOnline)
-        {
-            var result = await _httpClient.PingSessionAsync(payload).ConfigureAwait(false);
-            if (!result.Success)
+            if (_sessionId == null || _isPaused)
             {
-                Logger.Error("Session ping failed. Queuing for retry.", result.Error);
-                await _offlineQueue
-                    .EnqueueAsync(new BatchPingItem { Payload = payload })
-                    .ConfigureAwait(false);
-                return;
+                return Task.CompletedTask;
             }
 
-            MarkActivity();
+            var now = DateTime.UtcNow;
+            if (
+                _startedAt.HasValue
+                && ToUnixMs(now) - ToUnixMs(_startedAt.Value) >= ValidationConstants.MaxSessionAgeMs
+            )
+            {
+                Logger.Info("Session reached maximum age, starting new session");
+                StartNewSessionLocked(DateTime.UtcNow);
+                return Task.CompletedTask;
+            }
+
+            _offlineQueue.Enqueue(
+                new BatchPingItem
+                {
+                    Payload = new PingSessionRequest
+                    {
+                        SessionId = _sessionId,
+                        Timestamp = now.ToString("o"),
+                    },
+                }
+            );
         }
-        else
-        {
-            await _offlineQueue
-                .EnqueueAsync(new BatchPingItem { Payload = payload })
-                .ConfigureAwait(false);
-        }
+
+        return Task.CompletedTask;
     }
+
+    private static long ToUnixMs(DateTime utc) => new DateTimeOffset(utc).ToUnixTimeMilliseconds();
+
+    private static long NowMs() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 }

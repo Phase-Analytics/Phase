@@ -54,13 +54,47 @@ public static class PhaseAnalytics
         }
     }
 
-    /// <summary>Tracks a custom event. Requires prior identify.</summary>
+    /// <summary>
+    /// Tracks a custom event. The id and timestamp are taken now; events tracked before identify
+    /// are buffered (up to 200) and delivered once a session exists.
+    /// </summary>
     public static void Track(string name, EventParams? parameters = null)
     {
         lock (Sync)
         {
             _sdk ??= new PhaseSDK();
             _sdk.Track(name, parameters);
+        }
+    }
+
+    /// <summary>Tracks a screen view. Same delivery rules as <see cref="Track"/>.</summary>
+    public static void TrackScreen(string name, EventParams? parameters = null)
+    {
+        lock (Sync)
+        {
+            _sdk ??= new PhaseSDK();
+            _sdk.TrackScreen(name, parameters);
+        }
+    }
+
+    /// <summary>Sends queued data now and saves whatever could not be delivered.</summary>
+    public static Task FlushAsync()
+    {
+        lock (Sync)
+        {
+            return _sdk?.FlushAsync() ?? Task.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    /// Forgets the current device (e.g. on logout): ends the session, tries to deliver queued data,
+    /// clears the queue and generates a new device ID. Call <see cref="IdentifyAsync"/> again after.
+    /// </summary>
+    public static Task ResetAsync()
+    {
+        lock (Sync)
+        {
+            return _sdk?.ResetAsync() ?? Task.CompletedTask;
         }
     }
 
@@ -75,19 +109,19 @@ public static class PhaseAnalytics
         }
     }
 
-    internal static Task ResumeAsync()
+    internal static void Resume()
     {
         lock (Sync)
         {
-            return _sdk?.ResumeAsync() ?? Task.CompletedTask;
+            _sdk?.Resume();
         }
     }
 
-    internal static Task FlushAsync()
+    internal static void PersistOnQuit()
     {
         lock (Sync)
         {
-            return _sdk?.FlushAsync() ?? Task.CompletedTask;
+            _sdk?.PersistOnQuit();
         }
     }
 

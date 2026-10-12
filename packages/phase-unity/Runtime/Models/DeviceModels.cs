@@ -25,24 +25,3 @@ public sealed class CreateDeviceRequest
     [JsonProperty("disableGeolocation")]
     public bool? DisableGeolocation { get; set; }
 }
-
-public sealed class DeviceResponse
-{
-    [JsonProperty("deviceId")]
-    public string DeviceId { get; set; } = string.Empty;
-
-    [JsonProperty("osVersion")]
-    public string? OsVersion { get; set; }
-
-    [JsonProperty("platform")]
-    public string? Platform { get; set; }
-
-    [JsonProperty("locale")]
-    public string? Locale { get; set; }
-
-    [JsonProperty("country")]
-    public string? Country { get; set; }
-
-    [JsonProperty("firstSeen")]
-    public string FirstSeen { get; set; } = string.Empty;
-}

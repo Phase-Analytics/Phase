@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Phase.Analytics.Client;
 using Phase.Analytics.Constants;
@@ -10,11 +9,19 @@ using Phase.Analytics.Utils;
 
 namespace Phase.Analytics.Queue;
 
+/// <summary>
+/// Drains <see cref="OfflineQueue"/> through <c>POST /sdk/batch</c>. Items are removed only after
+/// the server accepted them or rejected them as non-retryable.
+/// </summary>
 public sealed class BatchSender
 {
     private readonly SdkHttpClient _httpClient;
     private readonly OfflineQueue _offlineQueue;
-    private bool _isFlushing;
+    private readonly object _sync = new();
+    private Task? _inFlight;
+    private long _retryAfterUntilMs;
+    private long _backoffUntilMs;
+    private int _consecutiveFailures;
 
     public BatchSender(SdkHttpClient httpClient, OfflineQueue offlineQueue)
     {
@@ -22,183 +29,232 @@ public sealed class BatchSender
         _offlineQueue = offlineQueue;
     }
 
-    public async Task FlushAsync()
+    /// <summary>
+    /// Sends queued items until the queue is empty, a request fails, or the flush deadline passes.
+    /// Concurrent callers share the in-flight flush. <paramref name="ignoreBackoff"/> skips the
+    /// local failure backoff but never a server <c>Retry-After</c>.
+    /// </summary>
+    public Task FlushAsync(bool ignoreBackoff = false)
     {
-        if (_isFlushing)
+        lock (_sync)
         {
-            Logger.Warn("Flush already in progress. Skipping duplicate flush.");
-            return;
-        }
+            if (_inFlight != null && !_inFlight.IsCompleted)
+            {
+                return _inFlight;
+            }
 
-        _isFlushing = true;
-        try
-        {
-            await FlushWithTimeoutAsync().ConfigureAwait(false);
-        }
-        finally
-        {
-            _isFlushing = false;
+            var now = NowMs();
+            if (now < _retryAfterUntilMs || (!ignoreBackoff && now < _backoffUntilMs))
+            {
+                return Task.CompletedTask;
+            }
+
+            _inFlight = Task.Run(RunFlushAsync);
+            return _inFlight;
         }
     }
 
-    private async Task FlushWithTimeoutAsync()
+    /// <summary>Clears the local failure backoff, e.g. after connectivity returns.</summary>
+    public void ResetBackoff()
     {
-        var flushTask = PerformFlushAsync();
-        var delayTask = Task.Delay(ValidationConstants.FlushTimeoutMs);
+        lock (_sync)
+        {
+            _backoffUntilMs = 0;
+            _consecutiveFailures = 0;
+        }
+    }
 
+    private async Task RunFlushAsync()
+    {
+        using var deadline = new CancellationTokenSource(ValidationConstants.FlushTimeoutMs);
         try
         {
-            var completed = await Task.WhenAny(flushTask, delayTask).ConfigureAwait(false);
-            if (completed != flushTask)
+            while (!deadline.IsCancellationRequested)
             {
-                throw new TimeoutException("Flush timeout");
-            }
+                var batch = _offlineQueue.PeekBatch(ValidationConstants.BatchSendSize);
+                if (batch.Count == 0)
+                {
+                    return;
+                }
 
-            await flushTask.ConfigureAwait(false);
+                var result = await _httpClient
+                    .SendBatchAsync(batch, deadline.Token)
+                    .ConfigureAwait(false);
+
+                if (!ApplyResult(batch, result))
+                {
+                    return;
+                }
+            }
         }
         catch (Exception error)
         {
-            Logger.Error("Flush failed or timed out. Dropping remaining items.", error);
+            Logger.Error("Flush failed. Items remain queued.", error);
         }
     }
 
-    private async Task PerformFlushAsync()
+    /// <returns>True when the whole batch was settled and the next batch may be sent.</returns>
+    private bool ApplyResult(List<BatchItem> batch, Result<BatchResponse> result)
     {
-        var items = await _offlineQueue.DequeueAllAsync().ConfigureAwait(false);
-        if (items.Count == 0)
+        if (result.Success)
         {
-            return;
+            return ApplyItemErrors(batch, result.Data?.Errors);
         }
 
-        var deduplicatedItems = DeduplicateByTimestamp(items);
-        var batches = SplitIntoBatches(deduplicatedItems);
-
-        foreach (var batch in batches)
+        var error = result.Error;
+        if (error is HttpError httpError && !httpError.IsNetworkError)
         {
-            try
+            if (httpError.IsRateLimited)
             {
-                await SendBatchAsync(batch).ConfigureAwait(false);
-            }
-            catch (Exception error)
-            {
-                Logger.Error("Batch send error. Dropping batch (fire & forget).", error);
-            }
-        }
-    }
+                var waitMs = httpError.RetryAfterMs ?? ValidationConstants.DefaultRetryAfterMs;
+                lock (_sync)
+                {
+                    _retryAfterUntilMs = NowMs() + waitMs;
+                }
 
-    private async Task SendBatchAsync(List<BatchItem> items)
-    {
-        foreach (var item in items)
-        {
-            item.RetryCount = null;
-        }
-
-        var result = await _httpClient
-            .SendBatchAsync(new BatchRequest { Items = items })
-            .ConfigureAwait(false);
-
-        if (!result.Success)
-        {
-            Logger.Warn("Batch request failed. Dropping batch (fire & forget).", new Dictionary<string, object>
-            {
-                ["error"] = result.Error?.Message ?? "unknown",
-            });
-            return;
-        }
-
-        if (result.Data != null && result.Data.Failed > 0)
-        {
-            Logger.Warn(
-                $"Batch partially failed: {result.Data.Failed}/{(result.Data.Processed) + result.Data.Failed} items dropped."
-            );
-        }
-    }
-
-    private static List<BatchItem> DeduplicateByTimestamp(List<BatchItem> items)
-    {
-        var seenEvents = new Dictionary<string, long>();
-        var dedupedItems = new List<BatchItem>();
-
-        foreach (var item in items)
-        {
-            if (item is not BatchEventItem eventItem)
-            {
-                dedupedItems.Add(item);
-                continue;
+                Logger.Warn($"Rate limited by server. Next flush in {waitMs}ms.");
+                return false;
             }
 
-            var key = CreateEventKey(eventItem.Payload.Name, eventItem.Payload.Params);
-            if (
-                !DateTimeOffset.TryParse(
-                    eventItem.Payload.Timestamp,
-                    CultureInfo.InvariantCulture,
-                    DateTimeStyles.RoundtripKind,
-                    out var timestamp
-                )
-            )
+            if (httpError.Status >= 500)
             {
-                Logger.Warn("Invalid timestamp format. Including event anyway.");
-                dedupedItems.Add(item);
-                continue;
+                // A plain 500 counts against the item budget so a batch the server can never
+                // process cannot block the queue. Gateway/unavailable statuses (deploys, outages)
+                // do not, otherwise a long outage would drop data.
+                if (httpError.Status == 500)
+                {
+                    _offlineQueue.CompleteBatch(Array.Empty<BatchItem>(), batch);
+                }
+                RecordFailure(error);
+                return false;
             }
 
-            var timestampMs = timestamp.ToUnixTimeMilliseconds();
-            if (
-                seenEvents.TryGetValue(key, out var lastTime)
-                && timestampMs - lastTime < ValidationConstants.DedupWindowMs
-            )
+            if (httpError.Status == 400 && TryParseItemErrors(httpError.ResponseBody, out var errors))
             {
-                Logger.Warn(
-                    "Duplicate event in batch detected. Dropping event.",
-                    new Dictionary<string, object> { ["name"] = eventItem.Payload.Name }
+                return ApplyItemErrors(batch, errors);
+            }
+
+            if (!httpError.IsRetryable())
+            {
+                Logger.Error(
+                    $"Batch rejected with status {httpError.Status}. Dropping {batch.Count} item(s).",
+                    error
                 );
+                _offlineQueue.CompleteBatch(batch, Array.Empty<BatchItem>());
+                return false;
+            }
+        }
+
+        RecordFailure(error);
+        return false;
+    }
+
+    private bool ApplyItemErrors(List<BatchItem> batch, List<BatchError>? errors)
+    {
+        lock (_sync)
+        {
+            _consecutiveFailures = 0;
+            _backoffUntilMs = 0;
+        }
+
+        if (errors == null || errors.Count == 0)
+        {
+            return _offlineQueue.CompleteBatch(batch, Array.Empty<BatchItem>()) == 0;
+        }
+
+        var retryableByOrder = new Dictionary<int, bool>();
+        bool? wholeBatchRetryable = null;
+        foreach (var error in errors)
+        {
+            var retryable = error.Retryable == true;
+            if (error.ClientOrder < 0)
+            {
+                wholeBatchRetryable = (wholeBatchRetryable ?? false) || retryable;
                 continue;
             }
 
-            seenEvents[key] = timestampMs;
-            dedupedItems.Add(item);
+            retryableByOrder[error.ClientOrder] =
+                (retryableByOrder.TryGetValue(error.ClientOrder, out var existing) && existing)
+                || retryable;
         }
 
-        var droppedCount = items.Count - dedupedItems.Count;
-        if (droppedCount > 0)
+        var completed = new List<BatchItem>(batch.Count);
+        var retry = new List<BatchItem>();
+        var rejected = 0;
+        foreach (var item in batch)
         {
-            Logger.Info($"Dropped {droppedCount} duplicate event(s) from batch based on timestamp.");
+            bool? itemRetryable = retryableByOrder.TryGetValue(item.ClientOrder, out var value)
+                ? value
+                : wholeBatchRetryable;
+
+            if (itemRetryable == true)
+            {
+                retry.Add(item);
+                continue;
+            }
+
+            if (itemRetryable == false)
+            {
+                rejected++;
+            }
+
+            completed.Add(item);
         }
 
-        return dedupedItems;
+        if (rejected > 0)
+        {
+            Logger.Warn($"Server rejected {rejected} item(s) as non-retryable. Dropping them.");
+        }
+
+        return _offlineQueue.CompleteBatch(completed, retry) == 0;
     }
 
-    private static string CreateEventKey(string name, EventParams? parameters)
+    private void RecordFailure(Exception? error)
     {
-        if (parameters == null || parameters.Count == 0)
+        int delayMs;
+        lock (_sync)
         {
-            return name;
+            _consecutiveFailures++;
+            var exponent = Math.Min(_consecutiveFailures - 1, 10);
+            delayMs = (int)Math.Min(
+                (long)ValidationConstants.FlushFailureBackoffBaseMs << exponent,
+                ValidationConstants.FlushFailureBackoffMaxMs
+            );
+            _backoffUntilMs = NowMs() + delayMs;
         }
 
+        Logger.Warn(
+            $"Batch request failed. Items remain queued; retrying in {delayMs}ms.",
+            new Dictionary<string, object> { ["error"] = error?.Message ?? "unknown" }
+        );
+    }
+
+    private static bool TryParseItemErrors(string? body, out List<BatchError> errors)
+    {
+        errors = new List<BatchError>();
         try
         {
-            var sorted = new EventParams();
-            foreach (var key in parameters.Keys.OrderBy(static k => k, StringComparer.Ordinal))
+            var response = JsonHelper.Deserialize<BatchResponse>(body);
+            if (response?.Errors == null)
             {
-                sorted[key] = parameters[key];
+                return false;
             }
 
-            return $"{name}:{JsonHelper.Serialize(sorted)}";
+            foreach (var error in response.Errors)
+            {
+                if (error.ClientOrder >= 0)
+                {
+                    errors.Add(error);
+                }
+            }
+
+            return errors.Count > 0;
         }
-        catch
+        catch (Exception)
         {
-            return name;
+            return false;
         }
     }
 
-    private static List<List<BatchItem>> SplitIntoBatches(List<BatchItem> items)
-    {
-        var batches = new List<List<BatchItem>>();
-        for (var i = 0; i < items.Count; i += ValidationConstants.BatchMaxSize)
-        {
-            batches.Add(items.Skip(i).Take(ValidationConstants.BatchMaxSize).ToList());
-        }
-
-        return batches;
-    }
+    private static long NowMs() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 }

@@ -1,5 +1,4 @@
 #if UNITY_5_3_OR_NEWER
-using System;
 using System.Collections;
 using Phase.Analytics.Network;
 using Phase.Analytics.Utils;
@@ -80,6 +79,7 @@ public sealed class PhaseLifecycleHook : MonoBehaviour
         }
     }
 
+    // Pause and focus loss usually fire together; the SDK treats repeats as no-ops.
     private void OnApplicationPause(bool paused)
     {
         if (paused)
@@ -88,30 +88,25 @@ public sealed class PhaseLifecycleHook : MonoBehaviour
             return;
         }
 
-        _ = PhaseAnalytics.ResumeAsync();
+        PhaseAnalytics.Resume();
     }
 
     private void OnApplicationFocus(bool hasFocus)
     {
         if (hasFocus)
         {
-            _ = PhaseAnalytics.ResumeAsync();
+            PhaseAnalytics.Resume();
             return;
         }
 
         PhaseAnalytics.Pause();
     }
 
+    // Only saves the queue: waiting on a request here would deadlock UnityWebRequestTransport,
+    // which completes on this (main) thread. Unsent items go out on the next launch.
     private void OnApplicationQuit()
     {
-        try
-        {
-            PhaseAnalytics.FlushAsync().Wait(TimeSpan.FromSeconds(2));
-        }
-        catch (Exception error)
-        {
-            Phase.Analytics.Utils.Logger.Error("Flush on quit failed.", error);
-        }
+        PhaseAnalytics.PersistOnQuit();
     }
 }
 #endif

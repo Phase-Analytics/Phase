@@ -1,8 +1,8 @@
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Phase.Analytics.Client;
 using Phase.Analytics.Config;
+using Phase.Analytics.Constants;
 using Phase.Analytics.Device;
 using Phase.Analytics.Managers;
 using Phase.Analytics.Models;
@@ -13,24 +13,22 @@ using Phase.Analytics.Utils;
 
 namespace Phase.Analytics;
 
-public sealed class PhaseSDK
+public sealed class PhaseSDK : IDisposable
 {
     private readonly object _sync = new();
-    private readonly List<Func<Task>> _pendingCalls = new();
+    // Exists before initialize so Track calls made before identify are captured, not dropped.
+    private readonly EventManager _events = new();
     private readonly IDeviceInfoProvider _deviceInfoProvider;
     private readonly INetworkMonitor _networkMonitor;
     private readonly Func<PhaseConfig, IHttpTransport> _transportFactory;
 
-    private PhaseConfig? _config;
-    private SdkHttpClient? _httpClient;
-    private OfflineQueue? _offlineQueue;
-    private BatchSender? _batchSender;
-    private DeviceManager? _deviceManager;
-    private SessionManager? _sessionManager;
-    private EventManager? _eventManager;
+    private Components? _components;
+    private Task<bool>? _initTask;
+    private PendingIdentify? _pendingIdentify;
+    private Task? _resetTask;
     private IDisposable? _networkSubscription;
-    private bool _isInitialized;
-    private bool _isInitializing;
+    private PhaseConfig? _config;
+    private volatile bool _isOnline = true;
     private bool _isIdentified;
 #if UNITY_5_3_OR_NEWER && UNITY_EDITOR
     private bool _disableInEditorLogged;
@@ -47,10 +45,9 @@ public sealed class PhaseSDK
         IHttpTransport? httpTransport
     )
     {
-        _deviceInfoProvider = deviceInfoProvider ?? CreateDefaultDeviceInfoProvider();
+        _deviceInfoProvider = deviceInfoProvider ?? new UnityDeviceInfoProvider();
         _networkMonitor = networkMonitor ?? CreateDefaultNetworkMonitor();
-        _transportFactory = config =>
-            httpTransport ?? CreateDefaultTransport(config);
+        _transportFactory = config => httpTransport ?? CreateDefaultTransport(config);
     }
 
     public bool IsInitialized
@@ -59,7 +56,7 @@ public sealed class PhaseSDK
         {
             lock (_sync)
             {
-                return _isInitialized;
+                return _components != null;
             }
         }
     }
@@ -75,39 +72,137 @@ public sealed class PhaseSDK
         }
     }
 
-    public async Task<bool> InitializeAsync(PhaseConfig config)
+    /// <summary>Concurrent callers share the in-flight initialization.</summary>
+    public Task<bool> InitializeAsync(PhaseConfig config)
     {
         lock (_sync)
         {
-            if (_isInitialized)
+            if (_components != null)
             {
                 Logger.Warn("SDK already initialized. Skipping duplicate initialization.");
-                return true;
+                return Task.FromResult(true);
             }
 
-            if (_isInitializing)
+            if (_initTask == null || _initTask.IsCompleted)
             {
-                Logger.Warn(
-                    "SDK initialization already in progress. Skipping duplicate call."
-                );
-                return false;
+                _initTask = InitializeCoreAsync(config);
             }
 
-            _isInitializing = true;
+            return _initTask;
+        }
+    }
+
+    public Task IdentifyAsync(DeviceProperties? properties = null)
+    {
+        lock (_sync)
+        {
+            if (_components == null)
+            {
+                Logger.Info("SDK not initialized yet. Identify will run after initialization.");
+                // The server merges device properties, so merging queued calls is equivalent.
+                _pendingIdentify ??= new PendingIdentify();
+                _pendingIdentify.Merge(properties);
+                return _pendingIdentify.Completion.Task;
+            }
         }
 
+        return IdentifyAfterResetAsync(properties);
+    }
+
+    public void Track(string name, EventParams? parameters = null) =>
+        _events.Track(name, parameters, isScreen: false);
+
+    public void TrackScreen(string name, EventParams? parameters = null) =>
+        _events.Track(name, parameters, isScreen: true);
+
+    /// <summary>Sends queued data now (ignoring local failure backoff) and persists what remains.</summary>
+    public async Task FlushAsync()
+    {
+        var components = GetComponents();
+        if (components == null)
+        {
+            return;
+        }
+
+        if (CanFlush())
+        {
+            await components.Sender.FlushAsync(ignoreBackoff: true).ConfigureAwait(false);
+        }
+
+        await components.Queue.PersistAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Forgets the current device (e.g. on logout): ends the session, tries to deliver queued data,
+    /// clears the queue and generates a new device ID. Call identify again to resume tracking.
+    /// </summary>
+    public Task ResetAsync()
+    {
+        lock (_sync)
+        {
+            if (_resetTask == null || _resetTask.IsCompleted)
+            {
+                _resetTask = ResetCoreAsync();
+            }
+
+            return _resetTask;
+        }
+    }
+
+    /// <summary>App went to background: stop heartbeats, start a flush and save the queue.</summary>
+    public void Pause()
+    {
+        var components = GetComponents();
+        if (components == null)
+        {
+            return;
+        }
+
+        components.Session.Pause();
+        components.Scheduler.Trigger(ignoreBackoff: true);
+        _ = components.Queue.PersistAsync();
+    }
+
+    public void Resume()
+    {
+        var components = GetComponents();
+        if (components == null)
+        {
+            return;
+        }
+
+        components.Session.Resume();
+        components.Scheduler.Trigger();
+    }
+
+    /// <summary>
+    /// Blocking save for app quit. Never waits on the network: with the UnityWebRequest transport a
+    /// request needs the main thread, so waiting for it here would deadlock.
+    /// </summary>
+    public void PersistOnQuit()
+    {
+        GetComponents()?.Queue.PersistNow(
+            TimeSpan.FromMilliseconds(ValidationConstants.QueuePersistOnQuitTimeoutMs)
+        );
+    }
+
+    public void Dispose()
+    {
+        PersistOnQuit();
+        Teardown();
+    }
+
+    private async Task<bool> InitializeCoreAsync(PhaseConfig config)
+    {
         if (!ConfigValidator.TryValidate(config, out var validationError))
         {
             Logger.Error(validationError);
-            lock (_sync)
-            {
-                _isInitializing = false;
-            }
-
+            FailPendingIdentify();
             return false;
         }
 
         Logger.SetLogLevel(config.LogLevel);
+        OfflineQueue? queue = null;
 
         try
         {
@@ -124,172 +219,90 @@ public sealed class PhaseSDK
             {
                 PhaseLifecycleHook.RegisterNetworkMonitor(unityNetworkMonitor);
             }
-#endif
 
-            var deviceInfoProvider = _deviceInfoProvider;
-#if UNITY_5_3_OR_NEWER
-            deviceInfoProvider = new StaticDeviceInfoProvider(
+            // Application/SystemInfo are main-thread only; read them before the first await.
+            IDeviceInfoProvider deviceInfoProvider = new StaticDeviceInfoProvider(
                 _deviceInfoProvider.GetDeviceInfo()
             );
+#else
+            var deviceInfoProvider = _deviceInfoProvider;
 #endif
 
-            var transport = _transportFactory(config);
-            _httpClient = new SdkHttpClient(
+            var httpClient = new SdkHttpClient(
                 config.ApiKey,
-                transport,
+                _transportFactory(config),
                 config.NormalizedBaseUrl,
                 config.DebugData
             );
 
-            _offlineQueue = new OfflineQueue();
-            await _offlineQueue.InitializeAsync().ConfigureAwait(false);
+            queue = new OfflineQueue();
+            await queue.InitializeAsync().ConfigureAwait(false);
 
-            _batchSender = new BatchSender(_httpClient, _offlineQueue);
-            _deviceManager = new DeviceManager(
-                _httpClient,
-                _offlineQueue,
-                deviceInfoProvider,
-                config
+            var device = new DeviceManager(queue, deviceInfoProvider, config);
+            await device.InitializeAsync().ConfigureAwait(false);
+
+            var sender = new BatchSender(httpClient, queue);
+            var components = new Components(
+                queue,
+                sender,
+                new FlushScheduler(sender, queue, CanFlush),
+                device,
+                new SessionManager(queue, device.GetDeviceId)
             );
 
-            var deviceId = await _deviceManager.InitializeAsync().ConfigureAwait(false);
-            _sessionManager = new SessionManager(_httpClient, _offlineQueue, deviceId);
-            _eventManager = new EventManager(
-                _httpClient,
-                _offlineQueue,
-                () => _sessionManager?.GetSessionId(),
-                () => _sessionManager?.MarkActivity()
-            );
+            await SetupNetworkListenerAsync(components).ConfigureAwait(false);
 
-            SetupNetworkListener();
-
+            PendingIdentify? pending;
             lock (_sync)
             {
-                _isInitialized = true;
+                _components = components;
+                pending = _pendingIdentify;
+                _pendingIdentify = null;
             }
 
-            Logger.Info(
-                "Phase SDK initialized successfully. Call Identify() to start tracking."
-            );
+            Logger.Info("Phase SDK initialized successfully. Call Identify() to start tracking.");
+            components.Scheduler.Trigger();
 
-            await ProcessPendingCallsAsync().ConfigureAwait(false);
+            if (pending != null)
+            {
+                IdentifyNow(components, pending.Properties);
+                pending.Completion.TrySetResult(null);
+            }
+
             return true;
         }
         catch (Exception error)
         {
-            Cleanup();
             Logger.Error("Failed to initialize SDK", error);
+            queue?.Dispose();
+            Teardown();
+            FailPendingIdentify();
             return false;
         }
-        finally
-        {
-            lock (_sync)
-            {
-                _isInitializing = false;
-            }
-        }
     }
 
-    public Task IdentifyAsync(DeviceProperties? properties = null)
+    private async Task IdentifyAfterResetAsync(DeviceProperties? properties)
     {
+        Task? reset;
         lock (_sync)
         {
-            if (!_isInitialized)
-            {
-                Logger.Warn("SDK not initialized. Queuing identify() call.");
-                var identifyTask = new TaskCompletionSource<object?>();
-                _pendingCalls.Add(async () =>
-                {
-                    try
-                    {
-                        await IdentifyInternalAsync(properties).ConfigureAwait(false);
-                        identifyTask.TrySetResult(null);
-                    }
-                    catch (Exception error)
-                    {
-                        identifyTask.TrySetException(error);
-                    }
-                });
-
-                return identifyTask.Task;
-            }
+            reset = _resetTask;
         }
 
-        return IdentifyInternalAsync(properties);
-    }
-
-    public void Track(string name, EventParams? parameters = null)
-    {
-        lock (_sync)
+        if (reset != null)
         {
-            if (!_isInitialized)
-            {
-                Logger.Warn("SDK not initialized. Queuing track() call.");
-                _pendingCalls.Add(() =>
-                {
-                    Track(name, parameters);
-                    return Task.CompletedTask;
-                });
-                return;
-            }
-
-            if (!_isIdentified)
-            {
-                Logger.Warn("Device not identified. Queuing track() call.");
-                _pendingCalls.Add(() =>
-                {
-                    Track(name, parameters);
-                    return Task.CompletedTask;
-                });
-                return;
-            }
+            await reset.ConfigureAwait(false);
         }
 
-        if (_eventManager == null)
+        var components = GetComponents();
+        if (components != null)
         {
-            Logger.Error("Event manager not ready. Initialization may have failed.");
-            return;
-        }
-
-        _eventManager.Track(name, parameters);
-    }
-
-    public void Pause()
-    {
-        _sessionManager?.Pause();
-    }
-
-    public async Task ResumeAsync()
-    {
-        if (_sessionManager != null)
-        {
-            await _sessionManager.ResumeAsync().ConfigureAwait(false);
+            IdentifyNow(components, properties);
         }
     }
 
-    public Task FlushAsync()
+    private void IdentifyNow(Components components, DeviceProperties? properties)
     {
-        if (!IsIdentified || _batchSender == null)
-        {
-            return Task.CompletedTask;
-        }
-
-        return _batchSender.FlushAsync();
-    }
-
-    public void Dispose()
-    {
-        Cleanup();
-    }
-
-    private async Task IdentifyInternalAsync(DeviceProperties? properties)
-    {
-        if (_deviceManager == null || _sessionManager == null || _offlineQueue == null)
-        {
-            Logger.Error("SDK components not ready. Initialization may have failed.");
-            return;
-        }
-
         if (ShouldSkipNetwork())
         {
             lock (_sync)
@@ -297,102 +310,117 @@ public sealed class PhaseSDK
                 _isIdentified = true;
             }
 
-            await ProcessPendingCallsAsync().ConfigureAwait(false);
             return;
         }
 
-        var networkState = await _networkMonitor.FetchNetworkStateAsync().ConfigureAwait(false);
-        var isOnline = networkState.IsConnected;
-
-        await _deviceManager.IdentifyAsync(isOnline, properties).ConfigureAwait(false);
-        await _sessionManager.StartAsync(isOnline).ConfigureAwait(false);
+        components.Device.Identify(properties);
+        components.Session.Start(_events.GetEarliestPendingUtc());
+        _events.Attach(
+            components.Queue,
+            components.Session.GetSessionId,
+            () =>
+            {
+                components.Session.MarkActivity();
+                components.Scheduler.NotifyEnqueued();
+            }
+        );
 
         lock (_sync)
         {
             _isIdentified = true;
         }
 
+        components.Scheduler.Trigger(ignoreBackoff: true);
         Logger.Info("Device identified and session started");
-        await ProcessPendingCallsAsync().ConfigureAwait(false);
-
-        if (isOnline && _batchSender != null && _offlineQueue.GetSize() > 0)
-        {
-            var queueSize = _offlineQueue.GetSize();
-            Logger.Info($"Flushing offline queue after identification ({queueSize} items)");
-            _ = _batchSender.FlushAsync().ContinueWith(
-                task =>
-                {
-                    if (task.IsFaulted)
-                    {
-                        Logger.Error("Failed to flush offline queue. Will retry later.");
-                    }
-                },
-                TaskScheduler.Default
-            );
-        }
     }
 
-    private void SetupNetworkListener()
+    private async Task ResetCoreAsync()
     {
+        Components? components;
+        lock (_sync)
+        {
+            _pendingIdentify?.Completion.TrySetResult(null);
+            _pendingIdentify = null;
+            components = _components;
+            _isIdentified = false;
+        }
+
+        if (components == null)
+        {
+            Logger.Warn("Reset called before initialization. Nothing to reset.");
+            return;
+        }
+
+        _events.Detach();
+        components.Session.End();
+
+        if (CanFlush())
+        {
+            await components.Sender.FlushAsync(ignoreBackoff: true).ConfigureAwait(false);
+        }
+
+        var unsent = components.Queue.GetSize();
+        if (unsent > 0)
+        {
+            Logger.Warn($"Reset discarded {unsent} unsent item(s).");
+        }
+
+        await components.Queue.ClearAsync().ConfigureAwait(false);
+        await components.Device.ResetAsync().ConfigureAwait(false);
+        Logger.Info("SDK reset. Call Identify() to start tracking again.");
+    }
+
+    private async Task SetupNetworkListenerAsync(Components components)
+    {
+        try
+        {
+            var state = await _networkMonitor.FetchNetworkStateAsync().ConfigureAwait(false);
+            _isOnline = state.IsConnected;
+        }
+        catch (Exception error)
+        {
+            Logger.Warn($"Failed to read network state. Assuming online. {error.Message}");
+            _isOnline = true;
+        }
+
         _networkSubscription?.Dispose();
         _networkSubscription = _networkMonitor.Subscribe(state =>
         {
-            var isOnline = state.IsConnected;
-            _sessionManager?.UpdateNetworkState(isOnline);
-            _eventManager?.UpdateNetworkState(isOnline);
-
-            if (
-                isOnline
-                && IsIdentified
-                && _batchSender != null
-                && _offlineQueue != null
-                && _offlineQueue.GetSize() > 0
-            )
+            var wasOnline = _isOnline;
+            _isOnline = state.IsConnected;
+            if (state.IsConnected && !wasOnline)
             {
                 Logger.Info("Network restored. Flushing offline queue.");
-                _ = _batchSender.FlushAsync().ContinueWith(
-                    task =>
-                    {
-                        if (task.IsFaulted)
-                        {
-                            Logger.Error("Failed to flush offline queue. Will retry later.");
-                        }
-                    },
-                    TaskScheduler.Default
-                );
+                components.Sender.ResetBackoff();
+                components.Scheduler.Trigger();
             }
         });
     }
 
-    private async Task ProcessPendingCallsAsync()
+    private bool CanFlush() => _isOnline && !ShouldSkipNetwork();
+
+    private Components? GetComponents()
     {
-        List<Func<Task>> calls;
         lock (_sync)
         {
-            if (_pendingCalls.Count == 0)
-            {
-                return;
-            }
-
-            calls = new List<Func<Task>>(_pendingCalls);
-            _pendingCalls.Clear();
-        }
-
-        Logger.Info($"Processing {calls.Count} queued calls");
-        foreach (var call in calls)
-        {
-            try
-            {
-                await call().ConfigureAwait(false);
-            }
-            catch (Exception error)
-            {
-                Logger.Error("Failed to process queued call. Call may be lost.", error);
-            }
+            return _components;
         }
     }
 
-    private void Cleanup()
+    private void FailPendingIdentify()
+    {
+        PendingIdentify? pending;
+        lock (_sync)
+        {
+            pending = _pendingIdentify;
+            _pendingIdentify = null;
+        }
+
+        // Identify is fire-and-forget for callers; initialization already reported the failure.
+        pending?.Completion.TrySetResult(null);
+    }
+
+    private void Teardown()
     {
 #if UNITY_5_3_OR_NEWER
         if (_networkMonitor is UnityNetworkMonitor unityNetworkMonitor)
@@ -403,20 +431,22 @@ public sealed class PhaseSDK
 
         _networkSubscription?.Dispose();
         _networkSubscription = null;
-        _sessionManager?.Dispose();
-        _sessionManager = null;
-        _httpClient = null;
-        _offlineQueue = null;
-        _batchSender = null;
-        _deviceManager = null;
-        _eventManager = null;
-        _config = null;
+        _events.Detach();
 
+        Components? components;
         lock (_sync)
         {
-            _isInitialized = false;
+            components = _components;
+            _components = null;
             _isIdentified = false;
-            _pendingCalls.Clear();
+            _config = null;
+        }
+
+        if (components != null)
+        {
+            components.Scheduler.Dispose();
+            components.Session.Dispose();
+            components.Queue.Dispose();
         }
     }
 
@@ -456,9 +486,6 @@ public sealed class PhaseSDK
 #endif
     }
 
-    private static IDeviceInfoProvider CreateDefaultDeviceInfoProvider() =>
-        new UnityDeviceInfoProvider();
-
     private static INetworkMonitor CreateDefaultNetworkMonitor()
     {
 #if UNITY_5_3_OR_NEWER
@@ -479,4 +506,53 @@ public sealed class PhaseSDK
 #endif
     }
 
+    private sealed class Components
+    {
+        public Components(
+            OfflineQueue queue,
+            BatchSender sender,
+            FlushScheduler scheduler,
+            DeviceManager device,
+            SessionManager session
+        )
+        {
+            Queue = queue;
+            Sender = sender;
+            Scheduler = scheduler;
+            Device = device;
+            Session = session;
+        }
+
+        public OfflineQueue Queue { get; }
+
+        public BatchSender Sender { get; }
+
+        public FlushScheduler Scheduler { get; }
+
+        public DeviceManager Device { get; }
+
+        public SessionManager Session { get; }
+    }
+
+    private sealed class PendingIdentify
+    {
+        public DeviceProperties? Properties { get; private set; }
+
+        public TaskCompletionSource<object?> Completion { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public void Merge(DeviceProperties? properties)
+        {
+            if (properties == null)
+            {
+                return;
+            }
+
+            Properties ??= new DeviceProperties();
+            foreach (var entry in properties)
+            {
+                Properties[entry.Key] = entry.Value;
+            }
+        }
+    }
 }

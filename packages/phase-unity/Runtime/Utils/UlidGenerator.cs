@@ -3,10 +3,13 @@ using System.Security.Cryptography;
 
 namespace Phase.Analytics.Utils;
 
+/// <summary>
+/// Monotonic ULID generator (https://github.com/ulid/spec). The server decodes the timestamp from
+/// device IDs, so every ID must be a spec ULID with a Unix-epoch timestamp.
+/// </summary>
 public static class IdGenerator
 {
     private const string Encoding = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-    private const long UlidEpochMilliseconds = 1_584_598_400_000L;
 
     private static readonly object Sync = new();
     private static long _lastTimestamp = -1;
@@ -16,6 +19,8 @@ public static class IdGenerator
     public static string GenerateDeviceId() => Generate();
 
     public static string GenerateSessionId() => Generate();
+
+    public static string GenerateEventId() => Generate();
 
     public static string Generate()
     {
@@ -30,10 +35,16 @@ public static class IdGenerator
                 timestamp = now;
                 random = CreateRandomBytes();
             }
-            else
+            else if (TryIncrementRandom(LastRandom, out var incremented))
             {
                 timestamp = _lastTimestamp;
-                random = IncrementRandom(LastRandom);
+                random = incremented;
+            }
+            else
+            {
+                // Random part overflowed within one millisecond; borrow the next one.
+                timestamp = _lastTimestamp + 1;
+                random = CreateRandomBytes();
             }
 
             _lastTimestamp = timestamp;
@@ -49,18 +60,18 @@ public static class IdGenerator
         return bytes;
     }
 
-    private static byte[] IncrementRandom(byte[] source)
+    private static bool TryIncrementRandom(byte[] source, out byte[] incremented)
     {
-        var incremented = (byte[])source.Clone();
+        incremented = (byte[])source.Clone();
         for (var i = incremented.Length - 1; i >= 0; i--)
         {
             if (++incremented[i] != 0)
             {
-                break;
+                return true;
             }
         }
 
-        return incremented;
+        return false;
     }
 
     private static void CopyRandom(byte[] random)
@@ -69,9 +80,8 @@ public static class IdGenerator
         _hasLastRandom = true;
     }
 
-    private static string Encode(long timestampMs, byte[] random)
+    private static string Encode(long ulidTimestamp, byte[] random)
     {
-        var ulidTimestamp = timestampMs - UlidEpochMilliseconds;
         var chars = new char[26];
 
         chars[0] = Encoding[(int)((ulidTimestamp >> 45) & 31)];

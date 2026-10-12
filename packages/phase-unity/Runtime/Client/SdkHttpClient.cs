@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Phase.Analytics.Constants;
 using Phase.Analytics.Models;
@@ -10,9 +11,11 @@ using Phase.Analytics.Utils;
 
 namespace Phase.Analytics.Client;
 
-/// <summary>HTTP client for Phase SDK API endpoints.</summary>
+/// <summary>HTTP client for the Phase SDK ingest API.</summary>
 public sealed class SdkHttpClient
 {
+    private const int MaxErrorMessageLength = 500;
+
     private readonly string _apiKey;
     private readonly string _baseUrl;
     private readonly bool _debugData;
@@ -31,136 +34,68 @@ public sealed class SdkHttpClient
         _debugData = debugData;
     }
 
-    public Task<Result<DeviceResponse>> CreateDeviceAsync(CreateDeviceRequest payload) =>
-        RequestAsync<DeviceResponse>("/sdk/devices", payload, "CreateDevice");
-
-    public Task<Result<SessionResponse>> CreateSessionAsync(CreateSessionRequest payload) =>
-        RequestAsync<SessionResponse>("/sdk/sessions", payload, "CreateSession");
-
-    public Task<Result<EventResponse>> CreateEventAsync(CreateEventRequest payload) =>
-        RequestAsync<EventResponse>("/sdk/events", payload, "CreateEvent");
-
-    public Task<Result<PingSessionResponse>> PingSessionAsync(PingSessionRequest payload) =>
-        RequestAsync<PingSessionResponse>("/sdk/ping", payload, "PingSession");
-
-    public Task<Result<BatchResponse>> SendBatchAsync(BatchRequest payload)
-    {
-        if (payload.Items.Count >= ValidationConstants.BatchCompressionThreshold)
-        {
-            return RequestCompressedAsync<BatchResponse>("/sdk/batch", payload, "SendBatch");
-        }
-
-        return RequestAsync<BatchResponse>("/sdk/batch", payload, "SendBatch");
-    }
-
-    private Task<Result<T>> RequestAsync<T>(
-        string endpoint,
-        object body,
-        string operationName,
-        bool retryEnabled = true
+    /// <summary>
+    /// Sends one batch. Succeeds for 2xx (including 207 partial results); otherwise fails with an
+    /// <see cref="HttpError"/> or a network/timeout exception.
+    /// </summary>
+    public Task<Result<BatchResponse>> SendBatchAsync(
+        IReadOnlyList<BatchItem> items,
+        CancellationToken cancellationToken = default
     )
     {
-        var json = JsonHelper.Serialize(body);
-        var headers = BuildHeaders();
+        var json = JsonHelper.SerializeBatchRequest(items);
+        var compress = items.Count >= ValidationConstants.BatchCompressionThreshold;
+        var headers = BuildHeaders(compress);
+        var body = compress ? GzipCompress(json) : Encoding.UTF8.GetBytes(json);
         var request = new HttpTransportRequest(
-            $"{_baseUrl}{endpoint}",
+            $"{_baseUrl}/sdk/batch",
             headers,
-            Encoding.UTF8.GetBytes(json),
+            body,
             ValidationConstants.RequestTimeoutMs
         );
 
-        return ExecuteAsync<T>(request, operationName, retryEnabled);
+        return RetryPolicy.WithRetryAsync(
+            token => SendOnceAsync(request, token),
+            cancellationToken
+        );
     }
 
-    private Task<Result<T>> RequestCompressedAsync<T>(
-        string endpoint,
-        object body,
-        string operationName,
-        bool retryEnabled = true
-    )
-    {
-        var json = JsonHelper.Serialize(body);
-        var compressed = GzipCompress(json);
-        var headers = BuildHeaders(
-            new Dictionary<string, string> { ["Content-Encoding"] = "gzip" }
-        );
-
-        var request = new HttpTransportRequest(
-            $"{_baseUrl}{endpoint}",
-            headers,
-            compressed,
-            ValidationConstants.RequestTimeoutMs
-        );
-
-        return ExecuteAsync<T>(request, operationName, retryEnabled);
-    }
-
-    private Task<Result<T>> ExecuteAsync<T>(
+    private async Task<BatchResponse> SendOnceAsync(
         HttpTransportRequest request,
-        string operationName,
-        bool retryEnabled
+        CancellationToken cancellationToken
     )
     {
-        async Task<T> SendOnceAsync()
+        var response = await _transport
+            .SendAsync(request, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (response.TimedOut)
         {
-            var response = await _transport
-                .SendAsync(request, default)
-                .ConfigureAwait(false);
-
-            if (response.TimedOut)
-            {
-                throw new Exception(
-                    $"Request timeout after {ValidationConstants.RequestTimeoutMs}ms"
-                );
-            }
-
-            if (response.StatusCode < 200 || response.StatusCode >= 300)
-            {
-                throw new HttpError(response.StatusCode, SanitizeError(response.Body));
-            }
-
-            if (string.IsNullOrWhiteSpace(response.Body))
-            {
-                throw new HttpError(response.StatusCode, "Server returned empty response body");
-            }
-
-            var data = JsonHelper.Deserialize<T>(response.Body);
-            if (data == null)
-            {
-                throw new HttpError(response.StatusCode, "Failed to deserialize response body");
-            }
-
-            return data;
+            throw new TimeoutException(
+                $"Request timeout after {ValidationConstants.RequestTimeoutMs}ms"
+            );
         }
 
-        if (retryEnabled)
+        if (response.StatusCode < 200 || response.StatusCode >= 300)
         {
-            return RetryPolicy.WithRetryAsync(SendOnceAsync);
+            throw new HttpError(
+                response.StatusCode,
+                SanitizeError(response.Body),
+                response.Body,
+                RetryPolicy.ParseRetryAfterMs(response.RetryAfter, DateTimeOffset.UtcNow)
+            );
         }
 
-        return SendWithoutRetryAsync(SendOnceAsync, operationName);
+        if (string.IsNullOrWhiteSpace(response.Body))
+        {
+            return new BatchResponse();
+        }
+
+        return JsonHelper.Deserialize<BatchResponse>(response.Body)
+            ?? throw new HttpError(response.StatusCode, "Failed to deserialize response body");
     }
 
-    private static async Task<Result<T>> SendWithoutRetryAsync<T>(
-        Func<Task<T>> sendOnce,
-        string operationName
-    )
-    {
-        try
-        {
-            var data = await sendOnce().ConfigureAwait(false);
-            return Result<T>.Ok(data);
-        }
-        catch (Exception error)
-        {
-            Logger.Error($"{operationName} failed. Check network connection.", error);
-            return Result<T>.Fail(error);
-        }
-    }
-
-    private Dictionary<string, string> BuildHeaders(
-        Dictionary<string, string>? extraHeaders = null
-    )
+    private Dictionary<string, string> BuildHeaders(bool gzip)
     {
         var headers = new Dictionary<string, string>
         {
@@ -173,12 +108,9 @@ public sealed class SdkHttpClient
             headers["x-phase-debug-data"] = "1";
         }
 
-        if (extraHeaders != null)
+        if (gzip)
         {
-            foreach (var entry in extraHeaders)
-            {
-                headers[entry.Key] = entry.Value;
-            }
+            headers["Content-Encoding"] = "gzip";
         }
 
         return headers;
@@ -186,13 +118,12 @@ public sealed class SdkHttpClient
 
     private static string SanitizeError(string errorText)
     {
-        const int maxLength = 500;
-        if (errorText.Length <= maxLength)
+        if (errorText.Length <= MaxErrorMessageLength)
         {
             return errorText;
         }
 
-        return errorText.Substring(0, maxLength) + "... (truncated)";
+        return errorText.Substring(0, MaxErrorMessageLength) + "... (truncated)";
     }
 
     private static byte[] GzipCompress(string json)
