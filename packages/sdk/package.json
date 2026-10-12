@@ -76,9 +76,9 @@
     "@react-native-community/netinfo": "^12.0.1",
     "@types/react": "~19.2.18",
     "@typescript/native-preview": "7.0.0-dev.20260707.2",
-    "expo-router": "^6.0.19",
-    "fflate": "^0.8.2",
-    "tsup": "^8.3.5",
+    "expo-router": "~57.0.7",
+    "fflate": "^0.8.3",
+    "tsup": "^8.5.1",
     "typescript": "^5"
   },
   "publishConfig": {
