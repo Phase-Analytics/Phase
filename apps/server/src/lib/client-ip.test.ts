@@ -1,5 +1,5 @@
-import { serve } from 'bun';
 import { describe, expect, test } from 'bun:test';
+import { serve } from 'bun';
 import { getSocketAddress } from './client-ip';
 
 const LOOPBACK_REGEX = /127\.0\.0\.1|::1/;
