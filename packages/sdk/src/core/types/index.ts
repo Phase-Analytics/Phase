@@ -1,14 +1,4 @@
 export const VALIDATION = {
-  DEVICE_ID: {
-    MIN_LENGTH: 8,
-    MAX_LENGTH: 128,
-    PATTERN: /^[\w-]+$/,
-  },
-  SESSION_ID: {
-    MIN_LENGTH: 8,
-    MAX_LENGTH: 128,
-    PATTERN: /^[\w-]+$/,
-  },
   EVENT_NAME: {
     MIN_LENGTH: 1,
     MAX_LENGTH: 256,
@@ -20,14 +10,18 @@ export const VALIDATION = {
     MAX_KEY_LENGTH: 32,
     MAX_STRING_VALUE_LENGTH: 256,
   },
-  BATCH: {
-    MAX_SIZE: 1000,
-  },
   VERSION: {
     OS_VERSION_MAX_LENGTH: 64,
   },
   LOCALE: {
     MAX_LENGTH: 10,
+  },
+  MODEL: {
+    MAX_LENGTH: 128,
+  },
+  DEVICE_PROPERTIES: {
+    MAX_KEY_LENGTH: 128,
+    MAX_SIZE: 50_000,
   },
 } as const;
 
@@ -71,6 +65,8 @@ export type CreateSessionRequest = {
 export type EventParams = Record<string, string | number | boolean | null>;
 
 export type CreateEventRequest = {
+  /** Client-generated ULID, stable across retries so the server can dedup. */
+  eventId?: string;
   sessionId: string;
   name: string;
   params?: EventParams;
@@ -125,6 +121,8 @@ export type BatchError = {
   clientOrder: number;
   code: string;
   detail: string;
+  /** Missing means non-retryable. */
+  retryable?: boolean;
 };
 
 export type BatchResultItem = {
@@ -134,42 +132,10 @@ export type BatchResultItem = {
 };
 
 export type BatchResponse = {
-  processed: number;
-  failed: number;
-  errors: BatchError[];
-  results: BatchResultItem[];
-};
-
-export type DeviceResponse = {
-  deviceId: string;
-  deviceType: DeviceType | null;
-  osVersion: string | null;
-  platform: Platform | null;
-  locale: string | null;
-  country: string | null;
-  firstSeen: string;
-};
-
-export type SessionResponse = {
-  sessionId: string;
-  deviceId: string;
-  startedAt: string;
-  lastActivityAt: string;
-};
-
-export type EventResponse = {
-  eventId: string;
-  sessionId: string;
-  deviceId: string;
-  name: string;
-  params: EventParams | null;
-  isScreen: boolean;
-  timestamp: string;
-};
-
-export type PingSessionResponse = {
-  sessionId: string;
-  lastActivityAt: string;
+  processed?: number;
+  failed?: number;
+  errors?: BatchError[];
+  results?: BatchResultItem[];
 };
 
 export type LogLevel = 'info' | 'warn' | 'error' | 'none';
@@ -208,26 +174,8 @@ export const STORAGE_KEYS = {
   DEVICE_INFO: 'phase-analytics/device-info',
   OFFLINE_QUEUE: 'phase-analytics/offline-queue',
   API_KEY: 'phase-analytics/api-key',
-  SESSION_STARTED_AT: 'phase-analytics/session-started-at',
 } as const;
 
 export type NetworkState = {
   isConnected: boolean;
 };
-
-export class HttpError extends Error {
-  readonly status: number;
-
-  constructor(status: number, message: string) {
-    super(message);
-    this.name = 'HttpError';
-    this.status = status;
-  }
-
-  isRetryable(): boolean {
-    if (this.status >= 500 && this.status < 600) {
-      return true;
-    }
-    return false;
-  }
-}

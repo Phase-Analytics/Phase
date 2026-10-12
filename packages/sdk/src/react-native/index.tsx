@@ -1,112 +1,15 @@
 import type { ReactNode } from 'react';
-import { useEffect, useRef, useState } from 'react';
-import {
-  addNetworkListener,
-  fetchNetworkState,
-} from '../core/network/netinfo-network';
-import { PhaseSDK } from '../core/sdk';
-import {
-  clear,
-  getItem,
-  removeItem,
-  setItem,
-} from '../core/storage/async-storage';
-import { setStorageAdapter } from '../core/storage/storage';
-import type { DeviceProperties, EventParams, PhaseConfig } from '../core/types';
+import { useEffect } from 'react';
+import { createPhase } from '../core/phase';
+import type { PhaseConfig } from '../core/types';
 import { logger } from '../core/utils/logger';
-import { getRNDeviceInfo } from './device/rn-device-info';
+import { getMissingRNPackages, getRNDeviceInfo } from './device/rn-device-info';
 
-let sdk: PhaseSDK | null = null;
-let initializationPromise: Promise<boolean> | null = null;
-const readyCallbacks: (() => void)[] = [];
-
-function getSDK(): PhaseSDK | null {
-  return sdk;
-}
-
-function ensureSDK(): PhaseSDK {
-  if (!sdk) {
-    sdk = new PhaseSDK();
-  }
-  return sdk;
-}
-
-function initSDK(config: PhaseConfig): Promise<boolean> {
-  if (initializationPromise) {
-    return initializationPromise;
-  }
-
-  initializationPromise = (async () => {
-    try {
-      const missingPackages: string[] = [];
-
-      try {
-        require('react-native-device-info');
-      } catch {
-        missingPackages.push('react-native-device-info');
-      }
-
-      try {
-        require('react-native-localize');
-      } catch {
-        missingPackages.push('react-native-localize');
-      }
-
-      try {
-        require('@react-native-async-storage/async-storage');
-      } catch {
-        missingPackages.push('@react-native-async-storage/async-storage');
-      }
-
-      if (missingPackages.length > 0) {
-        logger.info(
-          `Optional React Native packages not found: ${missingPackages.join(', ')}\n` +
-            'For better device info and storage, install them:\n' +
-            `  npm install ${missingPackages.join(' ')}`
-        );
-      }
-
-      setStorageAdapter({
-        getItem,
-        setItem,
-        removeItem,
-        clear,
-      });
-
-      const networkAdapter = {
-        fetchNetworkState,
-        addNetworkListener,
-      };
-
-      await ensureSDK().init(config, getRNDeviceInfo, networkAdapter);
-
-      for (const callback of readyCallbacks) {
-        callback();
-      }
-      readyCallbacks.length = 0;
-
-      return true;
-    } catch (error) {
-      logger.error('Initialization failed', error);
-      initializationPromise = null;
-      return false;
-    }
-  })();
-
-  return initializationPromise;
-}
-
-function onSDKReady(callback: () => void): void {
-  if (initializationPromise) {
-    initializationPromise.then((success) => {
-      if (success) {
-        callback();
-      }
-    });
-  } else {
-    readyCallbacks.push(callback);
-  }
-}
+const { init, Phase } = createPhase({
+  getDeviceInfo: getRNDeviceInfo,
+  missingPackages: getMissingRNPackages,
+  installCommand: 'npm install',
+});
 
 type NavigationState = {
   routes?: Array<{
@@ -171,28 +74,28 @@ function NavigationTracker({
 }: {
   navigationRef?: NavigationRefType;
 }): ReactNode {
-  const [isReady, setIsReady] = useState(false);
-
   useEffect(() => {
-    onSDKReady(() => {
-      setIsReady(true);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!(isReady && navigationRef)) {
+    if (!navigationRef) {
+      logger.error('trackNavigation requires a navigationRef.');
       return;
     }
 
-    try {
-      if (navigationRef.getRootState) {
-        const state = navigationRef.getRootState();
-        const path = buildPathFromState(state);
-        const instance = getSDK();
-        if (instance) {
-          instance.trackScreen(path);
-        }
+    // State events also fire for param and nested updates; track focus changes only.
+    let lastPath: string | null = null;
+    const trackState = (state: NavigationState | undefined) => {
+      // Undefined until the NavigationContainer is ready.
+      if (!state) {
+        return;
       }
+      const path = buildPathFromState(state);
+      if (path !== lastPath) {
+        lastPath = path;
+        Phase.trackScreen(path);
+      }
+    };
+
+    try {
+      trackState(navigationRef.getRootState?.());
     } catch (error) {
       logger.error('Failed to get initial route', error);
     }
@@ -202,22 +105,14 @@ function NavigationTracker({
     }
 
     try {
-      const unsubscribe = navigationRef.addListener('state', (e) => {
-        const state = e?.data?.state;
-        const path = buildPathFromState(state);
-
-        const instance = getSDK();
-        if (instance) {
-          instance.trackScreen(path);
-        }
+      return navigationRef.addListener('state', (e) => {
+        trackState(e?.data?.state);
       });
-
-      return unsubscribe;
     } catch (error) {
       logger.error('Failed to set up navigation listener', error);
       return;
     }
-  }, [isReady, navigationRef]);
+  }, [navigationRef]);
 
   return null;
 }
@@ -253,15 +148,9 @@ function PhaseProvider({
   deviceInfo,
   userLocale,
 }: PhaseProps): ReactNode {
-  const initStarted = useRef(false);
-
   useEffect(() => {
-    if (initStarted.current) {
-      return;
-    }
-    initStarted.current = true;
-
-    const config: PhaseConfig = {
+    // Initializes once per process; a failed init can be retried with new props.
+    init({
       apiKey,
       baseUrl,
       logLevel,
@@ -269,13 +158,7 @@ function PhaseProvider({
       debugData,
       deviceInfo,
       userLocale,
-    };
-
-    initSDK(config);
-
-    return () => {
-      initStarted.current = false;
-    };
+    });
   }, [
     apiKey,
     baseUrl,
@@ -293,74 +176,6 @@ function PhaseProvider({
     </>
   );
 }
-
-/**
- * Register device and start session
- * @param properties Custom device attributes (optional)
- * @example
- * // Basic usage
- * await Phase.identify();
- *
- * // After login
- * await Phase.identify({ user_id: '123', plan: 'premium' });
- */
-async function identify(properties?: DeviceProperties): Promise<void> {
-  try {
-    if (initializationPromise) {
-      await initializationPromise;
-    }
-
-    const instance = getSDK();
-    if (!instance) {
-      logger.error('SDK not initialized. Wrap your app with <PhaseProvider>.');
-      return;
-    }
-    await instance.identify(properties);
-  } catch (error) {
-    logger.error('Failed to identify', error);
-  }
-}
-
-/**
- * Track custom event
- * @param name Event name (required, alphanumeric, `_`, `-`, `.`, `/`, space)
- * @param params Event parameters. Flat primitive object only. Max 32 keys. Keys max 32 chars. String values max 256 chars. Payload max 8 KB. Empty objects are normalized away.
- * @example
- * await Phase.track('purchase', { amount: 99.99, currency: 'USD' });
- */
-async function track(name: string, params?: EventParams): Promise<void> {
-  try {
-    if (initializationPromise) {
-      await initializationPromise;
-    }
-
-    const instance = getSDK();
-    if (!instance) {
-      logger.error('SDK not initialized. Wrap your app with <PhaseProvider>.');
-      return;
-    }
-    instance.track(name, params);
-  } catch (error) {
-    logger.error('Failed to track event', error);
-  }
-}
-
-/**
- * Phase Analytics SDK
- *
- * @example
- * import { Phase } from 'phase-analytics/react-native';
- *
- * // Identify device
- * await Phase.identify({ user_id: '123' });
- *
- * // Track events
- * Phase.track('purchase', { amount: 99.99 });
- */
-const Phase = {
-  identify,
-  track,
-};
 
 export { PhaseProvider, Phase };
 export type { DeviceProperties, EventParams, PhaseConfig } from '../core/types';
