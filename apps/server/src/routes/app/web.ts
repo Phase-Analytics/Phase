@@ -16,10 +16,12 @@ import {
   PublicApiTokensResponseSchema,
   UpdateAppRequestSchema,
 } from '@phase/shared';
-import { eq, or, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 import { apps, db, publicApiTokens } from '@/db';
+import { userCanAccessApp } from '@/lib/app-access';
 import { auth } from '@/lib/auth';
+import { invalidateIngestApp } from '@/lib/ingest-cache';
 import {
   generateAppId,
   generateAppKey,
@@ -28,6 +30,11 @@ import {
   getPublicApiTokenPrefix,
   hashPublicApiToken,
 } from '@/lib/keys';
+import {
+  collectAppLinkResources,
+  releaseAppLinkResources,
+} from '@/lib/links/app-cleanup';
+import { tombstoneAppDefaultSlugs } from '@/lib/links/slugs';
 import {
   authPlugin,
   type BetterAuthSession,
@@ -151,10 +158,7 @@ export const appWebRouter = new Elysia({ prefix: '/apps' })
         }
 
         const accessibleApps = await db.query.apps.findMany({
-          where: or(
-            eq(apps.userId, user.id),
-            sql`${user.id} = ANY(${apps.memberIds})`
-          ),
+          where: userCanAccessApp(user.id),
           columns: {
             id: true,
             name: true,
@@ -362,14 +366,26 @@ export const appWebRouter = new Elysia({ prefix: '/apps' })
           };
         }
 
-        const owner = await db.query.user.findFirst({
-          where: (table, { eq: eqFn }) => eqFn(table.id, app.userId),
-          columns: {
-            id: true,
-            email: true,
-            name: true,
-          },
-        });
+        const [owner, memberUsers] = await Promise.all([
+          db.query.user.findFirst({
+            where: (table, { eq: eqFn }) => eqFn(table.id, app.userId),
+            columns: {
+              id: true,
+              email: true,
+              name: true,
+            },
+          }),
+          app.memberIds.length > 0
+            ? db.query.user.findMany({
+                where: (table, { inArray }) => inArray(table.id, app.memberIds),
+                columns: {
+                  id: true,
+                  email: true,
+                  name: true,
+                },
+              })
+            : Promise.resolve([]),
+        ]);
 
         if (!owner) {
           set.status = HttpStatus.INTERNAL_SERVER_ERROR;
@@ -378,15 +394,6 @@ export const appWebRouter = new Elysia({ prefix: '/apps' })
             detail: 'Owner not found',
           };
         }
-
-        const memberUsers = await db.query.user.findMany({
-          where: (table, { inArray }) => inArray(table.id, app.memberIds || []),
-          columns: {
-            id: true,
-            email: true,
-            name: true,
-          },
-        });
 
         set.status = HttpStatus.OK;
         return {
@@ -687,7 +694,15 @@ export const appWebRouter = new Elysia({ prefix: '/apps' })
           };
         }
 
-        await db.delete(apps).where(eq(apps.id, params.id));
+        // Links, domains and policies cascade in Postgres; Cloudflare
+        // hostnames, R2 images and Redis configs are released afterwards.
+        const linkResources = await collectAppLinkResources(params.id);
+        await db.transaction(async (tx) => {
+          await tombstoneAppDefaultSlugs(tx, params.id);
+          await tx.delete(apps).where(eq(apps.id, params.id));
+        });
+        releaseAppLinkResources(linkResources);
+        invalidateIngestApp(params.id);
 
         set.status = HttpStatus.NO_CONTENT;
       } catch (error) {
@@ -824,6 +839,7 @@ export const appWebRouter = new Elysia({ prefix: '/apps' })
           .update(apps)
           .set({ key: newKey, keyRotatedAt: new Date() })
           .where(eq(apps.id, params.id));
+        invalidateIngestApp(params.id);
 
         set.status = HttpStatus.OK;
         return {

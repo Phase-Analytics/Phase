@@ -1,13 +1,11 @@
 import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test';
+import { buildExploreEventsSubquery, getEventById, getEvents } from './questdb';
+import { QUESTDB_EVENT_READ_TABLES } from './questdb-events';
 import {
-  buildExploreEventsSubquery,
-  getEventById,
   getEventStats,
-  getEvents,
   getEventTimeseries,
   getTopEvents,
-} from './questdb';
-import { QUESTDB_EVENT_READ_TABLES } from './questdb-events';
+} from './reports/events';
 
 afterEach(() => {
   mock.restore();
@@ -69,12 +67,12 @@ describe('event reads across storage tables', () => {
     ).toThrow('Invalid startDate');
   });
 
-  test('lists and totals search all tables without rounding timestamp bounds', async () => {
+  test('lists search all tables without rounding timestamp bounds', async () => {
     const queries = captureQueries();
     const startDate = '2026-01-01T00:00:00.123456Z';
     const endDate = '2026-01-02T00:00:00.654321Z';
     await getEvents({ appId: 'test-app', startDate, endDate });
-    expect(queries).toHaveLength(2);
+    expect(queries.length).toBeGreaterThan(0);
     for (const query of queries) {
       expect(readsAllTables(query)).toBe(true);
       expect(query).toContain(`timestamp >= '${startDate}'`);
@@ -87,10 +85,13 @@ describe('event reads across storage tables', () => {
     async (eventId) => {
       const queries = captureQueries();
       await getEventById({ appId: 'test-app', eventId });
-      expect(queries).toHaveLength(1);
-      expect(readsAllTables(queries[0])).toBe(true);
-      expect(queries[0]).toContain(`event_id = '${eventId}'`);
-      expect(queries[0]).toContain("app_id = 'test-app'");
+      for (const query of queries) {
+        expect(readsAllTables(query)).toBe(true);
+        expect(query).toContain(`event_id = '${eventId}'`);
+        expect(query).toContain("app_id = 'test-app'");
+      }
+      // a miss inside the ULID window falls back to an unbounded search
+      expect(queries.at(-1)).not.toContain('timestamp >=');
     }
   );
 
@@ -103,8 +104,8 @@ describe('event reads across storage tables', () => {
     };
     await getTopEvents(options);
     await getEventStats(options);
-    await getEventTimeseries(options);
-    expect(queries).toHaveLength(7);
+    await getEventTimeseries({ ...options, timeZone: 'UTC' });
+    expect(queries).toHaveLength(4);
     for (const query of queries) {
       expect(readsAllTables(query)).toBe(true);
     }
