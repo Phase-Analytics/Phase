@@ -53,7 +53,6 @@ jobs:
           fi
           bun run lint --changed --since="$BASE_SHA" --no-errors-on-unmatched
 
-      # apps/mobile is excluded until its pre-existing type errors are fixed.
       - name: Typecheck server
         working-directory: apps/server
         run: bun run typecheck
@@ -69,6 +68,14 @@ jobs:
       - name: Typecheck SDK
         working-directory: packages/sdk
         run: bun run typecheck
+
+      - name: Typecheck mobile
+        working-directory: apps/mobile
+        run: bun run typecheck
+
+      - name: Test SDK
+        working-directory: packages/sdk
+        run: bun run test
 
       - name: Test server
         working-directory: apps/server
