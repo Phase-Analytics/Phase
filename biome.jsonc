@@ -12,6 +12,9 @@
       "!**/node_modules",
       "!**/packages/phase-unity",
       "!**/apps/web/src/components/charts",
+      "!.agents",
+      "!.claude",
+      "!.pi",
       "!bun.lock"
     ]
   },

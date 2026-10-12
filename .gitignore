@@ -17,3 +17,7 @@ packages/phase-unity-dotnet/**/obj/
 .build
 Package.resolved
 node-compile-cache
+
+# Stray tool state
+.pnpm-store/
+context-mode/

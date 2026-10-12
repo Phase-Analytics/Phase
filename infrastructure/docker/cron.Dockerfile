@@ -1,15 +1,10 @@
-FROM alpine:3.20
+# Build context: ./tooling
+FROM alpine:3.24
 
-RUN apk add --no-cache wget && \
-    mkdir -p /var/log && \
-    touch /var/log/cron.log
+RUN apk add --no-cache curl
 
-WORKDIR /app
+COPY --chmod=0755 geoip/update.sh /usr/local/bin/geoip-update
+COPY --chmod=0644 cron/crontab /etc/crontabs/root
 
-COPY crontab /etc/crontabs/root
-COPY jobs /app/jobs
-
-RUN chmod +x /app/jobs/*.sh && \
-    chmod 0644 /etc/crontabs/root
-
-CMD ["crond", "-f", "-l", "2"]
+# -d logs crond's own errors to stderr; job output is redirected in the crontab.
+CMD ["crond", "-f", "-d", "8"]

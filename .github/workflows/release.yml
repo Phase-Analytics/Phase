@@ -8,90 +8,103 @@ on:
       - 'packages/sdk/package.json'
   workflow_dispatch:
 
+permissions: {}
+
+concurrency:
+  group: sdk-release
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      id-token: write
+      contents: write # push the sdk-v* tag and create the GitHub release
+      id-token: write # npm provenance
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.3
 
       - name: Get version
         id: version
         run: |
           VERSION=$(node -p "require('./packages/sdk/package.json').version")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          # sdk-v* keeps npm SDK tags apart from the Unity SDK's v* tags.
+          echo "tag=sdk-v$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Check tag
+      - name: Check tag and npm
         id: check_tag
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
-          if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "Tag v${{ steps.version.outputs.version }} already exists, skipping release"
+          if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "tag_exists=true" >> "$GITHUB_OUTPUT"
+            echo "Tag $TAG already exists"
           else
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "Creating new release for v${{ steps.version.outputs.version }}"
+            echo "tag_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+          # Versions released under the old v* tags are already on npm.
+          if npm view "phase-analytics@$VERSION" version >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "phase-analytics@$VERSION is already on npm"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Setup Bun
+        if: steps.check_tag.outputs.published == 'false'
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+
       - name: Install dependencies
-        if: steps.check_tag.outputs.exists == 'false'
+        if: steps.check_tag.outputs.published == 'false'
         run: bun install --frozen-lockfile
 
       - name: Build SDK
-        if: steps.check_tag.outputs.exists == 'false'
+        if: steps.check_tag.outputs.published == 'false'
         run: bun run --filter phase-analytics build
 
       - name: Setup Node.js for npm publish
-        if: steps.check_tag.outputs.exists == 'false'
-        uses: actions/setup-node@v4
+        if: steps.check_tag.outputs.published == 'false'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '20'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Publish to npm
-        if: steps.check_tag.outputs.exists == 'false'
-        run: |
-          cd packages/sdk
-          npm publish --provenance --access public
+        if: steps.check_tag.outputs.published == 'false'
+        working-directory: packages/sdk
+        run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create and push tag
-        if: steps.check_tag.outputs.exists == 'false'
+        if: steps.check_tag.outputs.tag_exists == 'false'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "${{ steps.version.outputs.tag }}" -m "Release ${{ steps.version.outputs.tag }}"
-          git push origin "${{ steps.version.outputs.tag }}"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
 
       - name: Create GitHub Release
-        if: steps.check_tag.outputs.exists == 'false'
-        uses: softprops/action-gh-release@v1
+        if: steps.check_tag.outputs.tag_exists == 'false'
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: Release ${{ steps.version.outputs.tag }}
+          name: SDK ${{ steps.version.outputs.version }}
           body: |
             npm: https://www.npmjs.com/package/phase-analytics/v/${{ steps.version.outputs.version }}
 
             Docs: https://phase.sh/docs/get-started/expo
 
-            Unity UPM releases are tagged separately (`unity-v*`). See `.github/workflows/unity-release.yml`.
-
-            ## What's Changed
-
-            See below for detailed changes.
-
+            Unity UPM releases are tagged separately (`v*` / `unity-v*`). See `.github/workflows/unity-release.yml`.
           draft: false
           prerelease: false
           generate_release_notes: true
