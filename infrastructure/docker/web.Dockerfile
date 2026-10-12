@@ -37,7 +37,8 @@ FROM base AS runner
 
 WORKDIR /app
 
-RUN adduser --system --uid 1001 nextjs
+# Debian 13 slim (bun 1.4 images) has no adduser; same as `adduser --system`.
+RUN useradd --system --uid 1001 --gid nogroup --no-create-home --shell /usr/sbin/nologin nextjs
 
 COPY --from=builder --chown=nextjs:bun /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:bun /app/apps/web/.next/static ./apps/web/.next/static
