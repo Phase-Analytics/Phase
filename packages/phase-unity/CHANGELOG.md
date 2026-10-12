@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
 - Deliver devices, sessions, events and heartbeats through one persistent queue sent via `POST /sdk/batch`: flushes at 20 items, every 10 s while non-empty, on background and on network restore.
 - Items leave the queue only after the server acknowledges them or rejects them as non-retryable; retryable failures are kept for up to 5 attempts. An interrupted or failed flush no longer loses data.
