@@ -4,7 +4,7 @@
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
     "check": "bunx ultracite fix --unsafe",
-    "typecheck": "tsgo --noEmit",
+    "typecheck": "tsc --noEmit",
     "auth:generate": "bunx @better-auth/cli@latest generate",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
@@ -39,14 +39,13 @@
     "@img/sharp-linuxmusl-x64": "0.34.5"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.2.5",
-    "@types/bun": "latest",
+    "@biomejs/biome": "2.5.15",
+    "@types/bun": "1.4.3",
     "@types/pg": "^8.15.6",
-    "@typescript/native-preview": "^7.0.0-dev.20251203.1",
-    "bun-types": "latest",
+    "bun-types": "1.4.3",
     "drizzle-kit": "^0.31.6",
-    "typescript": "^5",
-    "ultracite": "5.6.1"
+    "typescript": "7.0.2",
+    "ultracite": "8.0.0"
   },
   "module": "src/index.js"
 }

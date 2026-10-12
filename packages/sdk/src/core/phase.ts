@@ -38,7 +38,7 @@ export type PhaseApi = {
    * @example
    * await Phase.identify({ user_id: '123', plan: 'premium' });
    */
-  identify(properties?: DeviceProperties): Promise<void>;
+  identify: (properties?: DeviceProperties) => Promise<void>;
   /**
    * Track custom event
    * @param name Event name (required, alphanumeric, `_`, `-`, `.`, `/`, space)
@@ -46,20 +46,20 @@ export type PhaseApi = {
    * @example
    * Phase.track('purchase', { amount: 99.99, currency: 'USD' });
    */
-  track(name: string, params?: EventParams): Promise<void>;
+  track: (name: string, params?: EventParams) => Promise<void>;
   /**
    * Track a screen view manually (when not using `trackNavigation`)
    * @param name Screen name or path, e.g. `/settings/profile`
    * @param params Same rules as `track()` params (optional)
    */
-  trackScreen(name: string, params?: EventParams): Promise<void>;
+  trackScreen: (name: string, params?: EventParams) => Promise<void>;
   /** Send queued data now. Resolves when the attempt finishes. */
-  flush(): Promise<void>;
+  flush: () => Promise<void>;
   /**
    * Forget this device (e.g. on logout) and end the session. Data already
    * queued is still sent. Call identify() to start tracking again.
    */
-  reset(): Promise<void>;
+  reset: () => Promise<void>;
 };
 
 /**

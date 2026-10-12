@@ -61,7 +61,6 @@ function getValueFormatter(metric: string) {
   if (metric === 'bounce_rate') {
     return (value: number) => `${value.toFixed(2)}%`;
   }
-  return;
 }
 
 export function SessionsActivityChart() {

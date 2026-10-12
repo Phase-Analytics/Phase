@@ -80,9 +80,7 @@ const columns: ColumnDef<Session>[] = [
       const country = row.original.country ?? null;
       return (
         <div className="flex items-center gap-1.5">
-          {!country ||
-          country.length !== 2 ||
-          !COUNTRY_CODE_REGEX.test(country) ? (
+          {country?.length !== 2 || !COUNTRY_CODE_REGEX.test(country) ? (
             <HugeiconsIcon
               className="size-3.5 text-muted-foreground"
               icon={Flag02Icon}

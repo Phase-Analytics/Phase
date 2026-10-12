@@ -152,8 +152,7 @@ export function UserDetailCard({ deviceId }: UserDetailCardProps) {
 
                 return (
                   <p className="flex items-center gap-1.5 font-medium text-sm">
-                    {!device.country ||
-                    device.country.length !== 2 ||
+                    {device.country?.length !== 2 ||
                     !COUNTRY_CODE_REGEX.test(device.country) ? (
                       <HugeiconsIcon
                         className="size-3.5 text-muted-foreground"

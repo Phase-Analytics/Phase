@@ -273,7 +273,7 @@ export default function RealtimePage() {
   return (
     <RequireApp>
       <div className="relative isolate h-full">
-        <div className="-z-10 pointer-events-none absolute inset-0">
+        <div className="pointer-events-none absolute inset-0 -z-10">
           <Sparkles
             className="absolute inset-0"
             density={200}

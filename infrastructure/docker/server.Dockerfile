@@ -1,4 +1,4 @@
-FROM oven/bun:1.3.3-slim AS builder
+FROM oven/bun:1.4.3-slim AS builder
 WORKDIR /app
 
 COPY package.json bun.lock ./
@@ -19,7 +19,7 @@ RUN --mount=type=cache,id=phase-bun,target=/root/.bun/install/cache,sharing=lock
 COPY packages/shared/ ./packages/shared/
 COPY apps/server/ ./apps/server/
 
-FROM oven/bun:1.3.3-slim AS runtime
+FROM oven/bun:1.4.3-slim AS runtime
 WORKDIR /app
 
 ENV NODE_ENV=production

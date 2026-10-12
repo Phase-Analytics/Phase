@@ -104,14 +104,15 @@ function NavigationTracker({
       return;
     }
 
+    let unsubscribe: (() => void) | undefined;
     try {
-      return navigationRef.addListener('state', (e) => {
+      unsubscribe = navigationRef.addListener('state', (e) => {
         trackState(e?.data?.state);
       });
     } catch (error) {
       logger.error('Failed to set up navigation listener', error);
-      return;
     }
+    return unsubscribe;
   }, [navigationRef]);
 
   return null;
@@ -177,5 +178,5 @@ function PhaseProvider({
   );
 }
 
-export { PhaseProvider, Phase };
 export type { DeviceProperties, EventParams, PhaseConfig } from '../core/types';
+export { Phase, PhaseProvider };

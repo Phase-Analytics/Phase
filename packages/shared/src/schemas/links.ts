@@ -29,6 +29,7 @@ function getExplicitScheme(value: string): string | null {
 
 function isParsableUrl(value: string): boolean {
   try {
+    // biome-ignore lint/correctness/noUnusedInstantiation: construction is the validation; URL.canParse is missing from React Native's URL polyfill.
     new URL(value);
     return true;
   } catch {

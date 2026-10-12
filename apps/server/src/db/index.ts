@@ -55,8 +55,6 @@ const schema = {
 
 export const db = drizzle(pool, { schema });
 
-export { pool };
-
 export {
   account,
   apps,
@@ -73,3 +71,4 @@ export {
   verification,
   waitlist,
 } from './schema';
+export { pool };

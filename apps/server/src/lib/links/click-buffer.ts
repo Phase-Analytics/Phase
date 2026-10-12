@@ -85,7 +85,7 @@ function escapeILPTag(value: string): string {
   return value
     .replace(/\\/g, '\\\\')
     .replace(/,/g, '\\,')
-    .replace(/=/g, '\\=')
+    .replace(/[=]/g, '\\=')
     .replace(/\s/g, '\\ ');
 }
 

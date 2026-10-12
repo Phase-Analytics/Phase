@@ -460,7 +460,6 @@ export const funnelWebRouter = new Elysia({ prefix: '/funnels' })
 
       await db.delete(funnelPresets).where(eq(funnelPresets.id, params.id));
       set.status = HttpStatus.NO_CONTENT;
-      return;
     },
     {
       response: {

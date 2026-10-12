@@ -87,7 +87,7 @@ const variants = [
       >
         <div
           className={cn(
-            '-inset-px pointer-events-none absolute rounded-[inherit] border border-transparent [mask-clip:padding-box,border-box]',
+            'pointer-events-none absolute -inset-px rounded-[inherit] border border-transparent [mask-clip:padding-box,border-box]',
             'mask-intersect mask-[linear-gradient(transparent,transparent),linear-gradient(#000,#000)]'
           )}
         >

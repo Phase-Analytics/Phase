@@ -80,7 +80,7 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.2.5",
+    "@biomejs/biome": "2.5.15",
     "@tailwindcss/postcss": "^4",
     "@types/geojson": "^7946.0.16",
     "@types/mdx": "^2.0.13",
@@ -91,10 +91,10 @@
     "@types/three": "^0.182.0",
     "@types/topojson-client": "^3.1.5",
     "@types/topojson-specification": "^1.0.5",
-    "@typescript/native-preview": "^7.0.0-dev.20251214.1",
+    "@typescript/native-preview": "7.0.0-dev.20260707.2",
     "babel-plugin-react-compiler": "1.0.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "ultracite": "5.6.1"
+    "ultracite": "8.0.0"
   }
 }

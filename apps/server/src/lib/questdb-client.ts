@@ -121,7 +121,7 @@ export async function executeQuery<T>(
 
   if (result.error) {
     throw new Error(
-      `QuestDB query error: ${result.error}${result.position !== undefined ? ` at position ${result.position}` : ''}`
+      `QuestDB query error: ${result.error}${result.position === undefined ? '' : ` at position ${result.position}`}`
     );
   }
 

@@ -5,7 +5,7 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { getQueryClient } from './query-client';
 
 const persister = createSyncStoragePersister({
-  storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+  storage: typeof window === 'undefined' ? undefined : window.localStorage,
   // Serializing the cache blocks the main thread; batch bursts of query updates.
   throttleTime: 2000,
 });

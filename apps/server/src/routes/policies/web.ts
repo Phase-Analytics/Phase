@@ -103,7 +103,7 @@ function serializePolicy(
     content: policy.content,
     createdAt: policy.createdAt.toISOString(),
     updatedAt: policy.updatedAt.toISOString(),
-    ...(totalClicks !== undefined ? { totalClicks } : {}),
+    ...(totalClicks === undefined ? {} : { totalClicks }),
   };
 }
 
@@ -484,9 +484,9 @@ export const policiesWebRouter = new Elysia({ prefix: '/policies' })
 
       const nextSlug = parsed.data.slug ?? existing.link.slug;
       const nextDomainId =
-        parsed.data.domainId !== undefined
-          ? parsed.data.domainId
-          : existing.link.domainId;
+        parsed.data.domainId === undefined
+          ? existing.link.domainId
+          : parsed.data.domainId;
 
       const locationChanged =
         nextSlug !== existing.link.slug ||
@@ -544,15 +544,15 @@ export const policiesWebRouter = new Elysia({ prefix: '/policies' })
           const [updatedPolicy] = await tx
             .update(policies)
             .set({
-              ...(parsed.data.name !== undefined
-                ? { name: parsed.data.name }
-                : {}),
-              ...(parsed.data.date !== undefined
-                ? { date: parsed.data.date }
-                : {}),
-              ...(parsed.data.content !== undefined
-                ? { content: parsed.data.content }
-                : {}),
+              ...(parsed.data.name === undefined
+                ? {}
+                : { name: parsed.data.name }),
+              ...(parsed.data.date === undefined
+                ? {}
+                : { date: parsed.data.date }),
+              ...(parsed.data.content === undefined
+                ? {}
+                : { content: parsed.data.content }),
             })
             .where(eq(policies.id, existing.policy.id))
             .returning();

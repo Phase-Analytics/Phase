@@ -55,7 +55,7 @@ export class PhaseSDK {
 
     if (!config.apiKey.startsWith('phase_')) {
       logger.error('Invalid API key format. API key must start with "phase_"', {
-        providedKey: `${config.apiKey.substring(0, 8)}...`,
+        providedKey: `${config.apiKey.slice(0, 8)}...`,
       });
       throw new Error('Invalid API key format');
     }

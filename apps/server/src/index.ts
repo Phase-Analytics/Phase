@@ -108,8 +108,6 @@ function handleRateLimitResponse(
       detail: rateLimitResult.reason || 'Too many requests',
     };
   }
-
-  return;
 }
 
 const sdkRoutes = new Elysia({ prefix: '/sdk' })

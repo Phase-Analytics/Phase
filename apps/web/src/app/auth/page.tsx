@@ -102,8 +102,6 @@ function LoginForm({
                       if (!EMAIL_REGEX.test(trimmedValue)) {
                         return 'Please enter a valid email address';
                       }
-
-                      return;
                     },
                   }}
                 >
@@ -170,8 +168,6 @@ function LoginForm({
                       if (value.length > 64) {
                         return 'Password must be at most 64 characters';
                       }
-
-                      return;
                     },
                   }}
                 >
@@ -406,8 +402,6 @@ function SignupForm({
                       if (trimmedValue.length > 14) {
                         return 'Name must be at most 14 characters';
                       }
-
-                      return;
                     },
                   }}
                 >
@@ -473,8 +467,6 @@ function SignupForm({
                       if (!EMAIL_REGEX.test(trimmedValue)) {
                         return 'Please enter a valid email address';
                       }
-
-                      return;
                     },
                   }}
                 >
@@ -541,8 +533,6 @@ function SignupForm({
                       if (value.length > 64) {
                         return 'Password must be at most 64 characters';
                       }
-
-                      return;
                     },
                   }}
                 >
@@ -777,8 +767,6 @@ function PasswordResetForm({ token }: { token: string }) {
                       if (value.length > 64) {
                         return 'Password must be at most 64 characters';
                       }
-
-                      return;
                     },
                   }}
                 >
@@ -856,8 +844,6 @@ function PasswordResetForm({ token }: { token: string }) {
                       if (value !== password) {
                         return 'Passwords do not match';
                       }
-
-                      return;
                     },
                   }}
                 >

@@ -104,5 +104,5 @@ function PhaseProvider({
   );
 }
 
-export { PhaseProvider, Phase };
 export type { DeviceProperties, EventParams, PhaseConfig } from '../core/types';
+export { Phase, PhaseProvider };

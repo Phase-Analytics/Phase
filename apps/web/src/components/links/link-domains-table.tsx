@@ -86,7 +86,7 @@ export function LinkDomainsTable({
 
         return (
           <div className="flex flex-wrap gap-2">
-            {domain.status !== 'verified' ? (
+            {domain.status === 'verified' ? null : (
               <Button
                 disabled={verifyDomain.isPending}
                 onClick={() => handleVerify(domain.id)}
@@ -96,7 +96,7 @@ export function LinkDomainsTable({
               >
                 Verify
               </Button>
-            ) : null}
+            )}
             <RemoveLinkDomainDialog
               appId={appId}
               domainId={domain.id}

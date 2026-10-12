@@ -147,6 +147,19 @@ const linkNavItems: NavItem[] = [
   },
 ];
 
+function isLinkNavItemActive(path: string, pathname: string): boolean {
+  if (path === '/dashboard/links/domains') {
+    return pathname.startsWith('/dashboard/links/domains');
+  }
+  if (path === '/dashboard/policies') {
+    return pathname.startsWith('/dashboard/policies');
+  }
+  return (
+    pathname.startsWith('/dashboard/links') &&
+    !pathname.startsWith('/dashboard/links/domains')
+  );
+}
+
 const applicationNavItems: NavItem[] = [
   {
     label: 'Settings',
@@ -385,13 +398,10 @@ export function DashboardSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {linkNavItems.map((item) => {
-                const isLinkNavActive =
-                  item.path === '/dashboard/links/domains'
-                    ? pathname.startsWith('/dashboard/links/domains')
-                    : item.path === '/dashboard/policies'
-                      ? pathname.startsWith('/dashboard/policies')
-                      : pathname.startsWith('/dashboard/links') &&
-                        !pathname.startsWith('/dashboard/links/domains');
+                const isLinkNavActive = isLinkNavItemActive(
+                  item.path,
+                  pathname
+                );
 
                 return (
                   <SidebarMenuItem key={item.label}>

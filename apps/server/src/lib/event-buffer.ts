@@ -100,7 +100,7 @@ function escapeILPTag(value: string): string {
   return value
     .replace(/\\/g, '\\\\')
     .replace(/,/g, '\\,')
-    .replace(/=/g, '\\=')
+    .replace(/[=]/g, '\\=')
     .replace(/ /g, '\\ ')
     .replace(/\n/g, '\\n')
     .replace(/\r/g, '\\r');
@@ -117,9 +117,9 @@ function buildILPLines(events: BufferedEvent[]): string {
       ].join(',');
 
       const paramsField =
-        event.params !== null
-          ? `params="${escapeILPString(JSON.stringify(event.params))}"`
-          : '';
+        event.params === null
+          ? ''
+          : `params="${escapeILPString(JSON.stringify(event.params))}"`;
 
       const fields = [
         `event_id="${escapeILPString(event.eventId)}"`,

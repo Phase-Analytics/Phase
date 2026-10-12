@@ -1,4 +1,7 @@
+// biome-ignore-all lint/suspicious/noBitwiseOperators: CIDR matching is bitmask arithmetic.
 import { isIP } from 'node:net';
+
+const IPV4_MAPPED_IPV6_REGEX = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i;
 
 // Source: https://www.cloudflare.com/ips/
 const CLOUDFLARE_CIDRS = [
@@ -52,7 +55,7 @@ function ipToBigInt(ip: string): { version: 4 | 6; value: bigint } | null {
     return null;
   }
 
-  const mappedV4 = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i)?.[1];
+  const mappedV4 = ip.match(IPV4_MAPPED_IPV6_REGEX)?.[1];
   if (mappedV4) {
     return ipToBigInt(mappedV4);
   }
