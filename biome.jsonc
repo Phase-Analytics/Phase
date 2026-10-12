@@ -16,6 +16,8 @@
       "!**/node_modules",
       "!**/packages/phase-unity",
       "!**/apps/web/src/components/charts",
+      // apps/mobile keeps its own (double-quote) style and is typechecked in CI.
+      "!**/apps/mobile",
       "!.agents",
       "!.claude",
       "!.pi",
