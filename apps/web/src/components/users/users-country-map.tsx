@@ -23,8 +23,44 @@ type UsersCountryMapProps = {
   className?: string;
 };
 
-const GEO_URL =
-  'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
+type CountryCollection = FeatureCollection<Geometry, Record<string, unknown>>;
+
+// Self-hosted copy of world-atlas@2 countries-110m (same-origin, cacheable).
+const GEO_URL = '/geo/countries-110m.json';
+
+let countriesPromise: Promise<CountryCollection> | null = null;
+let loadedCountries: CountryCollection | null = null;
+
+/** Fetches and decodes the atlas once per page load; a failure allows a retry. */
+function loadCountries(): Promise<CountryCollection> {
+  countriesPromise ??= fetch(GEO_URL)
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error('Failed to load world atlas');
+      }
+      return res.json() as Promise<Topology>;
+    })
+    .then((topology) => {
+      const countries = topology.objects.countries;
+      if (!countries) {
+        throw new Error('Missing countries topology object');
+      }
+      loadedCountries = feature(topology, countries) as CountryCollection;
+      return loadedCountries;
+    })
+    .catch((error: unknown) => {
+      countriesPromise = null;
+      throw error;
+    });
+  return countriesPromise;
+}
+
+// Start downloading as soon as the chunk loads, in parallel with the stats query.
+if (typeof window !== 'undefined') {
+  loadCountries().catch(() => {
+    // Logged when the component retries.
+  });
+}
 
 const MAP_COLORS = [
   'var(--chart-map-empty)',
@@ -83,46 +119,26 @@ export function UsersCountryMap({
   totalDevices,
   className,
 }: UsersCountryMapProps) {
-  const [geoData, setGeoData] = useState<FeatureCollection<
-    Geometry,
-    Record<string, unknown>
-  > | null>(null);
+  const [geoData, setGeoData] = useState(loadedCountries);
 
   useEffect(() => {
+    if (geoData) {
+      return;
+    }
     let cancelled = false;
-
-    fetch(GEO_URL)
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error('Failed to load world atlas');
+    loadCountries()
+      .then((collection) => {
+        if (!cancelled) {
+          setGeoData(collection);
         }
-        return res.json();
-      })
-      .then((topology: Topology) => {
-        if (cancelled) {
-          return;
-        }
-        const countries = topology.objects.countries;
-        if (!countries) {
-          throw new Error('Missing countries topology object');
-        }
-        const collection = feature(topology, countries) as FeatureCollection<
-          Geometry,
-          Record<string, unknown>
-        >;
-        setGeoData(collection);
       })
       .catch((error) => {
         console.error('Failed to load map geography:', error);
-        if (!cancelled) {
-          setGeoData(null);
-        }
       });
-
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [geoData]);
 
   const countsByNumeric = useMemo(() => {
     const map = new Map<string, { alpha2: string; count: number }>();

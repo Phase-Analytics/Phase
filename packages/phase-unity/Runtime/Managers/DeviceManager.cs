@@ -1,6 +1,5 @@
-using System;
+using System.Threading;
 using System.Threading.Tasks;
-using Phase.Analytics.Client;
 using Phase.Analytics.Config;
 using Phase.Analytics.Constants;
 using Phase.Analytics.Device;
@@ -13,23 +12,19 @@ namespace Phase.Analytics.Managers;
 
 public sealed class DeviceManager
 {
-    private readonly SdkHttpClient _httpClient;
     private readonly OfflineQueue _offlineQueue;
     private readonly IDeviceInfoProvider _deviceInfoProvider;
     private readonly bool _collectDeviceInfo;
     private readonly bool _collectLocale;
     private readonly string _apiKey;
     private string? _deviceId;
-    private Task<string>? _initTask;
 
     public DeviceManager(
-        SdkHttpClient httpClient,
         OfflineQueue offlineQueue,
         IDeviceInfoProvider deviceInfoProvider,
         PhaseConfig config
     )
     {
-        _httpClient = httpClient;
         _offlineQueue = offlineQueue;
         _deviceInfoProvider = deviceInfoProvider;
         _collectDeviceInfo = config.DeviceInfo;
@@ -37,45 +32,22 @@ public sealed class DeviceManager
         _apiKey = config.ApiKey;
     }
 
+    /// <summary>Loads the stored device ID, or creates one. Must complete before identify.</summary>
     public async Task<string> InitializeAsync()
-    {
-        if (_initTask != null)
-        {
-            return await _initTask.ConfigureAwait(false);
-        }
-
-        if (!string.IsNullOrEmpty(_deviceId))
-        {
-            return _deviceId;
-        }
-
-        _initTask = InitializeInternalAsync();
-        try
-        {
-            return await _initTask.ConfigureAwait(false);
-        }
-        finally
-        {
-            _initTask = null;
-        }
-    }
-
-    private async Task<string> InitializeInternalAsync()
     {
         var storedApiKeyResult = await StorageService
             .GetItemAsync<string>(StorageKeys.ApiKey)
             .ConfigureAwait(false);
         var storedApiKey = storedApiKeyResult.Success ? storedApiKeyResult.Data : null;
-        var shouldResetDevice = false;
+        var apiKeyChanged = !string.IsNullOrEmpty(storedApiKey) && storedApiKey != _apiKey;
 
-        if (!string.IsNullOrEmpty(storedApiKey) && storedApiKey != _apiKey)
+        if (apiKeyChanged)
         {
-            Logger.Info("API key changed. Resetting device ID.");
-            shouldResetDevice = true;
-
+            // Queued items belong to the old app; the server would reject or misattribute them.
+            Logger.Info("API key changed. Resetting device ID and offline queue.");
+            await _offlineQueue.ClearAsync().ConfigureAwait(false);
             await StorageService.RemoveItemAsync(StorageKeys.DeviceId).ConfigureAwait(false);
             await StorageService.RemoveItemAsync(StorageKeys.DeviceInfo).ConfigureAwait(false);
-            await _offlineQueue.ClearAsync().ConfigureAwait(false);
         }
 
         var persistApiKey = await StorageService
@@ -86,35 +58,37 @@ public sealed class DeviceManager
             Logger.Error("Failed to persist API key.");
         }
 
-        var storedDeviceResult = await StorageService
-            .GetItemAsync<string>(StorageKeys.DeviceId)
-            .ConfigureAwait(false);
-        var storedDeviceId = storedDeviceResult.Success ? storedDeviceResult.Data : null;
-
-        if (!shouldResetDevice && !string.IsNullOrEmpty(storedDeviceId))
+        string? storedDeviceId = null;
+        if (!apiKeyChanged)
         {
-            var validation = Validator.ValidateDeviceId(storedDeviceId);
-            if (validation.Success)
-            {
-                _deviceId = storedDeviceId;
-            }
-            else
-            {
-                Logger.Error("Stored device ID invalid. Generating new ID.");
-                _deviceId = await PersistNewDeviceIdAsync().ConfigureAwait(false);
-            }
-        }
-        else
-        {
-            _deviceId = await PersistNewDeviceIdAsync().ConfigureAwait(false);
+            var storedDeviceResult = await StorageService
+                .GetItemAsync<string>(StorageKeys.DeviceId)
+                .ConfigureAwait(false);
+            storedDeviceId = storedDeviceResult.Success ? storedDeviceResult.Data : null;
         }
 
-        return _deviceId;
+        // The server decodes the creation time from the device ID, so anything else is replaced.
+        if (Validator.IsUlid(storedDeviceId))
+        {
+            Volatile.Write(ref _deviceId, storedDeviceId);
+            return storedDeviceId!;
+        }
+
+        if (!string.IsNullOrEmpty(storedDeviceId))
+        {
+            Logger.Error("Stored device ID invalid. Generating new ID.");
+        }
+
+        return await AssignNewDeviceIdAsync().ConfigureAwait(false);
     }
 
-    public async Task IdentifyAsync(bool isOnline, DeviceProperties? properties = null)
+    public string? GetDeviceId() => Volatile.Read(ref _deviceId);
+
+    /// <summary>Queues a device upsert; the batch endpoint creates it before sessions and events.</summary>
+    public void Identify(DeviceProperties? properties = null)
     {
-        if (string.IsNullOrEmpty(_deviceId))
+        var deviceId = GetDeviceId();
+        if (string.IsNullOrEmpty(deviceId))
         {
             Logger.Error("Device ID not set. Call InitializeAsync() first.");
             return;
@@ -130,15 +104,24 @@ public sealed class DeviceManager
             return;
         }
 
-        await RegisterDeviceAsync(isOnline, propertiesResult.Data).ConfigureAwait(false);
+        _offlineQueue.Enqueue(
+            new BatchDeviceItem { Payload = BuildDevicePayload(deviceId!, propertiesResult.Data) }
+        );
     }
 
-    public string? GetDeviceId() => _deviceId;
+    /// <summary>Forgets this device. The next identify registers a brand-new device.</summary>
+    public async Task ResetAsync()
+    {
+        await StorageService.RemoveItemAsync(StorageKeys.DeviceInfo).ConfigureAwait(false);
+        await AssignNewDeviceIdAsync().ConfigureAwait(false);
+    }
 
-    private async Task<string> PersistNewDeviceIdAsync()
+    private async Task<string> AssignNewDeviceIdAsync()
     {
         var deviceId = IdGenerator.GenerateDeviceId();
-        var persist = await StorageService.SetItemAsync(StorageKeys.DeviceId, deviceId)
+        Volatile.Write(ref _deviceId, deviceId);
+        var persist = await StorageService
+            .SetItemAsync(StorageKeys.DeviceId, deviceId)
             .ConfigureAwait(false);
         if (!persist.Success)
         {
@@ -148,17 +131,12 @@ public sealed class DeviceManager
         return deviceId;
     }
 
-    private CreateDeviceRequest? BuildDevicePayload(DeviceProperties? properties)
+    private CreateDeviceRequest BuildDevicePayload(string deviceId, DeviceProperties? properties)
     {
-        if (string.IsNullOrEmpty(_deviceId))
-        {
-            return null;
-        }
-
         var deviceInfo = _deviceInfoProvider.GetDeviceInfo();
         return new CreateDeviceRequest
         {
-            DeviceId = _deviceId,
+            DeviceId = deviceId,
             OsVersion = _collectDeviceInfo ? deviceInfo.OsVersion : null,
             Platform = _collectDeviceInfo ? deviceInfo.Platform : null,
             Locale = _collectLocale ? deviceInfo.Locale : null,
@@ -168,10 +146,7 @@ public sealed class DeviceManager
         };
     }
 
-    private DeviceProperties? BuildProperties(
-        DeviceProperties? properties,
-        DeviceInfo deviceInfo
-    )
+    private DeviceProperties? BuildProperties(DeviceProperties? properties, DeviceInfo deviceInfo)
     {
         if (!_collectDeviceInfo)
         {
@@ -182,17 +157,17 @@ public sealed class DeviceManager
 
         if (!string.IsNullOrWhiteSpace(deviceInfo.AppVersion))
         {
-            autoProperties["app_version"] = deviceInfo.AppVersion.Trim();
+            autoProperties["app_version"] = deviceInfo.AppVersion!.Trim();
         }
 
         if (!string.IsNullOrWhiteSpace(deviceInfo.UnityVersion))
         {
-            autoProperties["unity_version"] = deviceInfo.UnityVersion.Trim();
+            autoProperties["unity_version"] = deviceInfo.UnityVersion!.Trim();
         }
 
         if (properties == null || properties.Count == 0)
         {
-            return autoProperties.Count > 0 ? autoProperties : null;
+            return autoProperties;
         }
 
         foreach (var entry in properties)
@@ -201,57 +176,5 @@ public sealed class DeviceManager
         }
 
         return autoProperties;
-    }
-
-    private async Task RegisterDeviceAsync(bool isOnline, DeviceProperties? properties)
-    {
-        var payload = BuildDevicePayload(properties);
-        if (payload == null)
-        {
-            Logger.Error("Device ID not set. Cannot register device.");
-            return;
-        }
-
-        if (isOnline)
-        {
-            try
-            {
-                var result = await _httpClient.CreateDeviceAsync(payload).ConfigureAwait(false);
-                if (result.Success)
-                {
-                    await CacheDeviceInfoAsync(payload).ConfigureAwait(false);
-                    return;
-                }
-
-                Logger.Error("Device registration failed. Queuing for retry.", result.Error);
-                await EnqueueDeviceAsync(payload).ConfigureAwait(false);
-            }
-            catch (Exception error)
-            {
-                Logger.Error("Device registration error. Queuing for retry.", error);
-                await EnqueueDeviceAsync(payload).ConfigureAwait(false);
-            }
-        }
-        else
-        {
-            await EnqueueDeviceAsync(payload).ConfigureAwait(false);
-        }
-    }
-
-    private Task EnqueueDeviceAsync(CreateDeviceRequest payload) =>
-        _offlineQueue.EnqueueAsync(new BatchDeviceItem { Payload = payload });
-
-    private async Task CacheDeviceInfoAsync(CreateDeviceRequest payload)
-    {
-        var result = await StorageService.SetItemAsync(StorageKeys.DeviceInfo, payload)
-            .ConfigureAwait(false);
-        if (result.Success)
-        {
-            Logger.Info("Device info cached successfully");
-        }
-        else
-        {
-            Logger.Error("Failed to cache device info");
-        }
     }
 }

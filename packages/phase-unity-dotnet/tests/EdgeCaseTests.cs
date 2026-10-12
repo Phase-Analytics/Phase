@@ -16,8 +16,9 @@ public sealed class EdgeCaseTests
     [Fact]
     public async Task Initialize_is_idempotent()
     {
-        var transport = new CountingTransport();
-        var sdk = CreateSdk(transport);
+        CreateStorage();
+        var transport = new BatchRecordingTransport();
+        using var sdk = CreateSdk(transport);
 
         Assert.True(await sdk.InitializeAsync(ValidConfig()));
         Assert.True(await sdk.InitializeAsync(ValidConfig()));
@@ -40,8 +41,9 @@ public sealed class EdgeCaseTests
     [Fact]
     public async Task Flush_before_identify_is_noop()
     {
-        var transport = new CountingTransport();
-        var sdk = CreateSdk(transport);
+        CreateStorage();
+        var transport = new BatchRecordingTransport();
+        using var sdk = CreateSdk(transport);
         await sdk.InitializeAsync(ValidConfig());
 
         await sdk.FlushAsync();
@@ -55,9 +57,9 @@ public sealed class EdgeCaseTests
         var storage = CreateStorage();
         var transport = new SlowBatchTransport();
         var client = new SdkHttpClient("phase_test_key", transport);
-        var queue = new OfflineQueue();
+        using var queue = new OfflineQueue();
         await queue.InitializeAsync();
-        await queue.EnqueueAsync(
+        queue.Enqueue(
             new BatchDeviceItem
             {
                 Payload = new CreateDeviceRequest { DeviceId = "01HXTESTDEVICE0000000001" },
@@ -75,15 +77,18 @@ public sealed class EdgeCaseTests
     [Fact]
     public async Task Double_identify_keeps_same_session()
     {
-        var transport = new RecordingTransport();
-        var sdk = CreateSdk(transport);
+        CreateStorage();
+        var transport = new BatchRecordingTransport();
+        using var sdk = CreateSdk(transport);
         await sdk.InitializeAsync(ValidConfig());
         await sdk.IdentifyAsync();
 
         await sdk.IdentifyAsync(new DeviceProperties { ["tier"] = "pro" });
+        await sdk.FlushAsync();
 
-        Assert.Equal(2, transport.DeviceRequestCount);
-        Assert.Equal(1, transport.SessionRequestCount);
+        var items = transport.SentItems();
+        Assert.Equal(2, items.Count(item => (string?)item["type"] == "device"));
+        Assert.Single(items, item => (string?)item["type"] == "session");
     }
 
     [Fact]
@@ -132,20 +137,6 @@ public sealed class EdgeCaseTests
         return storage;
     }
 
-    private sealed class CountingTransport : IHttpTransport
-    {
-        public List<HttpTransportRequest> Requests { get; } = new();
-
-        public Task<HttpTransportResponse> SendAsync(
-            HttpTransportRequest request,
-            CancellationToken cancellationToken
-        )
-        {
-            Requests.Add(request);
-            return Task.FromResult(new HttpTransportResponse(200, "{}"));
-        }
-    }
-
     private sealed class SlowBatchTransport : IHttpTransport
     {
         private int _sendCount;
@@ -167,73 +158,6 @@ public sealed class EdgeCaseTests
                 200,
                 """{"processed":1,"failed":0,"errors":[],"results":[]}"""
             );
-        }
-    }
-
-    private sealed class RecordingTransport : IHttpTransport
-    {
-        public int DeviceRequestCount { get; private set; }
-
-        public int SessionRequestCount { get; private set; }
-
-        public Task<HttpTransportResponse> SendAsync(
-            HttpTransportRequest request,
-            CancellationToken cancellationToken
-        )
-        {
-            if (request.Url.EndsWith("/sdk/devices"))
-            {
-                DeviceRequestCount++;
-                return Task.FromResult(
-                    new HttpTransportResponse(
-                        200,
-                        """{"deviceId":"01HXTESTDEVICE0000000001","firstSeen":"2026-01-01T00:00:00Z"}"""
-                    )
-                );
-            }
-
-            if (request.Url.EndsWith("/sdk/sessions"))
-            {
-                SessionRequestCount++;
-                return Task.FromResult(
-                    new HttpTransportResponse(
-                        200,
-                        """{"sessionId":"01HXTESTSESSION000000001","deviceId":"01HXTESTDEVICE0000000001","startedAt":"2026-01-01T00:00:00Z","lastActivityAt":"2026-01-01T00:00:00Z"}"""
-                    )
-                );
-            }
-
-            if (request.Url.EndsWith("/sdk/events"))
-            {
-                return Task.FromResult(
-                    new HttpTransportResponse(
-                        200,
-                        """{"eventId":"e1","sessionId":"01HXTESTSESSION000000001","deviceId":"01HXTESTDEVICE0000000001","name":"boot","isScreen":false,"timestamp":"2026-01-01T00:00:00Z"}"""
-                    )
-                );
-            }
-
-            if (request.Url.EndsWith("/sdk/ping"))
-            {
-                return Task.FromResult(
-                    new HttpTransportResponse(
-                        200,
-                        """{"sessionId":"01HXTESTSESSION000000001","lastActivityAt":"2026-01-01T00:00:00Z"}"""
-                    )
-                );
-            }
-
-            if (request.Url.EndsWith("/sdk/batch"))
-            {
-                return Task.FromResult(
-                    new HttpTransportResponse(
-                        200,
-                        """{"processed":1,"failed":0,"errors":[],"results":[]}"""
-                    )
-                );
-            }
-
-            return Task.FromResult(new HttpTransportResponse(404, "not found"));
         }
     }
 }

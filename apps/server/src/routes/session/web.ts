@@ -6,7 +6,7 @@ import {
   SessionsListResponseSchema,
   SessionTimeseriesResponseSchema,
 } from '@phase/shared';
-import { and, count, desc, eq, gte, lt, lte, type SQL, sql } from 'drizzle-orm';
+import { count, desc, eq, type SQL, sql } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 import { db, devices, sessions } from '@/db';
 import { auth } from '@/lib/auth';
@@ -16,10 +16,14 @@ import {
   type BetterAuthSession,
   type BetterAuthUser,
 } from '@/lib/middleware';
+import { parseTimeZone, resolveDayRange } from '@/lib/reports/day-range';
+import {
+  getSessionDailySeries,
+  getSessionOverview,
+} from '@/lib/reports/sessions';
 import {
   buildFilters,
   formatPaginationResponse,
-  SESSION_BOUNCE_DURATION_SECONDS,
   SESSION_MIN_DURATION_SECONDS,
   validateDateRange,
   validateDevice,
@@ -226,135 +230,8 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
           };
         }
 
-        const now = new Date();
-        const twentyFourHoursAgo = new Date(
-          now.getTime() - 24 * 60 * 60 * 1000
-        );
-        const fortyEightHoursAgo = new Date(
-          now.getTime() - 48 * 60 * 60 * 1000
-        );
-        const thirtySecondsAgo = new Date(now.getTime() - 30 * 1000);
-        const _twentySecondsAgo = new Date(now.getTime() - 20 * 1000);
-
-        const deviceIdsSubquery = db
-          .select({ deviceId: devices.deviceId })
-          .from(devices)
-          .where(eq(devices.appId, appId));
-        const measurableSession = sql`EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt})) >= ${SESSION_MIN_DURATION_SECONDS}`;
-
-        const [
-          [{ count: totalSessions }],
-          [{ count: totalSessionsYesterday }],
-          activeSessions24hResult,
-          activeSessionsYesterdayResult,
-          avgDurationResult,
-          bouncedSessionsResult,
-        ] = await Promise.all([
-          db
-            .select({ count: count() })
-            .from(sessions)
-            .where(
-              and(
-                sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-                measurableSession
-              )
-            ),
-
-          db
-            .select({ count: count() })
-            .from(sessions)
-            .where(
-              and(
-                sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-                measurableSession,
-                lt(sessions.startedAt, twentyFourHoursAgo)
-              )
-            ),
-
-          db
-            .select({ count: count() })
-            .from(sessions)
-            .where(
-              and(
-                sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-                measurableSession,
-                gte(sessions.startedAt, twentyFourHoursAgo),
-                lte(sessions.startedAt, now)
-              )
-            ),
-
-          db
-            .select({ count: count() })
-            .from(sessions)
-            .where(
-              and(
-                sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-                measurableSession,
-                gte(sessions.startedAt, fortyEightHoursAgo),
-                lt(sessions.startedAt, twentyFourHoursAgo)
-              )
-            ),
-
-          db
-            .select({
-              avg: sql<number | null>`AVG(
-            EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt}))
-          )`,
-            })
-            .from(sessions)
-            .where(
-              and(
-                sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-                measurableSession,
-                lt(sessions.startedAt, thirtySecondsAgo)
-              )
-            ),
-
-          db
-            .select({ count: count() })
-            .from(sessions)
-            .where(
-              and(
-                sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-                measurableSession,
-                sql`EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt})) < ${SESSION_BOUNCE_DURATION_SECONDS}`
-              )
-            ),
-        ]);
-
-        const totalSessionsNum = Number(totalSessions);
-        const totalSessionsYesterdayNum = Number(totalSessionsYesterday);
-        const activeSessions24h = Number(
-          activeSessions24hResult[0]?.count ?? 0
-        );
-        const activeSessionsYesterday = Number(
-          activeSessionsYesterdayResult[0]?.count ?? 0
-        );
-        const bouncedSessions = Number(bouncedSessionsResult[0]?.count ?? 0);
-
-        const averageSessionDuration = avgDurationResult[0]?.avg
-          ? Number(avgDurationResult[0].avg)
-          : null;
-
-        const bounceRate =
-          totalSessionsNum > 0
-            ? Number(((bouncedSessions / totalSessionsNum) * 100).toFixed(2))
-            : 0;
-
-        const totalSessionsChange24h =
-          totalSessionsNum - totalSessionsYesterdayNum;
-        const activeSessions24hChange =
-          activeSessions24h - activeSessionsYesterday;
-
         set.status = HttpStatus.OK;
-        return {
-          totalSessions: totalSessionsNum,
-          averageSessionDuration,
-          activeSessions24h,
-          totalSessionsChange24h,
-          activeSessions24hChange,
-          bounceRate,
-        };
+        return await getSessionOverview(appId);
       } catch (error) {
         console.error('[Session.Overview] Error:', error);
         set.status = HttpStatus.INTERNAL_SERVER_ERROR;
@@ -405,143 +282,57 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
           };
         }
 
-        const now = new Date();
-        const defaultStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const start = startDate ? new Date(startDate) : defaultStart;
-        const end = endDate ? new Date(endDate) : now;
-
-        if (metric === 'daily_sessions') {
-          const result = await db.execute<{
-            date: string;
-            dailySessions: number;
-          }>(sql`
-        WITH date_series AS (
-          SELECT DATE(generate_series(
-            ${start}::timestamp,
-            ${end}::timestamp,
-            '1 day'::interval
-          )) as date
-        )
-        SELECT
-          ds.date::text,
-          COALESCE(COUNT(s.session_id), 0)::int as "dailySessions"
-        FROM date_series ds
-        LEFT JOIN (
-          SELECT s.session_id, s.started_at
-          FROM sessions_analytics s
-          INNER JOIN devices d ON s.device_id = d.device_id
-          WHERE d.app_id = ${appId}
-            AND EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at)) >= ${SESSION_MIN_DURATION_SECONDS}
-        ) s ON DATE(s.started_at) = ds.date
-        WHERE ds.date <= CURRENT_DATE
-        GROUP BY ds.date
-        ORDER BY ds.date
-      `);
-
-          const data = result.rows.map((row) => ({
-            date: row.date,
-            dailySessions: Number(row.dailySessions),
-          }));
-
-          set.status = HttpStatus.OK;
+        const dateRangeValidation = validateDateRange(startDate, endDate);
+        if (!dateRangeValidation.success) {
+          set.status = dateRangeValidation.error.status;
           return {
-            data,
-            period: {
-              startDate: start.toISOString(),
-              endDate: end.toISOString(),
-            },
+            code: dateRangeValidation.error.code,
+            detail: dateRangeValidation.error.detail,
           };
         }
 
-        if (metric === 'bounce_rate') {
-          const result = await db.execute<{
-            date: string;
-            bounceRate: number;
-          }>(sql`
-        WITH date_series AS (
-          SELECT DATE(generate_series(
-            ${start}::timestamp,
-            ${end}::timestamp,
-            '1 day'::interval
-          )) as date
-        )
-        SELECT
-          ds.date::text,
-          COALESCE(
-            (SUM(CASE WHEN EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at)) < ${SESSION_BOUNCE_DURATION_SECONDS} THEN 1 ELSE 0 END)::float
-            / NULLIF(COUNT(s.session_id), 0)) * 100,
-            0
-          )::float as "bounceRate"
-        FROM date_series ds
-        LEFT JOIN (
-          SELECT s.session_id, s.started_at, s.last_activity_at
-          FROM sessions_analytics s
-          INNER JOIN devices d ON s.device_id = d.device_id
-          WHERE d.app_id = ${appId}
-            AND EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at)) >= ${SESSION_MIN_DURATION_SECONDS}
-        ) s ON DATE(s.started_at) = ds.date
-        WHERE ds.date <= CURRENT_DATE
-        GROUP BY ds.date
-        ORDER BY ds.date
-      `);
-
-          const data = result.rows.map((row) => ({
-            date: row.date,
-            bounceRate: Number(row.bounceRate.toFixed(2)),
-          }));
-
-          set.status = HttpStatus.OK;
+        const timeZone = parseTimeZone(query.tz);
+        if (!timeZone.success) {
+          set.status = timeZone.error.status;
           return {
-            data,
-            period: {
-              startDate: start.toISOString(),
-              endDate: end.toISOString(),
-            },
+            code: timeZone.error.code,
+            detail: timeZone.error.detail,
           };
         }
 
-        const result = await db.execute<{
-          date: string;
-          avgDuration: number;
-        }>(sql`
-      WITH date_series AS (
-        SELECT DATE(generate_series(
-          ${start}::timestamp,
-          ${end}::timestamp,
-          '1 day'::interval
-        )) as date
-      )
-      SELECT
-        ds.date::text,
-        COALESCE(
-          AVG(EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at))),
-          0
-        )::float as "avgDuration"
-      FROM date_series ds
-      LEFT JOIN (
-        SELECT s.started_at, s.last_activity_at
-        FROM sessions_analytics s
-        INNER JOIN devices d ON s.device_id = d.device_id
-        WHERE d.app_id = ${appId}
-          AND EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at)) >= ${SESSION_MIN_DURATION_SECONDS}
-      ) s ON DATE(s.started_at) = ds.date
-      WHERE ds.date <= CURRENT_DATE
-      GROUP BY ds.date
-      ORDER BY ds.date
-    `);
-
-        const data = result.rows.map((row) => ({
-          date: row.date,
-          avgDuration: Number(row.avgDuration),
-        }));
+        const range = resolveDayRange({
+          startDate,
+          endDate,
+          defaultDays: 7,
+          timeZone: timeZone.data,
+        });
+        const series = await getSessionDailySeries(appId, range);
 
         set.status = HttpStatus.OK;
+        if (metric === 'daily_sessions') {
+          return {
+            data: series.map((point) => ({
+              date: point.date,
+              dailySessions: point.sessions,
+            })),
+            period: range.period,
+          };
+        }
+        if (metric === 'bounce_rate') {
+          return {
+            data: series.map((point) => ({
+              date: point.date,
+              bounceRate: point.bounceRate,
+            })),
+            period: range.period,
+          };
+        }
         return {
-          data,
-          period: {
-            startDate: start.toISOString(),
-            endDate: end.toISOString(),
-          },
+          data: series.map((point) => ({
+            date: point.date,
+            avgDuration: point.avgDuration,
+          })),
+          period: range.period,
         };
       } catch (error) {
         console.error('[Session.Timeseries] Error:', error);
@@ -560,6 +351,7 @@ export const sessionWebRouter = new Elysia({ prefix: '/sessions' })
         startDate: t.Optional(t.String()),
         endDate: t.Optional(t.String()),
         metric: t.Optional(t.String()),
+        tz: t.Optional(t.String()),
       }),
       response: {
         200: SessionTimeseriesResponseSchema,

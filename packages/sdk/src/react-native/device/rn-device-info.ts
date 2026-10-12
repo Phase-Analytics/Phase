@@ -20,6 +20,17 @@ try {
   // react-native-localize not available
 }
 
+export function getMissingRNPackages(): string[] {
+  const missing: string[] = [];
+  if (!RNDeviceInfo) {
+    missing.push('react-native-device-info');
+  }
+  if (!RNLocalize) {
+    missing.push('react-native-localize');
+  }
+  return missing;
+}
+
 export function getRNDeviceInfo(): DeviceInfo {
   const model = getModel();
   const deviceType = getDeviceType();

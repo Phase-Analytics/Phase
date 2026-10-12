@@ -18,8 +18,15 @@ public abstract class BatchItem
     [JsonProperty("clientOrder")]
     public int ClientOrder { get; set; }
 
+    /// <summary>Local delivery attempts that ended in a retryable failure. Never sent.</summary>
     [JsonProperty("retryCount", NullValueHandling = NullValueHandling.Ignore)]
     public int? RetryCount { get; set; }
+
+    [JsonIgnore]
+    internal int SizeBytes { get; set; }
+
+    [JsonIgnore]
+    internal abstract object PayloadValue { get; }
 }
 
 public sealed class BatchDeviceItem : BatchItem
@@ -28,6 +35,8 @@ public sealed class BatchDeviceItem : BatchItem
 
     [JsonProperty("payload")]
     public CreateDeviceRequest Payload { get; set; } = new();
+
+    internal override object PayloadValue => Payload;
 }
 
 public sealed class BatchSessionItem : BatchItem
@@ -36,6 +45,8 @@ public sealed class BatchSessionItem : BatchItem
 
     [JsonProperty("payload")]
     public CreateSessionRequest Payload { get; set; } = new();
+
+    internal override object PayloadValue => Payload;
 }
 
 public sealed class BatchEventItem : BatchItem
@@ -44,6 +55,8 @@ public sealed class BatchEventItem : BatchItem
 
     [JsonProperty("payload")]
     public CreateEventRequest Payload { get; set; } = new();
+
+    internal override object PayloadValue => Payload;
 }
 
 public sealed class BatchPingItem : BatchItem
@@ -52,6 +65,8 @@ public sealed class BatchPingItem : BatchItem
 
     [JsonProperty("payload")]
     public PingSessionRequest Payload { get; set; } = new();
+
+    internal override object PayloadValue => Payload;
 }
 
 public sealed class PingSessionRequest
@@ -88,6 +103,10 @@ public sealed class BatchError
 
     [JsonProperty("detail")]
     public string Detail { get; set; } = string.Empty;
+
+    /// <summary>Whether the item may succeed if resent. Missing means non-retryable.</summary>
+    [JsonProperty("retryable")]
+    public bool? Retryable { get; set; }
 }
 
 public sealed class BatchResultItem

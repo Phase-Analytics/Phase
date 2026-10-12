@@ -1,11 +1,14 @@
 import {
   keepPreviousData,
+  queryOptions,
   useMutation,
   useQuery,
   useSuspenseQuery,
 } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { toDateRangeParams } from '@/lib/analytics-time-range';
 import { buildQueryString, fetchApi } from '@/lib/api/client';
+import { useTimezoneStore } from '@/stores/timezone-store';
 import type {
   DateRangeParams,
   DeviceActivityTimeseriesResponse,
@@ -21,17 +24,6 @@ import type {
 } from '../api/types';
 import { cacheConfig, getQueryClient } from './query-client';
 import { queryKeys } from './query-keys';
-
-function getTimeRangeDates(range: TimeRange): DateRangeParams {
-  const now = new Date();
-  const days = Number.parseInt(range, 10);
-  const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-
-  return {
-    startDate: startDate.toISOString(),
-    endDate: now.toISOString(),
-  };
-}
 
 type DeviceFilters = PaginationQueryParams & {
   platform?: string;
@@ -73,10 +65,10 @@ export function useDevice(deviceId: string, appId: string) {
   });
 }
 
-export function useDeviceOverviewResponse(appId: string) {
-  return useSuspenseQuery({
-    queryKey: queryKeys.devices.overview(appId),
-    queryFn: () => {
+export function deviceOverviewQuery(appId: string, tz: string) {
+  return queryOptions({
+    queryKey: queryKeys.devices.overview(appId, tz),
+    queryFn: (): Promise<DeviceOverviewResponse> => {
       if (!appId) {
         return Promise.resolve({
           totalDevices: 0,
@@ -89,21 +81,19 @@ export function useDeviceOverviewResponse(appId: string) {
         });
       }
       return fetchApi<DeviceOverviewResponse>(
-        `/web/devices/overview?appId=${appId}`
+        `/web/devices/overview${buildQueryString({ appId, tz })}`
       );
     },
     ...cacheConfig.overview,
   });
 }
 
-export function useDeviceLiveResponse(appId: string) {
-  return useSuspenseQuery({
+export function deviceLiveQuery(appId: string) {
+  return queryOptions({
     queryKey: queryKeys.devices.live(appId),
-    queryFn: () => {
+    queryFn: (): Promise<DeviceLiveResponse> => {
       if (!appId) {
-        return Promise.resolve({
-          activeNow: 0,
-        });
+        return Promise.resolve({ activeNow: 0 });
       }
       return fetchApi<DeviceLiveResponse>(`/web/devices/live?appId=${appId}`);
     },
@@ -111,13 +101,14 @@ export function useDeviceLiveResponse(appId: string) {
   });
 }
 
-export function useDeviceRetention(
+export function deviceRetentionQuery(
   appId: string,
-  range?: TimeRange | DateRangeParams
+  range: TimeRange | DateRangeParams | undefined,
+  tz: string
 ) {
-  return useSuspenseQuery({
-    queryKey: queryKeys.devices.retention(appId, { range }),
-    queryFn: () => {
+  return queryOptions({
+    queryKey: queryKeys.devices.retention(appId, { range, tz }),
+    queryFn: (): Promise<DeviceRetentionResponse> => {
       if (!appId) {
         const now = new Date().toISOString();
         return Promise.resolve({
@@ -126,18 +117,66 @@ export function useDeviceRetention(
           period: { startDate: now, endDate: now },
         });
       }
-
-      const dateParams =
-        range && typeof range === 'string'
-          ? getTimeRangeDates(range)
-          : (range as DateRangeParams | undefined);
-
       return fetchApi<DeviceRetentionResponse>(
-        `/web/devices/retention${buildQueryString({ appId, ...dateParams })}`
+        `/web/devices/retention${buildQueryString({
+          appId,
+          ...toDateRangeParams(range),
+          tz,
+        })}`
       );
     },
     ...cacheConfig.timeseries,
   });
+}
+
+export function deviceTimeseriesQuery(
+  appId: string,
+  range: TimeRange | DateRangeParams | undefined,
+  metric: DeviceMetric | undefined,
+  tz: string
+) {
+  return queryOptions({
+    queryKey: queryKeys.devices.timeseries(appId, {
+      range,
+      ...(metric && { metric }),
+      tz,
+    }),
+    queryFn: (): Promise<DeviceTimeseriesResponse> => {
+      if (!appId) {
+        const now = new Date().toISOString();
+        return Promise.resolve({
+          data: [],
+          period: { startDate: now, endDate: now },
+        });
+      }
+      return fetchApi<DeviceTimeseriesResponse>(
+        `/web/devices/timeseries${buildQueryString({
+          appId,
+          ...toDateRangeParams(range),
+          ...(metric && { metric }),
+          tz,
+        })}`
+      );
+    },
+    ...cacheConfig.timeseries,
+  });
+}
+
+export function useDeviceOverviewResponse(appId: string) {
+  const tz = useTimezoneStore((s) => s.timezone);
+  return useSuspenseQuery(deviceOverviewQuery(appId, tz));
+}
+
+export function useDeviceLiveResponse(appId: string) {
+  return useSuspenseQuery(deviceLiveQuery(appId));
+}
+
+export function useDeviceRetention(
+  appId: string,
+  range?: TimeRange | DateRangeParams
+) {
+  const tz = useTimezoneStore((s) => s.timezone);
+  return useSuspenseQuery(deviceRetentionQuery(appId, range, tz));
 }
 
 export function useDeviceTimeseries(
@@ -145,40 +184,8 @@ export function useDeviceTimeseries(
   range?: TimeRange | DateRangeParams,
   metric?: DeviceMetric
 ) {
-  const queryKeyParams = {
-    range,
-    ...(metric && { metric }),
-  };
-
-  return useSuspenseQuery({
-    queryKey: queryKeys.devices.timeseries(appId, queryKeyParams),
-    queryFn: () => {
-      if (!appId) {
-        return Promise.resolve({
-          data: [],
-          period: {
-            startDate: new Date().toISOString(),
-            endDate: new Date().toISOString(),
-          },
-        });
-      }
-
-      const dateParams =
-        range && typeof range === 'string'
-          ? getTimeRangeDates(range)
-          : (range as DateRangeParams | undefined);
-
-      const queryParams = {
-        ...dateParams,
-        ...(metric && { metric }),
-      };
-
-      return fetchApi<DeviceTimeseriesResponse>(
-        `/web/devices/timeseries${buildQueryString({ appId, ...queryParams })}`
-      );
-    },
-    ...cacheConfig.timeseries,
-  });
+  const tz = useTimezoneStore((s) => s.timezone);
+  return useSuspenseQuery(deviceTimeseriesQuery(appId, range, metric, tz));
 }
 
 export function useDeviceActivityTimeseries(
@@ -186,13 +193,16 @@ export function useDeviceActivityTimeseries(
   appId: string,
   range?: TimeRange | DateRangeParams
 ) {
-  const dateParams =
-    range && typeof range === 'string'
-      ? getTimeRangeDates(range)
-      : (range as DateRangeParams | undefined);
+  const tz = useTimezoneStore((s) => s.timezone);
+  const dateParams = toDateRangeParams(range);
 
   return useSuspenseQuery<DeviceActivityTimeseriesResponse>({
-    queryKey: queryKeys.devices.activityTimeseries(deviceId, appId, dateParams),
+    queryKey: queryKeys.devices.activityTimeseries(
+      deviceId,
+      appId,
+      dateParams,
+      tz
+    ),
     queryFn: () => {
       if (!(deviceId && appId)) {
         return Promise.resolve({
@@ -208,10 +218,12 @@ export function useDeviceActivityTimeseries(
         });
       }
 
-      const queryParams = dateParams ? { appId, ...dateParams } : { appId };
-
       return fetchApi<DeviceActivityTimeseriesResponse>(
-        `/web/devices/${deviceId}/activity${buildQueryString(queryParams)}`
+        `/web/devices/${deviceId}/activity${buildQueryString({
+          appId,
+          ...dateParams,
+          tz,
+        })}`
       );
     },
     ...cacheConfig.timeseries,
@@ -233,7 +245,7 @@ export function useDeleteDevice() {
         queryKey: queryKeys.devices.detail(variables.deviceId, variables.appId),
       });
       queryClient.invalidateQueries({
-        queryKey: queryKeys.devices.overview(variables.appId),
+        queryKey: queryKeys.devices.overviews(variables.appId),
       });
       toast.success('User banned successfully');
     },

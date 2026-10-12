@@ -12,7 +12,7 @@ import {
   getPublicApiMeta,
   PUBLIC_API_MAX_RAW_PAGE_SIZE,
 } from '@/lib/public-api-capabilities';
-import { checkPublicApiRateLimit } from '@/lib/rate-limit';
+import { checkPublicApiQueryRateLimit } from '@/lib/rate-limit';
 
 export const publicApiQueryRouter = new Elysia({
   prefix: '/v1/apps/:appId/query',
@@ -20,22 +20,8 @@ export const publicApiQueryRouter = new Elysia({
   .use(publicApiAuthPlugin)
   .post(
     '/',
-    async ({ body, params, set, request, store }) => {
-      const token = store.publicApiToken;
-      if (!token) {
-        set.status = HttpStatus.UNAUTHORIZED;
-        return {
-          code: ErrorCode.UNAUTHORIZED,
-          detail: 'Authentication required',
-        };
-      }
-
-      const rateLimit = await checkPublicApiRateLimit(
-        token.id,
-        request.headers.get('x-forwarded-for') ??
-          request.headers.get('x-real-ip') ??
-          undefined
-      );
+    async ({ body, params, set, publicApiToken }) => {
+      const rateLimit = await checkPublicApiQueryRateLimit(publicApiToken.id);
       if (!rateLimit.allowed) {
         set.status = HttpStatus.TOO_MANY_REQUESTS;
         return {

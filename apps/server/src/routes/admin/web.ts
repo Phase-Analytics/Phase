@@ -36,14 +36,14 @@ export const adminWebRouter = new Elysia({ prefix: '/admin' })
           totalAppsResult,
           totalDevicesResult,
           totalSessionsResult,
+          totalEvents,
         ] = await Promise.all([
           db.select({ count: count() }).from(user),
           db.select({ count: count() }).from(apps),
           db.select({ count: count() }).from(devices),
           db.select({ count: count() }).from(sessions),
+          getTotalEventCount(),
         ]);
-
-        const totalEvents = await getTotalEventCount();
 
         set.status = HttpStatus.OK;
         return {
@@ -147,18 +147,40 @@ export const adminWebRouter = new Elysia({ prefix: '/admin' })
     async (ctx) => {
       const { set } = ctx as typeof ctx & AuthContext;
       try {
+        // Aggregate per app, then per owner, instead of COUNT(DISTINCT) over
+        // the user x app x device join.
+        const devicesPerApp = db
+          .select({
+            appId: devices.appId,
+            deviceCount: count().as('app_devices'),
+          })
+          .from(devices)
+          .groupBy(devices.appId)
+          .as('devices_per_app');
+        const appsPerOwner = db
+          .select({
+            userId: apps.userId,
+            appCount: count().as('app_count'),
+            deviceCount:
+              sql<number>`COALESCE(SUM(${devicesPerApp.deviceCount}), 0)`.as(
+                'device_count'
+              ),
+          })
+          .from(apps)
+          .leftJoin(devicesPerApp, eq(devicesPerApp.appId, apps.id))
+          .groupBy(apps.userId)
+          .as('apps_per_owner');
+
         const usersWithStats = await db
           .select({
             userId: user.id,
             email: user.email,
             createdAt: user.createdAt,
-            appCount: sql<number>`COUNT(DISTINCT ${apps.id})`,
-            deviceCount: sql<number>`COUNT(DISTINCT ${devices.deviceId})`,
+            appCount: appsPerOwner.appCount,
+            deviceCount: appsPerOwner.deviceCount,
           })
           .from(user)
-          .leftJoin(apps, eq(apps.userId, user.id))
-          .leftJoin(devices, eq(devices.appId, apps.id))
-          .groupBy(user.id, user.email, user.createdAt)
+          .leftJoin(appsPerOwner, eq(appsPerOwner.userId, user.id))
           .orderBy(desc(user.createdAt));
 
         set.status = HttpStatus.OK;

@@ -1,7 +1,17 @@
 import { isbot } from 'isbot';
 
+// Link-unfurl crawlers only. Search engines and in-app browsers (e.g. the
+// Pinterest or LinkedIn apps) must not match: they get a plain redirect.
 const SOCIAL_PREVIEW_UA =
-  /whatsapp|facebookexternalhit|facebot|twitterbot|linkedinbot|slackbot|telegrambot|discordbot|pinterest|googlebot/i;
+  /^whatsapp\/|facebookexternalhit|facebot|twitterbot|linkedinbot|slackbot|telegrambot|discordbot|pinterestbot|redditbot|skypeuripreview|snap url preview|embedly|iframely|vkshare|mastodon|bluesky cardyb/i;
+
+/**
+ * - `preview`: known social/link-unfurl crawler; gets OG preview HTML.
+ * - `automated`: other bots, prefetches, non-GET, missing UA; redirected but
+ *   never recorded as a click.
+ * - `human`: redirected and recorded.
+ */
+export type LinkRequestKind = 'preview' | 'automated' | 'human';
 
 function isPrefetchRequest(headers: Headers): boolean {
   const secPurpose = headers.get('sec-purpose')?.toLowerCase() ?? '';
@@ -9,64 +19,35 @@ function isPrefetchRequest(headers: Headers): boolean {
   const secFetchMode = headers.get('sec-fetch-mode')?.toLowerCase() ?? '';
   const moz = headers.get('x-moz')?.toLowerCase() ?? '';
 
-  if (
+  return (
     secPurpose.includes('prefetch') ||
     secPurpose.includes('prerender') ||
     purpose.includes('prefetch') ||
-    purpose.includes('prerender')
-  ) {
-    return true;
-  }
-
-  if (secFetchMode === 'prefetch') {
-    return true;
-  }
-
-  if (moz.includes('prefetch')) {
-    return true;
-  }
-
-  return false;
+    purpose.includes('prerender') ||
+    secFetchMode === 'prefetch' ||
+    moz.includes('prefetch')
+  );
 }
 
-export function shouldServeLinkOgPreview(request: Request): boolean {
+export function classifyLinkRequest(
+  request: Request,
+  userAgent: string | null
+): LinkRequestKind {
   if (request.method.toUpperCase() !== 'GET') {
-    return false;
+    return 'automated';
   }
 
   if (isPrefetchRequest(request.headers)) {
-    return false;
+    return 'automated';
   }
 
-  const userAgent = request.headers.get('user-agent');
   if (!userAgent?.trim()) {
-    return false;
+    return 'automated';
   }
 
   if (SOCIAL_PREVIEW_UA.test(userAgent)) {
-    return true;
+    return 'preview';
   }
 
-  return isbot(userAgent);
-}
-
-export function shouldRecordLinkClick(request: Request): boolean {
-  if (request.method.toUpperCase() !== 'GET') {
-    return false;
-  }
-
-  if (isPrefetchRequest(request.headers)) {
-    return false;
-  }
-
-  const userAgent = request.headers.get('user-agent');
-  if (!userAgent?.trim()) {
-    return false;
-  }
-
-  if (SOCIAL_PREVIEW_UA.test(userAgent) || isbot(userAgent)) {
-    return false;
-  }
-
-  return true;
+  return isbot(userAgent) ? 'automated' : 'human';
 }

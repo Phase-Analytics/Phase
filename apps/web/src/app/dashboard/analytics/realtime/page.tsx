@@ -31,6 +31,7 @@ type CountryData = {
 };
 
 const COUNTRY_CODE_REGEX = /^[A-Za-z]{2}$/;
+const MAX_ACTIVITIES = 50;
 
 function isValidCountryCode(code: string | null | undefined): code is string {
   return Boolean(code && code.length === 2 && COUNTRY_CODE_REGEX.test(code));
@@ -244,7 +245,9 @@ export default function RealtimePage() {
     }
 
     if (newActivities.length > 0) {
-      setActivities((prev) => [...newActivities, ...prev]);
+      setActivities((prev) =>
+        [...newActivities, ...prev].slice(0, MAX_ACTIVITIES)
+      );
     }
   };
 
@@ -270,7 +273,7 @@ export default function RealtimePage() {
   return (
     <RequireApp>
       <div className="relative isolate h-full">
-        <div className="-z-10 pointer-events-none absolute inset-0">
+        <div className="pointer-events-none absolute inset-0 -z-10">
           <Sparkles
             className="absolute inset-0"
             density={200}

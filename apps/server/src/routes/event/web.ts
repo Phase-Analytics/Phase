@@ -21,13 +21,20 @@ import {
   type BetterAuthUser,
 } from '@/lib/middleware';
 import {
+  deviceEventWindow,
+  type GetEventsOptions,
   getEventById,
-  getEventStats,
   getEvents,
+  sessionEventWindow,
+} from '@/lib/questdb';
+import { parseTimeZone } from '@/lib/reports/day-range';
+import { normalizePlatform } from '@/lib/reports/devices';
+import {
+  getEventStats,
   getEventTimeseries,
   getTopEvents,
   getTopScreens,
-} from '@/lib/questdb';
+} from '@/lib/reports/events';
 import {
   formatPaginationResponse,
   validateDateRange,
@@ -35,19 +42,6 @@ import {
   validatePagination,
   validateSession,
 } from '@/lib/validators';
-
-function normalizePlatform(
-  platform: string | null | undefined
-): Platform | null {
-  if (!platform) {
-    return null;
-  }
-  const lower = platform.toLowerCase();
-  if (lower === 'ios' || lower === 'android') {
-    return lower as Platform;
-  }
-  return 'unknown';
-}
 
 type AuthContext = {
   user: BetterAuthUser;
@@ -91,6 +85,7 @@ export const eventWebRouter = new Elysia({ prefix: '/events' })
 
         const sessionId = query.sessionId as string | undefined;
         const deviceId = query.deviceId as string | undefined;
+        let scanWindow: GetEventsOptions['scanWindow'];
 
         if (sessionId) {
           const sessionValidation = await validateSession(sessionId, appId);
@@ -101,6 +96,7 @@ export const eventWebRouter = new Elysia({ prefix: '/events' })
               detail: sessionValidation.error.detail,
             };
           }
+          scanWindow = sessionEventWindow(sessionValidation.data.session);
         } else if (deviceId) {
           const deviceValidation = await validateDevice(deviceId, appId);
           if (!deviceValidation.success) {
@@ -110,6 +106,7 @@ export const eventWebRouter = new Elysia({ prefix: '/events' })
               detail: deviceValidation.error.detail,
             };
           }
+          scanWindow = deviceEventWindow(deviceValidation.data);
         }
 
         const paginationValidation = validatePagination(
@@ -146,6 +143,7 @@ export const eventWebRouter = new Elysia({ prefix: '/events' })
           eventName: (query.eventName as string) || undefined,
           startDate: (query.startDate as string) || undefined,
           endDate: (query.endDate as string) || undefined,
+          scanWindow,
           limit: pageSize,
           offset,
         });
@@ -466,10 +464,20 @@ export const eventWebRouter = new Elysia({ prefix: '/events' })
           };
         }
 
+        const timeZone = parseTimeZone(query.tz);
+        if (!timeZone.success) {
+          set.status = timeZone.error.status;
+          return {
+            code: timeZone.error.code,
+            detail: timeZone.error.detail,
+          };
+        }
+
         const result = await getEventTimeseries({
           appId,
           startDate: startDate || undefined,
           endDate: endDate || undefined,
+          timeZone: timeZone.data,
         });
 
         set.status = HttpStatus.OK;
@@ -490,6 +498,7 @@ export const eventWebRouter = new Elysia({ prefix: '/events' })
         appId: t.String(),
         startDate: t.Optional(t.String()),
         endDate: t.Optional(t.String()),
+        tz: t.Optional(t.String()),
       }),
       response: {
         200: EventTimeseriesResponseSchema,
@@ -525,7 +534,11 @@ export const eventWebRouter = new Elysia({ prefix: '/events' })
           };
         }
 
-        const event = await getEventById({ eventId, appId });
+        const event = await getEventById({
+          eventId,
+          appId,
+          timestampHint: query.timestamp || undefined,
+        });
 
         if (!event) {
           set.status = HttpStatus.NOT_FOUND;
@@ -592,6 +605,7 @@ export const eventWebRouter = new Elysia({ prefix: '/events' })
       }),
       query: t.Object({
         appId: t.String(),
+        timestamp: t.Optional(t.String()),
       }),
       response: {
         200: EventSchema,

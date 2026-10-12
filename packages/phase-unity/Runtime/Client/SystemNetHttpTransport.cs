@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -53,7 +54,14 @@ public sealed class SystemNetHttpTransport : IHttpTransport, IDisposable
                 .SendAsync(message, cts.Token)
                 .ConfigureAwait(false);
             var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-            return new HttpTransportResponse((int)response.StatusCode, body);
+            var retryAfter = response.Headers.TryGetValues("Retry-After", out var values)
+                ? values.FirstOrDefault()
+                : null;
+            return new HttpTransportResponse(
+                (int)response.StatusCode,
+                body,
+                retryAfter: retryAfter
+            );
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {

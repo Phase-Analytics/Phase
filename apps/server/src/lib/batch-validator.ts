@@ -5,13 +5,6 @@ export function shouldRejectBatch(items: BatchItem[]): {
   reject: boolean;
   reason: string;
 } {
-  if (items.length > 1000) {
-    return {
-      reject: true,
-      reason: `Batch size exceeds limit: ${items.length}`,
-    };
-  }
-
   const deviceIds = new Set<string>();
   let eventCount = 0;
 

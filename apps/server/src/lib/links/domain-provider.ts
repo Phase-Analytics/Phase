@@ -23,6 +23,10 @@ function requiredEnv(name: string): string {
   return value;
 }
 
+export function getLinkCnameTarget(): string {
+  return process.env.CLOUDFLARE_CNAME_TARGET?.trim() || LINK_CNAME_TARGET;
+}
+
 export function getDomainClient(): DomainClient {
   if (client) {
     return client;
@@ -32,8 +36,7 @@ export function getDomainClient(): DomainClient {
     provider: cloudflareSaaS({
       apiToken: requiredEnv('CLOUDFLARE_API_TOKEN'),
       zoneId: requiredEnv('CLOUDFLARE_ZONE_ID'),
-      cnameTarget:
-        process.env.CLOUDFLARE_CNAME_TARGET?.trim() || LINK_CNAME_TARGET,
+      cnameTarget: getLinkCnameTarget(),
       ssl: {
         method: 'txt',
         type: 'dv',
@@ -75,6 +78,28 @@ export function createOwnershipRecord(
     required: true,
     status: verified ? 'valid' : 'pending',
   };
+}
+
+/**
+ * Records shown before the provider hostname exists (it is only created once
+ * the ownership TXT is proven). Certificate records from the provider are
+ * appended after that step.
+ */
+export function buildPendingDnsRecords(
+  hostname: string,
+  token: string
+): LinkDomainDnsRecord[] {
+  return [
+    createOwnershipRecord(hostname, token, false),
+    {
+      type: 'CNAME',
+      name: hostname,
+      value: getLinkCnameTarget(),
+      purpose: 'routing',
+      required: true,
+      status: 'pending',
+    },
+  ];
 }
 
 function withOwnershipRecord(

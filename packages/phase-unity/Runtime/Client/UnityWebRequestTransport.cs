@@ -55,14 +55,8 @@ public sealed class UnityWebRequestTransport : IHttpTransport
 
         var operation = webRequest.SendWebRequest();
 
-        using var registration = cancellationToken.Register(() =>
-        {
-            if (!operation.isDone)
-            {
-                webRequest.Abort();
-            }
-        });
-
+        // Cancellation is observed by the poll below: UnityWebRequest may only be touched on the
+        // main thread, so a CancellationToken callback must not abort it directly.
         MainThreadDispatcher.EnqueuePoll(() =>
         {
             if (cancellationToken.IsCancellationRequested)
@@ -73,7 +67,7 @@ public sealed class UnityWebRequestTransport : IHttpTransport
                 }
 
                 webRequest.Dispose();
-                tcs.TrySetResult(new HttpTransportResponse(0, string.Empty, timedOut: true));
+                tcs.TrySetCanceled(cancellationToken);
                 return true;
             }
 
@@ -109,17 +103,10 @@ public sealed class UnityWebRequestTransport : IHttpTransport
             return new HttpTransportResponse(0, webRequest.error ?? string.Empty);
         }
 
-        if (webRequest.result == UnityWebRequest.Result.ProtocolError)
-        {
-            return new HttpTransportResponse(
-                (int)webRequest.responseCode,
-                webRequest.downloadHandler?.text ?? string.Empty
-            );
-        }
-
         return new HttpTransportResponse(
             (int)webRequest.responseCode,
-            webRequest.downloadHandler?.text ?? string.Empty
+            webRequest.downloadHandler?.text ?? string.Empty,
+            retryAfter: webRequest.GetResponseHeader("Retry-After")
         );
     }
 #endif

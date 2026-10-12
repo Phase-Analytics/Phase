@@ -95,40 +95,92 @@ Phase Analytics requires the following Expo packages to function properly:
   <TabsContent value="npm">
     <CodeBlock lang="bash" allowCopy={true}>
 ```bash
-npx expo install @react-native-async-storage/async-storage @react-native-community/netinfo expo-application expo-device expo-localization expo-router
+npx expo install @react-native-async-storage/async-storage expo-application expo-device expo-localization
 ```
     </CodeBlock>
   </TabsContent>
   <TabsContent value="bun">
     <CodeBlock lang="bash" allowCopy={true}>
 ```bash
-bunx expo install @react-native-async-storage/async-storage @react-native-community/netinfo expo-application expo-device expo-localization expo-router
+bunx expo install @react-native-async-storage/async-storage expo-application expo-device expo-localization
 ```
     </CodeBlock>
   </TabsContent>
   <TabsContent value="yarn">
     <CodeBlock lang="bash" allowCopy={true}>
 ```bash
-yarn dlx expo install @react-native-async-storage/async-storage @react-native-community/netinfo expo-application expo-device expo-localization expo-router
+yarn dlx expo install @react-native-async-storage/async-storage expo-application expo-device expo-localization
 ```
     </CodeBlock>
   </TabsContent>
   <TabsContent value="pnpm">
     <CodeBlock lang="bash" allowCopy={true}>
 ```bash
-pnpm dlx expo install @react-native-async-storage/async-storage @react-native-community/netinfo expo-application expo-device expo-localization expo-router
+pnpm dlx expo install @react-native-async-storage/async-storage expo-application expo-device expo-localization
 ```
     </CodeBlock>
   </TabsContent>
 </Tabs>
 
 These dependencies are **required** for the SDK to work correctly. The SDK uses:
-- `@react-native-async-storage/async-storage` - Local storage for offline event queuing
-- `@react-native-community/netinfo` - Network state monitoring
+- `@react-native-async-storage/async-storage` - Local storage for the persistent offline queue
 - `expo-application` - App version collection (`app_version`)
 - `expo-device` - Device information collection
 - `expo-localization` - Locale and timezone detection
-- `expo-router` - Automatic screen tracking
+
+**Optional packages:**
+
+<Tabs defaultValue="bun" groupId="pkg" persist>
+  <TabsList>
+    <TabsTrigger value="npm" className="gap-2">
+      <img src="https://cdn.simpleicons.org/npm/71717a" alt="npm" className="size-4 dark:brightness-200" />
+      npm
+    </TabsTrigger>
+    <TabsTrigger value="bun" className="gap-2">
+      <img src="https://cdn.simpleicons.org/bun/71717a" alt="bun" className="size-4 dark:brightness-200" />
+      bun
+    </TabsTrigger>
+    <TabsTrigger value="yarn" className="gap-2">
+      <img src="https://cdn.simpleicons.org/yarn/71717a" alt="yarn" className="size-4 dark:brightness-200" />
+      yarn
+    </TabsTrigger>
+    <TabsTrigger value="pnpm" className="gap-2">
+      <img src="https://cdn.simpleicons.org/pnpm/71717a" alt="pnpm" className="size-4 dark:brightness-200" />
+      pnpm
+    </TabsTrigger>
+  </TabsList>
+  <TabsContent value="npm">
+    <CodeBlock lang="bash" allowCopy={true}>
+```bash
+npx expo install @react-native-community/netinfo expo-router
+```
+    </CodeBlock>
+  </TabsContent>
+  <TabsContent value="bun">
+    <CodeBlock lang="bash" allowCopy={true}>
+```bash
+bunx expo install @react-native-community/netinfo expo-router
+```
+    </CodeBlock>
+  </TabsContent>
+  <TabsContent value="yarn">
+    <CodeBlock lang="bash" allowCopy={true}>
+```bash
+yarn dlx expo install @react-native-community/netinfo expo-router
+```
+    </CodeBlock>
+  </TabsContent>
+  <TabsContent value="pnpm">
+    <CodeBlock lang="bash" allowCopy={true}>
+```bash
+pnpm dlx expo install @react-native-community/netinfo expo-router
+```
+    </CodeBlock>
+  </TabsContent>
+</Tabs>
+
+- `@react-native-community/netinfo` - Offline detection. Without it, the SDK keeps sending and relies on retries
+- `expo-router` - Required only for automatic screen tracking (`trackNavigation`)
 
 </Step>
 
@@ -169,7 +221,7 @@ export default function RootLayout() {
 ```
 </CodeBlock>
 
-The `PhaseProvider` only initializes the SDK. You must call `Phase.identify()` before tracking events.
+The `PhaseProvider` only initializes the SDK. Call `Phase.identify()` to register the device and start a session. Events tracked before `identify()` runs are buffered and sent afterwards.
 
 ## Configuration
 
@@ -183,7 +235,7 @@ The `PhaseProvider` component accepts the following props:
       required: true,
     },
     trackNavigation: {
-      description: 'Automatically track screen views with Expo Router',
+      description: 'Automatically track screen views with Expo Router (requires `expo-router`)',
       type: 'boolean',
       default: 'false',
     },
@@ -219,7 +271,7 @@ The `PhaseProvider` component accepts the following props:
 
 ### Identify User
 
-**Required:** Call `Phase.identify()` before using any other methods. This registers the device and starts a session.
+Call `Phase.identify()` once at startup. This registers the device and starts a session. Calls made before `PhaseProvider` mounts (for example from child effects) are queued and run after initialization.
 
 <CodeBlock
   title="app/index.tsx"
@@ -277,7 +329,7 @@ Properties must be primitives: `string`, `number`, `boolean`, or `null`.
 
 ### Track Events
 
-Track custom events with optional parameters. **Note:** `Phase.identify()` must be called first.
+Track custom events with optional parameters. Events tracked before `Phase.identify()` runs are buffered in memory (up to 200 events, for up to one hour) and sent once the session exists. If more than 200 pile up, the oldest are dropped.
 
 <CodeBlock
   lang="tsx"
@@ -312,7 +364,7 @@ Phase.track('purchase_completed', {
 
 ### Automatic Screen Tracking
 
-Enable automatic screen tracking by setting `trackNavigation` to `true` in your root layout. The SDK uses Expo Router's navigation hooks to track screen changes automatically:
+Screen tracking is **off by default**. Install `expo-router` and set `trackNavigation` to `true` in your root layout. The SDK uses Expo Router's navigation hooks to track screen changes automatically:
 
 <CodeBlock
   title="app/_layout.tsx"
@@ -342,7 +394,49 @@ export default function RootLayout() {
 - Screen names are derived from pathname
 - Works with nested routes and dynamic segments
 
-No additional setup required, just wrap your navigation structure with `PhaseProvider`.
+If `expo-router` is not installed, `trackNavigation` logs an error and no screens are tracked.
+
+### Manual Screen Tracking
+
+Use `Phase.trackScreen()` when `trackNavigation` is off or you use a custom navigator. `params` follow the same rules as `Phase.track()`.
+
+<CodeBlock
+  lang="tsx"
+  icon={<img src="https://cdn.simpleicons.org/typescript/3178C6" alt="TypeScript" className="size-4" />}
+>
+```tsx
+Phase.trackScreen('/settings/profile');
+
+Phase.trackScreen('/settings/profile', { tab: 'billing' });
+```
+</CodeBlock>
+
+### Flush
+
+Events are sent automatically in batches (see [Delivery](#delivery)), so you rarely need this. `Phase.flush()` sends queued data right away and resolves when the attempt finishes.
+
+<CodeBlock
+  lang="tsx"
+  icon={<img src="https://cdn.simpleicons.org/typescript/3178C6" alt="TypeScript" className="size-4" />}
+>
+```tsx
+await Phase.flush();
+```
+</CodeBlock>
+
+### Reset
+
+Use `Phase.reset()` to forget the current device, for example on logout. It ends the session and generates a new device ID. Data already queued for the previous device is still delivered. Call `Phase.identify()` again to start tracking.
+
+<CodeBlock
+  lang="tsx"
+  icon={<img src="https://cdn.simpleicons.org/typescript/3178C6" alt="TypeScript" className="size-4" />}
+>
+```tsx
+await Phase.reset();
+await Phase.identify();
+```
+</CodeBlock>
 
 ## Type Reference
 
@@ -361,7 +455,7 @@ Custom user/device attributes passed to `Phase.identify()`:
 
 ### EventParams
 
-Event parameters passed to `Phase.track()`:
+Event parameters passed to `Phase.track()` and `Phase.trackScreen()`:
 
 <TypeTable
   type={{
@@ -374,9 +468,19 @@ Event parameters passed to `Phase.track()`:
 
 ## How It Works
 
+### Delivery
+
+Devices, sessions, events and heartbeats go through a persistent queue and are sent to the batch endpoint:
+
+- Every ~10 seconds while data is queued, as soon as 20 items are queued, and when the app goes to the background
+- Items leave the queue only after the server accepts them. Failed requests are retried with backoff and honor `Retry-After`
+- Changing the API key clears data queued under the previous key
+
 ### Offline Support
 
-Events are queued locally using `@react-native-async-storage/async-storage` when offline. The queue automatically syncs when connection is restored.
+The queue survives app restarts. It is stored with `@react-native-async-storage/async-storage` and capped at ~1.5 MB, dropping the oldest sessions first when full.
+
+With `@react-native-community/netinfo` installed, nothing is sent while the device is offline and only the latest heartbeat per session is kept. Queued data is sent when the connection is restored.
 
 ### Privacy
 
@@ -387,7 +491,7 @@ Events are queued locally using `@react-native-async-storage/async-storage` when
 
 ### Performance
 
-- Offline events are batched and sent asynchronously
-- Network state is monitored via `@react-native-community/netinfo`
+- Queued data is batched and sent asynchronously
 - Failed requests retry with exponential backoff
-- Maximum batch size: 1000 events
+- Maximum batch size: 50 items per request
+- Offline queue capped at 1000 items / ~1.5 MB

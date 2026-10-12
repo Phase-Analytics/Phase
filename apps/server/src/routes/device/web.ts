@@ -16,10 +16,8 @@ import {
   and,
   count,
   countDistinct,
-  desc,
   eq,
   gte,
-  lt,
   lte,
   max,
   type SQL,
@@ -28,12 +26,24 @@ import {
 import { Elysia, t } from 'elysia';
 import { apps, db, devices, sessions } from '@/db';
 import { auth } from '@/lib/auth';
+import { invalidateIngestDevice } from '@/lib/ingest-cache';
 import {
   authPlugin,
   type BetterAuthSession,
   type BetterAuthUser,
 } from '@/lib/middleware';
 import { buildPropertySearchFilters } from '@/lib/property-search';
+import { parseTimeZone, resolveDayRange } from '@/lib/reports/day-range';
+import { getDevicePage } from '@/lib/reports/device-list';
+import {
+  getCumulativeDevices,
+  getDailyActiveDevices,
+  getDeviceBreakdowns,
+  getDeviceCounts,
+  getDeviceDailySessions,
+  normalizePlatform,
+} from '@/lib/reports/devices';
+import { getDeviceRetention } from '@/lib/reports/retention';
 import {
   buildFilters,
   formatPaginationResponse,
@@ -44,19 +54,6 @@ import {
 } from '@/lib/validators';
 
 type AuthContext = { user: BetterAuthUser; session: BetterAuthSession };
-
-function normalizePlatform(
-  platform: string | null | undefined
-): Platform | null {
-  if (!platform) {
-    return null;
-  }
-  const lower = platform.toLowerCase();
-  if (lower === 'ios' || lower === 'android') {
-    return lower as Platform;
-  }
-  return 'unknown';
-}
 
 export const deviceWebRouter = new Elysia({ prefix: '/devices' })
   .derive(async ({ request }) => {
@@ -76,165 +73,21 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
       try {
         const appId = query.appId as string;
 
-        const now = new Date();
-        const twentyFourHoursAgo = new Date(
-          now.getTime() - 24 * 60 * 60 * 1000
-        );
-        const fortyEightHoursAgo = new Date(
-          now.getTime() - 48 * 60 * 60 * 1000
-        );
-
-        const deviceIdsSubquery = db
-          .select({ deviceId: devices.deviceId })
-          .from(devices)
-          .where(eq(devices.appId, appId));
-
-        const [
-          [{ count: totalDevices }],
-          [{ count: totalDevicesYesterday }],
-          [{ count: activeDevices24h }],
-          [{ count: activeDevicesYesterday }],
-          platformStatsResult,
-          countryStatsResult,
-          appVersionStatsResult,
-        ] = await Promise.all([
-          db
-            .select({ count: count() })
-            .from(devices)
-            .where(eq(devices.appId, appId)),
-
-          db
-            .select({ count: count() })
-            .from(devices)
-            .where(
-              and(
-                eq(devices.appId, appId),
-                lt(devices.firstSeen, twentyFourHoursAgo)
-              )
-            ),
-
-          db
-            .select({ count: countDistinct(sessions.deviceId) })
-            .from(sessions)
-            .where(
-              and(
-                sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-                gte(sessions.lastActivityAt, twentyFourHoursAgo),
-                lte(sessions.lastActivityAt, now)
-              )
-            ),
-
-          db
-            .select({ count: countDistinct(sessions.deviceId) })
-            .from(sessions)
-            .where(
-              and(
-                sql`${sessions.deviceId} IN (SELECT device_id FROM (${deviceIdsSubquery}) AS app_devices)`,
-                gte(sessions.lastActivityAt, fortyEightHoursAgo),
-                lt(sessions.lastActivityAt, twentyFourHoursAgo)
-              )
-            ),
-
-          db
-            .select({
-              platform: sql<string>`COALESCE(${devices.platform}, 'unknown')`,
-              count: count(),
-            })
-            .from(devices)
-            .where(eq(devices.appId, appId))
-            .groupBy(devices.platform),
-
-          db
-            .select({
-              country: devices.country,
-              count: count(),
-            })
-            .from(devices)
-            .where(eq(devices.appId, appId))
-            .groupBy(devices.country),
-
-          db
-            .select({
-              platform: sql<string>`COALESCE(${devices.platform}, 'unknown')`,
-              version: sql<string>`TRIM(${devices.properties}->>'app_version')`,
-              count: count(),
-            })
-            .from(devices)
-            .where(
-              and(
-                eq(devices.appId, appId),
-                sql`${devices.properties}->>'app_version' IS NOT NULL`,
-                sql`TRIM(${devices.properties}->>'app_version') <> ''`
-              )
-            )
-            .groupBy(
-              devices.platform,
-              sql`TRIM(${devices.properties}->>'app_version')`
-            ),
+        const [counts, breakdowns] = await Promise.all([
+          getDeviceCounts(appId),
+          getDeviceBreakdowns(appId),
         ]);
-
-        const totalDevicesNum = Number(totalDevices);
-        const totalDevicesYesterdayNum = Number(totalDevicesYesterday);
-        const activeDevices24hNum = Number(activeDevices24h);
-        const activeDevicesYesterdayNum = Number(activeDevicesYesterday);
-
-        const totalDevicesChange24h =
-          totalDevicesNum - totalDevicesYesterdayNum;
-        const activeDevicesChange24h =
-          activeDevices24hNum - activeDevicesYesterdayNum;
-
-        const platformStats: Record<string, number> = {
-          ios: 0,
-          android: 0,
-          unknown: 0,
-        };
-        for (const row of platformStatsResult) {
-          const normalizedPlatform = normalizePlatform(row.platform);
-          if (normalizedPlatform) {
-            platformStats[normalizedPlatform] = Number(row.count);
-          }
-        }
-
-        const countryStats: Record<string, number> = {};
-        for (const row of countryStatsResult) {
-          if (row.country !== null) {
-            countryStats[row.country] = Number(row.count);
-          }
-        }
-
-        const appVersionStats: {
-          ios: Record<string, number>;
-          android: Record<string, number>;
-        } = {
-          ios: {},
-          android: {},
-        };
-        for (const row of appVersionStatsResult) {
-          const normalizedPlatform = normalizePlatform(row.platform);
-          if (
-            normalizedPlatform !== 'ios' &&
-            normalizedPlatform !== 'android'
-          ) {
-            continue;
-          }
-          const version = row.version?.trim();
-          if (!version) {
-            continue;
-          }
-          appVersionStats[normalizedPlatform][version] =
-            (appVersionStats[normalizedPlatform][version] ?? 0) +
-            Number(row.count);
-        }
 
         set.status = HttpStatus.OK;
         return {
-          totalDevices: totalDevicesNum,
-          activeDevices24h: activeDevices24hNum,
-          platformStats,
-          countryStats,
-          appVersionStats,
-          totalDevicesChange24h,
-          activeDevicesChange24h,
+          totalDevices: counts.total,
+          activeDevices24h: counts.active24h,
+          platformStats: breakdowns.platformStats,
+          countryStats: breakdowns.countryStats,
+          appVersionStats: breakdowns.appVersionStats,
+          // total now minus total 24h ago
+          totalDevicesChange24h: counts.firstSeenSince24h,
+          activeDevicesChange24h: counts.active24h - counts.activeYesterday,
         };
       } catch (error) {
         console.error('[Device.Overview] Error:', error);
@@ -384,35 +237,11 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
           endDateValue: query.endDate as string | undefined,
         });
 
-        const deviceLastSeen = db
-          .select({
-            deviceId: sessions.deviceId,
-            lastSeen: max(sessions.lastActivityAt).as('last_seen'),
-          })
-          .from(sessions)
-          .groupBy(sessions.deviceId)
-          .as('device_last_seen');
-
-        const [devicesList, [{ count: totalCount }]] = await Promise.all([
-          db
-            .select({
-              deviceId: devices.deviceId,
-              platform: devices.platform,
-              country: devices.country,
-              firstSeen: devices.firstSeen,
-              lastSeen: deviceLastSeen.lastSeen,
-            })
-            .from(devices)
-            .leftJoin(
-              deviceLastSeen,
-              eq(devices.deviceId, deviceLastSeen.deviceId)
-            )
-            .where(whereClause)
-            .orderBy(desc(devices.firstSeen))
-            .limit(pageSize)
-            .offset(offset),
-          db.select({ count: count() }).from(devices).where(whereClause),
-        ]);
+        const { rows: devicesList, total: totalCount } = await getDevicePage({
+          where: whereClause,
+          limit: pageSize,
+          offset,
+        });
 
         set.status = HttpStatus.OK;
         return {
@@ -423,11 +252,7 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
             firstSeen: device.firstSeen.toISOString(),
             lastSeen: device.lastSeen ? device.lastSeen.toISOString() : null,
           })),
-          pagination: formatPaginationResponse(
-            Number(totalCount),
-            page,
-            pageSize
-          ),
+          pagination: formatPaginationResponse(totalCount, page, pageSize),
         };
       } catch (error) {
         console.error('[Device.List] Error:', error);
@@ -484,91 +309,41 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
           };
         }
 
-        const now = new Date();
-        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-        const start = startDate ? new Date(startDate) : sevenDaysAgo;
-        const end = endDate ? new Date(endDate) : now;
-
-        if (metric === 'dau') {
-          const result = await db.execute<{
-            date: string;
-            activeUsers: number;
-          }>(sql`
-            WITH date_series AS (
-              SELECT DATE(generate_series(
-                ${start}::timestamp,
-                ${end}::timestamp,
-                '1 day'::interval
-              )) as date
-            )
-            SELECT
-              ds.date::text,
-              COALESCE(COUNT(DISTINCT s.device_id), 0)::int as "activeUsers"
-            FROM date_series ds
-            LEFT JOIN (
-              SELECT s.device_id, s.last_activity_at
-              FROM sessions_analytics s
-              INNER JOIN devices d ON s.device_id = d.device_id
-              WHERE d.app_id = ${appId}
-            ) s ON DATE(s.last_activity_at) = ds.date
-            WHERE ds.date <= CURRENT_DATE
-            GROUP BY ds.date
-            ORDER BY ds.date
-          `);
-
-          const data = result.rows.map((row) => ({
-            date: row.date,
-            activeUsers: Number(row.activeUsers),
-          }));
-
-          set.status = HttpStatus.OK;
+        const timeZone = parseTimeZone(query.tz);
+        if (!timeZone.success) {
+          set.status = timeZone.error.status;
           return {
-            data,
-            period: {
-              startDate: start.toISOString(),
-              endDate: end.toISOString(),
-            },
+            code: timeZone.error.code,
+            detail: timeZone.error.detail,
           };
         }
 
-        const result = await db.execute<{
-          date: string;
-          totalUsers: number;
-        }>(sql`
-          WITH date_series AS (
-            SELECT DATE(generate_series(
-              ${start}::timestamp,
-              ${end}::timestamp,
-              '1 day'::interval
-            )) as date
-          )
-          SELECT
-            ds.date::text,
-            COALESCE(
-              (SELECT COUNT(DISTINCT d.device_id)::int
-               FROM devices d
-               WHERE d.app_id = ${appId}
-                 AND DATE(d.first_seen) <= ds.date),
-              0
-            ) as "totalUsers"
-          FROM date_series ds
-          WHERE ds.date <= CURRENT_DATE
-          ORDER BY ds.date
-        `);
-
-        const data = result.rows.map((row) => ({
-          date: row.date,
-          totalUsers: Number(row.totalUsers),
-        }));
+        const range = resolveDayRange({
+          startDate,
+          endDate,
+          defaultDays: 7,
+          timeZone: timeZone.data,
+        });
 
         set.status = HttpStatus.OK;
+        if (metric === 'dau') {
+          const series = await getDailyActiveDevices(appId, range);
+          return {
+            data: series.map((point) => ({
+              date: point.date,
+              activeUsers: point.count,
+            })),
+            period: range.period,
+          };
+        }
+
+        const series = await getCumulativeDevices(appId, range);
         return {
-          data,
-          period: {
-            startDate: start.toISOString(),
-            endDate: end.toISOString(),
-          },
+          data: series.map((point) => ({
+            date: point.date,
+            totalUsers: point.count,
+          })),
+          period: range.period,
         };
       } catch (error) {
         console.error('[Device.Timeseries] Error:', error);
@@ -587,6 +362,7 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
         startDate: t.Optional(t.String()),
         endDate: t.Optional(t.String()),
         metric: t.Optional(t.Union([t.Literal('dau'), t.Literal('total')])),
+        tz: t.Optional(t.String()),
       }),
       response: {
         200: DeviceTimeseriesResponseSchema,
@@ -616,61 +392,22 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
           };
         }
 
-        const now = new Date();
-        const defaultStart = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-        const start = query.startDate
-          ? new Date(query.startDate as string)
-          : defaultStart;
-        const end = query.endDate ? new Date(query.endDate as string) : now;
+        const timeZone = parseTimeZone(query.tz);
+        if (!timeZone.success) {
+          set.status = timeZone.error.status;
+          return {
+            code: timeZone.error.code,
+            detail: timeZone.error.detail,
+          };
+        }
 
-        const result = await db.execute<{
-          day: number;
-          retentionRate: number;
-          eligibleUsers: number;
-          retainedUsers: number;
-        }>(sql`
-          WITH day_series AS (
-            SELECT generate_series(0, 30)::int AS day
-          ),
-          cohorts AS (
-            SELECT device_id, DATE(first_seen) AS cohort_date
-            FROM devices
-            WHERE app_id = ${appId}
-              AND DATE(first_seen) BETWEEN DATE(${start}::timestamp) AND DATE(${end}::timestamp)
-          )
-          SELECT
-            ds.day,
-            COUNT(DISTINCT c.device_id)::int AS "eligibleUsers",
-            CASE WHEN ds.day = 0
-              THEN COUNT(DISTINCT c.device_id)::int
-              ELSE COUNT(DISTINCT c.device_id) FILTER (WHERE s.session_id IS NOT NULL)::int
-            END AS "retainedUsers",
-            CASE
-              WHEN COUNT(DISTINCT c.device_id) = 0 THEN 0
-              WHEN ds.day = 0 THEN 100
-              ELSE ROUND(
-                COUNT(DISTINCT c.device_id) FILTER (WHERE s.session_id IS NOT NULL)
-                  * 100.0 / COUNT(DISTINCT c.device_id), 2
-              )::float
-            END AS "retentionRate"
-          FROM day_series ds
-          LEFT JOIN cohorts c
-            ON c.cohort_date + ds.day <= LEAST(DATE(${end}::timestamp), CURRENT_DATE)
-          LEFT JOIN sessions_analytics s
-            ON s.device_id = c.device_id
-            AND s.started_at >= c.cohort_date + ds.day * INTERVAL '1 day'
-            AND s.started_at < c.cohort_date + (ds.day + 1) * INTERVAL '1 day'
-            AND EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at)) >= ${SESSION_MIN_DURATION_SECONDS}
-          GROUP BY ds.day
-          ORDER BY ds.day
-        `);
-
-        const data = result.rows.map((row) => ({
-          day: Number(row.day),
-          retentionRate: Number(row.retentionRate),
-          eligibleUsers: Number(row.eligibleUsers),
-          retainedUsers: Number(row.retainedUsers),
-        }));
+        const range = resolveDayRange({
+          startDate: query.startDate as string | undefined,
+          endDate: query.endDate as string | undefined,
+          defaultDays: 60,
+          timeZone: timeZone.data,
+        });
+        const data = await getDeviceRetention(appId, range);
         const rateByDay = new Map(
           data.map((point) => [point.day, point.retentionRate])
         );
@@ -686,10 +423,7 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
         return {
           summary,
           data,
-          period: {
-            startDate: start.toISOString(),
-            endDate: end.toISOString(),
-          },
+          period: range.period,
         };
       } catch (error) {
         console.error('[Device.Retention] Error:', error);
@@ -707,6 +441,7 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
         appId: t.String(),
         startDate: t.Optional(t.String()),
         endDate: t.Optional(t.String()),
+        tz: t.Optional(t.String()),
       }),
       response: {
         200: DeviceRetentionResponseSchema,
@@ -731,9 +466,7 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
               andFn(eqFn(table.deviceId, deviceId), eqFn(table.appId, appId)),
           }),
           db
-            .select({
-              lastActivityAt: sql<Date | null>`MAX(${sessions.lastActivityAt})::timestamp`,
-            })
+            .select({ lastActivityAt: max(sessions.lastActivityAt) })
             .from(sessions)
             .where(eq(sessions.deviceId, deviceId)),
         ]);
@@ -758,12 +491,7 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
           country: device.country,
           properties: device.properties,
           firstSeen: device.firstSeen.toISOString(),
-          lastActivityAt: lastActivityAt
-            ? (lastActivityAt instanceof Date
-                ? lastActivityAt
-                : new Date(lastActivityAt)
-              ).toISOString()
-            : null,
+          lastActivityAt: lastActivityAt ? lastActivityAt.toISOString() : null,
         };
       } catch (error) {
         console.error('[Device.Get] Error:', error);
@@ -803,56 +531,37 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
         const startDate = query.startDate as string | undefined;
         const endDate = query.endDate as string | undefined;
 
-        const device = await db.query.devices.findFirst({
-          where: (table, { eq: eqFn }) =>
-            and(eqFn(table.deviceId, deviceId), eqFn(table.appId, appId)),
-        });
-
-        if (!device) {
-          set.status = HttpStatus.NOT_FOUND;
+        const timeZone = parseTimeZone(query.tz);
+        if (!timeZone.success) {
+          set.status = timeZone.error.status;
           return {
-            code: ErrorCode.NOT_FOUND,
-            detail: 'Device not found',
+            code: timeZone.error.code,
+            detail: timeZone.error.detail,
           };
         }
 
-        const now = new Date();
-        const defaultStart = new Date(
-          now.getTime() - 365 * 24 * 60 * 60 * 1000
-        );
-        const start = startDate ? new Date(startDate) : defaultStart;
-        const end = endDate ? new Date(endDate) : now;
+        const range = resolveDayRange({
+          startDate,
+          endDate,
+          defaultDays: 365,
+          timeZone: timeZone.data,
+        });
 
-        const [result, sessionStats] = await Promise.all([
-          db.execute<{
-            date: string;
-            sessionCount: number;
-          }>(sql`
-            WITH date_series AS (
-              SELECT DATE(generate_series(
-                ${start}::timestamp,
-                ${end}::timestamp,
-                '1 day'::interval
-              )) as date
-            )
-            SELECT
-              ds.date::text,
-              COALESCE(COUNT(s.session_id), 0)::int as "sessionCount"
-            FROM date_series ds
-            LEFT JOIN sessions_analytics s ON DATE(s.started_at) = ds.date
-              AND s.device_id = ${deviceId}
-              AND EXTRACT(EPOCH FROM (s.last_activity_at - s.started_at)) >= ${SESSION_MIN_DURATION_SECONDS}
-            WHERE ds.date <= CURRENT_DATE
-            GROUP BY ds.date
-            ORDER BY ds.date
-          `),
+        // The ownership check gates the response; the session reads run
+        // alongside it and are discarded when the device is not in this app.
+        const [device, data, [sessionStats]] = await Promise.all([
+          db.query.devices.findFirst({
+            where: (table, { eq: eqFn }) =>
+              and(eqFn(table.deviceId, deviceId), eqFn(table.appId, appId)),
+          }),
+          getDeviceDailySessions(deviceId, range),
           db
             .select({
               totalSessions: count(),
               avgDuration: sql<number | null>`
                 AVG(EXTRACT(EPOCH FROM (${sessions.lastActivityAt} - ${sessions.startedAt})))
               `,
-              lastActivityAt: sql<Date | null>`MAX(${sessions.lastActivityAt})::timestamp`,
+              lastActivityAt: max(sessions.lastActivityAt),
             })
             .from(sessions)
             .where(
@@ -863,29 +572,27 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
             ),
         ]);
 
-        const data = result.rows.map((row) => ({
-          date: row.date,
-          sessionCount: Number(row.sessionCount),
-        }));
+        if (!device) {
+          set.status = HttpStatus.NOT_FOUND;
+          return {
+            code: ErrorCode.NOT_FOUND,
+            detail: 'Device not found',
+          };
+        }
 
-        const [{ totalSessions, avgDuration, lastActivityAt }] = sessionStats;
+        const { totalSessions, avgDuration, lastActivityAt } = sessionStats;
 
         set.status = HttpStatus.OK;
         return {
-          data,
-          period: {
-            startDate: start.toISOString(),
-            endDate: end.toISOString(),
-          },
+          data: data.map((point) => ({
+            date: point.date,
+            sessionCount: point.count,
+          })),
+          period: range.period,
           totalSessions: Number(totalSessions),
           avgSessionDuration: avgDuration ? Number(avgDuration) : null,
           firstSeen: device.firstSeen.toISOString(),
-          lastActivityAt: lastActivityAt
-            ? (lastActivityAt instanceof Date
-                ? lastActivityAt
-                : new Date(lastActivityAt)
-              ).toISOString()
-            : null,
+          lastActivityAt: lastActivityAt ? lastActivityAt.toISOString() : null,
         };
       } catch (error) {
         console.error('[Device.ActivityTimeseries] Error:', error);
@@ -906,6 +613,7 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
         appId: t.String(),
         startDate: t.Optional(t.String()),
         endDate: t.Optional(t.String()),
+        tz: t.Optional(t.String()),
       }),
       response: {
         200: DeviceActivityTimeseriesResponseSchema,
@@ -967,18 +675,8 @@ export const deviceWebRouter = new Elysia({ prefix: '/devices' })
           };
         }
 
-        const deviceSessions = await db.query.sessions.findMany({
-          where: eq(sessions.deviceId, params.deviceId),
-          columns: { sessionId: true },
-        });
-
-        await Promise.all(
-          deviceSessions.map((session) =>
-            db.$cache?.invalidate({ tags: `session:${session.sessionId}` })
-          )
-        );
-
         await db.delete(devices).where(eq(devices.deviceId, params.deviceId));
+        invalidateIngestDevice(params.deviceId);
 
         set.status = HttpStatus.NO_CONTENT;
       } catch (error) {

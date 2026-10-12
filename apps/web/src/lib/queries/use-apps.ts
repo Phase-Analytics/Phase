@@ -12,56 +12,46 @@ import type {
   CreateAppRequest,
   UpdateAppRequest,
 } from '@/lib/api/types';
-import { useSession } from '@/lib/auth';
 import { cacheConfig, getQueryClient } from './query-client';
 import { queryKeys } from './query-keys';
 
 export function useApps() {
-  const { data: session } = useSession();
-
   return useQuery({
     queryKey: queryKeys.apps.list(),
     queryFn: () => fetchApi<AppsListResponse>('/web/apps'),
     ...cacheConfig.static,
     refetchOnWindowFocus: true,
     refetchOnMount: false,
-    enabled: !!session,
   });
 }
 
 export function useApp(appId: string) {
-  const { data: session } = useSession();
-
   return useQuery({
     queryKey: queryKeys.apps.detail(appId),
     queryFn: () => fetchApi<AppDetailResponse>(`/web/apps/${appId}`),
     ...cacheConfig.detail,
     refetchOnMount: false,
-    enabled: !!session && Boolean(appId),
+    enabled: Boolean(appId),
   });
 }
 
 export function useAppKeys(appId: string) {
-  const { data: session } = useSession();
-
   return useQuery({
     queryKey: queryKeys.apps.keys(appId),
     queryFn: () => fetchApi<AppKeysResponse>(`/web/apps/${appId}/keys`),
     ...cacheConfig.static,
     refetchOnMount: false,
-    enabled: !!session && Boolean(appId),
+    enabled: Boolean(appId),
   });
 }
 
 export function useAppTeam(appId: string) {
-  const { data: session } = useSession();
-
   return useQuery({
     queryKey: queryKeys.apps.team(appId),
     queryFn: () => fetchApi<AppTeamResponse>(`/web/apps/${appId}/team`),
     ...cacheConfig.detail,
     refetchOnMount: false,
-    enabled: !!session && Boolean(appId),
+    enabled: Boolean(appId),
   });
 }
 

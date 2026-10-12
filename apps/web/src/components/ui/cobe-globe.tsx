@@ -1,9 +1,10 @@
 'use client';
 import createGlobe from 'cobe';
+import { useReducedMotion } from 'motion/react';
 import { useTheme } from 'next-themes';
 import type React from 'react';
 import type { ComponentProps } from 'react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { cn } from '@/lib/utils';
 
 const HEX_REGEX = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i;
@@ -45,6 +46,9 @@ type EarthProps = ComponentProps<'div'> & {
   markers?: Marker[];
   markerSize?: number;
 };
+const EMPTY_MARKERS: Marker[] = [];
+const MAX_DEVICE_PIXEL_RATIO = 2;
+
 const Earth: React.FC<EarthProps> = ({
   className,
   theta = 0.2,
@@ -56,55 +60,61 @@ const Earth: React.FC<EarthProps> = ({
   baseColor,
   markerColor,
   glowColor,
-  markers = [],
+  markers = EMPTY_MARKERS,
   markerSize = 0.05,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const markersRef = useRef<Marker[]>(markers);
   const { resolvedTheme } = useTheme();
+  const reducedMotion = useReducedMotion() ?? false;
 
-  useEffect(() => {
-    markersRef.current = markers;
-  }, [markers]);
-
-  useEffect(() => {
-    let width = 0;
-    const onResize = () => {
-      if (canvasRef.current) {
-        width = canvasRef.current.offsetWidth;
-      }
-    };
-    window.addEventListener('resize', onResize);
-    onResize();
-    let phi = 0;
-
-    if (!canvasRef.current) {
-      return;
-    }
-
-    const isDark = resolvedTheme === 'dark';
-    const themeBaseColor: [number, number, number] =
-      baseColor ?? (isDark ? hexToRgb('#ffffff') : hexToRgb('#ffffff'));
-    const themeGlowColor: [number, number, number] =
-      glowColor ?? (isDark ? hexToRgb('#ffffff') : hexToRgb('#e6f2ff'));
-
-    const themeMarkerColor: [number, number, number] =
-      markerColor ?? (isDark ? hexToRgb('#5cd688') : hexToRgb('#3eb96e'));
-    const themeMapBrightness = mapBrightness ?? (isDark ? 1.8 : 1.8);
-    const themeDark = dark ?? (isDark ? 1.1 : 0.1);
-
-    const processedMarkers: MarkerWithColor[] = markersRef.current.map(
-      (marker: Marker) => ({
+  const processedMarkers = useMemo<MarkerWithColor[]>(
+    () =>
+      markers.map((marker) => ({
         location: marker.location,
         size: marker.size ?? markerSize,
         color: marker.color,
-      })
-    );
+      })),
+    [markers, markerSize]
+  );
+  const markersRef = useRef(processedMarkers);
+  const markersDirtyRef = useRef(false);
+  const redrawRef = useRef<(() => void) | null>(null);
 
-    const globe = createGlobe(canvasRef.current, {
-      devicePixelRatio: 2,
-      width: width * 2,
-      height: width * 2,
+  useEffect(() => {
+    markersRef.current = processedMarkers;
+    markersDirtyRef.current = true;
+    redrawRef.current?.();
+  }, [processedMarkers]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return;
+    }
+
+    const pixelRatio = Math.min(
+      window.devicePixelRatio || 1,
+      MAX_DEVICE_PIXEL_RATIO
+    );
+    let width = canvas.offsetWidth;
+    let phi = 0;
+    let inView = true;
+
+    const isDark = resolvedTheme === 'dark';
+    const themeBaseColor: [number, number, number] =
+      baseColor ?? hexToRgb('#ffffff');
+    const themeGlowColor: [number, number, number] =
+      glowColor ?? (isDark ? hexToRgb('#ffffff') : hexToRgb('#e6f2ff'));
+    const themeMarkerColor: [number, number, number] =
+      markerColor ?? (isDark ? hexToRgb('#5cd688') : hexToRgb('#3eb96e'));
+    const themeMapBrightness = mapBrightness ?? 1.8;
+    const themeDark = dark ?? (isDark ? 1.1 : 0.1);
+
+    markersDirtyRef.current = false;
+    const globe = createGlobe(canvas, {
+      devicePixelRatio: pixelRatio,
+      width: width * pixelRatio,
+      height: width * pixelRatio,
       phi: 0,
       theta,
       dark: themeDark,
@@ -117,39 +127,70 @@ const Earth: React.FC<EarthProps> = ({
       glowColor: themeGlowColor,
       opacity: 1,
       offset: [0, 0],
-      markers: processedMarkers,
+      markers: markersRef.current,
       onRender: (state: Record<string, unknown>) => {
-        const currentProcessedMarkers: MarkerWithColor[] =
-          markersRef.current.map((marker: Marker) => ({
-            location: marker.location,
-            size: marker.size ?? markerSize,
-            color: marker.color,
-          }));
-        state.markers = currentProcessedMarkers;
+        // cobe re-encodes marker uniforms whenever state.markers is set.
+        if (markersDirtyRef.current) {
+          state.markers = markersRef.current;
+          markersDirtyRef.current = false;
+        }
 
         state.phi = phi;
-        phi += 0.003;
+        if (!reducedMotion) {
+          phi += 0.003;
+        }
 
-        state.width = width * 2;
-        state.height = width * 2;
+        state.width = width * pixelRatio;
+        state.height = width * pixelRatio;
       },
     });
 
-    setTimeout(() => {
-      if (canvasRef.current) {
-        canvasRef.current.style.opacity = '1';
-        canvasRef.current.style.filter = isDark
-          ? 'brightness(1.1)'
-          : 'brightness(0.95)';
+    const isVisible = () => inView && !document.hidden;
+
+    // cobe applies onRender state after drawing, so a still frame needs two passes.
+    const renderStill = () => {
+      if (!globe.shouldRender && isVisible()) {
+        globe.render();
+        globe.render();
       }
+    };
+
+    const syncPlayback = () => {
+      globe.toggle(isVisible() && !reducedMotion);
+      renderStill();
+    };
+
+    const onResize = () => {
+      width = canvas.offsetWidth;
+      renderStill();
+    };
+
+    const observer = new IntersectionObserver(([entry]) => {
+      inView = entry?.isIntersecting ?? true;
+      syncPlayback();
+    });
+    observer.observe(canvas);
+    document.addEventListener('visibilitychange', syncPlayback);
+    window.addEventListener('resize', onResize);
+    redrawRef.current = renderStill;
+    syncPlayback();
+
+    const revealTimeout = setTimeout(() => {
+      canvas.style.opacity = '1';
+      canvas.style.filter = isDark ? 'brightness(1.1)' : 'brightness(0.95)';
     });
 
     return () => {
-      globe.destroy();
+      clearTimeout(revealTimeout);
+      redrawRef.current = null;
+      observer.disconnect();
+      document.removeEventListener('visibilitychange', syncPlayback);
       window.removeEventListener('resize', onResize);
+      globe.destroy();
     };
   }, [
     resolvedTheme,
+    reducedMotion,
     theta,
     dark,
     scale,
@@ -159,7 +200,6 @@ const Earth: React.FC<EarthProps> = ({
     baseColor,
     markerColor,
     glowColor,
-    markerSize,
   ]);
 
   return (

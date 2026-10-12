@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Biome lints only files changed since the base commit.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+
+      - run: bun install --frozen-lockfile
+
+      - name: Build SDK
+        run: bun run --filter phase-analytics build
+
+      - name: Generate docs sources
+        working-directory: apps/web
+        run: bun x fumadocs-mdx
+
+      # Existing code predates enforcement, so only changed files must pass.
+      - name: Lint changed files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            BASE_SHA=$(git rev-parse HEAD~1)
+          fi
+          bun run lint --changed --since="$BASE_SHA" --no-errors-on-unmatched
+
+      - name: Typecheck server
+        working-directory: apps/server
+        run: bun run typecheck
+
+      - name: Typecheck web
+        working-directory: apps/web
+        run: bun run typecheck
+
+      - name: Typecheck shared
+        working-directory: packages/shared
+        run: bun run typecheck
+
+      - name: Typecheck SDK
+        working-directory: packages/sdk
+        run: bun run typecheck
+
+      - name: Typecheck mobile
+        working-directory: apps/mobile
+        run: bun run typecheck
+
+      - name: Test SDK
+        working-directory: packages/sdk
+        run: bun run test
+
+      - name: Test server
+        working-directory: apps/server
+        run: bun test src
+
+      - name: Test shared
+        working-directory: packages/shared
+        run: bun test

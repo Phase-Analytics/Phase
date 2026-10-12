@@ -197,6 +197,13 @@
       "when": 1784746800000,
       "tag": "0028_policies_link_id",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1791820800000,
+      "tag": "0029_platform_hardening",
+      "breakpoints": true
     }
   ]
 }

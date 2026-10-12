@@ -12,9 +12,10 @@ import {
   HttpStatus,
   UpdateExplorePresetRequestSchema,
 } from '@phase/shared';
-import { and, desc, eq, or, sql } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
-import { apps, db, explorePresets } from '@/db';
+import { db, explorePresets } from '@/db';
+import { findAccessibleApp } from '@/lib/app-access';
 import { auth } from '@/lib/auth';
 import {
   ExploreEngineError,
@@ -32,21 +33,6 @@ type AuthContext = {
   user: BetterAuthUser;
   session: BetterAuthSession;
 };
-
-async function assertAppAccess(appId: string, userId: string) {
-  const app = await db.query.apps.findFirst({
-    where: and(
-      eq(apps.id, appId),
-      or(eq(apps.userId, userId), sql`${userId} = ANY(${apps.memberIds})`)
-    ),
-  });
-
-  if (!app) {
-    return null;
-  }
-
-  return app;
-}
 
 export const exploreWebRouter = new Elysia({ prefix: '/explore' })
   .derive(async ({ request }) => {
@@ -72,7 +58,7 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
         };
       }
 
-      const app = await assertAppAccess(body.appId, user.id);
+      const app = await findAccessibleApp(body.appId, user.id);
       if (!app) {
         set.status = HttpStatus.FORBIDDEN;
         return {
@@ -156,7 +142,7 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
       }
 
       const appId = query.appId as string;
-      const app = await assertAppAccess(appId, user.id);
+      const app = await findAccessibleApp(appId, user.id);
       if (!app) {
         set.status = HttpStatus.FORBIDDEN;
         return {
@@ -194,7 +180,7 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
       }
 
       const appId = query.appId as string;
-      const app = await assertAppAccess(appId, user.id);
+      const app = await findAccessibleApp(appId, user.id);
       if (!app) {
         set.status = HttpStatus.FORBIDDEN;
         return {
@@ -243,7 +229,7 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
         };
       }
 
-      const app = await assertAppAccess(body.appId, user.id);
+      const app = await findAccessibleApp(body.appId, user.id);
       if (!app) {
         set.status = HttpStatus.FORBIDDEN;
         return {
@@ -319,7 +305,7 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
         };
       }
 
-      const app = await assertAppAccess(existing.appId, user.id);
+      const app = await findAccessibleApp(existing.appId, user.id);
       if (!app) {
         set.status = HttpStatus.FORBIDDEN;
         return {
@@ -401,7 +387,7 @@ export const exploreWebRouter = new Elysia({ prefix: '/explore' })
         };
       }
 
-      const app = await assertAppAccess(existing.appId, user.id);
+      const app = await findAccessibleApp(existing.appId, user.id);
       if (!app) {
         set.status = HttpStatus.FORBIDDEN;
         return {

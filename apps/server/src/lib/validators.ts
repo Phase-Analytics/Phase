@@ -18,6 +18,7 @@ import {
   type SQL,
 } from 'drizzle-orm';
 import { db, devices, sessions } from '@/db';
+import { getIngestSession, type IngestSession } from './ingest-cache';
 
 const MIN_PAGE_SIZE = 5;
 const MAX_PAGE_SIZE = 50;
@@ -234,10 +235,7 @@ export async function validateSession(
     .from(sessions)
     .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
     .where(eq(sessions.sessionId, sessionId))
-    .limit(1)
-    .$withCache({
-      tag: `session:${sessionId}`,
-    });
+    .limit(1);
 
   const sessionData = result[0];
 
@@ -270,6 +268,38 @@ export async function validateSession(
       device: sessionData.device,
     },
   };
+}
+
+/** SDK ingest variant of validateSession backed by the in-process cache. */
+export async function validateIngestSession(
+  sessionId: string,
+  appId: string
+): Promise<ValidationResult<IngestSession>> {
+  const session = await getIngestSession(sessionId);
+
+  if (!session) {
+    return {
+      success: false,
+      error: {
+        code: ErrorCode.NOT_FOUND,
+        detail: 'Session not found',
+        status: HttpStatus.NOT_FOUND,
+      },
+    };
+  }
+
+  if (session.appId !== appId) {
+    return {
+      success: false,
+      error: {
+        code: ErrorCode.FORBIDDEN,
+        detail: 'You do not have permission to access this session',
+        status: HttpStatus.FORBIDDEN,
+      },
+    };
+  }
+
+  return { success: true, data: session };
 }
 
 export function validateDateRange(
@@ -393,14 +423,6 @@ export async function getActiveSessionsCount(seconds = 20): Promise<number> {
     .where(gte(sessions.lastActivityAt, cutoffTime));
 
   return activeCount;
-}
-
-export async function invalidateSessionCache(sessionId: string): Promise<void> {
-  try {
-    await db.$cache?.invalidate({ tags: `session:${sessionId}` });
-  } catch (error) {
-    console.error(`[Cache] Failed to invalidate session ${sessionId}:`, error);
-  }
 }
 
 const MAX_PARAMS_SIZE = EVENT_PARAMS.MAX_SIZE;

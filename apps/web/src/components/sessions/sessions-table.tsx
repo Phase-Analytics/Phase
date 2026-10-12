@@ -9,12 +9,13 @@ import {
   Time03Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
+import { getDisplayName } from '@phase/shared';
 import type { ColumnDef } from '@tanstack/react-table';
 import { parseAsInteger, parseAsString, useQueryState } from 'nuqs';
 import 'flag-icons/css/flag-icons.min.css';
 import { ClientDate, ClientDuration } from '@/components/client-date';
 import { DataTableServer } from '@/components/ui/data-table-server';
-import { getGeneratedName, UserAvatar } from '@/components/user-profile';
+import { UserAvatar } from '@/components/user-profile';
 import type { Session } from '@/lib/api/types';
 import { useSessions } from '@/lib/queries';
 import { usePaginationStore } from '@/stores/pagination-store';
@@ -59,7 +60,7 @@ const columns: ColumnDef<Session>[] = [
     size: 280,
     cell: ({ row }) => {
       const deviceId = row.getValue('deviceId') as string;
-      const generatedName = getGeneratedName(deviceId);
+      const generatedName = getDisplayName(deviceId);
       return (
         <div
           className="flex max-w-xs items-center gap-2 lg:max-w-sm"
@@ -79,9 +80,7 @@ const columns: ColumnDef<Session>[] = [
       const country = row.original.country ?? null;
       return (
         <div className="flex items-center gap-1.5">
-          {!country ||
-          country.length !== 2 ||
-          !COUNTRY_CODE_REGEX.test(country) ? (
+          {country?.length !== 2 || !COUNTRY_CODE_REGEX.test(country) ? (
             <HugeiconsIcon
               className="size-3.5 text-muted-foreground"
               icon={Flag02Icon}

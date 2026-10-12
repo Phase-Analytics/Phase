@@ -1,32 +1,43 @@
-import { HttpError, type Result } from '../types';
+/** Exponential backoff with full jitter: random delay in [0, min(max, base * 2^attempt)). */
+export function backoffDelay(
+  attempt: number,
+  baseMs: number,
+  maxMs: number
+): number {
+  const ceiling = Math.min(maxMs, baseMs * 2 ** attempt);
+  return Math.floor(Math.random() * ceiling);
+}
 
-const RETRY_DELAYS = [100, 500, 2000] as const;
-
-export async function withRetry<T>(fn: () => Promise<T>): Promise<Result<T>> {
-  let lastError: Error | undefined;
-
-  for (let attempt = 0; attempt < RETRY_DELAYS.length + 1; attempt++) {
-    try {
-      const result = await fn();
-      return { success: true, data: result };
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-
-      if (lastError instanceof HttpError && !lastError.isRetryable()) {
-        break;
-      }
-
-      const delay = RETRY_DELAYS[attempt];
-      if (delay === undefined) {
-        break;
-      }
-
-      await new Promise<void>((resolve) => setTimeout(resolve, delay));
-    }
+/** Parses a Retry-After header (delta-seconds or HTTP date) into milliseconds. */
+export function parseRetryAfterMs(value: string | null): number | null {
+  if (!value) {
+    return null;
   }
 
-  return {
-    success: false,
-    error: lastError ?? new Error('Unknown error occurred'),
-  };
+  const seconds = Number(value);
+  if (Number.isFinite(seconds)) {
+    return Math.max(0, seconds * 1000);
+  }
+
+  const date = Date.parse(value);
+  return Number.isNaN(date) ? null : Math.max(0, date - Date.now());
+}
+
+export function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal?.aborted) {
+      resolve();
+      return;
+    }
+
+    const onAbort = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener('abort', onAbort);
+  });
 }

@@ -109,11 +109,21 @@ export function PoliciesTable({
     {
       accessorKey: 'totalClicks',
       header: 'Clicks',
-      cell: ({ row }) => (
-        <span className="text-sm tabular-nums">
-          {row.original.totalClicks ?? 0}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const { totalClicks } = row.original;
+        return (
+          <span
+            className="text-sm tabular-nums"
+            title={
+              totalClicks === undefined
+                ? 'Click totals are temporarily unavailable'
+                : undefined
+            }
+          >
+            {totalClicks ?? '—'}
+          </span>
+        );
+      },
     },
     {
       id: 'actions',

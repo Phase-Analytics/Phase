@@ -1,26 +1,32 @@
 import { createHash } from 'node:crypto';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { ErrorCode, HttpStatus } from '@phase/shared';
 import { Elysia } from 'elysia';
 import Redis from 'ioredis';
 import { pool } from '@/db';
+import { closeExplorePool, ensureExploreRole } from '@/db/explore-pool';
 import { auth } from '@/lib/auth';
+import { getClientIp, getSocketAddress } from '@/lib/client-ip';
 import { authCors, publicCors, sdkCors, webCors } from '@/lib/cors';
 import { initEventBuffer } from '@/lib/event-buffer';
 import { initGeoIP, shutdownGeoIP } from '@/lib/geolocation';
 import { hashPublicApiToken } from '@/lib/keys';
 import {
+  getLinkClickBuffer,
   initLinkClickBuffer,
   initLinkClicksTable,
 } from '@/lib/links/click-buffer';
+import { connectLinksRedis } from '@/lib/links/redis';
 import { runMigrations } from '@/lib/migrate';
 import { initQuestDB } from '@/lib/questdb';
 import {
   checkPublicApiRateLimit,
-  checkSdkApiRateLimit,
   checkWebApiRateLimit,
   RATE_LIMIT_STRATEGIES,
   type RateLimitResult,
 } from '@/lib/rate-limit';
+import { startRetention, stopRetention } from '@/lib/retention';
+import { checkSdkRateLimit } from '@/lib/sdk-rate-limit';
 import { initSessionActivityBuffer } from '@/lib/session-activity-buffer';
 import { startSessionCleanup, stopSessionCleanup } from '@/lib/session-cleanup';
 import { sseManager } from '@/lib/sse-manager';
@@ -42,21 +48,8 @@ import { realtimeWebRouter } from '@/routes/realtime';
 import { sessionSdkRouter, sessionWebRouter } from '@/routes/session';
 import { waitlistPublicRouter } from '@/routes/waitlist';
 
-function extractClientIP(request: Request, server?: unknown): string | null {
-  const cfConnectingIp = request.headers.get('cf-connecting-ip');
-  const forwardedFor = request.headers.get('x-forwarded-for');
-  const realIp = request.headers.get('x-real-ip');
-  const socketIp = (
-    server as { requestIP?: (req: Request) => { address: string } | null }
-  )?.requestIP?.(request);
-
-  return (
-    cfConnectingIp ||
-    forwardedFor?.split(',')[0]?.trim() ||
-    realIp ||
-    (socketIp?.address as string) ||
-    null
-  );
+function requestIp(request: Request, server: unknown): string | null {
+  return getClientIp(request, getSocketAddress(request, server));
 }
 
 function extractBearerToken(request: Request): string | null {
@@ -116,30 +109,19 @@ function handleRateLimitResponse(
       detail: rateLimitResult.reason || 'Too many requests',
     };
   }
-
-  return;
 }
 
 const sdkRoutes = new Elysia({ prefix: '/sdk' })
   .use(sdkCors)
-  .onBeforeHandle(async ({ request, body, set, server }) => {
-    const ip = extractClientIP(request, server);
-    const deviceId = (body as { deviceId?: string })?.deviceId;
-
-    if (!(deviceId || ip)) {
+  .onBeforeHandle(async ({ request, set, server }) => {
+    const outcome = await checkSdkRateLimit(
+      request,
+      requestIp(request, server)
+    );
+    if (!outcome) {
       return;
     }
-
-    const rateLimitResult = await checkSdkApiRateLimit(
-      deviceId || ip || '',
-      ip || undefined
-    );
-
-    return handleRateLimitResponse(
-      rateLimitResult,
-      RATE_LIMIT_STRATEGIES.SDK_API.maxAttempts,
-      set
-    );
+    return handleRateLimitResponse(outcome.result, outcome.limit, set);
   })
   .use(pingSdkRouter)
   .use(batchSdkRouter)
@@ -150,7 +132,7 @@ const sdkRoutes = new Elysia({ prefix: '/sdk' })
 const webRoutes = new Elysia({ prefix: '/web' })
   .use(webCors)
   .onBeforeHandle(async ({ request, set, server }) => {
-    const ip = extractClientIP(request, server);
+    const ip = requestIp(request, server);
 
     if (!ip) {
       return;
@@ -184,7 +166,7 @@ const publicRoutes = new Elysia({ prefix: '/public' })
 
 const publicApiRoutes = new Elysia({ prefix: '/public-api' })
   .onBeforeHandle(async ({ request, set, server }) => {
-    const ip = extractClientIP(request, server);
+    const ip = requestIp(request, server);
     const bearerToken = extractBearerToken(request);
     const tokenIdentifier = bearerToken
       ? hashPublicApiToken(bearerToken)
@@ -216,13 +198,25 @@ const app = new Elysia()
   .use(publicRoutes)
   .use(publicApiRoutes)
   .use(linkRedirectRouter)
-  .onError(({ error, set }) => {
+  .onError(({ code, error, set }) => {
+    if (code === 'VALIDATION' || code === 'PARSE') {
+      set.status = HttpStatus.BAD_REQUEST;
+      return {
+        code: ErrorCode.VALIDATION_ERROR,
+        detail: code === 'PARSE' ? 'Malformed request body' : 'Invalid request',
+      };
+    }
+    if (code === 'NOT_FOUND') {
+      set.status = HttpStatus.NOT_FOUND;
+      return { code: ErrorCode.NOT_FOUND, detail: 'Not found' };
+    }
+
+    // Internal error details stay in the logs, never in the response.
     console.error('[Server] Unhandled error:', error);
-    set.status = 500;
+    set.status = HttpStatus.INTERNAL_SERVER_ERROR;
     return {
-      code: 'INTERNAL_SERVER_ERROR',
-      detail:
-        error instanceof Error ? error.message : 'An unexpected error occurred',
+      code: ErrorCode.INTERNAL_SERVER_ERROR,
+      detail: 'An unexpected error occurred',
     };
   });
 
@@ -242,9 +236,13 @@ try {
 
   if (process.env.REDIS_URL) {
     redisClient = new Redis(process.env.REDIS_URL);
+    redisClient.on('error', (error) => {
+      console.error('[Redis] Connection error:', error.message);
+    });
     eventBuffer = initEventBuffer(process.env.REDIS_URL);
     eventBuffer.start();
     initLinkClickBuffer(process.env.REDIS_URL);
+    await connectLinksRedis();
   } else {
     console.warn(
       '[Server] REDIS_URL not set, event buffering disabled - events will not be persisted'
@@ -253,7 +251,8 @@ try {
 
   sessionActivityBuffer = initSessionActivityBuffer();
   sessionActivityBuffer.start();
-  startSessionCleanup();
+  startSessionCleanup(redisClient);
+  startRetention(redisClient);
 
   const geoip = initGeoIP();
   await geoip.initialize();
@@ -264,36 +263,61 @@ try {
   process.exit(1);
 }
 
-const shutdown = async () => {
-  try {
-    console.log('[Server] Shutting down...');
-    app.server?.stop();
-    sseManager.stop();
-    stopSessionCleanup();
-    shutdownGeoIP();
+// Fails closed for Explore only and logs on its own; ingest must not wait.
+ensureExploreRole();
 
-    if (sessionActivityBuffer) {
-      await sessionActivityBuffer.flushAndClose();
-    }
+// Must stay below the container stop_grace_period (30s).
+const SHUTDOWN_TIMEOUT_MS = 25_000;
+const SERVER_DRAIN_TIMEOUT_MS = 5000;
+let shuttingDown = false;
 
-    if (eventBuffer) {
-      await eventBuffer.flushAndClose();
-    }
-
-    if (redisClient) {
-      await redisClient.quit();
-    }
-
-    await pool.end();
-    process.exit(0);
-  } catch (error) {
-    console.error('[Server] Shutdown error:', error);
-    process.exit(1);
+async function shutdown(signal: string): Promise<void> {
+  if (shuttingDown) {
+    return;
   }
-};
+  shuttingDown = true;
+  console.log(`[Server] ${signal} received, shutting down`);
 
-process.on('SIGTERM', shutdown);
-process.on('SIGINT', shutdown);
+  const deadline = Date.now() + SHUTDOWN_TIMEOUT_MS;
+  setTimeout(() => {
+    console.error('[Server] Shutdown timed out, exiting');
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS);
+
+  let exitCode = 0;
+  const step = async (name: string, task: () => Promise<unknown> | unknown) => {
+    try {
+      await task();
+    } catch (error) {
+      exitCode = 1;
+      console.error(`[Server] Shutdown step "${name}" failed:`, error);
+    }
+  };
+
+  // Stop accepting requests, end SSE streams so they do not hold the server
+  // open, then give in-flight ingest requests a moment to reach the buffers.
+  const serverStopped = app.server?.stop();
+  await step('sse', () => sseManager.stop());
+  await step('server', () =>
+    Promise.race([serverStopped, sleep(SERVER_DRAIN_TIMEOUT_MS)])
+  );
+
+  stopSessionCleanup();
+  stopRetention();
+  shutdownGeoIP();
+  getLinkClickBuffer()?.stop();
+
+  await step('session activity', () => sessionActivityBuffer?.flushAndClose());
+  await step('event buffer', () => eventBuffer?.flushAndClose(deadline - 2000));
+  await step('redis', () => redisClient?.quit());
+  await step('explore pool', closeExplorePool);
+  await step('postgres', () => pool.end());
+
+  process.exit(exitCode);
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 app.listen(3001);
 

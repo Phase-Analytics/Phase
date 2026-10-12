@@ -52,8 +52,9 @@ export function LinkDnsSetupCard({
           <div className="space-y-1">
             <h3 className="font-semibold text-sm">DNS setup</h3>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Add every required record. Ownership and certificate records are
-              unique to this hostname.
+              Add the ownership TXT and routing CNAME, then verify. Once
+              ownership is confirmed, a certificate record may appear here; add
+              it too. Records are unique to this hostname.
             </p>
           </div>
         </div>

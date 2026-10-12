@@ -3,10 +3,11 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
-type LinkStatus = 'active' | 'disabled' | 'expired';
+type LinkStatus = 'active' | 'blocked' | 'disabled' | 'expired';
 
 const STATUS_LABELS: Record<LinkStatus, string> = {
   active: 'Active',
+  blocked: 'Blocked',
   disabled: 'Disabled',
   expired: 'Expired',
 };
@@ -16,6 +17,7 @@ const STATUS_VARIANTS: Record<
   'success' | 'destructive' | 'outline'
 > = {
   active: 'success',
+  blocked: 'destructive',
   disabled: 'destructive',
   expired: 'outline',
 };

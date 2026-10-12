@@ -1,7 +1,7 @@
 'use client';
 
-import { Root as SlotRoot } from '@radix-ui/react-slot';
 import { motion } from 'motion/react';
+import { Slot } from 'radix-ui';
 import { cn } from '@/lib/utils';
 
 type Variant = {
@@ -87,7 +87,7 @@ const variants = [
       >
         <div
           className={cn(
-            '-inset-px pointer-events-none absolute rounded-[inherit] border border-transparent [mask-clip:padding-box,border-box]',
+            'pointer-events-none absolute -inset-px rounded-[inherit] border border-transparent [mask-clip:padding-box,border-box]',
             'mask-intersect mask-[linear-gradient(transparent,transparent),linear-gradient(#000,#000)]'
           )}
         >
@@ -154,9 +154,9 @@ function Badge({ variant = 'default', className, ...props }: BadgeProps) {
   const Component = variantComponent ?? variants[FALLBACK_INDEX].component;
 
   return (
-    <SlotRoot className={cn('font-medium text-xs')}>
+    <Slot.Root className={cn('font-medium text-xs')}>
       <Component {...props} className={className} />
-    </SlotRoot>
+    </Slot.Root>
   );
 }
 

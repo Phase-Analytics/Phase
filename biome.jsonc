@@ -1,10 +1,14 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-  "extends": ["ultracite"],
+  "extends": [
+    "ultracite/biome/core",
+    "ultracite/biome/react",
+    "ultracite/biome/next"
+  ],
   "files": {
     "includes": [
-      "**",
       "!**/public/openanalytics-v0.8.0.js",
+      "!**/public/geo",
       "!**/drizzle",
       "!**/.next",
       "!**/dist",
@@ -12,6 +16,11 @@
       "!**/node_modules",
       "!**/packages/phase-unity",
       "!**/apps/web/src/components/charts",
+      // apps/mobile keeps its own (double-quote) style and is typechecked in CI.
+      "!**/apps/mobile",
+      "!.agents",
+      "!.claude",
+      "!.pi",
       "!bun.lock"
     ]
   },
@@ -21,13 +30,34 @@
       "trailingCommas": "es5"
     }
   },
+  // Ultracite 8 enables rules the previous preset kept off, and new style
+  // rules that would rewrite most existing files. Keep the established
+  // conventions; key order also matters for serialized output.
+  "assist": {
+    "actions": {
+      "source": {
+        "useSortedKeys": "off",
+        "useSortedPackageJson": "off",
+        // Reordering declarations can flip shorthand/longhand precedence.
+        "useSortedProperties": "off"
+      }
+    }
+  },
   "linter": {
     "rules": {
       "complexity": {
-        "noExcessiveCognitiveComplexity": "off"
+        "noExcessiveCognitiveComplexity": "off",
+        "noUselessCatchBinding": "off"
+      },
+      "correctness": {
+        "noUndeclaredDependencies": "off"
       },
       "suspicious": {
         "noUnknownAtRules": "off",
+        "noUnnecessaryConditions": "off",
+        // Flags plain boolean state (`{isLoading && <Spinner />}`) and even
+        // ternaries without type information; noise, not a leaked-render check.
+        "noLeakedRender": "off",
         "noConsole": {
           "level": "warn",
           "options": {
@@ -37,10 +67,22 @@
       },
       "style": {
         "useFilenamingConvention": "off",
-        "noMagicNumbers": "off"
+        "noMagicNumbers": "off",
+        "noIncrementDecrement": "off",
+        "useDestructuring": "off",
+        // Only recognizes `cause` as the 2nd constructor argument; the custom
+        // errors here take (status | kind, message, ...).
+        "useErrorCause": "off",
+        "useConsistentTypeDefinitions": {
+          "level": "error",
+          "options": { "style": "type" }
+        }
       },
       "performance": {
-        "noBarrelFile": "off"
+        "noBarrelFile": "off",
+        "noAwaitInLoops": "off",
+        // React Compiler memoizes inline handlers.
+        "noJsxPropsBind": "off"
       }
     }
   }

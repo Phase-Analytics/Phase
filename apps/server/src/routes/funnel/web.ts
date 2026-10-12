@@ -12,11 +12,13 @@ import {
   HttpStatus,
   UpdateFunnelDefinitionRequestSchema,
 } from '@phase/shared';
-import { and, desc, eq, or, sql } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
-import { apps, db, funnelPresets } from '@/db';
+import { db, funnelPresets } from '@/db';
+import { findAccessibleApp } from '@/lib/app-access';
 import { auth } from '@/lib/auth';
 import {
+  FunnelTooLargeError,
   resolveFunnelPeriod,
   runActivationFunnel,
   runCustomFunnel,
@@ -26,27 +28,12 @@ import {
   type BetterAuthSession,
   type BetterAuthUser,
 } from '@/lib/middleware';
-import { validateDateRange } from '@/lib/validators';
+import { validateReportDateRange } from '@/lib/reports/range-validation';
 
 type AuthContext = {
   user: BetterAuthUser;
   session: BetterAuthSession;
 };
-
-async function assertAppAccess(appId: string, userId: string) {
-  const app = await db.query.apps.findFirst({
-    where: and(
-      eq(apps.id, appId),
-      or(eq(apps.userId, userId), sql`${userId} = ANY(${apps.memberIds})`)
-    ),
-  });
-
-  if (!app) {
-    return null;
-  }
-
-  return app;
-}
 
 function normalizeFunnelSteps(steps: unknown): FunnelCustomStep[] {
   if (!Array.isArray(steps)) {
@@ -121,17 +108,10 @@ export const funnelWebRouter = new Elysia({ prefix: '/funnels' })
         };
       }
 
+      // verifyAppAccess has already authorized appId for this user.
       const appId = query.appId as string;
-      const app = await assertAppAccess(appId, user.id);
-      if (!app) {
-        set.status = HttpStatus.FORBIDDEN;
-        return {
-          code: ErrorCode.FORBIDDEN,
-          detail: 'App not found or access denied',
-        };
-      }
 
-      const dateRangeValidation = validateDateRange(
+      const dateRangeValidation = validateReportDateRange(
         query.startDate as string | undefined,
         query.endDate as string | undefined
       );
@@ -197,7 +177,7 @@ export const funnelWebRouter = new Elysia({ prefix: '/funnels' })
         };
       }
 
-      const app = await assertAppAccess(parsed.data.appId, user.id);
+      const app = await findAccessibleApp(parsed.data.appId, user.id);
       if (!app) {
         set.status = HttpStatus.FORBIDDEN;
         return {
@@ -206,7 +186,7 @@ export const funnelWebRouter = new Elysia({ prefix: '/funnels' })
         };
       }
 
-      const dateRangeValidation = validateDateRange(
+      const dateRangeValidation = validateReportDateRange(
         parsed.data.startDate,
         parsed.data.endDate
       );
@@ -230,6 +210,10 @@ export const funnelWebRouter = new Elysia({ prefix: '/funnels' })
           parsed.data.windowHours
         );
       } catch (error) {
+        if (error instanceof FunnelTooLargeError) {
+          set.status = HttpStatus.BAD_REQUEST;
+          return { code: ErrorCode.VALIDATION_ERROR, detail: error.message };
+        }
         console.error('[Funnel.Run] Error:', error);
         set.status = HttpStatus.INTERNAL_SERVER_ERROR;
         return {
@@ -266,7 +250,7 @@ export const funnelWebRouter = new Elysia({ prefix: '/funnels' })
       }
 
       const appId = query.appId as string;
-      const app = await assertAppAccess(appId, user.id);
+      const app = await findAccessibleApp(appId, user.id);
       if (!app) {
         set.status = HttpStatus.FORBIDDEN;
         return {
@@ -316,7 +300,7 @@ export const funnelWebRouter = new Elysia({ prefix: '/funnels' })
         };
       }
 
-      const app = await assertAppAccess(parsed.data.appId, user.id);
+      const app = await findAccessibleApp(parsed.data.appId, user.id);
       if (!app) {
         set.status = HttpStatus.FORBIDDEN;
         return {
@@ -388,7 +372,7 @@ export const funnelWebRouter = new Elysia({ prefix: '/funnels' })
         };
       }
 
-      const app = await assertAppAccess(existing.appId, user.id);
+      const app = await findAccessibleApp(existing.appId, user.id);
       if (!app) {
         set.status = HttpStatus.FORBIDDEN;
         return {
@@ -465,7 +449,7 @@ export const funnelWebRouter = new Elysia({ prefix: '/funnels' })
         };
       }
 
-      const app = await assertAppAccess(existing.appId, user.id);
+      const app = await findAccessibleApp(existing.appId, user.id);
       if (!app) {
         set.status = HttpStatus.FORBIDDEN;
         return {
@@ -476,7 +460,6 @@ export const funnelWebRouter = new Elysia({ prefix: '/funnels' })
 
       await db.delete(funnelPresets).where(eq(funnelPresets.id, params.id));
       set.status = HttpStatus.NO_CONTENT;
-      return;
     },
     {
       response: {

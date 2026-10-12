@@ -1,7 +1,7 @@
 import { LINK_OG_IMAGE } from '@phase/shared';
-import type { Metadata } from 'sharp';
 
-const ALLOWED_FORMATS = new Set(['jpeg', 'png', 'webp', 'gif', 'avif']);
+// Must match LINK_OG_IMAGE.acceptMimeTypes and the upload UI copy.
+const ALLOWED_FORMATS = new Set(['jpeg', 'png', 'webp']);
 const SHARP_OPTIONS = {
   animated: false,
   limitInputPixels: LINK_OG_IMAGE.maxDecodePixels,
@@ -51,20 +51,22 @@ export async function processLinkOgImage(input: Buffer): Promise<Buffer> {
   }
 
   const sharp = await getSharp();
+  // One pipeline: metadata() only reads the header, the resize decodes once.
+  const image = sharp(input, SHARP_OPTIONS);
 
-  let metadata: Metadata;
+  let format: string | undefined;
   try {
-    metadata = await sharp(input, SHARP_OPTIONS).metadata();
+    format = (await image.metadata()).format;
   } catch {
     throw new LinkOgImageError('Invalid image file');
   }
 
-  if (!(metadata.format && ALLOWED_FORMATS.has(metadata.format))) {
+  if (!(format && ALLOWED_FORMATS.has(format))) {
     throw new LinkOgImageError('Use JPEG, PNG, or WebP');
   }
 
   try {
-    const output = await sharp(input, SHARP_OPTIONS)
+    const output = await image
       .rotate()
       .resize(LINK_OG_IMAGE.width, LINK_OG_IMAGE.height, {
         fit: 'cover',

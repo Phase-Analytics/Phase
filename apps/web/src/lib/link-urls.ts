@@ -49,9 +49,14 @@ export function getPrimaryLinkUrl(
 }
 
 export function getLinkStatus(link: {
+  banned: boolean;
   disabledAt: string | null;
   expiresAt: string | null;
-}): 'active' | 'disabled' | 'expired' {
+}): 'active' | 'blocked' | 'disabled' | 'expired' {
+  if (link.banned) {
+    return 'blocked';
+  }
+
   if (link.disabledAt) {
     return 'disabled';
   }

@@ -1,6 +1,5 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
-import { redisCache } from '@/lib/cache';
 import {
   account,
   apps,
@@ -54,26 +53,7 @@ const schema = {
   waitlist,
 };
 
-let cacheConfig: ReturnType<typeof redisCache> | undefined;
-try {
-  if (process.env.REDIS_URL) {
-    cacheConfig = redisCache(process.env.REDIS_URL, {
-      ex: 300,
-    });
-  } else {
-    cacheConfig = undefined;
-  }
-} catch (error) {
-  console.error('[Database] Failed to initialize Redis cache:', error);
-  cacheConfig = undefined;
-}
-
-export const db = drizzle(pool, {
-  schema,
-  ...(cacheConfig && { cache: cacheConfig }),
-});
-
-export { pool };
+export const db = drizzle(pool, { schema });
 
 export {
   account,
@@ -91,3 +71,4 @@ export {
   verification,
   waitlist,
 } from './schema';
+export { pool };

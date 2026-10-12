@@ -27,6 +27,20 @@ try {
   // expo-application not available
 }
 
+export function getMissingExpoPackages(): string[] {
+  const missing: string[] = [];
+  if (!ExpoDevice) {
+    missing.push('expo-device');
+  }
+  if (!ExpoLocalization) {
+    missing.push('expo-localization');
+  }
+  if (!ExpoApplication) {
+    missing.push('expo-application');
+  }
+  return missing;
+}
+
 export function getExpoDeviceInfo(): DeviceInfo {
   const model = getModel();
   const fallbackModel = model || getDeviceType();
@@ -68,6 +82,12 @@ function getDeviceType(): DeviceType | null {
 }
 
 function getOsVersion(): string | null {
+  // Platform.Version is the Android API level (e.g. 34), not the OS version.
+  const device = ExpoDevice as Record<string, unknown> | null;
+  if (typeof device?.osVersion === 'string' && device.osVersion) {
+    return device.osVersion;
+  }
+
   try {
     const version = Platform.Version;
     return typeof version === 'number' ? version.toString() : version;

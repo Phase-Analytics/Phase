@@ -22,24 +22,22 @@
     "build": "bun run build:packages && bun run build:apps",
     "build:packages": "bun run --filter './packages/sdk' --filter './packages/shared' build",
     "build:apps": "bun run --filter './apps/*' build",
-    "build:server": "bun run --filter server build",
     "build:web": "bun run --filter web build",
     "db:studio": "bun run --filter server db:studio",
     "db:generate": "bun run --filter server db:generate",
     "db:migrate": "bun run --filter server db:migrate",
     "db:push": "bun run --filter server db:push",
     "check": "bunx ultracite fix --unsafe",
+    "lint": "biome ci .",
     "typecheck": "bun run --filter './apps/*' --filter './packages/sdk' --filter './packages/shared' typecheck"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.2.5",
+    "@biomejs/biome": "2.5.15",
     "typescript": "^5",
-    "ultracite": "5.6.1"
+    "ultracite": "8.0.0"
   },
   "overrides": {
-    "@types/react": "19.1.8",
-    "@types/react-dom": "19.1.6",
     "csstype": "3.1.3"
   },
-  "packageManager": "bun@1.3.3"
+  "packageManager": "bun@1.4.3"
 }

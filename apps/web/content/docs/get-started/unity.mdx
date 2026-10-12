@@ -32,7 +32,7 @@ Add to `Packages/manifest.json` (recommended for teams and CI):
 ```json
 {
   "dependencies": {
-    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.11"
+    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.2.0"
   }
 }
 ```
@@ -50,7 +50,7 @@ Return to Unity and let Package Manager resolve the dependency.
 
 <CodeBlock lang="text" allowCopy={true}>
 ```
-https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.11
+https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.2.0
 ```
 </CodeBlock>
 
@@ -62,7 +62,7 @@ https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.11
 Pin the release tag:
 
 ```
-#v0.1.11
+#v0.2.0
 ```
 
 </Step>
@@ -114,7 +114,7 @@ If any check fails, upgrade to `#v0.1.11` or newer, remove `Library/PackageCache
 
 ## Setup
 
-Initialize once at startup, then call `IdentifyAsync` before tracking. Call `InitializeAsync` and `IdentifyAsync` from the Unity main thread (`Start`, `Awake`, or a coroutine started there). With `AutoBootstrap` enabled (default), the SDK spawns a `DontDestroyOnLoad` `PhaseLifecycleHook` that flushes on pause/quit and resumes sessions when the app returns.
+Initialize once at startup, then call `IdentifyAsync` to register the device and start a session. Call `InitializeAsync` and `IdentifyAsync` from the Unity main thread (`Start`, `Awake`, or a coroutine started there). With `AutoBootstrap` enabled (default), the SDK spawns a `DontDestroyOnLoad` `PhaseLifecycleHook` that flushes when the app goes to the background, saves the queue on quit and resumes sessions when the app returns.
 
 <Tabs defaultValue="bootstrap" persist>
   <TabsList>
@@ -163,7 +163,7 @@ public sealed class GameBootstrap : MonoBehaviour
 ```
 </CodeBlock>
 
-`InitializeAsync` is idempotent. `IdentifyAsync` must succeed before events are sent. Both must run on the main thread so Unity APIs and the lifecycle hook stay safe after `await`.
+`InitializeAsync` is idempotent. Events tracked before `IdentifyAsync` completes are buffered and delivered once a session exists. Both must run on the main thread so Unity APIs and the lifecycle hook stay safe after `await`.
 
   </TabsContent>
 
@@ -243,7 +243,7 @@ await PhaseAnalytics.InitializeAsync(new PhaseConfig
       default: 'true',
     },
     AutoBootstrap: {
-      description: 'Create `PhaseLifecycleHook` (`DontDestroyOnLoad`) on initialize for pause/resume and flush-on-quit',
+      description: 'Create `PhaseLifecycleHook` (`DontDestroyOnLoad`) on initialize for pause/resume, flush on background and queue save on quit',
       type: 'bool',
       default: 'true',
     },
@@ -279,7 +279,7 @@ Default HTTP is **`System.Net.Http`** (`SystemNetHttpTransport`), which is safe 
 
 ### Identify User
 
-**Required:** Call `IdentifyAsync()` before `Track()`. This registers the device and starts a session.
+Call `IdentifyAsync()` once at startup. This registers the device and starts a session.
 
 <CodeBlock
   title="GameBootstrap.cs"
@@ -335,7 +335,7 @@ Properties must be flat primitives: `string`, `number`, `bool`, or `null`.
 
 ### Track Events
 
-Track custom events with optional parameters. **Note:** `IdentifyAsync()` must complete successfully first.
+Track custom events with optional parameters. The event id and timestamp are taken when you call `Track`. Events tracked before `IdentifyAsync()` completes are buffered (up to 200 events, for up to one hour) and delivered once a session exists. If more than 200 pile up, the oldest are dropped.
 
 <CodeBlock lang="csharp" icon={<img src="https://cdn.simpleicons.org/unity/FFFFFF" alt="Unity" className="size-4 dark:invert" />}>
 ```csharp
@@ -360,7 +360,7 @@ PhaseAnalytics.Track("level_complete", new EventParams
 ```
 </CodeBlock>
 
-`Track` is **non-blocking** (fire-and-forget). Failures are logged when `LogLevel` is enabled and events are queued for retry when appropriate.
+`Track` is **non-blocking** (fire-and-forget). Events go into a persistent queue and are sent in batches (see [Delivery](#delivery)). Failures are logged when `LogLevel` is enabled and events are retried when appropriate.
 
 **Event naming rules:**
 
@@ -378,9 +378,26 @@ PhaseAnalytics.Track("level_complete", new EventParams
 - Serialized payload max 8 KB
 - Empty objects are normalized away
 
+### Track Screens
+
+Use `TrackScreen` to record a screen view. `parameters` follow the same rules as `Track`, and delivery rules are the same (buffered before identify, sent in batches).
+
+<CodeBlock lang="csharp" icon={<img src="https://cdn.simpleicons.org/unity/FFFFFF" alt="Unity" className="size-4 dark:invert" />}>
+```csharp
+PhaseAnalytics.TrackScreen("Shop");
+
+PhaseAnalytics.TrackScreen("Shop", new EventParams
+{
+    ["tab"] = "coins",
+});
+```
+</CodeBlock>
+
+Unity has no automatic screen tracking, so call `TrackScreen` from your own menu or scene code.
+
 ### Scenes and levels (manual events)
 
-Model scenes and levels with `Track`:
+Model scenes and levels with `Track` (or `TrackScreen` for screen-like views):
 
 <CodeBlock
   title="SceneLoader.cs"
@@ -410,6 +427,27 @@ public sealed class SceneAnalytics : MonoBehaviour
 ```
 </CodeBlock>
 
+### Flush
+
+Data is sent automatically (see [Delivery](#delivery)). `FlushAsync()` sends queued data now and saves whatever could not be delivered, for example before a scripted shutdown.
+
+<CodeBlock lang="csharp" icon={<img src="https://cdn.simpleicons.org/unity/FFFFFF" alt="Unity" className="size-4 dark:invert" />}>
+```csharp
+await PhaseAnalytics.FlushAsync();
+```
+</CodeBlock>
+
+### Reset
+
+`ResetAsync()` forgets the current device, for example on logout. It ends the session, tries to deliver queued data, clears the queue and generates a new device ID. Call `IdentifyAsync()` again to resume tracking.
+
+<CodeBlock lang="csharp" icon={<img src="https://cdn.simpleicons.org/unity/FFFFFF" alt="Unity" className="size-4 dark:invert" />}>
+```csharp
+await PhaseAnalytics.ResetAsync();
+await PhaseAnalytics.IdentifyAsync();
+```
+</CodeBlock>
+
 ### Clear local data
 
 Wipes persisted SDK storage on device (GDPR-style). Does **not** delete server-side data.
@@ -429,8 +467,11 @@ await PhaseAnalytics.IdentifyAsync();
 | Member | Description |
 |--------|-------------|
 | `InitializeAsync(PhaseConfig)` | Sets up storage, HTTP, managers, optional lifecycle hook. Returns `false` on invalid config. Idempotent. |
-| `IdentifyAsync(DeviceProperties?)` | Registers device and starts session. Required before reliable tracking. |
-| `Track(string, EventParams?)` | Queues a custom event. Requires prior identify. |
+| `IdentifyAsync(DeviceProperties?)` | Registers device and starts session. Events tracked earlier are buffered and delivered afterwards. |
+| `Track(string, EventParams?)` | Queues a custom event. Buffered if called before identify. |
+| `TrackScreen(string, EventParams?)` | Queues a screen view. Same delivery rules as `Track`. |
+| `FlushAsync()` | Sends queued data now and saves what could not be delivered. |
+| `ResetAsync()` | Forgets the device: ends the session, tries to deliver queued data, clears the queue and creates a new device ID. |
 | `ClearLocalDataAsync()` | Deletes local Phase storage directory. |
 | `IsInitialized` | `true` after successful `InitializeAsync`. |
 | `IsIdentified` | `true` after successful `IdentifyAsync`. |
@@ -452,7 +493,7 @@ Custom user/device attributes passed to `IdentifyAsync()`:
 
 ### EventParams
 
-Event parameters passed to `Track()`:
+Event parameters passed to `Track()` and `TrackScreen()`:
 
 <TypeTable
   type={{
@@ -470,19 +511,28 @@ Event parameters passed to `Track()`:
 When `AutoBootstrap` is `true`, `PhaseLifecycleHook` is created at the start of `InitializeAsync` (before async I/O):
 
 - Listens for `OnApplicationPause` / focus changes
-- Flushes the offline queue when the app backgrounds or quits
+- Flushes the queue when the app goes to the background and saves it to disk on quit
 - Resumes session handling when the app returns
 - Polls network reachability on the main thread (`Update`)
 
-Session pings run on a timer while identified. Events sent without a valid session are rejected client-side until `IdentifyAsync` succeeds.
+Session pings run on a timer while identified. Events tracked before `IdentifyAsync` succeeds are buffered and delivered once a session exists.
+
+### Delivery
+
+Devices, sessions, events and heartbeats go through one persistent queue and are sent in batches:
+
+- When 20 items are queued, every 10 seconds while the queue is not empty, when the app goes to the background, and when connectivity returns
+- Items leave the queue only after the server acknowledges them or rejects them permanently. Retryable failures are kept for up to 5 attempts
+- Each event gets a unique id when `Track` is called, stable across retries, so the server can deduplicate
+- Changing the API key clears data queued for the previous key
 
 ### Offline Support
 
-Events are stored under:
+The queue is saved on disk under:
 
 `Application.persistentDataPath/phase-analytics-data/`
 
-When offline or when requests fail, items stay in the queue. The SDK flushes after `IdentifyAsync` when the network is available and on lifecycle boundaries. Large backlogs use gzip batch upload (100+ queued items).
+When offline or when requests fail, items stay in the queue and survive app restarts. They are sent when connectivity returns and on lifecycle boundaries. Batches with 25 or more items are gzip-compressed.
 
 ### Privacy
 
@@ -497,8 +547,9 @@ When offline or when requests fail, items stay in the queue. The SDK flushes aft
 - `Track` does not block the game thread
 - Rate limit: 15 events per second
 - 50 ms deduplication window for identical event name + parameters
-- Offline queue capped at 1000 items; batches up to 1000 items per request
-- Failed requests retry with exponential backoff (HTTP layer)
+- Queue writes are debounced (1 s, plus on pause/quit); the queue is capped at 1000 items / 1 MB
+- Batches of up to 50 items per request; only the latest heartbeat per session is kept
+- Failed requests retry with jittered backoff and honor `Retry-After`; requests time out after 10 seconds
 
 ## Production builds (IL2CPP)
 
@@ -579,7 +630,7 @@ Confirm `INTERNET` permission (Unity adds it by default for network builds).
 | `Create can only be called from the main thread` (UWR) | Upgrade to `#v0.1.9+` (default `System.Net.Http`). |
 | `Session not found` / batch dropped after init | Failed session/API from UWR off-thread before `#v0.1.9`. Upgrade to `#v0.1.9`. |
 | `InitializeAsync` returns `false` | API key must start with `phase_`; `BaseUrl` must be HTTPS unless `AllowInsecureDev` is `true` |
-| No events in dashboard | Call `IdentifyAsync` before `Track`; test on device, not Editor-only (`DisableInEditor` skips network) |
+| No events in dashboard | Make sure `IdentifyAsync` completes; test on device, not Editor-only (`DisableInEditor` skips network) |
 | HTTP 401 | Invalid or revoked API key |
 | Queue not flushing | Device online, identified, and app backgrounded or session active; check `LogLevel.Info` |
 | Duplicate events | 50 ms dedupe collapses identical name + params; intentional for burst clicks |
@@ -596,9 +647,9 @@ Confirm `INTERNET` permission (Unity adds it by default for network builds).
 
 | Feature | Expo / React Native | Unity |
 |---------|---------------------|-------|
-| Screen tracking | Automatic (optional, Expo Router) | Manual `Track` events |
+| Screen tracking | Automatic (optional, Expo Router) or manual `trackScreen` | Manual `TrackScreen` |
 | `platform` field | Sent (`ios` / `android`) | Sent on mobile player builds |
-| Distribution | npm `phase-analytics` | Git UPM `#v0.1.11` |
+| Distribution | npm `phase-analytics` | Git UPM `#v0.2.0` |
 | Init pattern | Provider / hook | `InitializeAsync` + `MonoBehaviour` bootstrap |
 
 For the same event schema and dashboard, keep event names and parameter keys aligned across your mobile clients.

@@ -1,12 +1,8 @@
 name: Unity SDK Release
 
+# Runs once per change: after Unity SDK CI succeeds for a push to main
+# (CI is path-filtered to the Unity packages), or manually.
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'packages/phase-unity/**'
-      - '.github/workflows/unity-release.yml'
   workflow_run:
     workflows:
       - Unity SDK CI
@@ -16,22 +12,27 @@ on:
       - main
   workflow_dispatch:
 
+permissions: {}
+
 concurrency:
   group: unity-release
   cancel-in-progress: false
 
 jobs:
   release:
+    # event == 'push' excludes fork PRs whose head branch is also named main.
     if: >-
-      github.event_name != 'workflow_run' ||
+      github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.head_branch == 'main')
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write # push v*/unity-v* tags and create the GitHub release
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
@@ -40,9 +41,11 @@ jobs:
         id: version
         run: |
           VERSION=$(node -p "require('./packages/phase-unity/package.json').version")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "unity_tag=unity-v$VERSION" >> $GITHUB_OUTPUT
-          echo "release_tag=v$VERSION" >> $GITHUB_OUTPUT
+          {
+            echo "version=$VERSION"
+            echo "unity_tag=unity-v$VERSION"
+            echo "release_tag=v$VERSION"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Check tags
         id: check_tags
@@ -50,17 +53,17 @@ jobs:
           UNITY_TAG="${{ steps.version.outputs.unity_tag }}"
           RELEASE_TAG="${{ steps.version.outputs.release_tag }}"
           if git rev-parse "$UNITY_TAG" >/dev/null 2>&1; then
-            echo "unity_exists=true" >> $GITHUB_OUTPUT
+            echo "unity_exists=true" >> "$GITHUB_OUTPUT"
           else
-            echo "unity_exists=false" >> $GITHUB_OUTPUT
+            echo "unity_exists=false" >> "$GITHUB_OUTPUT"
           fi
           if git rev-parse "$RELEASE_TAG" >/dev/null 2>&1; then
-            echo "release_exists=true" >> $GITHUB_OUTPUT
+            echo "release_exists=true" >> "$GITHUB_OUTPUT"
           else
-            echo "release_exists=false" >> $GITHUB_OUTPUT
+            echo "release_exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: steps.check_tags.outputs.unity_exists == 'false' || steps.check_tags.outputs.release_exists == 'false'
         with:
           node-version: '22'
@@ -71,7 +74,7 @@ jobs:
           node packages/phase-unity-dotnet/scripts/verify-upm-package.js
           node packages/phase-unity-dotnet/scripts/verify-unity-sources.js
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         if: steps.check_tags.outputs.unity_exists == 'false' || steps.check_tags.outputs.release_exists == 'false'
         with:
           dotnet-version: '10.0.x'
@@ -104,7 +107,7 @@ jobs:
 
       - name: Create GitHub Release
         if: steps.check_tags.outputs.release_exists == 'false'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: ${{ steps.version.outputs.release_tag }}
           name: Unity SDK ${{ steps.version.outputs.version }}

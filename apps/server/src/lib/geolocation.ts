@@ -53,15 +53,6 @@ export class GeoIPManager {
       return { countryCode: null };
     }
 
-    if (
-      ip === '127.0.0.1' ||
-      ip === 'localhost' ||
-      ip.startsWith('192.168.') ||
-      ip.startsWith('172.')
-    ) {
-      return { countryCode: null };
-    }
-
     try {
       const result = this.reader.get(ip);
 

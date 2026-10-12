@@ -1,0 +1,33 @@
+/* Docs-only styles: fumadocs presets stay out of the app/dashboard bundle. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "fumadocs-ui/css/vitepress.css";
+@import "fumadocs-ui/css/preset.css";
+
+/* App utilities already ship in global.css; only scan docs sources here. */
+@layer utilities {
+  @tailwind utilities source(none);
+}
+
+@source "./";
+@source "../../../content";
+@source "../../../mdx-components.tsx";
+@source "../../components/copy-markdown-button.tsx";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --color-fd-accent: oklch(0.921 0 358);
+  --color-fd-accent-foreground: oklch(0.205 0 0);
+  --color-fd-primary: oklch(0 0 0);
+}
+
+.dark {
+  --color-fd-accent: oklch(0.269 0 0);
+  --color-fd-accent-foreground: oklch(0.985 0 0);
+  --color-fd-primary: oklch(1 0 0);
+}
+
+body.docs-page [role="dialog"] {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}

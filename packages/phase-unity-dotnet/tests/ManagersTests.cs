@@ -1,5 +1,3 @@
-using System.Text;
-using Newtonsoft.Json;
 using Phase.Analytics.Client;
 using Phase.Analytics.Config;
 using Phase.Analytics.Constants;
@@ -8,6 +6,7 @@ using Phase.Analytics.Managers;
 using Phase.Analytics.Models;
 using Phase.Analytics.Queue;
 using Phase.Analytics.Storage;
+using Phase.Analytics.Utils;
 
 namespace Phase.Analytics.Tests;
 
@@ -15,15 +14,16 @@ namespace Phase.Analytics.Tests;
 public sealed class ManagersTests
 {
     [Fact]
-    public async Task DeviceManager_persists_device_and_registers_online()
+    public async Task DeviceManager_persists_ulid_device_id_and_queues_identify()
     {
-        var context = CreateContext();
+        using var context = CreateContext();
         var deviceId = await context.DeviceManager.InitializeAsync();
-        Assert.False(string.IsNullOrEmpty(deviceId));
+        Assert.True(Validator.IsUlid(deviceId));
 
-        await context.DeviceManager.IdentifyAsync(isOnline: true);
+        context.DeviceManager.Identify();
 
-        Assert.Contains(context.Transport.Requests, request => request.Url.EndsWith("/sdk/devices"));
+        var device = Assert.IsType<BatchDeviceItem>(Assert.Single(context.Queue.PeekBatch(10)));
+        Assert.Equal(deviceId, device.Payload.DeviceId);
         var stored = await context.Storage.GetItemAsync<string>(StorageKeys.DeviceId);
         Assert.Equal(deviceId, stored.Data);
     }
@@ -31,132 +31,104 @@ public sealed class ManagersTests
     [Fact]
     public async Task DeviceManager_api_key_change_clears_queue()
     {
-        var root = Path.Combine(
-            Path.GetTempPath(),
-            "phase-unity-manager-tests",
-            Guid.NewGuid().ToString("N")
-        );
-        var storage = new FileStorage(root);
-        StorageService.SetAdapter(storage);
-
-        var queue = new OfflineQueue();
-        await queue.InitializeAsync();
-        await queue.EnqueueAsync(
+        using var context = CreateContext();
+        context.Queue.Enqueue(
             new BatchEventItem
             {
                 Payload = new CreateEventRequest
                 {
                     SessionId = "01HXTESTSESSION000000001",
                     Name = "queued",
-                    IsScreen = false,
                     Timestamp = DateTime.UtcNow.ToString("o"),
                 },
             }
         );
+        await context.Queue.PersistAsync();
 
         await StorageService.SetItemAsync(StorageKeys.ApiKey, "phase_old");
-        var oldManager = CreateDeviceManager(storage, queue, "phase_old");
-        await oldManager.InitializeAsync();
+        var oldDeviceId = await CreateDeviceManager(context.Queue, "phase_old").InitializeAsync();
+        var newDeviceId = await CreateDeviceManager(context.Queue, "phase_new").InitializeAsync();
 
-        var newManager = CreateDeviceManager(storage, queue, "phase_new");
-        await newManager.InitializeAsync();
-        await Task.Delay(100);
-
-        var reloadedQueue = new OfflineQueue();
+        Assert.NotEqual(oldDeviceId, newDeviceId);
+        using var reloadedQueue = new OfflineQueue();
         await reloadedQueue.InitializeAsync();
         Assert.Equal(0, reloadedQueue.GetSize());
     }
 
     [Fact]
-    public async Task SessionManager_starts_and_pings()
-    {
-        var context = CreateContext();
-        var deviceId = await context.DeviceManager.InitializeAsync();
-        var pingScheduler = new ManualPingScheduler();
-        var sessionManager = new SessionManager(
-            context.Client,
-            context.Queue,
-            deviceId,
-            pingScheduler
-        );
-
-        var sessionId = await sessionManager.StartAsync(isOnline: true);
-        Assert.False(string.IsNullOrEmpty(sessionId));
-
-        await pingScheduler.TriggerPingAsync();
-
-        Assert.Contains(
-            context.Transport.Requests,
-            request => request.Url.EndsWith("/sdk/sessions")
-        );
-        Assert.Contains(context.Transport.Requests, request => request.Url.EndsWith("/sdk/ping"));
-    }
-
-    [Fact]
-    public async Task EventManager_tracks_online_and_offline()
-    {
-        var context = CreateContext();
-        var deviceId = await context.DeviceManager.InitializeAsync();
-        var sessionManager = new SessionManager(
-            context.Client,
-            context.Queue,
-            deviceId,
-            new ManualPingScheduler()
-        );
-        var eventManager = new EventManager(
-            context.Client,
-            context.Queue,
-            sessionManager.GetSessionId
-        );
-
-        await sessionManager.StartAsync(isOnline: true);
-        eventManager.Track("level_complete", new EventParams { ["level"] = 1 });
-        await Task.Delay(50);
-
-        Assert.Contains(context.Transport.Requests, request => request.Url.EndsWith("/sdk/events"));
-
-        eventManager.UpdateNetworkState(false);
-        eventManager.Track("offline_event");
-
-        for (var attempt = 0; attempt < 20 && context.Queue.GetSize() == 0; attempt++)
-        {
-            await Task.Delay(25);
-        }
-
-        Assert.Equal(1, context.Queue.GetSize());
-    }
-
-    [Fact]
     public async Task DeviceManager_sends_platform_from_device_info()
     {
-        var context = CreateContext(
+        using var context = CreateContext(
             deviceInfo: new DeviceInfo
             {
                 Platform = "ios",
-                OsVersion = "iOS 17.0",
+                OsVersion = "17.0",
                 Locale = "en-US",
                 Model = "iPhone",
             }
         );
         await context.DeviceManager.InitializeAsync();
-        await context.DeviceManager.IdentifyAsync(isOnline: true);
+        context.DeviceManager.Identify();
 
-        var deviceRequest = context.Transport.Requests.First(request =>
-            request.Url.EndsWith("/sdk/devices")
-        );
-        var payload = JsonConvert.DeserializeObject<CreateDeviceRequest>(
-            Encoding.UTF8.GetString(deviceRequest.Body)
+        var device = Assert.IsType<BatchDeviceItem>(Assert.Single(context.Queue.PeekBatch(10)));
+        Assert.Equal("ios", device.Payload.Platform);
+    }
+
+    [Fact]
+    public async Task SessionManager_queues_session_and_pings()
+    {
+        using var context = CreateContext();
+        await context.DeviceManager.InitializeAsync();
+        var pingScheduler = new ManualPingScheduler();
+        using var sessionManager = new SessionManager(
+            context.Queue,
+            context.DeviceManager.GetDeviceId,
+            pingScheduler
         );
 
-        Assert.Equal("ios", payload?.Platform);
+        var sessionId = sessionManager.Start();
+        Assert.False(string.IsNullOrEmpty(sessionId));
+
+        await pingScheduler.TriggerPingAsync();
+
+        var items = context.Queue.PeekBatch(10);
+        Assert.Contains(items, item => item is BatchSessionItem s && s.Payload.SessionId == sessionId);
+        Assert.Contains(items, item => item is BatchPingItem p && p.Payload.SessionId == sessionId);
+    }
+
+    [Fact]
+    public async Task EventManager_buffers_until_attached_and_keeps_call_time()
+    {
+        using var context = CreateContext();
+        await context.DeviceManager.InitializeAsync();
+        using var sessionManager = new SessionManager(
+            context.Queue,
+            context.DeviceManager.GetDeviceId,
+            new ManualPingScheduler()
+        );
+        var eventManager = new EventManager();
+
+        eventManager.Track("early_event");
+        var earliest = eventManager.GetEarliestPendingUtc();
+        Assert.NotNull(earliest);
+        Assert.Equal(0, context.Queue.GetSize());
+
+        await Task.Delay(20);
+        sessionManager.Start(earliest);
+        eventManager.Attach(context.Queue, sessionManager.GetSessionId, () => { });
+
+        var queued = context.Queue.PeekBatch(10).OfType<BatchEventItem>().Single();
+        var session = context.Queue.PeekBatch(10).OfType<BatchSessionItem>().Single();
+        Assert.Equal(earliest.Value.ToString("o"), queued.Payload.Timestamp);
+        Assert.Equal(earliest.Value.ToString("o"), session.Payload.StartedAt);
+        Assert.True(Validator.IsUlid(queued.Payload.EventId));
     }
 
     [Fact]
     public async Task BatchSender_flush_dequeues_queue()
     {
-        var context = CreateContext();
-        await context.Queue.InitializeAsync();
-        await context.Queue.EnqueueAsync(
+        using var context = CreateContext();
+        context.Queue.Enqueue(
             new BatchDeviceItem
             {
                 Payload = new CreateDeviceRequest { DeviceId = "01HXTESTDEVICE0000000001" },
@@ -170,35 +142,28 @@ public sealed class ManagersTests
         Assert.Contains(context.Transport.Requests, request => request.Url.EndsWith("/sdk/batch"));
     }
 
-    private static TestContext CreateContext(
-        string apiKey = "phase_test_key",
-        DeviceInfo? deviceInfo = null
-    )
+    private static TestContext CreateContext(DeviceInfo? deviceInfo = null)
     {
         var storage = new FileStorage(
             Path.Combine(Path.GetTempPath(), "phase-unity-manager-tests", Guid.NewGuid().ToString("N"))
         );
         StorageService.SetAdapter(storage);
 
-        var transport = new RecordingTransport();
-        var client = new SdkHttpClient(apiKey, transport);
+        var transport = new BatchRecordingTransport();
+        var client = new SdkHttpClient("phase_test_key", transport);
         var queue = new OfflineQueue();
         queue.InitializeAsync().GetAwaiter().GetResult();
-        var deviceManager = CreateDeviceManager(storage, queue, apiKey, transport, deviceInfo);
+        var deviceManager = CreateDeviceManager(queue, "phase_test_key", deviceInfo);
 
         return new TestContext(storage, transport, client, queue, deviceManager);
     }
 
     private static DeviceManager CreateDeviceManager(
-        FileStorage storage,
         OfflineQueue queue,
         string apiKey,
-        IHttpTransport? transport = null,
         DeviceInfo? deviceInfo = null
     )
     {
-        StorageService.SetAdapter(storage);
-        var client = new SdkHttpClient(apiKey, transport ?? new RecordingTransport());
         var config = new PhaseConfig
         {
             ApiKey = apiKey,
@@ -207,13 +172,12 @@ public sealed class ManagersTests
         };
 
         return new DeviceManager(
-            client,
             queue,
             new StaticDeviceInfoProvider(
                 deviceInfo
                     ?? new DeviceInfo
                     {
-                        OsVersion = "TestOS 1.0",
+                        OsVersion = "1.0",
                         Locale = "en-US",
                         Model = "TestDevice",
                         AppVersion = "1.0.0",
@@ -224,11 +188,11 @@ public sealed class ManagersTests
         );
     }
 
-    private sealed class TestContext
+    private sealed class TestContext : IDisposable
     {
         public TestContext(
             FileStorage storage,
-            RecordingTransport transport,
+            BatchRecordingTransport transport,
             SdkHttpClient client,
             OfflineQueue queue,
             DeviceManager deviceManager
@@ -243,99 +207,39 @@ public sealed class ManagersTests
 
         public FileStorage Storage { get; }
 
-        public RecordingTransport Transport { get; }
+        public BatchRecordingTransport Transport { get; }
 
         public SdkHttpClient Client { get; }
 
         public OfflineQueue Queue { get; }
 
         public DeviceManager DeviceManager { get; }
-    }
 
-    private sealed class RecordingTransport : IHttpTransport
-    {
-        public List<HttpTransportRequest> Requests { get; } = new();
-
-        public Task<HttpTransportResponse> SendAsync(
-            HttpTransportRequest request,
-            CancellationToken cancellationToken
-        )
+        public void Dispose()
         {
-            Requests.Add(request);
-
-            if (request.Url.EndsWith("/sdk/devices"))
-            {
-                return Task.FromResult(
-                    new HttpTransportResponse(
-                        200,
-                        """{"deviceId":"01HXTESTDEVICE0000000001","firstSeen":"2026-01-01T00:00:00Z"}"""
-                    )
-                );
-            }
-
-            if (request.Url.EndsWith("/sdk/sessions"))
-            {
-                return Task.FromResult(
-                    new HttpTransportResponse(
-                        200,
-                        """{"sessionId":"01HXTESTSESSION000000001","deviceId":"01HXTESTDEVICE0000000001","startedAt":"2026-01-01T00:00:00Z","lastActivityAt":"2026-01-01T00:00:00Z"}"""
-                    )
-                );
-            }
-
-            if (request.Url.EndsWith("/sdk/events"))
-            {
-                return Task.FromResult(
-                    new HttpTransportResponse(
-                        200,
-                        """{"eventId":"e1","sessionId":"01HXTESTSESSION000000001","deviceId":"01HXTESTDEVICE0000000001","name":"level_complete","isScreen":false,"timestamp":"2026-01-01T00:00:00Z"}"""
-                    )
-                );
-            }
-
-            if (request.Url.EndsWith("/sdk/ping"))
-            {
-                return Task.FromResult(
-                    new HttpTransportResponse(
-                        200,
-                        """{"sessionId":"01HXTESTSESSION000000001","lastActivityAt":"2026-01-01T00:00:00Z"}"""
-                    )
-                );
-            }
-
-            if (request.Url.EndsWith("/sdk/batch"))
-            {
-                return Task.FromResult(
-                    new HttpTransportResponse(
-                        200,
-                        """{"processed":1,"failed":0,"errors":[],"results":[]}"""
-                    )
-                );
-            }
-
-            return Task.FromResult(new HttpTransportResponse(404, "not found"));
+            Queue.Dispose();
         }
     }
+}
 
-    private sealed class ManualPingScheduler : ISessionPingScheduler
+internal sealed class ManualPingScheduler : ISessionPingScheduler
+{
+    private Func<Task>? _onTick;
+
+    public void Start(Func<Task> onTick, DateTimeOffset sessionStartedAt)
     {
-        private Func<Task>? _onTick;
+        _onTick = onTick;
+    }
 
-        public void Start(Func<Task> onTick, DateTimeOffset sessionStartedAt)
-        {
-            _onTick = onTick;
-        }
+    public void NotifyActivity() { }
 
-        public void NotifyActivity() { }
+    public void Stop()
+    {
+        _onTick = null;
+    }
 
-        public void Stop()
-        {
-            _onTick = null;
-        }
-
-        public Task TriggerPingAsync()
-        {
-            return _onTick != null ? _onTick() : Task.CompletedTask;
-        }
+    public Task TriggerPingAsync()
+    {
+        return _onTick != null ? _onTick() : Task.CompletedTask;
     }
 }

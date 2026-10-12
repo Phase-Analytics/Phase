@@ -4,9 +4,9 @@ import { db, devices } from '@/db';
 import {
   buildExploreEventsSubquery,
   executeQuestDBReadQuery,
-  getTopEvents,
 } from '@/lib/questdb';
 import { escapeQuestDbString } from '@/lib/questdb-sql';
+import { getTopEvents } from '@/lib/reports/events';
 import {
   EXPLORE_CATALOG_EVENT_LIMIT,
   EXPLORE_CATALOG_PARAM_SAMPLE_LIMIT,

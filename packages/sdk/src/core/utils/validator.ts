@@ -1,4 +1,4 @@
-import type { EventParams, Result } from '../types';
+import type { DeviceProperties, EventParams, Result } from '../types';
 import { VALIDATION } from '../types';
 
 export class ValidationError extends Error {
@@ -141,64 +141,66 @@ export function validateEventName(name: string): Result<void> {
   return { success: true, data: undefined };
 }
 
+// The server decodes the creation time from device IDs, so they must be ULIDs.
+const ULID_PATTERN = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i;
+
 export function validateDeviceId(deviceId: string): Result<void> {
-  if (deviceId.length < VALIDATION.DEVICE_ID.MIN_LENGTH) {
+  if (!ULID_PATTERN.test(deviceId)) {
     return {
       success: false,
-      error: new ValidationError(
-        `Device ID must be at least ${VALIDATION.DEVICE_ID.MIN_LENGTH} characters`
-      ),
+      error: new ValidationError('Device ID must be a ULID'),
     };
   }
-
-  if (deviceId.length > VALIDATION.DEVICE_ID.MAX_LENGTH) {
-    return {
-      success: false,
-      error: new ValidationError(
-        `Device ID must not exceed ${VALIDATION.DEVICE_ID.MAX_LENGTH} characters`
-      ),
-    };
-  }
-
-  if (!VALIDATION.DEVICE_ID.PATTERN.test(deviceId)) {
-    return {
-      success: false,
-      error: new ValidationError(
-        `Device ID must match pattern: ${VALIDATION.DEVICE_ID.PATTERN.toString()}`
-      ),
-    };
-  }
-
   return { success: true, data: undefined };
 }
 
-export function validateSessionId(sessionId: string): Result<void> {
-  if (sessionId.length < VALIDATION.SESSION_ID.MIN_LENGTH) {
+/**
+ * Keeps valid device properties and reports the keys that were dropped.
+ * Limits mirror the server (flat primitives, key <= 128 chars, <= 50 KB JSON).
+ */
+export function sanitizeDeviceProperties(
+  properties: DeviceProperties | undefined
+): { properties: DeviceProperties | undefined; droppedKeys: string[] } {
+  if (
+    !properties ||
+    typeof properties !== 'object' ||
+    Array.isArray(properties)
+  ) {
     return {
-      success: false,
-      error: new ValidationError(
-        `Session ID must be at least ${VALIDATION.SESSION_ID.MIN_LENGTH} characters`
-      ),
+      properties: undefined,
+      droppedKeys: properties === undefined ? [] : ['<all>'],
     };
   }
 
-  if (sessionId.length > VALIDATION.SESSION_ID.MAX_LENGTH) {
-    return {
-      success: false,
-      error: new ValidationError(
-        `Session ID must not exceed ${VALIDATION.SESSION_ID.MAX_LENGTH} characters`
-      ),
-    };
+  const valid: DeviceProperties = {};
+  const droppedKeys: string[] = [];
+
+  for (const [key, value] of Object.entries(properties)) {
+    if (
+      key.length > VALIDATION.DEVICE_PROPERTIES.MAX_KEY_LENGTH ||
+      !isFlatValue(value) ||
+      (typeof value === 'number' && !Number.isFinite(value))
+    ) {
+      droppedKeys.push(key);
+      continue;
+    }
+    valid[key] = value;
   }
 
-  if (!VALIDATION.SESSION_ID.PATTERN.test(sessionId)) {
-    return {
-      success: false,
-      error: new ValidationError(
-        `Session ID must match pattern: ${VALIDATION.SESSION_ID.PATTERN.toString()}`
-      ),
-    };
+  if (JSON.stringify(valid).length > VALIDATION.DEVICE_PROPERTIES.MAX_SIZE) {
+    return { properties: undefined, droppedKeys: Object.keys(properties) };
   }
 
-  return { success: true, data: undefined };
+  return {
+    properties: Object.keys(valid).length > 0 ? valid : undefined,
+    droppedKeys,
+  };
+}
+
+/** Returns the value if it fits the server's length limit, otherwise null. */
+export function limitLength(
+  value: string | null | undefined,
+  maxLength: number
+): string | null {
+  return value && value.length <= maxLength ? value : null;
 }

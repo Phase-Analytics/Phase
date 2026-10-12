@@ -1,5 +1,7 @@
 import {
   DeleteObjectCommand,
+  DeleteObjectsCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -151,4 +153,46 @@ export async function deleteR2ObjectByPublicUrl(
   }
 
   await deleteFromR2(key);
+}
+
+/** Deletes every object under `prefix` (paged, 1000 keys per request). */
+export async function deleteR2Prefix(prefix: string): Promise<void> {
+  const config = getR2Config();
+  if (!config) {
+    return;
+  }
+
+  const s3 = getR2Client(config);
+  let continuationToken: string | undefined;
+
+  do {
+    const page = await s3.send(
+      new ListObjectsV2Command({
+        Bucket: config.bucketName,
+        Prefix: prefix,
+        ContinuationToken: continuationToken,
+      })
+    );
+    const keys = (page.Contents ?? [])
+      .map((object) => object.Key)
+      .filter((key): key is string => Boolean(key));
+
+    if (keys.length > 0) {
+      const result = await s3.send(
+        new DeleteObjectsCommand({
+          Bucket: config.bucketName,
+          Delete: { Objects: keys.map((Key) => ({ Key })), Quiet: true },
+        })
+      );
+      if (result.Errors?.length) {
+        throw new Error(
+          `R2 failed to delete ${result.Errors.length} object(s) under ${prefix}`
+        );
+      }
+    }
+
+    continuationToken = page.IsTruncated
+      ? page.NextContinuationToken
+      : undefined;
+  } while (continuationToken);
 }

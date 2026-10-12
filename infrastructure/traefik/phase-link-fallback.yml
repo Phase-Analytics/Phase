@@ -1,28 +1,40 @@
-# One-time ops: copy to /etc/dokploy/traefik/dynamic/phase-link-fallback.yml
+# One-time ops (Coolify): Servers > <server> > Proxy > Dynamic Configurations >
+# Add "phase-link-fallback.yml" with this content. Coolify stores it at
+# /data/coolify/proxy/dynamic/phase-link-fallback.yml (mounted at
+# /traefik/dynamic/ in the coolify-proxy container); Traefik reloads it live.
 # Routes any hostname not matched by other Traefik routers to phase-server (link redirects).
-# Customer domains CNAME to cname.phase.sh; do NOT add each domain in Dokploy.
+# Customer domains CNAME to cname.phase.sh; do NOT add each domain in Coolify.
 # TLS for customer hostnames is handled at Cloudflare (SSL for SaaS / proxied CNAME).
 
 http:
+  middlewares:
+    # Defined here: Coolify's own redirect middleware lives in the Docker
+    # provider and is not addressable from file-provider routers.
+    phase-links-redirect-to-https:
+      redirectScheme:
+        scheme: https
+
   routers:
     phase-links-fallback-web:
       rule: HostRegexp(`^.+$`)
       priority: 1
       entryPoints:
-        - web
+        - http
       middlewares:
-        - redirect-to-https
+        - phase-links-redirect-to-https
       service: phase-links-fallback
     phase-links-fallback-websecure:
       rule: HostRegexp(`^.+$`)
       priority: 1
       entryPoints:
-        - websecure
+        - https
       service: phase-links-fallback
       tls: {}
   services:
     phase-links-fallback:
       loadBalancer:
         servers:
-          - url: http://phase-server:3001
+          # Alias of the server container on the external `coolify` network
+          # (docker-compose.yml); `phase-server` only exists on the private one.
+          - url: http://phase-coolify-server:3001
         passHostHeader: true

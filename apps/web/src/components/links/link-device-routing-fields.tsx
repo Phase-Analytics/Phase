@@ -25,18 +25,21 @@ export const DEVICE_FIELDS = [
     label: 'iOS',
     icon: AppleIcon,
     id: 'device_ios',
+    placeholder: 'example.com/ios or myapp://path',
   },
   {
     key: 'deviceAndroidUrl' as const,
     label: 'Android',
     icon: AndroidIcon,
     id: 'device_android',
+    placeholder: 'example.com/android or myapp://path',
   },
   {
     key: 'deviceOthersUrl' as const,
     label: 'Others',
     icon: BrowserIcon,
     id: 'device_others',
+    placeholder: 'example.com',
   },
 ] as const;
 
@@ -46,7 +49,7 @@ export function LinkDeviceRoutingFields({
 }: LinkDeviceRoutingFieldsProps) {
   return (
     <div className="space-y-3">
-      {DEVICE_FIELDS.map(({ key, label, icon, id }) => (
+      {DEVICE_FIELDS.map(({ key, label, icon, id, placeholder }) => (
         <div className="space-y-2" key={key}>
           <label
             className="flex items-center gap-1.5 font-medium text-sm"
@@ -61,7 +64,7 @@ export function LinkDeviceRoutingFields({
           <Input
             id={id}
             onChange={(e) => onChange({ ...values, [key]: e.target.value })}
-            placeholder="example.com/ios"
+            placeholder={placeholder}
             type="text"
             value={values[key]}
           />

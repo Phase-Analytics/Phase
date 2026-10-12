@@ -115,6 +115,8 @@ namespace UnityEngine.Networking
 
         public void SetRequestHeader(string name, string value) { }
 
+        public string? GetResponseHeader(string name) => null;
+
         public AsyncOperation SendWebRequest() => new UnityEngine.AsyncOperation();
 
         public void Abort() { }

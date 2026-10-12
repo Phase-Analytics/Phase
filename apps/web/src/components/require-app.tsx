@@ -5,6 +5,7 @@ import { useQueryState } from 'nuqs';
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 import { AccessDenied } from '@/components/access-denied';
+import { ApiError } from '@/lib/api/client';
 import { useApp } from '@/lib/queries';
 
 type RequireAppProps = {
@@ -27,6 +28,10 @@ export function RequireApp({ children }: RequireAppProps) {
   }
 
   if (error) {
+    // Signed-out users are redirected by AuthRedirect; don't flash a denial.
+    if (error instanceof ApiError && error.status === 401) {
+      return null;
+    }
     return <AccessDenied />;
   }
 

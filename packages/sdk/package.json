@@ -1,6 +1,6 @@
 {
   "name": "phase-analytics",
-  "version": "0.0.40",
+  "version": "0.1.0",
   "description": "Privacy focused mobile analytics SDK",
   "author": "Phase Analytics",
   "license": "AGPL-3.0-only",
@@ -31,17 +31,13 @@
   "scripts": {
     "build": "tsup",
     "typecheck": "tsgo --noEmit",
+    "test": "bun test test/",
     "dev": "tsup --watch"
-  },
-  "dependencies": {
-    "pako": "^2.1.0",
-    "ulidx": "^2.4.1"
   },
   "peerDependencies": {
     "@react-native-async-storage/async-storage": ">=1.0.0",
     "react-native-device-info": ">=10.0.0",
     "react-native-localize": ">=3.0.0",
-    "@react-navigation/native": ">=6.0.0",
     "react-native": ">=0.70.0",
     "react": ">=18.0.0",
     "@react-native-community/netinfo": ">=11.0.0",
@@ -74,19 +70,16 @@
     },
     "react-native-localize": {
       "optional": true
-    },
-    "@react-navigation/native": {
-      "optional": true
     }
   },
   "devDependencies": {
     "@react-native-community/netinfo": "^12.0.1",
-    "@types/pako": "^2.0.4",
-    "@types/react": "^19.1.8",
-    "expo-router": "^6.0.19",
-    "tsup": "^8.3.5",
-    "typescript": "^5",
-    "@typescript/native-preview": "^7.0.0-dev.20251214.1"
+    "@types/react": "~19.2.18",
+    "@typescript/native-preview": "7.0.0-dev.20260707.2",
+    "expo-router": "~57.0.7",
+    "fflate": "^0.8.3",
+    "tsup": "^8.5.1",
+    "typescript": "^5"
   },
   "publishConfig": {
     "access": "public"

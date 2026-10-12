@@ -5,6 +5,7 @@ import { DeviceManager } from './managers/device-manager';
 import { EventManager } from './managers/event-manager';
 import { SessionManager } from './managers/session-manager';
 import { BatchSender } from './queue/batch-sender';
+import { FlushScheduler } from './queue/flush-scheduler';
 import { OfflineQueue } from './queue/offline-queue';
 import type {
   DeviceInfo,
@@ -14,299 +15,213 @@ import type {
 } from './types';
 import { logger } from './utils/logger';
 
+const DEFAULT_BASE_URL = 'https://api.phase.sh';
+
+type Components = {
+  queue: OfflineQueue;
+  scheduler: FlushScheduler;
+  device: DeviceManager;
+  session: SessionManager;
+};
+
+type PendingIdentify = { properties?: DeviceProperties };
+
 export class PhaseSDK {
-  private httpClient: HttpClient | null = null;
-  private offlineQueue: OfflineQueue | null = null;
-  private batchSender: BatchSender | null = null;
-  private deviceManager: DeviceManager | null = null;
-  private sessionManager: SessionManager | null = null;
-  private eventManager: EventManager | null = null;
-  private isInitialized = false;
-  private isInitializing = false;
-  private isIdentified = false;
-  private unsubscribeNetInfo: (() => void) | null = null;
+  // Exists before init so track() calls made before init are captured, not dropped.
+  private readonly events = new EventManager();
+  private components: Components | null = null;
+  private initializing = false;
+  private pendingIdentify: PendingIdentify | null = null;
+  private resetting: Promise<void> | null = null;
+  private unsubscribeNetwork: (() => void) | null = null;
   private appStateSubscription: { remove: () => void } | null = null;
-  private trackNavigationEvents = true;
-  private networkAdapter: NetworkAdapter | null = null;
-  private pendingCalls: Array<() => Promise<void> | void> = [];
 
   async init(
     config: PhaseConfig,
     getDeviceInfo: () => DeviceInfo,
     networkAdapter: NetworkAdapter
   ): Promise<void> {
-    if (this.isInitialized) {
-      logger.warn(
-        'SDK already initialized. Skipping duplicate initialization.'
-      );
+    if (this.components || this.initializing) {
+      logger.warn('SDK already initialized or initializing. Skipping.');
       return;
     }
-
-    if (this.isInitializing) {
-      logger.warn(
-        'SDK initialization already in progress. Skipping duplicate call.'
-      );
-      return;
-    }
-
-    this.isInitializing = true;
 
     logger.setLogLevel(config.logLevel ?? 'none');
-    this.trackNavigationEvents = config.trackNavigation ?? true;
 
     if (!config.apiKey || config.apiKey.trim().length === 0) {
-      this.isInitializing = false;
       logger.error('API key is required. Please provide a valid API key.');
       throw new Error('API key is required');
     }
 
     if (!config.apiKey.startsWith('phase_')) {
-      this.isInitializing = false;
       logger.error('Invalid API key format. API key must start with "phase_"', {
-        providedKey: `${config.apiKey.substring(0, 8)}...`,
+        providedKey: `${config.apiKey.slice(0, 8)}...`,
       });
       throw new Error('Invalid API key format');
     }
 
+    this.initializing = true;
     try {
       logger.info('Initializing Phase SDK', { baseUrl: config.baseUrl });
-      this.networkAdapter = networkAdapter;
 
-      this.httpClient = new HttpClient(
+      const httpClient = new HttpClient(
         config.apiKey,
-        config.baseUrl ?? 'https://api.phase.sh',
+        config.baseUrl ?? DEFAULT_BASE_URL,
         config.debugData ?? false
       );
-      this.offlineQueue = new OfflineQueue();
-      await this.offlineQueue.initialize();
+      const queue = new OfflineQueue();
+      await queue.initialize();
 
-      this.batchSender = new BatchSender(this.httpClient, this.offlineQueue);
+      const device = new DeviceManager(queue, getDeviceInfo, config);
+      await device.initialize();
 
-      this.deviceManager = new DeviceManager(
-        this.httpClient,
-        this.offlineQueue,
-        getDeviceInfo,
-        config
-      );
-      const deviceId = await this.deviceManager.initialize();
-
-      this.sessionManager = new SessionManager(
-        this.httpClient,
-        this.offlineQueue,
-        deviceId
+      const session = new SessionManager(queue, () => device.getDeviceId());
+      const scheduler = new FlushScheduler(
+        new BatchSender(httpClient, queue),
+        queue
       );
 
-      this.eventManager = new EventManager(
-        this.httpClient,
-        this.offlineQueue,
-        () => this.sessionManager?.getSessionId() ?? null,
-        () => this.sessionManager?.markActivity()
-      );
+      this.components = { queue, scheduler, device, session };
+      await this.setupNetworkListener(networkAdapter, scheduler);
+      this.setupAppStateListener(session, scheduler);
+      scheduler.start();
 
-      this.setupNetworkListener();
-      this.setupAppStateListener();
+      logger.info('Phase SDK initialized. Call identify() to start tracking.');
 
-      this.isInitialized = true;
-      logger.info(
-        'Phase SDK initialized successfully. Call identify() to start tracking.'
-      );
-
-      await this.processPendingCalls();
+      const pending = this.pendingIdentify;
+      this.pendingIdentify = null;
+      if (pending) {
+        this.identifyNow(pending.properties);
+      }
     } catch (error) {
-      this.cleanup();
-      logger.error('Failed to initialize SDK');
+      this.teardown();
+      this.pendingIdentify = null;
+      logger.error('Failed to initialize SDK', error);
       throw error;
     } finally {
-      this.isInitializing = false;
+      this.initializing = false;
     }
   }
 
   async identify(properties?: DeviceProperties): Promise<void> {
-    if (!this.isInitialized) {
-      logger.warn('SDK not initialized. Queuing identify() call.');
-      return new Promise((resolve, reject) => {
-        this.pendingCalls.push(async () => {
-          try {
-            await this.identify(properties);
-            resolve();
-          } catch (error) {
-            reject(error);
-          }
-        });
-      });
+    if (this.resetting) {
+      await this.resetting;
     }
 
-    if (!(this.deviceManager && this.sessionManager && this.networkAdapter)) {
-      logger.error('SDK components not ready. Initialization may have failed.');
+    if (!this.components || this.initializing) {
+      logger.info('SDK not initialized yet. identify() will run after init.');
+      // Server merges device properties, so merging queued calls is equivalent.
+      this.pendingIdentify = {
+        properties:
+          properties || this.pendingIdentify?.properties
+            ? { ...this.pendingIdentify?.properties, ...properties }
+            : undefined,
+      };
       return;
     }
 
-    const netState = await this.networkAdapter.fetchNetworkState();
-    const isOnline = netState.isConnected ?? false;
-
-    await this.deviceManager.identify(isOnline, properties);
-    await this.sessionManager.start(isOnline);
-
-    this.isIdentified = true;
-    logger.info('Device identified and session started');
-
-    await this.processPendingCalls();
-
-    if (isOnline && this.offlineQueue && this.batchSender) {
-      const queueSize = this.offlineQueue.getSize();
-      if (queueSize > 0) {
-        logger.info(
-          `Flushing offline queue after identification (${queueSize} items)`
-        );
-        this.batchSender.flush().catch(() => {
-          logger.error('Failed to flush offline queue. Will retry later.');
-        });
-      }
-    }
+    this.identifyNow(properties);
   }
 
   track(name: string, params?: EventParams): void {
-    if (!this.isInitialized) {
-      logger.warn('SDK not initialized. Queuing track() call.');
-      this.pendingCalls.push(() => {
-        this.track(name, params);
-      });
-      return;
-    }
-
-    if (!this.isIdentified) {
-      logger.warn('Device not identified. Queuing track() call.');
-      this.pendingCalls.push(() => {
-        this.track(name, params);
-      });
-      return;
-    }
-
-    if (!this.eventManager) {
-      logger.error('Event manager not ready. Initialization may have failed.');
-      return;
-    }
-
-    this.eventManager.track(name, params, false);
+    this.events.track(name, params, false);
   }
 
   trackScreen(name: string, params?: EventParams): void {
-    if (!this.trackNavigationEvents) {
-      return;
-    }
-
-    if (!this.isInitialized) {
-      logger.warn('SDK not initialized. Queuing trackScreen() call.');
-      this.pendingCalls.push(() => {
-        this.trackScreen(name, params);
-      });
-      return;
-    }
-
-    if (!this.isIdentified) {
-      logger.warn('Device not identified. Queuing trackScreen() call.');
-      this.pendingCalls.push(() => {
-        this.trackScreen(name, params);
-      });
-      return;
-    }
-
-    if (!this.eventManager) {
-      logger.error('Event manager not ready. Initialization may have failed.');
-      return;
-    }
-
-    this.eventManager.track(name, params, true);
+    this.events.track(name, params, true);
   }
 
-  private setupAppStateListener(): void {
+  /** Sends queued data now. Resolves when the flush finishes. */
+  async flush(): Promise<void> {
+    await this.components?.scheduler.flushNow();
+  }
+
+  /**
+   * Forgets the current device (e.g. on logout): ends the session and
+   * generates a new device ID. Data already queued for the previous device is
+   * still delivered. Call identify() again to start tracking the new device.
+   */
+  reset(): Promise<void> {
+    if (!this.resetting) {
+      this.resetting = this.performReset().finally(() => {
+        this.resetting = null;
+      });
+    }
+    return this.resetting;
+  }
+
+  private async performReset(): Promise<void> {
+    this.pendingIdentify = null;
+    const components = this.components;
+    if (!components) {
+      logger.warn('reset() called before initialization. Nothing to reset.');
+      return;
+    }
+
+    const { device, session, scheduler } = components;
+    this.events.detach();
+    session.end();
+    await device.reset();
+    scheduler.requestFlush();
+    logger.info('SDK reset. Call identify() to start tracking again.');
+  }
+
+  private identifyNow(properties?: DeviceProperties): void {
+    if (!this.components) {
+      return;
+    }
+    const { device, session, queue, scheduler } = this.components;
+
+    device.identify(properties);
+    session.start(this.events.getEarliestPendingMs());
+    this.events.attach({
+      queue,
+      getSessionId: () => session.getSessionId(),
+      markActivity: () => session.markActivity(),
+    });
+    scheduler.requestFlush();
+    logger.info('Device identified and session started');
+  }
+
+  private setupAppStateListener(
+    session: SessionManager,
+    scheduler: FlushScheduler
+  ): void {
     this.appStateSubscription = AppState.addEventListener('change', (state) => {
       if (state === 'background' || state === 'inactive') {
-        logger.info('App backgrounded. Pausing session ping.');
-        this.sessionManager?.pause();
-      } else if (state === 'active') {
-        logger.info('App foregrounded. Resuming session ping.');
-        this.sessionManager?.resume().catch(() => {
-          logger.error('Failed to resume session');
+        session.pause();
+        scheduler.onBackground().catch(() => {
+          // Best effort before suspension; data stays queued either way.
         });
+      } else if (state === 'active') {
+        session.resume();
+        scheduler.onForeground();
       }
     });
   }
 
-  private setupNetworkListener(): void {
-    if (!this.networkAdapter) {
-      logger.error(
-        'Network adapter not initialized. Initialization may have failed.'
-      );
-      return;
+  private async setupNetworkListener(
+    adapter: NetworkAdapter,
+    scheduler: FlushScheduler
+  ): Promise<void> {
+    try {
+      const state = await adapter.fetchNetworkState();
+      scheduler.setOnline(state.isConnected);
+    } catch {
+      scheduler.setOnline(true);
     }
-
-    this.unsubscribeNetInfo = this.networkAdapter.addNetworkListener(
-      (state) => {
-        const isOnline = state.isConnected ?? false;
-
-        if (this.sessionManager) {
-          this.sessionManager.updateNetworkState(isOnline);
-        }
-
-        if (this.eventManager) {
-          this.eventManager.updateNetworkState(isOnline);
-        }
-
-        if (
-          isOnline &&
-          this.isIdentified &&
-          this.batchSender &&
-          this.offlineQueue &&
-          this.offlineQueue.getSize() > 0
-        ) {
-          logger.info('Network restored. Flushing offline queue.');
-          this.batchSender.flush().catch(() => {
-            logger.error('Failed to flush offline queue. Will retry later.');
-          });
-        }
-      }
-    );
+    this.unsubscribeNetwork = adapter.addNetworkListener((state) => {
+      scheduler.setOnline(state.isConnected);
+    });
   }
 
-  private async processPendingCalls(): Promise<void> {
-    if (this.pendingCalls.length === 0) {
-      return;
-    }
-
-    logger.info(`Processing ${this.pendingCalls.length} queued calls`);
-    const calls = [...this.pendingCalls];
-    this.pendingCalls = [];
-
-    for (const call of calls) {
-      try {
-        await call();
-      } catch (error) {
-        logger.error('Failed to process queued call. Call may be lost.', error);
-      }
-    }
-  }
-
-  private cleanup(): void {
-    if (this.appStateSubscription) {
-      this.appStateSubscription.remove();
-      this.appStateSubscription = null;
-    }
-
-    if (this.unsubscribeNetInfo) {
-      this.unsubscribeNetInfo();
-      this.unsubscribeNetInfo = null;
-    }
-
-    this.sessionManager?.pause();
-    this.httpClient = null;
-    this.offlineQueue = null;
-    this.batchSender = null;
-    this.deviceManager = null;
-    this.sessionManager = null;
-    this.eventManager = null;
-    this.isInitialized = false;
-    this.isIdentified = false;
-    this.pendingCalls = [];
+  private teardown(): void {
+    this.appStateSubscription?.remove();
+    this.appStateSubscription = null;
+    this.unsubscribeNetwork?.();
+    this.unsubscribeNetwork = null;
+    this.components?.scheduler.stop();
+    this.components?.session.end();
+    this.components = null;
   }
 }

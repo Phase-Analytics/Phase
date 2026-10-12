@@ -1,5 +1,5 @@
 import type { OnlineUsers } from '@phase/shared';
-import { sql } from 'drizzle-orm';
+import { and, eq, gte } from 'drizzle-orm';
 import { db, devices, sessions } from '@/db';
 
 const ACTIVE_SESSION_THRESHOLD_MS = 20_000;
@@ -14,9 +14,9 @@ export async function getOnlineUsers(appId: string): Promise<OnlineUsers> {
       country: devices.country,
     })
     .from(sessions)
-    .innerJoin(devices, sql`${sessions.deviceId} = ${devices.deviceId}`)
+    .innerJoin(devices, eq(sessions.deviceId, devices.deviceId))
     .where(
-      sql`${devices.appId} = ${appId} AND ${sessions.lastActivityAt} >= ${thresholdDate}`
+      and(eq(devices.appId, appId), gte(sessions.lastActivityAt, thresholdDate))
     );
 
   const uniqueDevices = new Map<

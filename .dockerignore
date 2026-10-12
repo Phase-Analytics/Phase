@@ -1,15 +1,27 @@
 # Unity SDK (UPM only — not part of the JS/Bun workspace)
 packages/phase-unity/
+packages/phase-unity-dotnet/
 
-# Dependencies and VCS
+# Mobile app: only its manifest is needed for workspace installs. Keeps local
+# signing credentials out of the build context.
+apps/mobile/*
+!apps/mobile/package.json
+
+# Dependencies, VCS and tooling state
 node_modules/
 .git/
+.github/
+.agents/
+.claude/
+.pi/
+docs/
 
 # Keep local build outputs out of the source layers.
 **/node_modules
 **/.next
 **/.turbo
 **/dist
+**/*.tsbuildinfo
 **/.env
 **/.env.*
 !**/.env.example

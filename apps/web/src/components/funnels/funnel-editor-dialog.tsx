@@ -32,15 +32,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
-import { buildQueryString, fetchApi } from '@/lib/api/client';
-import type { TopEventsResponse } from '@/lib/api/types';
 import {
-  cacheConfig,
-  queryKeys,
+  topEventsQuery,
   useCreateFunnelPreset,
   useUpdateFunnelPreset,
 } from '@/lib/queries';
 import { cn } from '@/lib/utils';
+import { useTimezoneStore } from '@/stores/timezone-store';
 
 type DraftStep = FunnelCustomStep & { id: string };
 
@@ -98,13 +96,9 @@ export function FunnelEditorDialog({
   const [steps, setSteps] = useState<DraftStep[]>(defaultDraftSteps);
   const [windowHours, setWindowHours] = useState(168);
 
+  const tz = useTimezoneStore((s) => s.timezone);
   const { data: topEvents } = useQuery({
-    queryKey: queryKeys.events.top(appId),
-    queryFn: () =>
-      fetchApi<TopEventsResponse>(
-        `/web/events/top${buildQueryString({ appId })}`
-      ),
-    ...cacheConfig.overview,
+    ...topEventsQuery(appId, undefined, tz),
     enabled: open && Boolean(appId),
   });
 

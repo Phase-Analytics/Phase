@@ -72,6 +72,8 @@ export type PaginationQueryParams = {
 export type DateFilterQueryParams = {
   startDate?: string;
   endDate?: string;
+  /** IANA zone for day buckets on timeseries/retention endpoints (default UTC). */
+  tz?: string;
 };
 
 export type DateRangeParams = {

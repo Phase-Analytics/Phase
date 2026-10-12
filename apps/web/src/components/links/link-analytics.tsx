@@ -1,5 +1,11 @@
 'use client';
 
+import {
+  LINK_ANALYTICS_DEFAULT_RANGE,
+  LINK_ANALYTICS_RANGES,
+  type LinkAnalyticsRange,
+} from '@phase/shared';
+import { parseAsStringLiteral, useQueryState } from 'nuqs';
 import { useMemo, useState } from 'react';
 import { LinkAnalyticsBreakdownCard } from '@/components/links/link-analytics-breakdown';
 import { LinkAnalyticsGeoCard } from '@/components/links/link-analytics-geo-card';
@@ -7,7 +13,19 @@ import { TimescaleChart } from '@/components/timescale-chart';
 import { Card, CardContent } from '@/components/ui/card';
 import { CountingNumber } from '@/components/ui/counting-number';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ANALYTICS_TIME_RANGE_OPTIONS } from '@/lib/analytics-time-range';
 import { useLinkAnalytics } from '@/lib/queries';
+import { useLinkClickLiveUpdates } from '@/lib/queries/use-link-live-updates';
+
+/** Shared by the analytics cards and the clicks table on the link page. */
+export function useLinkAnalyticsRange() {
+  return useQueryState(
+    'linkRange',
+    parseAsStringLiteral(LINK_ANALYTICS_RANGES).withDefault(
+      LINK_ANALYTICS_DEFAULT_RANGE
+    )
+  );
+}
 
 type LinkAnalyticsProps = {
   appId: string;
@@ -16,7 +34,9 @@ type LinkAnalyticsProps = {
 
 export function LinkAnalytics({ appId, linkId }: LinkAnalyticsProps) {
   const [metric, setMetric] = useState<'clicks' | 'unique'>('clicks');
-  const { data, isPending } = useLinkAnalytics(appId, linkId);
+  const [range, setRange] = useLinkAnalyticsRange();
+  const { data, isPending, isError } = useLinkAnalytics(appId, linkId, range);
+  useLinkClickLiveUpdates(appId, linkId);
 
   const chartData = useMemo(
     () =>
@@ -40,7 +60,13 @@ export function LinkAnalytics({ appId, linkId }: LinkAnalyticsProps) {
   }
 
   if (!data) {
-    return null;
+    return isError ? (
+      <Card className="py-0">
+        <CardContent className="p-4 text-muted-foreground text-sm">
+          Link analytics are temporarily unavailable. Try again shortly.
+        </CardContent>
+      </Card>
+    ) : null;
   }
 
   return (
@@ -73,7 +99,7 @@ export function LinkAnalytics({ appId, linkId }: LinkAnalyticsProps) {
         data={chartData}
         dataKey="value"
         dataLabel={metric === 'clicks' ? 'Clicks' : 'Unique visits'}
-        description="All-time daily link engagement"
+        description="Daily link engagement"
         isPending={false}
         metric={metric}
         metricOptions={[
@@ -81,7 +107,9 @@ export function LinkAnalytics({ appId, linkId }: LinkAnalyticsProps) {
           { value: 'unique', label: 'Unique visits' },
         ]}
         onMetricChange={(value) => setMetric(value as 'clicks' | 'unique')}
-        showTimeRange={false}
+        onTimeRangeChange={(value) => setRange(value as LinkAnalyticsRange)}
+        timeRange={range}
+        timeRangeOptions={[...ANALYTICS_TIME_RANGE_OPTIONS]}
         title="Link activity"
       />
 

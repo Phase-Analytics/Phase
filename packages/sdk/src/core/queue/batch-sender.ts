@@ -1,174 +1,242 @@
 import type { HttpClient } from '../client/http-client';
-import type { BatchItem, BatchRequest } from '../types';
-import { VALIDATION } from '../types';
+import type { BatchError, BatchItem, BatchResponse } from '../types';
 import { logger } from '../utils/logger';
 import type { OfflineQueue } from './offline-queue';
 
-const FLUSH_TIMEOUT_MS = 5000;
+// The server rejects whole batches from devices younger than 5 minutes that
+// carry 100+ events, so keep requests well under that.
+const MAX_ITEMS_PER_REQUEST = 50;
+const MAX_ITEM_RETRIES = 5;
+const FLUSH_DEADLINE_MS = 30_000;
 
+export type FlushOutcome =
+  | { status: 'idle' }
+  | { status: 'sent' }
+  /** Something is still queued that the server asked us to retry. */
+  | { status: 'retry'; retryAfterMs: number | null };
+
+type ChunkOutcome = { blocked: boolean; retained: number };
+
+function toWireItem(item: BatchItem): BatchItem {
+  const { retryCount: _retryCount, ...wire } = item;
+  return wire as BatchItem;
+}
+
+function deviceIdOf(item: BatchItem): string | null {
+  return item.type === 'device' || item.type === 'session'
+    ? item.payload.deviceId
+    : null;
+}
+
+/**
+ * Splits queued items into requests the server accepts: bounded in size and
+ * referencing a single device (after reset() the queue can hold two).
+ */
+function toRequests(items: BatchItem[]): BatchItem[][] {
+  const requests: BatchItem[][] = [];
+  let current: BatchItem[] = [];
+  let currentDeviceId: string | null = null;
+
+  for (const item of items) {
+    const deviceId = deviceIdOf(item);
+    const deviceChanged =
+      deviceId !== null &&
+      currentDeviceId !== null &&
+      deviceId !== currentDeviceId;
+
+    if (current.length >= MAX_ITEMS_PER_REQUEST || deviceChanged) {
+      requests.push(current);
+      current = [];
+      currentDeviceId = null;
+    }
+    current.push(item);
+    currentDeviceId = deviceId ?? currentDeviceId;
+  }
+
+  if (current.length > 0) {
+    requests.push(current);
+  }
+  return requests;
+}
+
+/**
+ * Sends the queue to `/sdk/batch`, one flush at a time. Items leave the queue
+ * only when the server acknowledged them or marked them non-retryable.
+ */
 export class BatchSender {
   private readonly httpClient: HttpClient;
-  private readonly offlineQueue: OfflineQueue;
-  private isFlushing = false;
+  private readonly queue: OfflineQueue;
+  private inFlight: Promise<FlushOutcome> | null = null;
+  private followUp: Promise<FlushOutcome> | null = null;
 
-  constructor(httpClient: HttpClient, offlineQueue: OfflineQueue) {
+  constructor(httpClient: HttpClient, queue: OfflineQueue) {
     this.httpClient = httpClient;
-    this.offlineQueue = offlineQueue;
+    this.queue = queue;
   }
 
-  async flush(): Promise<void> {
-    if (this.isFlushing) {
-      logger.warn('Flush already in progress. Skipping duplicate flush.');
-      return;
+  /**
+   * Starts a flush, or if one is running, schedules exactly one follow-up so
+   * items enqueued meanwhile are covered. Never rejects.
+   */
+  flush(): Promise<FlushOutcome> {
+    if (!this.inFlight) {
+      return this.start();
     }
-
-    this.isFlushing = true;
-
-    try {
-      await this.flushWithTimeout();
-    } finally {
-      this.isFlushing = false;
-    }
-  }
-
-  private async flushWithTimeout(): Promise<void> {
-    const timeoutPromise = new Promise<void>((_, reject) => {
-      setTimeout(() => reject(new Error('Flush timeout')), FLUSH_TIMEOUT_MS);
-    });
-
-    const flushPromise = this.performFlush();
-
-    try {
-      await Promise.race([flushPromise, timeoutPromise]);
-    } catch (error) {
-      logger.error(
-        'Flush failed or timed out. Dropping remaining items.',
-        error
-      );
-    }
-  }
-
-  private async performFlush(): Promise<void> {
-    const items = await this.offlineQueue.dequeueAll();
-
-    if (items.length === 0) {
-      return;
-    }
-
-    const deduplicatedItems = this.deduplicateByTimestamp(items);
-    const batches = this.splitIntoBatches(deduplicatedItems);
-
-    for (const batch of batches) {
-      try {
-        await this.sendBatch(batch);
-      } catch (error) {
-        logger.error(
-          'Batch send error. Dropping batch (fire & forget).',
-          error
-        );
-      }
-    }
-  }
-
-  private async sendBatch(items: BatchItem[]): Promise<void> {
-    const itemsWithoutRetryCount = items.map(({ retryCount, ...item }) => item);
-    const request: BatchRequest = { items: itemsWithoutRetryCount };
-    const result = await this.httpClient.sendBatch(request);
-
-    if (!result.success) {
-      logger.warn('Batch request failed. Dropping batch (fire & forget).', {
-        error: result.error,
+    if (!this.followUp) {
+      this.followUp = this.inFlight.then(() => {
+        this.followUp = null;
+        return this.start();
       });
-      return;
+    }
+    return this.followUp;
+  }
+
+  private start(): Promise<FlushOutcome> {
+    const run = this.run().finally(() => {
+      this.inFlight = null;
+    });
+    this.inFlight = run;
+    return run;
+  }
+
+  private async run(): Promise<FlushOutcome> {
+    const snapshot = this.queue.snapshot();
+    if (snapshot.length === 0) {
+      return { status: 'idle' };
     }
 
-    const response = result.data;
-    if (response.failed && response.failed > 0) {
-      logger.warn(
-        `Batch partially failed: ${response.failed}/${(response.processed ?? 0) + response.failed} items dropped.`
-      );
+    const controller = new AbortController();
+    const deadline = setTimeout(() => controller.abort(), FLUSH_DEADLINE_MS);
+    let retained = 0;
+
+    try {
+      for (const chunk of toRequests(snapshot)) {
+        if (controller.signal.aborted) {
+          return { status: 'retry', retryAfterMs: null };
+        }
+
+        const result = await this.httpClient.sendBatch(
+          chunk.map(toWireItem),
+          controller.signal
+        );
+
+        if (result.kind === 'retry') {
+          logger.warn('Batch send failed. Items stay queued for retry.', {
+            error: result.error.message,
+            queued: this.queue.getSize(),
+          });
+          return { status: 'retry', retryAfterMs: result.retryAfterMs };
+        }
+
+        if (result.kind === 'rejected') {
+          logger.error(
+            `Server rejected a batch (HTTP ${result.status}). Dropping ${chunk.length} item(s).`,
+            result.error
+          );
+          this.queue.remove(new Set(chunk));
+          continue;
+        }
+
+        const outcome = this.acknowledge(chunk, result.response);
+        retained += outcome.retained;
+        if (outcome.blocked) {
+          // Later chunks may depend on a device/session that still needs retrying.
+          break;
+        }
+      }
+
+      return retained > 0
+        ? { status: 'retry', retryAfterMs: null }
+        : { status: 'sent' };
+    } catch (error) {
+      logger.error('Unexpected flush error. Items stay queued.', error);
+      return { status: 'retry', retryAfterMs: null };
+    } finally {
+      clearTimeout(deadline);
+      await this.queue.persistNow();
     }
   }
 
-  private deduplicateByTimestamp(items: BatchItem[]): BatchItem[] {
-    const seenEvents = new Map<string, number>();
-    const dedupedItems: BatchItem[] = [];
-    const DEDUP_WINDOW_MS = 50;
-
-    for (const item of items) {
-      if (item.type === 'event') {
-        const key = this.createEventKey(item.payload.name, item.payload.params);
-
-        let timestamp: number;
-        try {
-          timestamp = new Date(item.payload.timestamp).getTime();
-          if (Number.isNaN(timestamp)) {
-            logger.warn('Invalid timestamp format. Including event anyway.');
-            dedupedItems.push(item);
-            continue;
-          }
-        } catch {
-          logger.warn('Failed to parse timestamp. Including event anyway.');
-          dedupedItems.push(item);
-          continue;
-        }
-
-        const lastTime = seenEvents.get(key);
-        if (lastTime !== undefined && timestamp - lastTime < DEDUP_WINDOW_MS) {
-          logger.warn('Duplicate event in batch detected. Dropping event.', {
-            name: item.payload.name,
-          });
-          continue;
-        }
-
-        seenEvents.set(key, timestamp);
-        dedupedItems.push(item);
-      } else {
-        dedupedItems.push(item);
+  private acknowledge(
+    chunk: BatchItem[],
+    response: BatchResponse
+  ): ChunkOutcome {
+    const byOrder = new Map(chunk.map((item) => [item.clientOrder, item]));
+    const failed = new Map<BatchItem, BatchError>();
+    for (const error of response.errors ?? []) {
+      const item = byOrder.get(error.clientOrder);
+      if (item) {
+        failed.set(item, error);
       }
     }
 
-    const droppedCount = items.length - dedupedItems.length;
-    if (droppedCount > 0) {
-      logger.info(
-        `Dropped ${droppedCount} duplicate event(s) from batch based on timestamp.`
+    const retained = this.selectRetained(failed);
+    const toRemove = new Set<BatchItem>();
+    const droppedCodes: string[] = [];
+    let blocked = false;
+
+    for (const item of chunk) {
+      if (!retained.has(item)) {
+        const error = failed.get(item);
+        if (error) {
+          droppedCodes.push(error.code);
+        }
+        toRemove.add(item);
+        continue;
+      }
+
+      item.retryCount = (item.retryCount ?? 0) + 1;
+      if (item.retryCount > MAX_ITEM_RETRIES) {
+        logger.warn(
+          `Dropping ${item.type} item after ${MAX_ITEM_RETRIES} failed retries.`,
+          { code: failed.get(item)?.code }
+        );
+        toRemove.add(item);
+      } else if (item.type === 'device' || item.type === 'session') {
+        blocked = true;
+      }
+    }
+
+    if (droppedCodes.length > 0) {
+      logger.warn(
+        `Server rejected ${droppedCodes.length} item(s) as non-retryable. Dropping them.`,
+        { codes: [...new Set(droppedCodes)] }
       );
     }
 
-    return dedupedItems;
+    this.queue.remove(toRemove);
+    return { blocked, retained: chunk.length - toRemove.size };
   }
 
-  private createEventKey(
-    name: string,
-    params?: Record<string, string | number | boolean | null>
-  ): string {
-    if (!params || Object.keys(params).length === 0) {
-      return name;
-    }
-    try {
-      const sortedParams = Object.keys(params)
-        .sort()
-        .reduce(
-          (acc, key) => {
-            acc[key] = params[key];
-            return acc;
-          },
-          {} as Record<string, string | number | boolean | null>
-        );
-      return `${name}:${JSON.stringify(sortedParams)}`;
-    } catch {
-      return name;
-    }
-  }
+  /**
+   * Retryable failures stay queued, and so do failed items whose device or
+   * session is being retried: they failed only because their parent did.
+   */
+  private selectRetained(failed: Map<BatchItem, BatchError>): Set<BatchItem> {
+    const retained = new Set<BatchItem>();
+    const retainedSessions = new Set<string>();
+    let deviceRetained = false;
 
-  private splitIntoBatches(items: BatchItem[]): BatchItem[][] {
-    const batches: BatchItem[][] = [];
-    const maxSize = VALIDATION.BATCH.MAX_SIZE;
-
-    for (let i = 0; i < items.length; i += maxSize) {
-      batches.push(items.slice(i, i + maxSize));
+    for (const [item, error] of failed) {
+      if (error.retryable === true) {
+        retained.add(item);
+        if (item.type === 'device') {
+          deviceRetained = true;
+        } else if (item.type === 'session') {
+          retainedSessions.add(item.payload.sessionId);
+        }
+      }
     }
 
-    return batches;
+    for (const item of failed.keys()) {
+      if (
+        deviceRetained ||
+        (item.type !== 'device' && retainedSessions.has(item.payload.sessionId))
+      ) {
+        retained.add(item);
+      }
+    }
+
+    return retained;
   }
 }

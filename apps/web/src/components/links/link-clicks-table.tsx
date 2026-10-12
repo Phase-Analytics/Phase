@@ -18,16 +18,8 @@ import { DataTableServer } from '@/components/ui/data-table-server';
 import { getLinkOsIcon } from '@/lib/link-os-icon';
 import { useLinkClicks } from '@/lib/queries/use-links';
 import { usePaginationStore } from '@/stores/pagination-store';
-
-const COUNTRY_CODE_REGEX = /^[A-Za-z]{2}$/;
-
-function getCountryLabel(countryCode: string) {
-  return (
-    new Intl.DisplayNames(['en'], {
-      type: 'region',
-    }).of(countryCode) || countryCode
-  );
-}
+import { getCountryLabel, isCountryCode } from './country-label';
+import { useLinkAnalyticsRange } from './link-analytics';
 
 const columns: ColumnDef<LinkClickItem>[] = [
   {
@@ -91,22 +83,18 @@ const columns: ColumnDef<LinkClickItem>[] = [
 
       return (
         <div className="flex items-center gap-1.5">
-          {!country ||
-          country.length !== 2 ||
-          !COUNTRY_CODE_REGEX.test(country) ? (
-            <HugeiconsIcon
-              className="size-3.5 text-muted-foreground"
-              icon={Flag02Icon}
-            />
-          ) : (
+          {isCountryCode(country) ? (
             <span
               className={`fi fi-${country.toLowerCase()} rounded-xs text-[14px]`}
               title={getCountryLabel(country)}
             />
+          ) : (
+            <HugeiconsIcon
+              className="size-3.5 text-muted-foreground"
+              icon={Flag02Icon}
+            />
           )}
-          <span className="text-sm">
-            {country ? getCountryLabel(country) : 'Unknown'}
-          </span>
+          <span className="text-sm">{getCountryLabel(country)}</span>
         </div>
       );
     },
@@ -164,8 +152,9 @@ export function LinkClicksTable({ appId, linkId }: LinkClicksTableProps) {
     parseAsInteger.withDefault(1)
   );
   const { pageSize } = usePaginationStore();
+  const [range] = useLinkAnalyticsRange();
 
-  const { data, isLoading } = useLinkClicks(appId, linkId, {
+  const { data, isLoading } = useLinkClicks(appId, linkId, range, {
     page: clicksPage.toString(),
     pageSize: pageSize.toString(),
   });

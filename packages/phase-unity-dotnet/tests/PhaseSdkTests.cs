@@ -1,4 +1,3 @@
-using Phase.Analytics.Client;
 using Phase.Analytics.Config;
 using Phase.Analytics.Device;
 using Phase.Analytics.Models;
@@ -14,10 +13,10 @@ public sealed class PhaseSdkTests
     public async Task Initialize_rejects_invalid_api_key()
     {
         var storage = CreateStorage();
-        var sdk = new PhaseSDK(
+        using var sdk = new PhaseSDK(
             new StaticDeviceInfoProvider(new DeviceInfo()),
             new AlwaysOnlineNetworkMonitor(),
-            new RecordingTransport()
+            new BatchRecordingTransport()
         );
 
         var success = await sdk.InitializeAsync(
@@ -32,8 +31,8 @@ public sealed class PhaseSdkTests
     public async Task Identify_before_init_is_replayed_after_init()
     {
         var storage = CreateStorage();
-        var transport = new RecordingTransport();
-        var sdk = new PhaseSDK(
+        var transport = new BatchRecordingTransport();
+        using var sdk = new PhaseSDK(
             new StaticDeviceInfoProvider(
                 new DeviceInfo { OsVersion = "TestOS", Locale = "en-US", Model = "Test" }
             ),
@@ -53,11 +52,13 @@ public sealed class PhaseSdkTests
 
         Assert.True(sdk.IsIdentified);
         sdk.Track("level_complete", new EventParams { ["level"] = 1 });
-        await Task.Delay(100);
+        await sdk.FlushAsync();
 
-        Assert.Contains(transport.Requests, request => request.Url.EndsWith("/sdk/devices"));
-        Assert.Contains(transport.Requests, request => request.Url.EndsWith("/sdk/sessions"));
-        Assert.Contains(transport.Requests, request => request.Url.EndsWith("/sdk/events"));
+        var items = transport.SentItems();
+        Assert.Contains(items, item => (string?)item["type"] == "device");
+        Assert.Contains(items, item => (string?)item["type"] == "session");
+        Assert.Contains(items, item => (string?)item["payload"]?["name"] == "early_event");
+        Assert.Contains(items, item => (string?)item["payload"]?["name"] == "level_complete");
     }
 
     [Fact]
@@ -83,70 +84,5 @@ public sealed class PhaseSdkTests
         );
         StorageService.SetAdapter(storage);
         return storage;
-    }
-
-    private sealed class RecordingTransport : IHttpTransport
-    {
-        public List<HttpTransportRequest> Requests { get; } = new();
-
-        public Task<HttpTransportResponse> SendAsync(
-            HttpTransportRequest request,
-            CancellationToken cancellationToken
-        )
-        {
-            Requests.Add(request);
-
-            if (request.Url.EndsWith("/sdk/devices"))
-            {
-                return Task.FromResult(
-                    new HttpTransportResponse(
-                        200,
-                        """{"deviceId":"01HXTESTDEVICE0000000001","firstSeen":"2026-01-01T00:00:00Z"}"""
-                    )
-                );
-            }
-
-            if (request.Url.EndsWith("/sdk/sessions"))
-            {
-                return Task.FromResult(
-                    new HttpTransportResponse(
-                        200,
-                        """{"sessionId":"01HXTESTSESSION000000001","deviceId":"01HXTESTDEVICE0000000001","startedAt":"2026-01-01T00:00:00Z","lastActivityAt":"2026-01-01T00:00:00Z"}"""
-                    )
-                );
-            }
-
-            if (request.Url.EndsWith("/sdk/events"))
-            {
-                return Task.FromResult(
-                    new HttpTransportResponse(
-                        200,
-                        """{"eventId":"e1","sessionId":"01HXTESTSESSION000000001","deviceId":"01HXTESTDEVICE0000000001","name":"boot","isScreen":false,"timestamp":"2026-01-01T00:00:00Z"}"""
-                    )
-                );
-            }
-
-            if (request.Url.EndsWith("/sdk/ping"))
-            {
-                return Task.FromResult(
-                    new HttpTransportResponse(
-                        200,
-                        """{"sessionId":"01HXTESTSESSION000000001","lastActivityAt":"2026-01-01T00:00:00Z"}"""
-                    )
-                );
-            }
-
-            if (request.Url.EndsWith("/sdk/batch"))
-            {
-                return Task.FromResult(
-                    new HttpTransportResponse(
-                        200,
-                        """{"processed":1,"failed":0,"errors":[],"results":[]}"""
-                    )
-                );
-            }
-
-            return Task.FromResult(new HttpTransportResponse(404, "not found"));
-        }
     }
 }

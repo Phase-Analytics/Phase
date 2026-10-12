@@ -1,27 +1,47 @@
-import NetInfo from '@react-native-community/netinfo';
+import type {
+  NetworkState,
+  NetworkStateListener,
+  UnsubscribeFn,
+} from '../adapters/network-adapter';
 
-export type NetworkState = {
-  isConnected: boolean;
+type NetInfoState = { isConnected: boolean | null };
+type NetInfoModule = {
+  fetch: () => Promise<NetInfoState>;
+  addEventListener: (listener: (state: NetInfoState) => void) => () => void;
 };
 
-export type NetworkStateListener = (state: NetworkState) => void;
-export type UnsubscribeFn = () => void;
+let NetInfo: NetInfoModule | null = null;
+
+try {
+  const mod = require('@react-native-community/netinfo');
+  NetInfo = (mod?.default ?? mod) as NetInfoModule;
+} catch {
+  // Optional peer: without it the SDK assumes it is online and relies on retries.
+}
+
+export function isNetInfoAvailable(): boolean {
+  return NetInfo !== null;
+}
+
+// `isConnected` is null while unknown; only an explicit false counts as offline.
+function toNetworkState(state: NetInfoState): NetworkState {
+  return { isConnected: state.isConnected !== false };
+}
 
 export async function fetchNetworkState(): Promise<NetworkState> {
-  const netState = await NetInfo.fetch();
-  return {
-    isConnected: netState.isConnected ?? false,
-  };
+  if (!NetInfo) {
+    return { isConnected: true };
+  }
+  return toNetworkState(await NetInfo.fetch());
 }
 
 export function addNetworkListener(
   listener: NetworkStateListener
 ): UnsubscribeFn {
-  const unsubscribe = NetInfo.addEventListener((state) => {
-    listener({
-      isConnected: state.isConnected ?? false,
-    });
-  });
-
-  return unsubscribe;
+  if (!NetInfo) {
+    return () => {
+      // Nothing to unsubscribe without NetInfo.
+    };
+  }
+  return NetInfo.addEventListener((state) => listener(toNetworkState(state)));
 }

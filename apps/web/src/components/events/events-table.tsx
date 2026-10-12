@@ -9,13 +9,14 @@ import {
   ViewIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
+import { getDisplayName } from '@phase/shared';
 import type { ColumnDef } from '@tanstack/react-table';
 import { parseAsInteger, parseAsString, useQueryState } from 'nuqs';
 import { ClientDate } from '@/components/client-date';
 import { DebugDataBadge } from '@/components/debug-data-badge';
 import { EventsSheet } from '@/components/events/event-details-sheet';
 import { DataTableServer } from '@/components/ui/data-table-server';
-import { getGeneratedName, UserAvatar } from '@/components/user-profile';
+import { UserAvatar } from '@/components/user-profile';
 import type { EventListItem } from '@/lib/api/types';
 import { useEvents } from '@/lib/queries';
 import { usePaginationStore } from '@/stores/pagination-store';
@@ -49,7 +50,7 @@ const columns: ColumnDef<EventListItem>[] = [
     size: 280,
     cell: ({ row }) => {
       const deviceId = row.getValue('deviceId') as string;
-      const generatedName = getGeneratedName(deviceId);
+      const generatedName = getDisplayName(deviceId);
       return (
         <div
           className="flex max-w-xs items-center gap-2 lg:max-w-sm"

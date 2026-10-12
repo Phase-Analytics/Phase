@@ -1,30 +1,32 @@
-import type {
-  CreateLinkDomainRequest,
-  CreateLinkRequest,
-  LinkAnalyticsResponse,
-  LinkClicksListResponse,
-  LinkDetail,
-  LinkDomainsListResponseSchema,
-  LinksListResponse,
-  SlugAvailableResponseSchema,
-  UpdateLinkRequest,
+import {
+  type CreateLinkDomainRequest,
+  type CreateLinkRequest,
+  type LinkAnalyticsRange,
+  type LinkAnalyticsResponse,
+  type LinkClicksListResponse,
+  type LinkDetail,
+  type LinkDomain,
+  type LinkDomainsListResponseSchema,
+  LinkSlugSchema,
+  type LinksListResponse,
+  type SlugAvailableResponseSchema,
+  type UpdateLinkRequest,
 } from '@phase/shared';
-import type { z } from 'zod';
-
-type LinkDomainsListResponse = z.infer<typeof LinkDomainsListResponseSchema>;
-type SlugAvailableResponse = z.infer<typeof SlugAvailableResponseSchema>;
-
-import type { LinkDomain } from '@phase/shared';
 import {
   keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import type { z } from 'zod';
 import { buildQueryString, fetchApi, fetchApiFormData } from '@/lib/api/client';
 import type { PaginationQueryParams } from '@/lib/api/types';
 import { cacheConfig } from './query-client';
 import { queryKeys } from './query-keys';
+
+type LinkDomainsListResponse = z.infer<typeof LinkDomainsListResponseSchema>;
+type SlugAvailableResponse = z.infer<typeof SlugAvailableResponseSchema>;
 
 export function useLinks(appId: string) {
   return useQuery({
@@ -56,6 +58,22 @@ type LinkSlugAvailabilityOptions = {
   excludeLinkId?: string;
 };
 
+const SLUG_CHECK_DEBOUNCE_MS = 300;
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timeout);
+  }, [value, delayMs]);
+  return debounced;
+}
+
+/**
+ * Checks availability once typing pauses, and only for locally valid slugs.
+ * `data` is withheld while the input is ahead of the last checked value so a
+ * stale answer is never shown for a different slug.
+ */
 export function useLinkSlugAvailable({
   appId,
   slug,
@@ -63,10 +81,12 @@ export function useLinkSlugAvailable({
   enabled,
   excludeLinkId,
 }: LinkSlugAvailabilityOptions) {
-  return useQuery({
+  const debouncedSlug = useDebouncedValue(slug, SLUG_CHECK_DEBOUNCE_MS);
+  const settled = debouncedSlug === slug;
+  const query = useQuery({
     queryKey: queryKeys.links.slugAvailable(
       appId,
-      slug,
+      debouncedSlug,
       domainId,
       excludeLinkId
     ),
@@ -74,48 +94,66 @@ export function useLinkSlugAvailable({
       fetchApi<SlugAvailableResponse>(
         `/web/links/slug-available${buildQueryString({
           appId,
-          slug,
+          slug: debouncedSlug,
           domainId: domainId ?? undefined,
           excludeLinkId,
         })}`
       ),
-    enabled: enabled && Boolean(appId) && slug.length >= 3,
+    enabled:
+      enabled &&
+      settled &&
+      Boolean(appId) &&
+      LinkSlugSchema.safeParse(debouncedSlug).success,
     staleTime: 10_000,
   });
+
+  return {
+    data: settled ? query.data : undefined,
+    isChecking: !settled || query.isFetching,
+  };
 }
 
+// New clicks arrive via SSE invalidation (useLinkClickLiveUpdates), not polling.
 export function useLinkClicks(
   appId: string,
   linkId: string,
+  range: LinkAnalyticsRange,
   params: PaginationQueryParams
 ) {
   return useQuery({
-    queryKey: queryKeys.links.clicks(appId, linkId, params),
+    queryKey: [...queryKeys.links.clicks(appId, linkId, params), range],
     queryFn: () =>
       fetchApi<LinkClicksListResponse>(
         `/web/links/${linkId}/clicks${buildQueryString({
           appId,
+          range,
           ...params,
         })}`
       ),
     ...cacheConfig.list,
     enabled: Boolean(appId) && Boolean(linkId),
     placeholderData: keepPreviousData,
-    refetchInterval: 5000,
   });
 }
 
-export function useLinkAnalytics(appId: string, linkId: string) {
+export function useLinkAnalytics(
+  appId: string,
+  linkId: string,
+  range: LinkAnalyticsRange
+) {
   return useQuery({
-    queryKey: queryKeys.links.analytics(appId, linkId),
+    queryKey: [...queryKeys.links.analytics(appId, linkId), range],
     queryFn: () =>
       fetchApi<LinkAnalyticsResponse>(
-        `/web/links/${linkId}/analytics${buildQueryString({ appId })}`
+        `/web/links/${linkId}/analytics${buildQueryString({ appId, range })}`
       ),
     ...cacheConfig.list,
     enabled: Boolean(appId) && Boolean(linkId),
+    placeholderData: keepPreviousData,
   });
 }
+
+const PENDING_DOMAIN_REFETCH_MS = 15_000;
 
 export function useLinkDomains(appId: string) {
   return useQuery({
@@ -126,6 +164,11 @@ export function useLinkDomains(appId: string) {
       ),
     ...cacheConfig.list,
     enabled: Boolean(appId),
+    // Keep pending domains fresh while they are on screen (paused in background tabs).
+    refetchInterval: (query) =>
+      query.state.data?.domains.some((domain) => domain.status === 'pending')
+        ? PENDING_DOMAIN_REFETCH_MS
+        : false,
   });
 }
 
@@ -214,7 +257,8 @@ export function useVerifyLinkDomain(appId: string) {
           method: 'POST',
         }
       ),
-    onSuccess: () => {
+    // Failed checks still update lastError / lastCheckAt server-side.
+    onSettled: () => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.links.domains(appId),
       });
@@ -241,9 +285,6 @@ export function useUploadLinkOgImage(appId: string, linkId: string) {
       queryClient.invalidateQueries({
         queryKey: queryKeys.links.list(appId),
       });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.links.clicks(appId, linkId),
-      });
     },
   });
 }
@@ -263,9 +304,6 @@ export function useDeleteLinkOgImage(appId: string, linkId: string) {
       });
       queryClient.invalidateQueries({
         queryKey: queryKeys.links.list(appId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.links.clicks(appId, linkId),
       });
     },
   });

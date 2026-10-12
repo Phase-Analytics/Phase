@@ -11,6 +11,10 @@ try {
 
 const STORAGE_PREFIX = 'phase_analytics_';
 
+export function isAsyncStorageAvailable(): boolean {
+  return Boolean(AsyncStorage);
+}
+
 function getStorageKey(key: string): string {
   const safeKey = key.replace(/[^a-zA-Z0-9_-]/g, '_');
   return `${STORAGE_PREFIX}${safeKey}`;

@@ -13,10 +13,9 @@ import { normalizePath } from '@/lib/path-normalizer';
 import { getSessionActivityBuffer } from '@/lib/session-activity-buffer';
 import { sseManager } from '@/lib/sse-manager';
 import {
-  invalidateSessionCache,
   SESSION_MAX_DURATION_MS,
   validateEventParams,
-  validateSession,
+  validateIngestSession,
   validateTimestamp,
 } from '@/lib/validators';
 
@@ -26,7 +25,10 @@ export const eventSdkRouter = new Elysia({ prefix: '/events' })
     '/',
     async ({ body, set, app, sdkDebugData }) => {
       try {
-        const sessionValidation = await validateSession(body.sessionId, app.id);
+        const sessionValidation = await validateIngestSession(
+          body.sessionId,
+          app.id
+        );
         if (!sessionValidation.success) {
           set.status = sessionValidation.error.status;
           return {
@@ -55,7 +57,7 @@ export const eventSdkRouter = new Elysia({ prefix: '/events' })
 
         const normalizedParams = paramsValidation.data;
         const clientTimestamp = timestampValidation.data;
-        const { session, device } = sessionValidation.data;
+        const session = sessionValidation.data;
 
         if (clientTimestamp < session.startedAt) {
           set.status = HttpStatus.BAD_REQUEST;
@@ -87,14 +89,14 @@ export const eventSdkRouter = new Elysia({ prefix: '/events' })
           };
         }
 
-        const eventId = ulid();
+        const eventId = body.eventId?.toUpperCase() ?? ulid();
         const eventName = body.isScreen ? normalizePath(body.name) : body.name;
 
         await getEventBuffer().push({
           eventId,
           sessionId: body.sessionId,
           deviceId: session.deviceId,
-          appId: device.appId,
+          appId: session.appId,
           name: eventName,
           params: normalizedParams,
           isScreen: body.isScreen,
@@ -107,20 +109,18 @@ export const eventSdkRouter = new Elysia({ prefix: '/events' })
           activityBuffer.getLastActivityAt(session.sessionId) ??
           session.lastActivityAt;
         if (clientTimestamp > latestActivity) {
-          activityBuffer.push(session.sessionId, clientTimestamp, device.appId);
+          activityBuffer.push(session.sessionId, clientTimestamp);
         }
 
-        await invalidateSessionCache(session.sessionId);
-
-        sseManager.pushEvent(device.appId, {
+        sseManager.pushEvent(session.appId, {
           eventId,
           deviceId: session.deviceId,
           name: eventName,
           isScreen: body.isScreen,
           isDebug: sdkDebugData,
           timestamp: clientTimestamp.toISOString(),
-          country: device.country,
-          platform: device.platform,
+          country: session.country,
+          platform: session.platform,
         });
 
         set.status = HttpStatus.OK;

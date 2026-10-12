@@ -11,13 +11,15 @@ import {
   PolicySlugAvailableResponseSchema,
   UpdatePolicyRequestSchema,
 } from '@phase/shared';
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 import { db, linkDomains, links, policies } from '@/db';
+import { findAccessibleApp } from '@/lib/app-access';
 import { auth } from '@/lib/auth';
-import { assertAppAccess } from '@/lib/links/access';
 import { getLinkClickTotalsByApp } from '@/lib/links/analytics';
 import { invalidateCachedLink } from '@/lib/links/cache';
+import { deleteLinkClickTotals } from '@/lib/links/click-totals';
+import { isLinkSlugAvailable, tombstoneDefaultSlugs } from '@/lib/links/slugs';
 import { resolvePrimaryShortUrl } from '@/lib/links/urls';
 import {
   authPlugin,
@@ -77,22 +79,6 @@ function loadDomainForApp(
   });
 }
 
-async function isLinkSlugAvailable(
-  slug: string,
-  domainId: string | null,
-  excludeLinkId?: string
-): Promise<boolean> {
-  const existing = await db.query.links.findFirst({
-    where: and(
-      eq(links.slug, slug),
-      domainId ? eq(links.domainId, domainId) : isNull(links.domainId)
-    ),
-    columns: { id: true },
-  });
-
-  return !existing || existing.id === excludeLinkId;
-}
-
 function serializePolicy(
   policy: typeof policies.$inferSelect,
   link: typeof links.$inferSelect,
@@ -117,7 +103,7 @@ function serializePolicy(
     content: policy.content,
     createdAt: policy.createdAt.toISOString(),
     updatedAt: policy.updatedAt.toISOString(),
-    ...(totalClicks !== undefined ? { totalClicks } : {}),
+    ...(totalClicks === undefined ? {} : { totalClicks }),
   };
 }
 
@@ -159,24 +145,25 @@ export const policiesWebRouter = new Elysia({ prefix: '/policies' })
         };
       }
 
-      const app = await assertAppAccess(query.appId, user.id);
+      const app = await findAccessibleApp(query.appId, user.id);
       if (!app) {
         set.status = HttpStatus.FORBIDDEN;
         return { code: ErrorCode.FORBIDDEN, detail: 'Access denied' };
       }
 
-      const rows = await db
-        .select({
-          policy: policies,
-          link: links,
-        })
-        .from(policies)
-        .innerJoin(links, eq(policies.linkId, links.id))
-        .where(eq(policies.appId, query.appId))
-        .orderBy(desc(policies.createdAt));
-
-      const domainsById = await loadDomainsByIdForApp(query.appId);
-      const clickTotals = await getLinkClickTotalsByApp(query.appId);
+      const [rows, domainsById, clickTotals] = await Promise.all([
+        db
+          .select({
+            policy: policies,
+            link: links,
+          })
+          .from(policies)
+          .innerJoin(links, eq(policies.linkId, links.id))
+          .where(eq(policies.appId, query.appId))
+          .orderBy(desc(policies.createdAt)),
+        loadDomainsByIdForApp(query.appId),
+        getLinkClickTotalsByApp(query.appId),
+      ]);
 
       return {
         policies: rows.map(({ policy, link }) =>
@@ -184,7 +171,7 @@ export const policiesWebRouter = new Elysia({ prefix: '/policies' })
             policy,
             link,
             domainsById,
-            clickTotals.get(link.id) ?? 0
+            clickTotals?.get(link.id)
           )
         ),
       };
@@ -220,42 +207,42 @@ export const policiesWebRouter = new Elysia({ prefix: '/policies' })
         };
       }
 
-      const app = await assertAppAccess(query.appId, user.id);
+      const app = await findAccessibleApp(query.appId, user.id);
       if (!app) {
         set.status = HttpStatus.FORBIDDEN;
         return { code: ErrorCode.FORBIDDEN, detail: 'Access denied' };
       }
 
       const domainId = query.domainId || null;
-      if (domainId) {
-        const domain = await loadDomainForApp(domainId, query.appId);
-        if (!domain) {
-          set.status = HttpStatus.BAD_REQUEST;
-          return {
-            code: ErrorCode.VALIDATION_ERROR,
-            detail: 'Select a verified domain from this app',
-          };
-        }
+      const [domain, excludedPolicy] = await Promise.all([
+        loadDomainForApp(domainId, query.appId),
+        !query.excludeLinkId && query.excludePolicyId
+          ? db.query.policies.findFirst({
+              where: and(
+                eq(policies.id, query.excludePolicyId),
+                eq(policies.appId, query.appId)
+              ),
+              columns: { linkId: true },
+            })
+          : undefined,
+      ]);
+      if (domainId && !domain) {
+        set.status = HttpStatus.BAD_REQUEST;
+        return {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: 'Select a verified domain from this app',
+        };
       }
 
-      let excludeLinkId = query.excludeLinkId;
-      if (!excludeLinkId && query.excludePolicyId) {
-        const policy = await db.query.policies.findFirst({
-          where: and(
-            eq(policies.id, query.excludePolicyId),
-            eq(policies.appId, query.appId)
-          ),
-          columns: { linkId: true },
-        });
-        excludeLinkId = policy?.linkId;
-      }
+      const excludeLinkId = query.excludeLinkId || excludedPolicy?.linkId;
 
       return {
-        available: await isLinkSlugAvailable(
-          parsed.data,
+        available: await isLinkSlugAvailable({
+          slug: parsed.data,
           domainId,
-          excludeLinkId
-        ),
+          appId: query.appId,
+          excludeLinkId,
+        }),
       };
     },
     {
@@ -296,29 +283,30 @@ export const policiesWebRouter = new Elysia({ prefix: '/policies' })
         };
       }
 
-      const app = await assertAppAccess(parsed.data.appId, user.id);
+      const app = await findAccessibleApp(parsed.data.appId, user.id);
       if (!app) {
         set.status = HttpStatus.FORBIDDEN;
         return { code: ErrorCode.FORBIDDEN, detail: 'Access denied' };
       }
 
       const domainId = parsed.data.domainId ?? null;
-      if (domainId) {
-        const domain = await loadDomainForApp(
+      const [domain, slugAvailable] = await Promise.all([
+        loadDomainForApp(domainId, parsed.data.appId, true),
+        isLinkSlugAvailable({
+          slug: parsed.data.slug,
           domainId,
-          parsed.data.appId,
-          true
-        );
-        if (!domain) {
-          set.status = HttpStatus.BAD_REQUEST;
-          return {
-            code: ErrorCode.VALIDATION_ERROR,
-            detail: 'Select a verified domain from this app',
-          };
-        }
+          appId: parsed.data.appId,
+        }),
+      ]);
+      if (domainId && !domain) {
+        set.status = HttpStatus.BAD_REQUEST;
+        return {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: 'Select a verified domain from this app',
+        };
       }
 
-      if (!(await isLinkSlugAvailable(parsed.data.slug, domainId))) {
+      if (!slugAvailable) {
         set.status = HttpStatus.CONFLICT;
         return {
           code: ErrorCode.CONFLICT,
@@ -375,9 +363,10 @@ export const policiesWebRouter = new Elysia({ prefix: '/policies' })
         throw error;
       }
 
-      await invalidateCachedLink(linkRow.slug, linkRow.domainId);
-
-      const domainsById = await loadDomainsByIdForApp(parsed.data.appId);
+      const [, domainsById] = await Promise.all([
+        invalidateCachedLink(linkRow.slug, linkRow.domainId),
+        loadDomainsByIdForApp(parsed.data.appId),
+      ]);
       return serializePolicy(policyRow, linkRow, domainsById);
     },
     {
@@ -403,23 +392,29 @@ export const policiesWebRouter = new Elysia({ prefix: '/policies' })
         };
       }
 
-      const app = await assertAppAccess(query.appId, user.id);
+      const app = await findAccessibleApp(query.appId, user.id);
       if (!app) {
         set.status = HttpStatus.FORBIDDEN;
         return { code: ErrorCode.FORBIDDEN, detail: 'Access denied' };
       }
 
-      const row = await db
-        .select({
-          policy: policies,
-          link: links,
-        })
-        .from(policies)
-        .innerJoin(links, eq(policies.linkId, links.id))
-        .where(
-          and(eq(policies.id, params.policyId), eq(policies.appId, query.appId))
-        )
-        .limit(1);
+      const [row, domainsById] = await Promise.all([
+        db
+          .select({
+            policy: policies,
+            link: links,
+          })
+          .from(policies)
+          .innerJoin(links, eq(policies.linkId, links.id))
+          .where(
+            and(
+              eq(policies.id, params.policyId),
+              eq(policies.appId, query.appId)
+            )
+          )
+          .limit(1),
+        loadDomainsByIdForApp(query.appId),
+      ]);
 
       const match = row[0];
       if (!match) {
@@ -427,7 +422,6 @@ export const policiesWebRouter = new Elysia({ prefix: '/policies' })
         return { code: ErrorCode.NOT_FOUND, detail: 'Policy not found' };
       }
 
-      const domainsById = await loadDomainsByIdForApp(query.appId);
       return serializePolicy(match.policy, match.link, domainsById);
     },
     {
@@ -464,7 +458,7 @@ export const policiesWebRouter = new Elysia({ prefix: '/policies' })
         };
       }
 
-      const app = await assertAppAccess(query.appId, user.id);
+      const app = await findAccessibleApp(query.appId, user.id);
       if (!app) {
         set.status = HttpStatus.FORBIDDEN;
         return { code: ErrorCode.FORBIDDEN, detail: 'Access denied' };
@@ -490,30 +484,37 @@ export const policiesWebRouter = new Elysia({ prefix: '/policies' })
 
       const nextSlug = parsed.data.slug ?? existing.link.slug;
       const nextDomainId =
-        parsed.data.domainId !== undefined
-          ? parsed.data.domainId
-          : existing.link.domainId;
+        parsed.data.domainId === undefined
+          ? existing.link.domainId
+          : parsed.data.domainId;
 
-      if (nextDomainId) {
-        const domain = await loadDomainForApp(
+      const locationChanged =
+        nextSlug !== existing.link.slug ||
+        nextDomainId !== existing.link.domainId;
+      const [domain, slugAvailable] = await Promise.all([
+        loadDomainForApp(
           nextDomainId,
           existing.policy.appId,
           nextDomainId !== existing.link.domainId
-        );
-        if (!domain) {
-          set.status = HttpStatus.BAD_REQUEST;
-          return {
-            code: ErrorCode.VALIDATION_ERROR,
-            detail: 'Select a verified domain from this app',
-          };
-        }
+        ),
+        locationChanged
+          ? isLinkSlugAvailable({
+              slug: nextSlug,
+              domainId: nextDomainId,
+              appId: existing.policy.appId,
+              excludeLinkId: existing.link.id,
+            })
+          : true,
+      ]);
+      if (nextDomainId && !domain) {
+        set.status = HttpStatus.BAD_REQUEST;
+        return {
+          code: ErrorCode.VALIDATION_ERROR,
+          detail: 'Select a verified domain from this app',
+        };
       }
 
-      if (
-        (nextSlug !== existing.link.slug ||
-          nextDomainId !== existing.link.domainId) &&
-        !(await isLinkSlugAvailable(nextSlug, nextDomainId, existing.link.id))
-      ) {
+      if (!slugAvailable) {
         set.status = HttpStatus.CONFLICT;
         return {
           code: ErrorCode.CONFLICT,
@@ -543,18 +544,24 @@ export const policiesWebRouter = new Elysia({ prefix: '/policies' })
           const [updatedPolicy] = await tx
             .update(policies)
             .set({
-              ...(parsed.data.name !== undefined
-                ? { name: parsed.data.name }
-                : {}),
-              ...(parsed.data.date !== undefined
-                ? { date: parsed.data.date }
-                : {}),
-              ...(parsed.data.content !== undefined
-                ? { content: parsed.data.content }
-                : {}),
+              ...(parsed.data.name === undefined
+                ? {}
+                : { name: parsed.data.name }),
+              ...(parsed.data.date === undefined
+                ? {}
+                : { date: parsed.data.date }),
+              ...(parsed.data.content === undefined
+                ? {}
+                : { content: parsed.data.content }),
             })
             .where(eq(policies.id, existing.policy.id))
             .returning();
+
+          if (locationChanged && existing.link.domainId === null) {
+            await tombstoneDefaultSlugs(tx, existing.policy.appId, [
+              existing.link.slug,
+            ]);
+          }
 
           return { updatedLink, updatedPolicy };
         });
@@ -572,10 +579,11 @@ export const policiesWebRouter = new Elysia({ prefix: '/policies' })
         throw error;
       }
 
-      await invalidateCachedLink(existing.link.slug, existing.link.domainId);
-      await invalidateCachedLink(linkRow.slug, linkRow.domainId);
-
-      const domainsById = await loadDomainsByIdForApp(query.appId);
+      const [, , domainsById] = await Promise.all([
+        invalidateCachedLink(existing.link.slug, existing.link.domainId),
+        invalidateCachedLink(linkRow.slug, linkRow.domainId),
+        loadDomainsByIdForApp(query.appId),
+      ]);
       return serializePolicy(policyRow, linkRow, domainsById);
     },
     {
@@ -604,7 +612,7 @@ export const policiesWebRouter = new Elysia({ prefix: '/policies' })
         };
       }
 
-      const app = await assertAppAccess(query.appId, user.id);
+      const app = await findAccessibleApp(query.appId, user.id);
       if (!app) {
         set.status = HttpStatus.FORBIDDEN;
         return { code: ErrorCode.FORBIDDEN, detail: 'Access denied' };
@@ -631,9 +639,16 @@ export const policiesWebRouter = new Elysia({ prefix: '/policies' })
       await db.transaction(async (tx) => {
         await tx.delete(policies).where(eq(policies.id, existing.policy.id));
         await tx.delete(links).where(eq(links.id, existing.link.id));
+        if (existing.link.domainId === null) {
+          await tombstoneDefaultSlugs(tx, existing.policy.appId, [
+            existing.link.slug,
+          ]);
+        }
       });
 
       await invalidateCachedLink(existing.link.slug, existing.link.domainId);
+      // Never rejects: Redis failures are logged inside.
+      deleteLinkClickTotals([existing.link.id]);
 
       return { success: true };
     },

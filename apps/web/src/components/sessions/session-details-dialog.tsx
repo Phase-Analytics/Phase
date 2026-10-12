@@ -11,6 +11,7 @@ import {
   ViewIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
+import { getDisplayName } from '@phase/shared';
 import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'motion/react';
 import { useRouter } from 'next/navigation';
@@ -26,7 +27,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getGeneratedName, UserAvatar } from '@/components/user-profile';
+import { UserAvatar } from '@/components/user-profile';
 import { buildQueryString, fetchApi } from '@/lib/api/client';
 import type {
   EventListItem,
@@ -111,7 +112,7 @@ export function SessionDetailsDialog({
     if (!session?.deviceId) {
       return '';
     }
-    return getGeneratedName(session.deviceId);
+    return getDisplayName(session.deviceId);
   }, [session?.deviceId]);
 
   if (!(session && appId)) {

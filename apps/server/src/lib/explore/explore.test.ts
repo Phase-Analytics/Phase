@@ -8,12 +8,17 @@ import {
   validateExplorePage,
 } from './sql-validate';
 
+function rewrite(sql: string) {
+  return rewriteExploreSql(parseExploreSql(sql), {
+    appId: 'app_test',
+    dateRange: null,
+  });
+}
+
 describe('rewriteExploreSql', () => {
-  test('rewrites quoted virtual table names produced by sqlify', () => {
-    const { sql, target } = rewriteExploreSql(
-      'SELECT timestamp, user_id, name AS "event_name" FROM "events" ORDER BY timestamp DESC',
-      new Set(['events']),
-      { appId: 'app_test', dateRange: null }
+  test('rewrites quoted virtual table names', () => {
+    const { sql, target } = rewrite(
+      'SELECT timestamp, user_id, name AS "event_name" FROM "events" ORDER BY timestamp DESC'
     );
 
     expect(target).toBe('questdb');
@@ -22,23 +27,107 @@ describe('rewriteExploreSql', () => {
   });
 
   test('resolves Apple machine ids in the users virtual table model column', () => {
-    const { sql, target } = rewriteExploreSql(
-      'SELECT model, count(*) AS count FROM users GROUP BY model',
-      new Set(['users']),
-      { appId: 'app_test', dateRange: null }
+    const { sql, target } = rewrite(
+      'SELECT model, count(*) AS count FROM users GROUP BY model'
     );
 
     expect(target).toBe('postgres');
     expect(sql).toContain("WHEN model = 'iPhone17,1' THEN 'iPhone 16 Pro'");
     expect(sql).toContain('AS model');
   });
+
+  test('scopes every table reference, including nested subqueries', () => {
+    const { sql } = rewrite(
+      'SELECT * FROM (SELECT app_id, name FROM events) t WHERE EXISTS (SELECT 1 FROM "events")'
+    );
+
+    const rawReads = sql.match(/FROM\s+"?events(?:_v2)?"?/gi) ?? [];
+    const scopedReads =
+      sql.match(/FROM events(?:_v2)?\s+WHERE app_id = 'app_test'/g) ?? [];
+    expect(rawReads.length).toBe(4);
+    expect(scopedReads.length).toBe(rawReads.length);
+  });
+
+  test('scopes every postgres table reference, including nested subqueries', () => {
+    const { sql, target } = rewrite(
+      'SELECT * FROM (SELECT user_id FROM users) t WHERE EXISTS (SELECT 1 FROM "users")'
+    );
+
+    expect(target).toBe('postgres');
+    const rawReads = sql.match(/FROM\s+"?devices"?/gi) ?? [];
+    const scopedReads =
+      sql.match(/FROM devices\s+WHERE app_id = 'app_test'/g) ?? [];
+    expect(rawReads.length).toBe(2);
+    expect(scopedReads.length).toBe(rawReads.length);
+  });
+
+  test('keeps QuestDB long casts executable', () => {
+    const { sql } = rewrite(
+      "SELECT cast(json_extract(params, '$.level_number') AS long) % 5 AS r FROM events"
+    );
+
+    expect(sql).toContain('AS BIGINT');
+  });
+});
+
+describe('explore sandbox', () => {
+  const escapes = [
+    'SELECT * FROM (events)',
+    'SELECT * FROM/**/events',
+    'SELECT * FROM events -- comment',
+    'SELECT * FROM public.events',
+    'SELECT * FROM sys.tables',
+    'SELECT * FROM events_v2',
+    "SELECT * FROM read_parquet('/etc/passwd')",
+    'SELECT * FROM tables()',
+    'WITH x AS (SELECT * FROM events) SELECT * FROM x',
+    'SELECT * INTO stolen FROM users',
+    "SELECT 'a\\' FROM users",
+    'SELECT $$x$$ FROM users',
+    "SELECT 'apps'::regclass AS x FROM users",
+    "SELECT CAST('postgres' AS regrole) AS x FROM users",
+  ];
+
+  for (const sql of escapes) {
+    test(`rejects ${sql}`, () => {
+      expect(() => rewrite(sql)).toThrow(ExploreEngineError);
+    });
+  }
+
+  const forbiddenFunctions = [
+    "query_to_xml('select * from apps', true, true, '')",
+    "query_to_xml_and_xmlschema('select 1', true, true, '')",
+    "table_to_xml('apps', true, true, '')",
+    "set_config('role', 'postgres', false)",
+    "current_setting('server_version')",
+    'pg_sleep(10)',
+    'pg_catalog.pg_sleep(10)',
+    '"pg_sleep"(10)',
+    "pg_read_file('/etc/passwd')",
+    "pg_ls_dir('.')",
+    'lo_import(1)',
+    "dblink('x', 'y')",
+    'pg_terminate_backend(1)',
+    "files('/')",
+    "glob('/*')",
+    'sysdate()',
+    "table_columns('events')",
+  ];
+
+  for (const call of forbiddenFunctions) {
+    test(`rejects ${call}`, () => {
+      expect(() => rewrite(`SELECT ${call} AS x FROM users`)).toThrow(
+        ExploreEngineError
+      );
+    });
+  }
 });
 
 describe('parseExploreSql', () => {
   test('uses default page size when LIMIT is omitted', () => {
     const parsed = parseExploreSql('SELECT user_id FROM users');
     expect(parsed.pageSize).toBe(EXPLORE_DEFAULT_PAGE_SIZE);
-    expect(parsed.baseSql.toLowerCase()).toContain('users');
+    expect([...parsed.tables]).toEqual(['users']);
   });
 
   test('respects LIMIT as page size', () => {
@@ -46,7 +135,9 @@ describe('parseExploreSql', () => {
       'SELECT name, count(*) AS count FROM events GROUP BY name LIMIT 50'
     );
     expect(parsed.pageSize).toBe(50);
-    expect(parsed.baseSql.toUpperCase()).not.toContain('LIMIT');
+    expect(rewrite('SELECT name FROM events LIMIT 50').sql).not.toContain(
+      'LIMIT'
+    );
   });
 
   test('rejects LIMIT above max page size', () => {
@@ -101,7 +192,7 @@ describe('parseExploreSql', () => {
     ).toThrow(ExploreEngineError);
   });
 
-  test('parses questdb long cast and keeps original sql for execution', () => {
+  test('parses questdb long cast and the documented level example', () => {
     const sql = `SELECT avg(cast(json_extract(params, '$.duration_seconds') AS double)) AS avg_duration_seconds
 FROM events
 WHERE name = 'level_win'
@@ -111,9 +202,9 @@ LIMIT 100`;
     const parsed = parseExploreSql(sql);
 
     expect(parsed.pageSize).toBe(100);
-    expect(parsed.baseSql).toContain('AS long');
-    expect(parsed.baseSql).toContain('% 5 = 0');
-    expect(parsed.baseSql.toUpperCase()).not.toContain('LIMIT');
+    const { sql: rewritten } = rewrite(sql);
+    expect(rewritten).toContain('AS BIGINT) % 5 = 0');
+    expect(rewritten).not.toContain('LIMIT');
   });
 });
 

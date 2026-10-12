@@ -1,10 +1,8 @@
-FROM alpine:3.20
+# Build context: ./tooling
+FROM alpine:3.24
 
-RUN apk add --no-cache wget
+RUN apk add --no-cache curl
 
-WORKDIR /scripts
+COPY --chmod=0755 geoip/update.sh /usr/local/bin/geoip-update
 
-COPY update.sh .
-RUN chmod +x update.sh
-
-CMD ["/scripts/update.sh"]
+CMD ["geoip-update"]

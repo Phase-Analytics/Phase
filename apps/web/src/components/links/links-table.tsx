@@ -102,15 +102,25 @@ export function LinksTable({ appId, links, isLoading }: LinksTableProps) {
     {
       accessorKey: 'totalClicks',
       header: 'Clicks',
-      cell: ({ row }) => (
-        <span className="inline-flex items-center gap-1.5 font-medium tabular-nums">
-          <HugeiconsIcon
-            className="size-3.5 shrink-0 text-muted-foreground"
-            icon={CursorPointer01Icon}
-          />
-          {row.original.totalClicks ?? 0}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const { totalClicks } = row.original;
+        return (
+          <span
+            className="inline-flex items-center gap-1.5 font-medium tabular-nums"
+            title={
+              totalClicks === undefined
+                ? 'Click totals are temporarily unavailable'
+                : undefined
+            }
+          >
+            <HugeiconsIcon
+              className="size-3.5 shrink-0 text-muted-foreground"
+              icon={CursorPointer01Icon}
+            />
+            {totalClicks ?? '—'}
+          </span>
+        );
+      },
     },
     {
       id: 'status',

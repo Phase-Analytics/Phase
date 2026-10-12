@@ -9,6 +9,9 @@ export const EXPLORE_VIRTUAL_TABLES = ['events', 'users', 'sessions'] as const;
 
 export type ExploreVirtualTable = (typeof EXPLORE_VIRTUAL_TABLES)[number];
 
+/** Marks virtual table nodes between AST rewrite and scoped substitution. */
+export const EXPLORE_TABLE_PLACEHOLDER_PREFIX = '__phase_explore_';
+
 export const FORBIDDEN_SQL_KEYWORDS = [
   'INSERT',
   'UPDATE',

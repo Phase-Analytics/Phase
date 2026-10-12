@@ -7,15 +7,15 @@ Privacy-first mobile analytics for Unity (iOS/Android).
 ## Features
 
 - **Privacy by Default** - No PII collected without explicit consent
-- **Offline Support** - Events queued locally and synced when online
-- **Event Tracking Only** - `Track` custom events (no screen tracking API)
+- **Offline Support** - Everything is queued on disk and delivered in batches once online; nothing is dropped until the server acknowledges it
+- **Events and Screens** - `Track` custom events and `TrackScreen` screen views
 - **Lightweight** - IL2CPP-friendly, Newtonsoft.Json with link preservation
 - **Self-Hostable** - Custom API base URL
 
 ## Installation
 
 ```
-https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.13
+https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.2.0
 ```
 
 **Or** `Packages/manifest.json`:
@@ -23,7 +23,7 @@ https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.13
 ```json
 {
   "dependencies": {
-    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.1.13"
+    "com.phase.analytics": "https://github.com/Phase-Analytics/Phase.git?path=packages/phase-unity#v0.2.0"
   }
 }
 ```
@@ -37,7 +37,26 @@ await PhaseAnalytics.InitializeAsync(new PhaseConfig { ApiKey = "phase_xxx" });
 await PhaseAnalytics.IdentifyAsync();
 PhaseAnalytics.Track("app_opened");
 PhaseAnalytics.Track("level_complete", new EventParams { ["level"] = 5 });
+PhaseAnalytics.TrackScreen("Shop", new EventParams { ["tab"] = "coins" });
 ```
+
+Calls made before `InitializeAsync`/`IdentifyAsync` finish are kept: events are stamped when you call `Track` and delivered once a session exists.
+
+## Delivery
+
+Data is sent in batches: when 20 items are queued, every 10 seconds while the queue is not empty, when the app goes to the background, and when connectivity returns. The queue is saved on disk, so unsent data survives restarts.
+
+```csharp
+// Send queued data now, e.g. before a scripted shutdown.
+await PhaseAnalytics.FlushAsync();
+
+// Forget this device, e.g. on logout: ends the session, tries to deliver queued data,
+// clears the queue and creates a new device ID. Identify again to resume tracking.
+await PhaseAnalytics.ResetAsync();
+await PhaseAnalytics.IdentifyAsync();
+```
+
+Changing the API key clears data queued for the previous key.
 
 ## Releases
 

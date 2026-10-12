@@ -7,6 +7,7 @@ import {
   ViewIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
+import { getDisplayName } from '@phase/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { parseAsString, useQueryState } from 'nuqs';
@@ -21,7 +22,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getGeneratedName, UserAvatar } from '@/components/user-profile';
+import { UserAvatar } from '@/components/user-profile';
 import { fetchApi } from '@/lib/api/client';
 import type { Event } from '@/lib/api/types';
 import { cacheConfig } from '@/lib/queries/query-client';
@@ -52,7 +53,7 @@ export function EventsSheet({ appId }: EventsSheetProps) {
     if (!event?.deviceId) {
       return '';
     }
-    return getGeneratedName(event.deviceId);
+    return getDisplayName(event.deviceId);
   }, [event?.deviceId]);
 
   const params = useMemo(() => {
