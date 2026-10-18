@@ -6,7 +6,7 @@ import { build, spawn, write } from 'bun';
 const commit = 'a07da7020810d3a975524daad2a544c9205ea65e';
 const outputs = process.argv.slice(2);
 if (!outputs.length) {
-  throw new Error('Pass the public/openanalytics-v0.8.0.js output paths.');
+  throw new Error('Pass the public/js/oa-v0.8.0.js output paths.');
 }
 const temp = await mkdtemp(join(tmpdir(), 'openanalytics-tracker-'));
 try {

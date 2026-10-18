@@ -7,7 +7,7 @@
   ],
   "files": {
     "includes": [
-      "!**/public/openanalytics-v0.8.0.js",
+      "!**/public/js/oa-v0.8.0.js",
       "!**/public/geo",
       "!**/drizzle",
       "!**/.next",
