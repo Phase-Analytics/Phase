@@ -5,6 +5,7 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db } from '@/db';
 import { account, session, user, verification } from '@/db/schema';
+import { RESOLVED_CLIENT_IP_HEADER } from '@/lib/client-ip';
 import { sendPasswordResetEmail } from './email';
 import { expoMobileHandoff } from './expo-mobile-handoff';
 
@@ -151,6 +152,11 @@ export const auth = betterAuth({
     },
   },
   advanced: {
+    // Rate limits and session IPs key on the address client-ip.ts resolves;
+    // x-forwarded-for only holds the tunnel connector behind Cloudflare.
+    ipAddress: {
+      ipAddressHeaders: [RESOLVED_CLIENT_IP_HEADER],
+    },
     useSecureCookies: true,
     crossSubDomainCookies: {
       enabled: true,

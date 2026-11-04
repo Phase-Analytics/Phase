@@ -6,7 +6,11 @@ import Redis from 'ioredis';
 import { pool } from '@/db';
 import { closeExplorePool, ensureExploreRole } from '@/db/explore-pool';
 import { auth } from '@/lib/auth';
-import { getClientIp, getSocketAddress } from '@/lib/client-ip';
+import {
+  getClientIp,
+  getSocketAddress,
+  withResolvedClientIp,
+} from '@/lib/client-ip';
 import { authCors, publicCors, sdkCors, webCors } from '@/lib/cors';
 import { initEventBuffer } from '@/lib/event-buffer';
 import { initGeoIP, shutdownGeoIP } from '@/lib/geolocation';
@@ -188,7 +192,7 @@ const publicApiRoutes = new Elysia({ prefix: '/public-api' })
 const authRoutes = new Elysia()
   .use(authCors)
   .use(authRouter)
-  .mount(auth.handler);
+  .mount((request) => auth.handler(withResolvedClientIp(request)));
 
 const app = new Elysia()
   .use(authRoutes)

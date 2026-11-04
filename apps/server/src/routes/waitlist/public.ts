@@ -8,6 +8,7 @@ import {
 import { count, eq } from 'drizzle-orm';
 import { Elysia } from 'elysia';
 import { db, waitlist } from '@/db';
+import { getClientIp, getSocketAddress } from '@/lib/client-ip';
 import {
   checkWaitlistRateLimit,
   RATE_LIMIT_STRATEGIES,
@@ -43,17 +44,7 @@ export const waitlistPublicRouter = new Elysia({ prefix: '/waitlist' })
   .post(
     '/',
     async ({ body, request, set, server }) => {
-      const cfConnectingIp = request.headers.get('cf-connecting-ip');
-      const forwardedFor = request.headers.get('x-forwarded-for');
-      const realIp = request.headers.get('x-real-ip');
-      const socketIp = server?.requestIP(request);
-
-      const ip =
-        cfConnectingIp ||
-        forwardedFor?.split(',')[0]?.trim() ||
-        realIp ||
-        (socketIp?.address as string) ||
-        null;
+      const ip = getClientIp(request, getSocketAddress(request, server));
 
       if (ip) {
         const rateLimitResult = await checkWaitlistRateLimit(ip);
