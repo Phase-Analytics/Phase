@@ -5,6 +5,7 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db } from '@/db';
 import { account, session, user, verification } from '@/db/schema';
+import { RESOLVED_CLIENT_IP_HEADER } from '@/lib/client-ip';
 import { sendPasswordResetEmail } from './email';
 import { expoMobileHandoff } from './expo-mobile-handoff';
 
@@ -32,10 +33,8 @@ const getCookieDomain = (): string | undefined => {
     if (parts.length >= 2) {
       return `.${parts.slice(-2).join('.')}`;
     }
-
-    return;
   } catch {
-    return;
+    // An unparsable WEB_URL means host-only cookies.
   }
 };
 
@@ -138,9 +137,9 @@ export const auth = betterAuth({
   trustedOrigins: [
     process.env.WEB_URL || 'http://localhost:3002',
     'phase://',
-    ...(process.env.NODE_ENV !== 'production'
-      ? ['http://localhost:3002', 'exp://', 'exp://**']
-      : []),
+    ...(process.env.NODE_ENV === 'production'
+      ? []
+      : ['http://localhost:3002', 'exp://', 'exp://**']),
   ],
   session: {
     expiresIn: 60 * 60 * 24 * 7,
@@ -151,6 +150,11 @@ export const auth = betterAuth({
     },
   },
   advanced: {
+    // Rate limits and session IPs key on the address client-ip.ts resolves;
+    // x-forwarded-for only holds the tunnel connector behind Cloudflare.
+    ipAddress: {
+      ipAddressHeaders: [RESOLVED_CLIENT_IP_HEADER],
+    },
     useSecureCookies: true,
     crossSubDomainCookies: {
       enabled: true,

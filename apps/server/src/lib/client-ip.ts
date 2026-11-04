@@ -110,13 +110,30 @@ function normalizeIp(raw: string | undefined | null): string | null {
   return isIP(value) ? value : null;
 }
 
-/**
- * Resolves the client IP by walking the proxy chain from the closest hop.
- * Forwarding headers are only honored when the hop that set them is a
- * trusted proxy (private network or Cloudflare), so a client that reaches
- * the origin directly cannot spoof its address.
- */
-export function getClientIp(
+const MISATTRIBUTION_WARN_INTERVAL_MS = 60_000;
+let lastMisattributionWarnAt = 0;
+
+// Cloudflare stamps cf-ray on every request it proxies. If such a request does
+// not resolve to the visitor Cloudflare reported, the proxy chain in front of
+// the server changed and geolocation plus per-IP rate limits silently degrade.
+function warnIfMisattributed(request: Request, resolved: string | null) {
+  const cfIp = normalizeIp(request.headers.get('cf-connecting-ip'));
+  if (!(cfIp && request.headers.has('cf-ray')) || resolved === cfIp) {
+    return;
+  }
+  const now = Date.now();
+  if (now - lastMisattributionWarnAt < MISATTRIBUTION_WARN_INTERVAL_MS) {
+    return;
+  }
+  lastMisattributionWarnAt = now;
+  console.warn(
+    `⚠️  [ClientIP] Cloudflare request resolved to ${resolved ?? 'nothing'} instead of the visitor; ` +
+      `x-forwarded-for=[${request.headers.get('x-forwarded-for') ?? ''}]. ` +
+      'A proxy in front of the server changed: check client-ip.ts trust rules.'
+  );
+}
+
+function resolveClientIp(
   request: Request,
   socketAddress?: string | null
 ): string | null {
@@ -126,6 +143,7 @@ export function getClientIp(
     .filter((ip): ip is string => ip !== null);
   const realIp = normalizeIp(request.headers.get('x-real-ip'));
   const socketIp = normalizeIp(socketAddress);
+  const cfIp = normalizeIp(request.headers.get('cf-connecting-ip'));
 
   const chain = [...forwardedFor];
   if (forwardedFor.length === 0 && realIp) {
@@ -139,21 +157,63 @@ export function getClientIp(
     const hop = chain[index] as string;
 
     if (inRanges(hop, cloudflareRanges)) {
-      const cfIp = normalizeIp(request.headers.get('cf-connecting-ip'));
       if (cfIp) {
         return cfIp;
       }
       continue;
     }
 
-    if (inRanges(hop, privateRanges) && index > 0) {
-      continue;
+    if (inRanges(hop, privateRanges)) {
+      if (index > 0) {
+        continue;
+      }
+      if (cfIp) {
+        return cfIp;
+      }
     }
 
     return hop;
   }
 
   return chain[0] ?? null;
+}
+
+/**
+ * Resolves the client IP by walking the proxy chain from the closest hop.
+ * Forwarding headers are only honored when the hop that set them is a
+ * trusted proxy (private network or Cloudflare), so a client that reaches
+ * the origin directly cannot spoof its address.
+ *
+ * When the chain starts at a private address, the request entered through a
+ * proxy inside our network (the Cloudflare Tunnel connector), which forwards
+ * the visitor only in cf-connecting-ip. A client reaching the origin directly
+ * always starts the chain with its own public address, because the edge
+ * proxy (Traefik) discards forwarding headers from untrusted peers.
+ */
+export function getClientIp(
+  request: Request,
+  socketAddress?: string | null
+): string | null {
+  const ip = resolveClientIp(request, socketAddress);
+  warnIfMisattributed(request, ip);
+  return ip;
+}
+
+/**
+ * Header carrying the address getClientIp resolved, for libraries that read
+ * the client IP from a header themselves (better-auth). Always overwritten
+ * here, so a value sent by the client is never trusted.
+ */
+export const RESOLVED_CLIENT_IP_HEADER = 'x-phase-client-ip';
+
+export function withResolvedClientIp(request: Request): Request {
+  const headers = new Headers(request.headers);
+  headers.delete(RESOLVED_CLIENT_IP_HEADER);
+  const ip = getClientIp(request);
+  if (ip) {
+    headers.set(RESOLVED_CLIENT_IP_HEADER, ip);
+  }
+  return new Request(request, { headers });
 }
 
 export function getSocketAddress(

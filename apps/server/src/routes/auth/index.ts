@@ -1,11 +1,12 @@
 import { ErrorCode, HttpStatus } from '@phase/shared';
 import { Elysia, t } from 'elysia';
 import { auth } from '@/lib/auth';
+import { getClientIp, getSocketAddress } from '@/lib/client-ip';
 import { checkPasswordResetRateLimit } from '@/lib/rate-limit';
 
 export const authRouter = new Elysia({ prefix: '/auth' }).post(
   '/forgot-password',
-  async ({ body, request, set }) => {
+  async ({ body, request, set, server }) => {
     const { email, redirectTo } = body;
 
     if (redirectTo) {
@@ -45,8 +46,8 @@ export const authRouter = new Elysia({ prefix: '/auth' }).post(
       }
     }
 
-    const forwardedFor = request.headers.get('x-forwarded-for');
-    const ip = forwardedFor?.split(',')[0].trim() || undefined;
+    const ip =
+      getClientIp(request, getSocketAddress(request, server)) ?? undefined;
 
     const rateLimit = await checkPasswordResetRateLimit(email, ip);
 
