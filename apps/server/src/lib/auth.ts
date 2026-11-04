@@ -33,7 +33,9 @@ const getCookieDomain = (): string | undefined => {
     if (parts.length >= 2) {
       return `.${parts.slice(-2).join('.')}`;
     }
-  } catch {}
+  } catch {
+    // An unparsable WEB_URL means host-only cookies.
+  }
 };
 
 const plugins: Array<
