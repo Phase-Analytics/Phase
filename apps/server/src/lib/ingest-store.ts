@@ -27,12 +27,14 @@ const deviceChanged = sql`devices.app_id = excluded.app_id AND (
   OR devices.locale IS DISTINCT FROM COALESCE(excluded.locale, devices.locale)
   OR devices.model IS DISTINCT FROM COALESCE(excluded.model, devices.model)
   OR devices.properties IS DISTINCT FROM ${mergedProperties}
+  OR (devices.country IS NULL AND excluded.country IS NOT NULL)
 )`;
 
 /**
  * Inserts the device or merges non-null fields into the existing row in a
  * single statement, so concurrent first-seen requests cannot race into a
- * unique violation. Country is resolved only for new devices.
+ * unique violation. Country is set once: when the device is created, or on a
+ * later request if it has none yet (geolocation was unavailable at creation).
  */
 export async function upsertDevice(
   payload: CreateDeviceRequest,
@@ -63,6 +65,7 @@ export async function upsertDevice(
         platform: sql`COALESCE(excluded.platform, devices.platform)`,
         locale: sql`COALESCE(excluded.locale, devices.locale)`,
         model: sql`COALESCE(excluded.model, devices.model)`,
+        country: sql`COALESCE(devices.country, excluded.country)`,
         properties: mergedProperties,
       },
       setWhere: deviceChanged,
