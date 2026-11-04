@@ -33,11 +33,7 @@ const getCookieDomain = (): string | undefined => {
     if (parts.length >= 2) {
       return `.${parts.slice(-2).join('.')}`;
     }
-
-    return;
-  } catch {
-    return;
-  }
+  } catch {}
 };
 
 const plugins: Array<
@@ -139,9 +135,9 @@ export const auth = betterAuth({
   trustedOrigins: [
     process.env.WEB_URL || 'http://localhost:3002',
     'phase://',
-    ...(process.env.NODE_ENV !== 'production'
-      ? ['http://localhost:3002', 'exp://', 'exp://**']
-      : []),
+    ...(process.env.NODE_ENV === 'production'
+      ? []
+      : ['http://localhost:3002', 'exp://', 'exp://**']),
   ],
   session: {
     expiresIn: 60 * 60 * 24 * 7,
